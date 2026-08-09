@@ -33,7 +33,13 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { equipmentById, featureById, pathById } from '@/data';
 import { migrateCharacter } from '@/lib/engine/migrations';
-import { damageReductionSources, effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
+import {
+  conditionalEffectBonuses,
+  damageReductionSources,
+  effectContext,
+  effectiveAbilities,
+  modsFromFeatures,
+} from '@/lib/character/effects';
 import { weaponDamageBonuses } from '@/lib/character/weaponDamageBonus';
 import { displayCreatureProfile } from '@/lib/character/companions';
 import { declineForFeature } from '@/lib/character/dragonElement';
@@ -279,6 +285,15 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
     expect(effectiveAbilities({ ...character, effectToggles: { [R8]: [true] } }).FOR).toBe(
       effectiveAbilities(character).FOR,
     );
+  });
+
+  it("r8 : le libellé de l'interrupteur « Forme élémentaire active » ne montre +3 DEF QUE pour Terre", () => {
+    // Bug relevé par le propriétaire : le panneau « Effets conditionnels » affichait « +3 DEF » même
+    // pour la branche Feu de la fixture — `conditionalEffectBonuses` ne filtrait pas `requiresElement`
+    // (contrairement à `effectContributions`, qui calcule déjà le bon total). Fixture = feu.
+    expect(conditionalEffectBonuses(character, R8, 0)).toEqual([]);
+    const froid: Character = { ...character, featureChoices: { [R4]: ['cold'] } };
+    expect(conditionalEffectBonuses(froid, R8, 0)).toEqual([{ stat: 'def', value: 3 }]);
   });
 
   it('r8 (Air) : DM ÷2 rappelé en badge sur les cartes Attaque contact ET distance, ailleurs aucune note', () => {

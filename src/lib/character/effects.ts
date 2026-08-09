@@ -1185,7 +1185,13 @@ export function conditionalEffectBonuses(
   if (!feature || !effect || effect.kind !== 'conditional-stat-bonus') return null;
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
-  return effect.bonuses.map((b) => ({
+  // Gating par ÉLÉMENT RÉSOLU (PER-74) : un bonus propre à une seule branche d'une capacité à
+  // interrupteur partagé (élémentaliste r8) ne doit apparaître dans le libellé de l'interrupteur
+  // QUE pour la branche retenue — cf. `StatBonus.requiresElement` / `effectContributions`.
+  const bonuses = effect.bonuses.filter(
+    (b) => !b.requiresElement || resolveFeatureElement(character, feature)?.id === b.requiresElement,
+  );
+  return bonuses.map((b) => ({
     stat: b.stat,
     value: resolveValue(b.value, feature.pathId, pathRanks, ctx) ?? 0,
   }));
