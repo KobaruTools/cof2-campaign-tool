@@ -2292,15 +2292,42 @@ export const prestigeFeatures2: Feature[] = [
     // puissant (r7). Le bonus d'attaque magique +2 / malus de résistance +2 ne sont PAS
     // modélisables (aucune primitive de bonus d'attaque de SORT scopée par type de dégâts —
     // `AttackBonusEffect` ne couvre que les armes) : verbatim.
+    //
+    // Arbitrage propriétaire (2026-08-08) : l'élémentaire invoqué au rang 6 n'est PAS « de l'élément
+    // au choix » à chaque invocation comme l'écrit le livre — il reprend TOUJOURS l'élément de
+    // prédilection retenu ICI. Correspondance énergie (r4) → branche primordiale de la créature
+    // (Feu/Eau/Air/Terre, déduite des immunités du tableau r6, p. 157) : feu→Feu, acide→Eau,
+    // électricité→Air, froid→Terre. Chaque option porte donc le `creatureUpgrade` de SA branche,
+    // gathered par `applyCreatureUpgrades` sur la voie `prestige-elementaliste` (même pathId que
+    // r6 → ciblage par défaut, sans `targetPaths`).
     choices: [
       {
         kind: 'option',
         prompt: 'Élément de prédilection',
         options: [
-          { id: 'fire', label: 'Feu' },
-          { id: 'cold', label: 'Froid' },
-          { id: 'lightning', label: 'Électricité' },
-          { id: 'acid', label: 'Acide' },
+          {
+            id: 'fire',
+            label: 'Feu',
+            creatureUpgrade: { damageReduction: { kind: 'immunity', scopes: ['fire'] }, meleeDamageDice: '1d4°' },
+          },
+          {
+            id: 'cold',
+            label: 'Froid',
+            creatureUpgrade: { damageReduction: { kind: 'immunity', scopes: ['cold'] }, def: 5 },
+          },
+          {
+            id: 'lightning',
+            label: 'Électricité',
+            creatureUpgrade: {
+              damageReduction: { kind: 'immunity', scopes: ['lightning'] },
+              note: 'Peut voler à 30 m par round.',
+            },
+          },
+          {
+            id: 'acid',
+            label: 'Acide',
+            creatureUpgrade: { damageReduction: { kind: 'immunity', scopes: ['acid'] }, attackBonusDie: true },
+          },
         ],
       },
     ],
@@ -2323,18 +2350,26 @@ export const prestigeFeatures2: Feature[] = [
   },
   {
     id: 'prestige-elementaliste-r6',
-    name: "Invocation d'élémentaire",
+    name: "Invocation d'élémentaire %of%",
     pathId: 'prestige-elementaliste',
     rank: 6,
     isSpell: true,
     actionTypes: ['L'],
     text:
       "Une fois par combat, le magicien invoque un élémentaire de l'élément de son choix, il lui obéit pendant INT minutes puis disparaît. Il agit au tour du magicien.\n\nÉLÉMENTAIRE — CRÉATURE NON VIVANTE DE TAILLE GRANDE\nAGI +2 | CON +6* | FOR +6* | PER +0 | CHA -2 | INT -2 | VOL +4\nDéfense 19 · Points de vigueur [niv. du magicien × 5] · Initiative 10\nCoup [attaque magique du magicien] · DM 2d4°+6\nFeu : +1d4° DM, immunisé au feu. Eau : dé bonus en attaque, immunisé à l'acide. Air : vol 30 m, immunisé à la foudre. Terre : +5 DEF, immunisé au froid.",
-    // Mini-fiche structurée (même patron que l'invocation d'un démon, demon-r5, p. 108) : Coup/DM
-    // renvoient à l'attaque magique du MAÎTRE, Initiative FIXE à 10 (le livre ne la dérive pas du
-    // magicien ici, contrairement à d'autres invocations). Les 4 branches élémentaires (choisies à
-    // l'invocation, PAS le même choix que l'Élément de prédilection permanent du rang 4) sont
-    // portées en `specialAbilities`, verbatim.
+    // Rendu enrichi (2026-08-08, retour propriétaire) : prose SEULE (durée [=INT] minutes), le
+    // tableau de stats verbatim est retiré de l'affichage — porté par `creatureProfile` (mini-fiche
+    // `CreatureStatBlock`), comme Invocation d'un démon (demon-r5, p. 108). Titre ET prose déclinés
+    // sur l'élément de prédilection (rang 4, `elementFromChoice`) via le token `%of%` (« Invocation
+    // d'élémentaire de feu »). Le `text` verbatim ci-dessus reste inchangé (livre imprimé).
+    richText:
+      "Une fois par combat, le magicien invoque un élémentaire %of%, il lui obéit pendant [=INT] minutes puis disparaît. Il agit au tour du magicien.",
+    // L'élémentaire reprend TOUJOURS l'élément de prédilection du rang 4 (arbitrage propriétaire,
+    // cf. commentaire sur r4) : la RD d'immunité + le bonus de branche (DM/dé bonus/DEF/vol) sont
+    // portés par l'OPTION retenue au rang 4 (`FeatureChoiceOption.creatureUpgrade`), gathered
+    // automatiquement par `applyCreatureUpgrades` (même pathId). Rien à mécaniser ici en plus du
+    // profil de base : DM en dés (`[2d4° + 6]`, résolu par `RichInline`, plus de littéral verbatim).
+    elementFromChoice: { choiceFeatureId: 'prestige-elementaliste-r4', choiceIndex: 0 },
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -2343,22 +2378,16 @@ export const prestigeFeatures2: Feature[] = [
       },
     ],
     creatureProfile: {
-      name: 'Élémentaire',
+      name: 'Élémentaire %of%',
       companionType: 'summon',
       type: 'Créature non vivante',
       size: 'grande',
       abilities: { AGI: 2, CON: 6, FOR: 6, PER: 0, CHA: -2, INT: -2, VOL: 4 },
       bonusDieAbilities: ['CON', 'FOR'],
-      defense: '19',
+      defense: '[19]',
       hitPoints: '[=niveau × 5]',
       initiative: '10',
-      attack: { label: 'Coup', fromMaster: 'magicAttack', damage: '2d4°+6' },
-      specialAbilities: [
-        { name: 'Feu', text: 'Immunisé au feu ; +1d4° DM.' },
-        { name: 'Eau', text: "Immunisé à l'acide ; dé bonus en attaque." },
-        { name: 'Air', text: 'Immunisé à la foudre ; vol 30 m.' },
-        { name: 'Terre', text: 'Immunisé au froid ; +5 DEF.' },
-      ],
+      attack: { label: 'Coup', fromMaster: 'magicAttack', damage: '[2d4° + 6]' },
     },
     sourcePage: 157,
   },
@@ -2373,7 +2402,12 @@ export const prestigeFeatures2: Feature[] = [
       "Le personnage ajoute +1d4° aux DM de tous les sorts qui infligent des dommages de son élément de prédilection. Les sorts qui infligent des DM sur la durée augmentent seulement leurs DM initiaux (flèche enflammée, etc.).",
     // Bonus de DM scopé « tout sort de l'élément choisi » (rang 4) : pas de primitive de bonus de
     // DM de SORT dans le moteur (les sorts ne sont pas des lignes d'arme suivies individuellement,
-    // contrairement à `WeaponDamageBonusEffect`) — verbatim.
+    // contrairement à `WeaponDamageBonusEffect`) — reste verbatim, mais le dé est PARSÉ (`{1d4°}`) et
+    // l'élément de prédilection retenu au rang 4 est rappelé entre parenthèses (`%noun%`, retour
+    // propriétaire 2026-08-08).
+    richText:
+      "Le personnage ajoute +{1d4°} aux DM de tous les sorts qui infligent des dommages de son élément de prédilection (%noun%). Les sorts qui infligent des DM sur la durée augmentent seulement leurs DM initiaux (flèche enflammée, etc.).",
+    elementFromChoice: { choiceFeatureId: 'prestige-elementaliste-r4', choiceIndex: 0 },
     sourcePage: 157,
   },
   {
@@ -2386,8 +2420,17 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Le personnage peut prendre une seule forme élémentaire de son choix pendant [5 + INT] minutes. La forme élémentaire lui permet de retrancher 5 points à tous les DM subis (RD 5), elle l'immunise aux DM de la forme choisie et lui octroie les capacités suivantes :\n- Feu : le personnage ajoute +2d4° DM de feu à toutes ses attaques au contact. Une créature qui s'attaque à lui avec des armes naturelles subit 1d4° DM pour chaque attaque réussie.\n- Eau : le personnage guérit toutes ses blessures au rythme de 1d4° PV par round et il peut déformer son corps pour passer dans le moindre interstice.\n- Terre : le personnage obtient un bonus de +3 en FOR (+3 attaque et DM au contact et +3 tests de FOR) et en DEF.\n- Air : le personnage peut voler (à une vitesse de 20 m par action de mouvement), il divise par deux les DM de ses attaques physiques mais pas ceux des sorts) et sa RD passe à 10.",
     // PER-137 : RD −5 sur TOUS les DM, CONDITIONNELLE à la forme élémentaire (durée du sort). Marqueur
-    // d'état pour l'affichage. Cas non modélisés (verbatim) : l'immunité aux DM de l'élément choisi
-    // (cadre « Immunités », phase 2) et la variante Air (RD portée à 10), choix-dépendants.
+    // d'état pour l'affichage.
+    // 2026-08-08 (retour propriétaire, 1ʳᵉ passe) : durée PARSÉE (`[=5 + INT]`) ; l'immunité aux DM
+    // de l'élément de prédilection (rang 4) est désormais MÉCANISÉE ci-dessous (2e entrée de RD,
+    // cross-capacité comme r5). CE QUI RESTE (verbatim, en attente d'une 2e passe convenue avec le
+    // propriétaire) : réduire l'affichage aux SEULES capacités de la branche retenue (les 3 autres
+    // passées en note) et mécaniser les bonus propres à chaque branche (+2d4° DM feu, soins 1d4°
+    // PV/round, +3 FOR/DEF, vol + RD 10) — nécessite de choisir COMMENT porter un bonus par branche
+    // sur une TRANSFORMATION (pas de `creatureProfile`ici, contrairement à r6), pas encore tranché.
+    richText:
+      "Le personnage peut prendre une seule forme élémentaire de son choix pendant [=5 + INT] minutes. La forme élémentaire lui permet de retrancher 5 points à tous les DM subis (RD 5), elle l'immunise aux DM de la forme choisie et lui octroie les capacités suivantes :\n- Feu : le personnage ajoute +{2d4°} DM de feu à toutes ses attaques au contact. Une créature qui s'attaque à lui avec des armes naturelles subit {1d4°} DM pour chaque attaque réussie.\n- Eau : le personnage guérit toutes ses blessures au rythme de {1d4°} PV par round et il peut déformer son corps pour passer dans le moindre interstice.\n- Terre : le personnage obtient un bonus de +3 en FOR (+3 attaque et DM au contact et +3 tests de FOR) et en DEF.\n- Air : le personnage peut voler (à une vitesse de 20 m par action de mouvement), il divise par deux les DM de ses attaques physiques mais pas ceux des sorts) et sa RD passe à 10.",
+    elementFromChoice: { choiceFeatureId: 'prestige-elementaliste-r4', choiceIndex: 0 },
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -2395,7 +2438,10 @@ export const prestigeFeatures2: Feature[] = [
         activation: { kind: 'temporary', label: 'Forme élémentaire active', activeByDefault: false },
       },
     ],
-    damageReduction: { kind: 'flat', value: 5 },
+    damageReduction: [
+      { kind: 'flat', value: 5 },
+      { kind: 'immunity', scopeFromElement: true },
+    ],
     sourcePage: 157,
   },
 

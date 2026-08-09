@@ -231,6 +231,7 @@ export function applyCreatureUpgrades(
   let hpPerLevel = 0;
   let dmgFlat = 0;
   const dmgDice: string[] = [];
+  let attackBonusDie = false;
   const notes: string[] = [];
   const extraAttackSpecs: NonNullable<CreatureUpgrade['extraAttack']>[] = [];
   // PER-74 — RD et capacités spéciales accordées à la créature par une capacité du MAÎTRE (chevalier
@@ -247,6 +248,7 @@ export function applyCreatureUpgrades(
     if (u.hitPointsPerLevel) hpPerLevel += u.hitPointsPerLevel;
     if (u.meleeDamageFlat) dmgFlat += u.meleeDamageFlat;
     if (u.meleeDamageDice) dmgDice.push(u.meleeDamageDice);
+    if (u.attackBonusDie) attackBonusDie = true;
     if (u.note) notes.push(u.note);
     if (u.extraAttack) extraAttackSpecs.push(u.extraAttack);
     if (u.damageReduction) reductions.push(...(Array.isArray(u.damageReduction) ? u.damageReduction : [u.damageReduction]));
@@ -265,6 +267,7 @@ export function applyCreatureUpgrades(
     if (dmgFlat !== 0) adds.push(String(dmgFlat));
     next.attack = { ...base.attack, damage: injectExprTerms(base.attack.damage, adds) };
   }
+  if (attackBonusDie && base.attack) next.attack = { ...(next.attack ?? base.attack), bonusDie: true };
   if (extraAttackSpecs.length > 0) {
     const eff = next.abilities ?? base.abilities;
     next.extraAttacks = [

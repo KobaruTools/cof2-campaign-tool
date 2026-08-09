@@ -2715,6 +2715,12 @@ export interface CreatureUpgrade {
   /** Dé supplémentaire aux DM au contact, au format richText (ex. Arme à deux mains → `1d4°`). */
   meleeDamageDice?: string;
   /**
+   * Le jet d'ATTAQUE de la créature devient un DÉ BONUS (PER-74, invocation d'élémentaire, branche
+   * eau/acide, p. 157 : « dé bonus en attaque »). Reporté sur `CreatureProfile.attack.bonusDie` par
+   * `applyCreatureUpgrades`. Absent/`false` = aucun changement.
+   */
+  attackBonusDie?: boolean;
+  /**
    * Attaque SUPPLÉMENTAIRE octroyée (ex. Baliste → attaque à distance). Le DM est un dé + la
    * caractéristique de la CRÉATURE `damageAbility` (baked en nombre par le résolveur, car le DM
    * d'un compagnon se résout sinon contre le maître). Rendue en chip d'attaque distinct.
@@ -3154,8 +3160,13 @@ export interface CreatureProfile {
    * Exactement l'un des deux. `label` nomme le jet (défaut « Attaque », ex. « Ruade »).
    * `damage` est au format `richText` (dés + constantes uniquement : une carac s'y
    * résoudrait contre le MAÎTRE, pas contre la créature).
+   *
+   * `bonusDie` (PER-74, élémentaire d'eau/acide, invocation d'élémentaire p. 157) : la créature
+   * lance CE jet d'attaque en dé bonus (« 2d20, garde le meilleur »), rendu par un `BonusDieBadge`
+   * sur la mini-fiche — analogue de `LowHpAttackDieEffect` côté personnage, mais permanent tant que
+   * la créature est affichée (aucun seuil de PV). Absent/`false` = jet normal.
    */
-  attack?: { label?: string; fromMaster?: DerivedStatId; value?: string; damage?: string };
+  attack?: { label?: string; fromMaster?: DerivedStatId; value?: string; damage?: string; bonusDie?: boolean };
   /**
    * Attaques SUPPLÉMENTAIRES de la créature, en plus de `attack` (PER-94) — ex. Baliste du Golem
    * supérieur (attaque à distance ajoutée par une amélioration). Le `damage` est déjà résolu (dé +

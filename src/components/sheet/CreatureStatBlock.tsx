@@ -425,6 +425,9 @@ export function CreatureStatsLine({
                 {rich(attack.damage)}
               </>
             )}
+            {attack.bonusDie && (
+              <BonusDieBadge ability="attaque" tooltipTitle="Dé bonus à l'attaque" size={14} />
+            )}
           </CreatureStatChip>
         )}
         {/* Attaques SUPPLÉMENTAIRES (PER-94, ex. Baliste du Golem supérieur). Le jet reprend
@@ -594,6 +597,9 @@ export function CreatureDerivedStats({
               <Box component="span" sx={{ opacity: 0.5 }}>·</Box>
               {rich(attack.damage)}
             </>
+          )}
+          {attack.bonusDie && (
+            <BonusDieBadge ability="attaque" tooltipTitle="Dé bonus à l'attaque" size={14} />
           )}
         </>
       ),
