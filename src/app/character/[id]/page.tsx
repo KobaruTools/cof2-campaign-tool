@@ -30,7 +30,11 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
 import { ancestryById, classById, families, pathById, progression } from '@/data';
 import { checkCompliance } from '@/lib/engine';
-import type { AbilityId, StartingEquipmentChoiceOption } from '@/data/schema';
+import type {
+  AbilityId,
+  BeneficialEffectId,
+  StartingEquipmentChoiceOption,
+} from '@/data/schema';
 import type { CharacterStatus, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { modifierDeltas } from '@/lib/character/ancestry';
@@ -66,7 +70,6 @@ import { SessionHeaderIndicator } from '@/components/session/SessionHeaderIndica
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import { statusSheetImpact } from '@/lib/character/statusEffects';
-import { groupBuffsOf } from '@/lib/character/groupBuffs';
 import { mergeMods } from '@/lib/character/orphanPoints';
 import { ActiveStatusPanel } from '@/components/sheet/ActiveStatusPanel';
 import type { SessionIdentity } from '@/lib/session/useSessionChannel';
@@ -128,8 +131,15 @@ import { LevelUndoButton } from '@/components/sheet/LevelUndoButton';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
+import { useBuffOptOutStore } from '@/stores/buffOptOut';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
+
+/**
+ * Liste vide partagée des buffs écartés : un sélecteur zustand doit renvoyer une référence STABLE
+ * quand il n'y a rien (l'égalité par défaut est `Object.is` — un `[]` neuf rendrait en boucle).
+ */
+const NO_WAIVED_BUFFS: BeneficialEffectId[] = [];
 
 /**
  * Blocs de la fiche possédant un mode édition à scope propre (crayon dédié). Le
@@ -195,9 +205,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     characterCampaignId ? s.byCampaign[characterCampaignId]?.statuses[id] : undefined,
   );
   // Hors session, la liste reste vide → aucune répercussion (les états sont propres au combat).
-  const appliedStatuses = sessionActive ? (combatStatuses ?? []) : [];
+  const posedStatuses = sessionActive ? (combatStatuses ?? []) : [];
+  // Buffs que CE joueur a écartés de sa fiche (PER-358) : un buff de groupe est posé d'un geste sur
+  // tout un camp, chacun reste libre de s'en passer. Purement local — le MJ reste seul auteur de
+  // l'état de combat, et les camarades n'en savent rien.
+  const waivedBuffIds = useBuffOptOutStore((s) => s.idsByCharacter[id] ?? NO_WAIVED_BUFFS);
+  const waiveBuff = useBuffOptOutStore((s) => s.waiveBuff);
+  const restoreBuff = useBuffOptOutStore((s) => s.restoreBuff);
+  const syncWaivedBuffs = useBuffOptOutStore((s) => s.syncPosed);
+  // Le renoncement ne survit pas à la levée de l'effet : si le MJ relance le Chant des héros, c'est
+  // une nouvelle incantation, elle s'applique à tout le monde. Clé de chaîne plutôt que le tableau
+  // (recréé à chaque rendu), pour ne réveiller la purge qu'aux VRAIS changements d'état posé.
+  const posedStatusKey = posedStatuses.map((s) => s.id).join('|');
+  useEffect(() => {
+    syncWaivedBuffs(id, posedStatusKey === '' ? [] : posedStatusKey.split('|'));
+  }, [id, posedStatusKey, syncWaivedBuffs]);
+  const appliedStatuses =
+    waivedBuffIds.length > 0
+      ? posedStatuses.filter((s) => !waivedBuffIds.includes(s.id as BeneficialEffectId))
+      : posedStatuses;
   // Ids seuls, pour les consommateurs qui n'ont besoin que de SAVOIR ce qui est posé : la neutralisation
   // de l'interrupteur de fiche d'un buff de groupe posé en séance (PER-314), au calcul comme à l'écran.
+  // Un buff écarté en est ABSENT — le porteur retrouve alors son propre interrupteur.
   const sessionStatusIds = appliedStatuses.map((s) => s.id);
 
   // État de JEU du personnage (PER-257) : vue dérivée, maxima et actions de jeu (interrupteurs,
@@ -419,6 +448,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       offHandMeleeSituationalDamage,
       rangedSituationalDamage,
       meleeAttackNotes,
+      rangedAttackNotes,
       rangedAttackMagicalSourceId,
       rangedAttackElement,
       rangedReplacingFormAttack: formAttackReplacingRanged,
@@ -651,40 +681,20 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     ? [...statusImpact.allTestsMalusDie, ...statusImpact.attackTestsMalusDie]
     : [];
 
-  // Bloc « ce que la séance fait subir ou accorde » (PER-358) : le rappel des états posés avec leur
-  // delta chiffré, et l'annonce d'un effet de groupe au MJ. Sa place est en tête d'« État du
-  // personnage », au-dessus de la barre de vie — mais cette section n'existe que si les stats
-  // dérivées sont calculables, d'où ce bloc nommé, monté à la place historique (PER-281) pour un
-  // profil incomplet. Les deux montages sont exclusifs.
-  const canAnnounceGroupBuff =
-    isPlayer &&
-    !readOnly &&
-    characterCampaignId !== null &&
-    sessionActive &&
-    groupBuffsOf(character.featureIds).length > 0;
+  // Rappel des états posés par le MJ (PER-281), remonté en tête d'« État du personnage » (PER-358),
+  // au-dessus de la barre de vie. Cette section n'existe que si les stats dérivées sont calculables,
+  // d'où ce bloc nommé, monté à la place historique pour un profil incomplet — les deux montages
+  // sont exclusifs. Le joueur peut écarter un BUFF de sa seule fiche (croix), jamais un état subi.
+  const canWaiveBuffs = isPlayer && !readOnly;
   const sessionStatusBlock =
-    appliedStatuses.length === 0 && !canAnnounceGroupBuff ? null : (
-      <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-        <ActiveStatusPanel
-          statuses={appliedStatuses}
-          impact={statusImpact}
-          roundNumber={combatRoundNumber}
-        />
-        {/* Le joueur ANNONCE son effet de groupe, le MJ le pose (la RLS en fait l'auteur unique de
-            l'état de combat). Ne rend rien hors session ni sans capacité conférant un buff. */}
-        {isPlayer && !readOnly && characterCampaignId && (
-          <BuffRequestControl
-            campaignId={characterCampaignId}
-            characterId={character.id}
-            // Ce nom nomme la demande chez le MJ : un personnage encore anonyme se présente comme
-            // « Un joueur », pas comme le « Sans nom » affiché ailleurs sur la fiche.
-            characterName={character.name || 'Un joueur'}
-            featureIds={character.featureIds}
-            appliedStatusIds={sessionStatusIds}
-            sessionActive={sessionActive}
-          />
-        )}
-      </Stack>
+    appliedStatuses.length === 0 && waivedBuffIds.length === 0 ? null : (
+      <ActiveStatusPanel
+        statuses={appliedStatuses}
+        roundNumber={combatRoundNumber}
+        onWaiveBuff={canWaiveBuffs ? (buffId) => waiveBuff(id, buffId) : undefined}
+        waivedBuffIds={canWaiveBuffs ? waivedBuffIds : undefined}
+        onRestoreBuff={canWaiveBuffs ? (buffId) => restoreBuff(id, buffId) : undefined}
+      />
     );
 
   return (
@@ -1149,6 +1159,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 boundWeaponAttackDie={display.boundWeaponAttackDie}
                 attackMalusDie={attackMalusDie}
                 meleeAttackNotes={meleeAttackNotes}
+                rangedAttackNotes={rangedAttackNotes}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
@@ -1328,6 +1339,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             {voiesView === 'maneuvers' ? (
               <ManeuversPanel abilities={effectCtx.abilities} level={character.level} />
             ) : (
+            <>
             <FeaturesByPath
               featureIds={character.featureIds}
               classId={character.classId}
@@ -1381,6 +1393,25 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // bonus de test est DOMINÉ (ne se cumule pas) — barré + capacité qui le domine (PER-73).
               testBonuses={display.testBonuses}
             />
+            {/* Annonce d'un effet de groupe (PER-358), SOUS le tableau des voies : c'est là que le
+                barde lit « Chant des héros », donc là qu'il pense à le lancer. Le composant ne rend
+                rien hors session ni si aucun rang débloqué ne confère d'effet de groupe — le joueur
+                ANNONCE, le MJ pose (la RLS en fait l'auteur unique de l'état de combat). */}
+            {isPlayer && !readOnly && characterCampaignId && (
+              <Box sx={{ mt: 2 }}>
+                <BuffRequestControl
+                  campaignId={characterCampaignId}
+                  characterId={character.id}
+                  // Ce nom nomme la demande chez le MJ : un personnage encore anonyme se présente
+                  // comme « Un joueur », pas comme le « Sans nom » affiché ailleurs sur la fiche.
+                  characterName={character.name || 'Un joueur'}
+                  featureIds={character.featureIds}
+                  appliedStatusIds={sessionStatusIds}
+                  sessionActive={sessionActive}
+                />
+              </Box>
+            )}
+            </>
             )}
           </SheetSection>
 

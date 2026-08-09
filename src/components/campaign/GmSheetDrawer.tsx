@@ -451,11 +451,7 @@ function GmSheetDrawerContent({
           {/* REPLI (PER-358), comme sur la fiche : sans stats dérivées, il n'y a pas de section
               « État du personnage » — les états s'afficheraient nulle part. */}
           {!masterDerived && appliedStatuses.length > 0 && (
-            <ActiveStatusPanel
-              statuses={appliedStatuses}
-              impact={statusImpact}
-              roundNumber={roundNumber}
-            />
+            <ActiveStatusPanel statuses={appliedStatuses} roundNumber={roundNumber} />
           )}
 
           <SheetSection title="Caractéristiques" icon="abilities">
@@ -539,14 +535,11 @@ function GmSheetDrawerContent({
           {masterDerived && (
             <SheetSection title="État du personnage" icon="status">
               {/* Mêmes états, même place que sur la fiche du joueur (PER-358) : au-dessus de la
-                  barre de vie, avec le delta agrégé. Le MJ voit donc ce que son joueur voit. */}
+                  barre de vie. Le MJ voit donc ce que son joueur voit — sans la croix de
+                  renoncement, qui n'appartient qu'au joueur (il a la sienne, sur la palette). */}
               {appliedStatuses.length > 0 && (
                 <Box sx={{ mb: 2 }}>
-                  <ActiveStatusPanel
-                    statuses={appliedStatuses}
-                    impact={statusImpact}
-                    roundNumber={roundNumber}
-                  />
+                  <ActiveStatusPanel statuses={appliedStatuses} roundNumber={roundNumber} />
                 </Box>
               )}
               <PlayerStatusPanel

@@ -14,36 +14,42 @@
  * le cadre suit alors le contenu — vert tant qu'il n'y a que du bénéfique, rouge dès qu'un état subi
  * s'y trouve (le plus urgent gagne).
  *
- * PER-358 y ajoute le DELTA AGRÉGÉ (« Défense −5 », « Attaques +1 ») et déplace le panneau dans la
- * section « État du personnage », au-dessus de la barre de vie : le joueur vérifie qu'un effet est
- * actif ET ce qu'il change au même endroit qu'il regarde ses PV, sans recouper trois blocs. Le
- * chiffre est lu tel quel dans `StatusSheetImpact` — jamais recalculé —, donc il ne peut pas diverger
- * de la ventilation par source du détail « i ».
+ * PER-358 déplace le panneau dans la section « État du personnage », au-dessus de la barre de vie :
+ * le joueur vérifie qu'un effet est actif là où il regarde ses PV. Le CHIFFRE, lui, n'est pas répété
+ * ici — il est déjà mécanisé partout où il compte (stats dérivées, cartes d'attaque, tests), et
+ * l'effet verbatim reste en infobulle de la puce.
+ *
+ * Un buff de groupe (et lui seul) porte une CROIX : le joueur l'écarte de sa propre fiche, librement,
+ * sans en référer au MJ (`onWaiveBuff`). Il ne peut pas en faire autant d'un état SUBI — se déclarer
+ * non aveuglé n'est pas un choix de joueur.
  */
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
-import { statusTone } from '@/lib/ui/statusPalette';
+import { ClearStatusButton, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
+import { statusLabel, statusTone } from '@/lib/ui/statusPalette';
 import {
   isBeneficialStatus,
   isStackingStatus,
-  statusImpactSummary,
   statusRemainingRounds,
   type AppliedStatus,
-  type StatusSheetImpact,
 } from '@/lib/character/statusEffects';
-import { testDomainById } from '@/data/test-domains';
+import type { BeneficialEffectId } from '@/data/schema';
 
 export interface ActiveStatusPanelProps {
   /** États appliqués au personnage (déjà résolus depuis le store de combat de la session). */
   statuses: AppliedStatus[];
   /**
-   * Part CHIFFRÉE de ces mêmes états (PER-358), telle que la fiche l'a déjà calculée pour ses stats
-   * dérivées. Absente, le panneau s'en tient aux badges — c'était son seul contenu avant PER-358.
+   * Le joueur écarte ce buff de SA fiche (PER-358). Absent = aucune croix : c'est le cas sur la fiche
+   * vue par le MJ ou par un tiers, où le renoncement ne serait le choix de personne.
    */
-  impact?: StatusSheetImpact | null;
+  onWaiveBuff?: (id: BeneficialEffectId) => void;
+  /** Buffs écartés, à proposer de reprendre — un renoncement ne doit pas être un cul-de-sac. */
+  waivedBuffIds?: readonly BeneficialEffectId[];
+  /** Le joueur se ravise : ce buff reprend effet. Requis dès que `waivedBuffIds` n'est pas vide. */
+  onRestoreBuff?: (id: BeneficialEffectId) => void;
   /**
    * Manche courante du combat en cours (« Tour N » de l'écran de MJ), dont se déduisent les tours
    * restants des états à durée (PER-305). Le joueur voit ainsi combien de temps il subit encore
@@ -52,14 +58,16 @@ export interface ActiveStatusPanelProps {
   roundNumber: number;
 }
 
-export function ActiveStatusPanel({ statuses, impact, roundNumber }: ActiveStatusPanelProps) {
-  // Rien à afficher hors session ou sans état posé (l'appelant ne passe la liste qu'en session).
-  if (statuses.length === 0) return null;
-
-  // Delta agrégé (PER-358). Un état purement comportemental (« aucune action ») ne produit aucune
-  // ligne : le bloc entier disparaît alors, plutôt que d'afficher un cadre vide sous les badges.
-  const summary = impact ? statusImpactSummary(impact, (id) => testDomainById.get(id)?.label ?? id) : null;
-  const hasSummary = summary !== null && (summary.lines.length > 0 || summary.dice.length > 0);
+export function ActiveStatusPanel({
+  statuses,
+  onWaiveBuff,
+  waivedBuffIds = [],
+  onRestoreBuff,
+  roundNumber,
+}: ActiveStatusPanelProps) {
+  // Rien à afficher hors session, sans état posé et sans buff écarté à reprendre (l'appelant ne
+  // passe la liste qu'en session).
+  if (statuses.length === 0 && waivedBuffIds.length === 0) return null;
 
   // Cadre et titre suivent le contenu : que du bénéfique (PER-104) ⇒ vert et « Effets en cours » ;
   // dès qu'un état SUBI s'y trouve, on repasse au rouge — c'est lui qui doit sauter aux yeux.
@@ -80,17 +88,31 @@ export function ActiveStatusPanel({ statuses, impact, roundNumber }: ActiveStatu
         {onlyBeneficial ? 'Effets en cours' : 'États de combat en cours'}
       </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        Appliqués par le MJ pendant la session — lecture seule. L’effet chiffré est déjà répercuté
-        sur vos stats, vos attaques et vos tests de caractéristique.
+        Appliqués par le MJ pendant la session. L’effet chiffré est déjà répercuté sur vos stats, vos
+        attaques et vos tests de caractéristique.
+        {onWaiveBuff && ' La croix d’un effet bénéfique l’écarte de votre fiche, pour vous seul.'}
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {statuses.map((s) => {
           const intensity = s.intensity ?? 1;
           const stacked = isStackingStatus(s.id) && intensity > 1;
           const remaining = statusRemainingRounds(s, roundNumber);
+          // Croix de renoncement : sur les seuls buffs, et seulement sur SA fiche. Soudée à la puce
+          // (coins carrés à la jonction), exactement comme sur la palette du MJ.
+          const waivable = onWaiveBuff !== undefined && isBeneficialStatus(s.id);
           return (
             <Stack key={s.id} direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-              <StatusChipVisual id={s.id} />
+              {waivable ? (
+                <Box sx={{ display: 'flex' }}>
+                  <StatusChipVisual id={s.id} squareRight />
+                  <ClearStatusButton
+                    label={`Écarter ${statusLabel(s.id)} de ta fiche (pour toi seul)`}
+                    onClear={() => onWaiveBuff(s.id as BeneficialEffectId)}
+                  />
+                </Box>
+              ) : (
+                <StatusChipVisual id={s.id} />
+              )}
               {stacked && (
                 <Typography
                   variant="caption"
@@ -114,65 +136,26 @@ export function ActiveStatusPanel({ statuses, impact, roundNumber }: ActiveStatu
         })}
       </Box>
 
-      {/* DELTA AGRÉGÉ (PER-358) : ce que ces états changent, chiffré. Vert pour ce qui aide, rouge
-          pour ce qui handicape — la couleur suit le SIGNE, pas la nature de l'état (un buff peut
-          coexister avec un malus dans le même panneau). */}
-      {hasSummary && (
+      {/* Buffs ÉCARTÉS (PER-358) : le renoncement doit pouvoir se défaire — sans cette ligne, un
+          clic malheureux ne se rattrape qu’en attendant que le MJ relève puis repose l’effet. */}
+      {waivedBuffIds.length > 0 && onRestoreBuff && (
         <Box sx={{ mt: 1.25, pt: 1, borderTop: 1, borderColor: 'divider' }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-            Effet chiffré, tout compris
+            Écarté de votre fiche — le reste du groupe en bénéficie toujours.
           </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-            {summary.lines.map((line) => (
-              <Box
-                key={line.label}
-                sx={(theme) => {
-                  const tone = line.value > 0 ? theme.palette.success : theme.palette.error;
-                  return {
-                    px: 0.75,
-                    py: 0.25,
-                    borderRadius: 0.75,
-                    border: `1px solid ${alpha(tone.main, 0.45)}`,
-                    bgcolor: alpha(tone.main, 0.1),
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: 0.5,
-                  };
-                }}
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            {waivedBuffIds.map((id) => (
+              <Button
+                key={id}
+                size="small"
+                variant="outlined"
+                color="success"
+                onClick={() => onRestoreBuff(id)}
               >
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {line.label}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ fontWeight: 700, color: line.value > 0 ? 'success.light' : 'error.light' }}
-                >
-                  {line.value > 0 ? `+${line.value}` : `−${Math.abs(line.value)}`}
-                </Typography>
-              </Box>
+                Reprendre {statusLabel(id)}
+              </Button>
             ))}
-            {/* Un dé malus ne s'additionne à rien (« lance 2d20, garde le PIRE ») : il se dit, il ne
-                se chiffre pas — d'où sa propre puce, à côté des deltas. */}
-            {summary.dice.map((die) => (
-              <Box
-                key={`${die.scope}:${die.label}`}
-                sx={(theme) => ({
-                  px: 0.75,
-                  py: 0.25,
-                  borderRadius: 0.75,
-                  border: `1px solid ${alpha(theme.palette.error.main, 0.45)}`,
-                  bgcolor: alpha(theme.palette.error.main, 0.1),
-                })}
-              >
-                <Typography variant="caption" sx={{ fontWeight: 700, color: 'error.light' }}>
-                  Dé malus
-                </Typography>
-                <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
-                  {die.scope === 'all' ? ' à tous les tests' : ' aux attaques'} ({die.label})
-                </Typography>
-              </Box>
-            ))}
-          </Box>
+          </Stack>
         </Box>
       )}
     </Box>
