@@ -76,12 +76,15 @@ export const BOOKS: Record<BookId, BookMeta> = {
     id: 'companion',
     name: 'Le Compagnon',
     Icon: AutoStoriesOutlinedIcon,
-    // PDF payant/sous copyright : hors du repo (`pdf-payants/compagnon.pdf`, non servi).
-    // Entrée dormante — aucune donnée ne pointe encore ce livre (hors scope d'extraction).
+    // PDF payant/sous copyright : jamais dans git ni public. Servi de façon GATÉE
+    // (bucket privé `paid-books` + RLS par entitlement, même mécanisme que le
+    // Bestiaire PER-252) : le visualiseur le TÉLÉCHARGE via la session au chemin
+    // `companion/book.pdf`. `sourceSlug: 'companion'` correspond à la source de
+    // contenu payant PER-316/322 (registres augmentables, cf. per322-state).
+    sourceSlug: 'companion',
     printedPageOffset: 0,
-    delivery: 'public-file',
-    file: '/pdf/companion.pdf',
-    available: false,
+    delivery: 'paid-bucket',
+    available: true,
   },
   bestiaire: {
     id: 'bestiaire',

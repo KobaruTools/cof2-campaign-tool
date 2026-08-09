@@ -24,6 +24,7 @@ const BUCKET = 'paid-books';
 // Le chemin distant est déduit : `{sourceSlug}/book.pdf`.
 const BOOKS: { sourceSlug: string; localPath: string }[] = [
   { sourceSlug: 'bestiaire', localPath: 'pdf-payants/bestiaire.pdf' },
+  { sourceSlug: 'companion', localPath: 'pdf-payants/compagnon.pdf' },
 ];
 
 /**
