@@ -66,6 +66,7 @@ import { SessionHeaderIndicator } from '@/components/session/SessionHeaderIndica
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import { statusSheetImpact } from '@/lib/character/statusEffects';
+import { groupBuffsOf } from '@/lib/character/groupBuffs';
 import { mergeMods } from '@/lib/character/orphanPoints';
 import { ActiveStatusPanel } from '@/components/sheet/ActiveStatusPanel';
 import type { SessionIdentity } from '@/lib/session/useSessionChannel';
@@ -93,6 +94,7 @@ import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { RestProposalDialog } from '@/components/session/RestProposalDialog';
+import { BuffRequestControl } from '@/components/session/BuffRequestControl';
 import { RestRequestControl } from '@/components/session/RestRequestControl';
 import { ManeuversPanel } from '@/components/sheet/ManeuversPanel';
 import { SourceRef } from '@/components/SourceRef';
@@ -649,6 +651,42 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     ? [...statusImpact.allTestsMalusDie, ...statusImpact.attackTestsMalusDie]
     : [];
 
+  // Bloc « ce que la séance fait subir ou accorde » (PER-358) : le rappel des états posés avec leur
+  // delta chiffré, et l'annonce d'un effet de groupe au MJ. Sa place est en tête d'« État du
+  // personnage », au-dessus de la barre de vie — mais cette section n'existe que si les stats
+  // dérivées sont calculables, d'où ce bloc nommé, monté à la place historique (PER-281) pour un
+  // profil incomplet. Les deux montages sont exclusifs.
+  const canAnnounceGroupBuff =
+    isPlayer &&
+    !readOnly &&
+    characterCampaignId !== null &&
+    sessionActive &&
+    groupBuffsOf(character.featureIds).length > 0;
+  const sessionStatusBlock =
+    appliedStatuses.length === 0 && !canAnnounceGroupBuff ? null : (
+      <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+        <ActiveStatusPanel
+          statuses={appliedStatuses}
+          impact={statusImpact}
+          roundNumber={combatRoundNumber}
+        />
+        {/* Le joueur ANNONCE son effet de groupe, le MJ le pose (la RLS en fait l'auteur unique de
+            l'état de combat). Ne rend rien hors session ni sans capacité conférant un buff. */}
+        {isPlayer && !readOnly && characterCampaignId && (
+          <BuffRequestControl
+            campaignId={characterCampaignId}
+            characterId={character.id}
+            // Ce nom nomme la demande chez le MJ : un personnage encore anonyme se présente comme
+            // « Un joueur », pas comme le « Sans nom » affiché ailleurs sur la fiche.
+            characterName={character.name || 'Un joueur'}
+            featureIds={character.featureIds}
+            appliedStatusIds={sessionStatusIds}
+            sessionActive={sessionActive}
+          />
+        )}
+      </Stack>
+    );
+
   return (
     // Toutes les icônes de profil de la fiche (en-tête, voies, montée de niveau,
     // références d'emprunt…) suivent le réglage « armes à feu » du personnage :
@@ -1002,17 +1040,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <ComplianceWarnings warnings={warnings} />
 
-          {/* REPLI du panneau d'états (PER-358). Sa place est dans « État du personnage », au-dessus
-              de la barre de vie — mais cette section n'existe que si les stats dérivées sont
-              calculables. Un profil incomplet n'en a pas : ses états s'afficheraient nulle part, d'où
-              ce montage de secours ici, à la place historique (PER-281). Les deux sont exclusifs. */}
-          {!masterDerived && (
-            <ActiveStatusPanel
-              statuses={appliedStatuses}
-              impact={statusImpact}
-              roundNumber={combatRoundNumber}
-            />
-          )}
+          {/* REPLI (PER-358) : sans stats dérivées, pas de section « État du personnage » — les états
+              du joueur s'afficheraient nulle part. Cf. `sessionStatusBlock`. */}
+          {!masterDerived && sessionStatusBlock}
 
           <SheetSection
             title="Caractéristiques"
@@ -1130,18 +1160,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           {masterDerived && (
             <SheetSection title="État du personnage" icon="status">
               {/* États de combat appliqués par le MJ en session (PER-281), AU-DESSUS de la barre de
-                  vie (PER-358) : badges + effet verbatim + delta agrégé, en lecture seule. Le chiffre
-                  est déjà répercuté sur les stats/attaques plus haut — on le rappelle ici pour que le
-                  joueur n'ait pas à recouper trois blocs. Rien hors session ni sans état posé. */}
-              {appliedStatuses.length > 0 && (
-                <Box sx={{ mb: 2 }}>
-                  <ActiveStatusPanel
-                    statuses={appliedStatuses}
-                    impact={statusImpact}
-                    roundNumber={combatRoundNumber}
-                  />
-                </Box>
-              )}
+                  vie (PER-358) : badges + effet verbatim + delta agrégé, en lecture seule, et
+                  l'annonce d'un effet de groupe. Le chiffre est déjà répercuté sur les stats/attaques
+                  plus haut — on le rappelle ici pour que le joueur n'ait pas à recouper trois blocs. */}
+              {sessionStatusBlock && <Box sx={{ mb: 2 }}>{sessionStatusBlock}</Box>}
               <PlayerStatusPanel
                 depletion={character.depletion}
                 // Max EFFECTIF : surcharge manuelle de « Statistiques dérivées » si présente,

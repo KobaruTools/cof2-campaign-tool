@@ -39,6 +39,11 @@ import {
   REST_RESPONSE_EVENT,
   useRestProposalStore,
 } from '@/stores/restProposal';
+import {
+  BUFF_REQUEST_DECLINED_EVENT,
+  BUFF_REQUEST_EVENT,
+  useBuffRequestStore,
+} from '@/stores/buffRequest';
 import { EMPTY_PRESENCE, useSessionPresenceStore } from '@/stores/sessionPresence';
 import { registerSessionChannel } from './sessionBridge';
 import { joinSessionParticipant, leaveSessionParticipant } from './participantsRepo';
@@ -230,6 +235,19 @@ export function useSessionChannel(
     channel.on('broadcast', { event: REST_REQUEST_DECLINED_EVENT }, ({ payload }) => {
       if (!active) return;
       useRestProposalStore.getState().applyRemoteDecline(campaignId, payload);
+    });
+
+    // Demande de BUFF venue d'un JOUEUR (PER-358), même motif que la demande de pause : le joueur ne
+    // peut pas écrire l'état de combat (RLS `campaign_combat`, le MJ en est auteur unique), il
+    // ANNONCE donc son sort et le MJ le pose. L'adoption ne redescend pas par un accusé de
+    // réception : c'est le buff lui-même, arrivé par `COMBAT_STATE_EVENT`, qui répond au demandeur.
+    channel.on('broadcast', { event: BUFF_REQUEST_EVENT }, ({ payload }) => {
+      if (!active || kind !== 'gm') return;
+      useBuffRequestStore.getState().mergeRemoteRequest(campaignId, payload);
+    });
+    channel.on('broadcast', { event: BUFF_REQUEST_DECLINED_EVENT }, ({ payload }) => {
+      if (!active) return;
+      useBuffRequestStore.getState().applyRemoteDecline(campaignId, payload);
     });
 
     // `setAuth()` (sans argument → token courant) avant l'abonnement : supabase-js le

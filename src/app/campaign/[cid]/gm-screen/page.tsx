@@ -61,6 +61,7 @@ import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
+import { BuffRequestsControl } from '@/components/campaign/BuffRequestsControl';
 import { GroupRestControl } from '@/components/campaign/GroupRestControl';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
@@ -622,6 +623,15 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             campaignId={cid}
             tableCharacters={restTableCharacters}
             sessionActive={sessionActive}
+            buttonSx={(theme) => glassButtonSx(theme, 'info')}
+          />
+          {/* Effets de groupe annoncés par les joueurs (PER-358) : le barde annonce depuis sa fiche,
+              le MJ pose. Adopter ouvre la fenêtre de pose habituelle au nom du lanceur — d'où le
+              passage par `openGroupBuff`, qui résout le porteur exactement comme un dépôt de puce.
+              Le bouton n'existe que si une annonce attend. */}
+          <BuffRequestsControl
+            campaignId={cid}
+            onAdopt={(request) => openGroupBuff(request.characterId, request.buffId)}
             buttonSx={(theme) => glassButtonSx(theme, 'info')}
           />
           {/* Espaceur : consomme toute la largeur restante pour pousser « Outils du MJ » à
