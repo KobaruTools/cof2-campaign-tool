@@ -785,6 +785,16 @@ export interface StatBonus {
   stat: DerivedStatId;
   /** Valeur ajoutée (signée) : constante ou scalante. */
   value: EffectValue;
+  /**
+   * GATING par ÉLÉMENT RÉSOLU de la capacité (PER-74, Métamorphose élémentaire, élémentaliste r8,
+   * p. 157) : ce bonus, au sein d'un `ConditionalStatBonusEffect` partagé par PLUSIEURS branches
+   * (une capacité, un seul interrupteur), ne compte que si l'élément de prédilection résolu
+   * (`Feature.elementFromChoice` de LA MÊME capacité) vaut CE type précis — ex. « +3 DEF » ne
+   * s'applique que sous la forme Terre, même si l'interrupteur « Forme élémentaire active » est
+   * commun aux 4 branches. Absent = aucun gating par élément (cas d'usage historiques : un seul
+   * déclencheur pour un seul bonus).
+   */
+  requiresElement?: ResistibleDamageType;
 }
 
 export interface ConditionalStatBonusEffect {
@@ -986,6 +996,15 @@ export interface ActiveFormAbilityBonusEffect {
    * moins un de ces interrupteurs est actif (« loup OU hybride »).
    */
   whenAnyActive: { featureId: string; index: number }[];
+  /**
+   * GATING par ÉLÉMENT RÉSOLU de la capacité PORTEUSE (PER-74, Métamorphose élémentaire, élémentaliste
+   * r8, p. 157) : ce delta ne compte que si l'élément de prédilection résolu (`Feature.elementFromChoice`
+   * DE CETTE capacité, pas de celle référencée par `whenAnyActive`) vaut CE type précis — ex. « +3 FOR »
+   * ne s'applique que sous la forme Terre, même si le même interrupteur « Forme élémentaire active »
+   * est actif pour les 3 autres branches. Même sémantique que `DamageReduction.requiresElement`.
+   * Absent = aucun gating par élément (cas d'usage historique du lycanthrope).
+   */
+  requiresElement?: ResistibleDamageType;
 }
 
 /**
@@ -1985,6 +2004,14 @@ export interface WeaponDamageBonusEffect {
    * est remplie). Résolu par `weaponDamageBonuses` via `isEffectActive`.
    */
   requiresActiveEffectIndex?: number;
+  /**
+   * GATING par ÉLÉMENT RÉSOLU de la capacité (PER-74, Métamorphose élémentaire, élémentaliste r8,
+   * p. 157) : ce bonus ne compte que si l'élément de prédilection résolu (`Feature.elementFromChoice`
+   * de LA MÊME capacité) vaut CE type précis — ex. « +2d4° DM de feu au contact » ne s'applique que
+   * sous la forme Feu. Même sémantique que `DamageReduction.requiresElement`. Absent = aucun gating
+   * par élément (bonus valable pour toute forme, comme les cas d'usage historiques).
+   */
+  requiresElement?: ResistibleDamageType;
   /** Bonus SITUATIONNEL (badge séparé) au lieu de permanent (agrégé au DM). Défaut `false`. */
   situational?: boolean;
   /**
@@ -2314,6 +2341,15 @@ export interface DamageReduction {
    * `applyCreatureUpgrades` — le seul endroit où une RID de créature voit le personnage.
    */
   scopeFromElement?: boolean;
+  /**
+   * GATING par ÉLÉMENT RÉSOLU de la capacité (PER-74, Métamorphose élémentaire, élémentaliste r8,
+   * p. 157) : cette entrée ne compte que si l'élément de prédilection résolu (`Feature.elementFromChoice`
+   * de LA MÊME capacité) vaut CE type précis — ex. la RD passe à 10 (au lieu de 5) UNIQUEMENT sous la
+   * forme Air. Distinct de `scopeFromElement` (qui fixe la PORTÉE depuis l'élément) : ici l'élément
+   * décide si l'entrée s'applique DU TOUT, sa portée restant `scopes` (ou absente = tous DM). Plusieurs
+   * entrées `requiresElement` différentes peuvent coexister sur la même capacité (une par branche).
+   */
+  requiresElement?: ResistibleDamageType;
   /**
    * Gating CROSS-CAPACITÉ (PER-74) : cette entrée de RD n'est ACTIVE que si l'interrupteur
    * (`conditional-stat-bonus`) d'une AUTRE capacité est actif. Ex. lycanthrope « Résistance
@@ -2866,6 +2902,12 @@ export interface FeatureChoiceOption {
    * l'option (on retombe sur le profil de la capacité, s'il existe).
    */
   creatureProfile?: CreatureProfile;
+  /**
+   * Cette option retenue fait porter le NOM de `creatureProfile` par un choix `free-text` sœur, ciblé
+   * par `Feature.creatureNameFromChoice` (ex. druide, Grand félin : option « Libre » → champ « Nom du
+   * grand félin »). Absent/`false` = le nom fixe de `creatureProfile` s'applique tel quel.
+   */
+  useFreeTextName?: boolean;
   /**
    * AMÉLIORATIONS apportées à la CRÉATURE de la même voie lorsque cette option est retenue
    * (PER-94, ex. Golem supérieur, golem-r5, p. 100) — appliquées PAR-DESSUS le profil de base
@@ -3784,6 +3826,18 @@ export interface Feature {
    * Cf. `resolveFeatureElement` / `declineText` (`src/lib/character/dragonElement.ts`).
    */
   elementFromChoice?: { choiceFeatureId: string; choiceIndex: number };
+  /**
+   * NOM affiché du profil de créature effectif, remplacé par la réponse d'un choix `free-text` (PER-175)
+   * — sur le patron d'`elementFromChoice`, mais pour un nom LIBRE plutôt qu'une déclinaison. Sert le
+   * grand félin du druide (fauve-r4, p. 115) : l'option « Libre » d'un choix `option` sœur (marquée
+   * `FeatureChoiceOption.useFreeTextName`) fait apparaître un champ `free-text` où le joueur nomme sa
+   * créature comme il le souhaite.
+   *
+   * Ne s'applique QUE si l'option retenue porte `useFreeTextName: true` — un texte saisi puis abandonné
+   * en changeant d'option n'écrase pas le nom d'une autre option. Réponse vide/absente = on retombe sur
+   * le nom fixe du profil de l'option (jamais un champ blanc affiché comme nom de créature).
+   */
+  creatureNameFromChoice?: { choiceFeatureId: string; choiceIndex: number };
   /**
    * Coût de base en points de mana pour LANCER ce sort — DÉROGATION explicite au
    * coût standard (PER-65). La règle générale (p. 228) est : « Lancer un sort

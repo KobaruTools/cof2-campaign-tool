@@ -451,6 +451,48 @@ export const mysticFeatures: Feature[] = [
     // grand » : Grand félin supplante définitivement la Panthère (fauve-r2) dès son
     // acquisition → remplacement inconditionnel (≠ exclusion par interrupteur).
     replacesFeatures: ['fauve-r2'],
+    // Choix NARRATIF (tigre/lion cités par le livre, + repli générique et nom libre) sans écart de
+    // stats — même gabarit que Monture fantastique (cavalier-r5) : `FeatureChoiceOption.creatureProfile`
+    // prime sur le profil de base, ne change que le nom affiché dans la mini-fiche « Compagnon ».
+    // L'option « Libre » (PER-175) fait porter le nom par le choix `free-text` sœur (index 1),
+    // ciblé par `creatureNameFromChoice` — cf. `effectiveCreatureProfile`.
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Grand félin',
+        options: [
+          {
+            id: 'tiger',
+            label: 'Tigre',
+            creatureProfile: { name: 'Tigre', companionType: 'animal', abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -2, VOL: 4 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[15 + rang]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' } },
+          },
+          {
+            id: 'lion',
+            label: 'Lion',
+            creatureProfile: { name: 'Lion', companionType: 'animal', abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -2, VOL: 4 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[15 + rang]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' } },
+          },
+          {
+            id: 'unspecified',
+            label: 'Grand félin (sans distinction)',
+            creatureProfile: { name: 'Grand félin', companionType: 'animal', abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -2, VOL: 4 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[15 + rang]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' } },
+          },
+          {
+            id: 'custom',
+            label: 'Libre (nom personnalisé)',
+            useFreeTextName: true,
+            creatureProfile: { name: 'Grand félin', companionType: 'animal', abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -2, VOL: 4 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[15 + rang]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' } },
+          },
+        ],
+      },
+      {
+        kind: 'free-text',
+        prompt: 'Nom du grand félin',
+        placeholder: 'Rajah, Shere Khan…',
+        note: 'Purement narratif (aucun effet sur les statistiques).',
+        visibleIfOption: { choiceIndex: 0, optionId: 'custom' },
+      },
+    ],
+    creatureNameFromChoice: { choiceFeatureId: 'fauve-r4', choiceIndex: 1 },
     sourcePage: 115,
   },
   {

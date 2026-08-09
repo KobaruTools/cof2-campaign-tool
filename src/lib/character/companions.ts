@@ -20,6 +20,7 @@ import type {
   CreatureUpgrade,
   DamageReduction,
   Feature,
+  FeatureChoiceOption,
 } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { getSelection } from './choices';
@@ -49,6 +50,7 @@ export function effectiveCreatureProfile(
   feature: Feature,
   character: Character | undefined,
 ): CreatureProfile | undefined {
+  let selectedOption: FeatureChoiceOption | undefined;
   const found = (() => {
     if (character) {
       const defs = feature.choices ?? [];
@@ -58,16 +60,29 @@ export function effectiveCreatureProfile(
         const raw = getSelection(character, feature.id, i);
         const id = Array.isArray(raw) ? raw[0] : raw;
         const opt = id ? def.options.find((o) => o.id === id) : undefined;
-        if (opt?.creatureProfile) return opt.creatureProfile;
+        if (opt?.creatureProfile) {
+          selectedOption = opt;
+          return opt.creatureProfile;
+        }
       }
     }
     return feature.creatureProfile;
   })();
+  if (!found || !character) return found;
+  // PER-175 — NOM LIBRE (grand félin du druide) : seule l'option marquée `useFreeTextName` laisse le
+  // joueur écraser le nom du profil par la réponse d'un choix `free-text` sœur. Réponse vide/absente =
+  // on garde le nom fixe de l'option (jamais un champ blanc affiché comme nom de créature).
+  if (selectedOption?.useFreeTextName && feature.creatureNameFromChoice) {
+    const { choiceFeatureId, choiceIndex } = feature.creatureNameFromChoice;
+    const raw = getSelection(character, choiceFeatureId, choiceIndex);
+    const customName = typeof raw === 'string' ? raw.trim() : '';
+    if (customName) return { ...found, name: customName };
+  }
   // PER-74 — ÉPITHÈTE DE COULEUR du drake (« Drake bleu ») : le nom du profil porte `%colorSuffix%`,
   // résolu ici, seul point qui voie à la fois le profil retenu et le personnage. Token à repli VIDE →
   // « Drake » tout court tant que la couleur n'est pas choisie (cf. `declineText`). Un profil sans
   // token (toutes les autres montures) traverse inchangé, référence d'origine comprise.
-  if (!found || !character || !feature.elementFromChoice || !found.name.includes('%')) return found;
+  if (!feature.elementFromChoice || !found.name.includes('%')) return found;
   return { ...found, name: declineText(found.name, resolveFeatureElement(character, feature)) };
 }
 
