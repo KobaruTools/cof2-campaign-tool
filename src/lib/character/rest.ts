@@ -80,11 +80,13 @@ function clearTemp(depletion: Depletion): Depletion {
  */
 export function shortRest(
   character: Character,
-  recovery?: { dieRoll: number; recoveryDiceMax: number },
+  recovery?: { dieRoll: number; recoveryDiceMax: number; extraHeal?: number },
 ): RestResult {
   let depletion = clearTemp(character.depletion);
   if (recovery && recovery.dieRoll > 0 && currentRecoveryDice(recovery.recoveryDiceMax, character.depletion) > 0) {
-    const heal = recovery.dieRoll + Math.floor(character.level / 2);
+    // Soin de base (dé lancé + ½ niveau) + éventuel bonus par DR d'une capacité active (Survie « en
+    // milieu naturel », p. 72 : +1d4° saisi à la table, cf. `restRecoveryDieHealBonuses`).
+    const heal = recovery.dieRoll + Math.floor(character.level / 2) + Math.max(0, recovery.extraHeal ?? 0);
     depletion = healHp(depletion, heal);
     depletion = spendRecoveryDice(depletion, 1, recovery.recoveryDiceMax);
   }
@@ -126,13 +128,14 @@ export function shortRest(
  * nombre de DR reste **INCHANGÉ** (même à plein — le dé plafonné est créé et consommé sur-le-champ,
  * il ne se rajoute pas et n'en retire pas un autre). Soin = `dieFaces + ½ niveau` PV (valeur MAX).
  */
-export function longRest(character: Character, heal?: { dieFaces: number }): RestResult {
+export function longRest(character: Character, heal?: { dieFaces: number; extraHeal?: number }): RestResult {
   let depletion: Depletion = { ...clearTemp(character.depletion) };
   // Mana plein.
   delete depletion.mana;
   if (heal) {
-    // Le DR gagné est immédiatement dépensé pour le soin → réserve de DR inchangée (net zéro).
-    depletion = healHp(depletion, heal.dieFaces + Math.floor(character.level / 2));
+    // Le DR gagné est immédiatement dépensé pour le soin → réserve de DR inchangée (net zéro). On ajoute
+    // l'éventuel bonus par DR d'une capacité active (Survie « en milieu naturel », +1d4° saisi, p. 72).
+    depletion = healHp(depletion, heal.dieFaces + Math.floor(character.level / 2) + Math.max(0, heal.extraHeal ?? 0));
   } else {
     // Sans soin : on conserve le +1 DR gagné (réduit le manque de 1, plancher 0).
     const spentDr = depletion.recoveryDice ?? 0;

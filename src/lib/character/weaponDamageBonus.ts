@@ -27,6 +27,7 @@ import {
   isEffectActive,
   pathRanksFromFeatures,
   resolveValue,
+  scalingDieTierBonus,
   type EffectContext,
 } from '@/lib/character/effects';
 import {
@@ -175,8 +176,9 @@ function resolveConditionLabel(
 function resolveDisplayDice(
   dice: NonNullable<WeaponDamageBonusEffect['dice']>,
   level: number,
+  tierBonus = 0,
 ): NonNullable<SituationalDamageBonus['dice']> {
-  return dice.evolving ? { ...dice, die: scalingDie(level, progression) } : dice;
+  return dice.evolving ? { ...dice, die: scalingDie(level, progression, tierBonus) } : dice;
 }
 
 /**
@@ -195,6 +197,9 @@ export function weaponDamageBonuses(
 
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
+  // PER-324 — décalage de cran du dé évolutif porté par le personnage, appliqué aux dés bonus
+  // situationnels résolus au niveau (défaut 0 = aucun décalage).
+  const tierBonus = scalingDieTierBonus(character);
   // PER-74 — gate « PV bas » (flibustier r8) : actif seulement si les PV courants sont STRICTEMENT sous
   // le niveau. Sans `maxHp` fourni, on ne peut pas trancher → les bonus `requiresLowHp` sont inactifs.
   const lowHpActive = maxHp !== undefined && currentHp(maxHp, character.depletion) < character.level;
@@ -231,7 +236,7 @@ export function weaponDamageBonuses(
         situational.push({
           ...source,
           ability: effect.ability,
-          dice: effect.dice ? resolveDisplayDice(effect.dice, character.level) : undefined,
+          dice: effect.dice ? resolveDisplayDice(effect.dice, character.level, tierBonus) : undefined,
           conditionLabel: resolveConditionLabel(character, featureId, condition),
         });
       } else {

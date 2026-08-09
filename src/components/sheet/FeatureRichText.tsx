@@ -1091,6 +1091,7 @@ export function RichInline({
   milestoneBonus = 0,
   abilitySubstitutions,
   evolvingDieBase = false,
+  scalingTierBonus = 0,
 }: {
   text: string;
   abilities: Abilities;
@@ -1109,6 +1110,13 @@ export function RichInline({
    * Défaut `false` → comportement normal (dé évolutif résolu au niveau, cf. fiche de perso).
    */
   evolvingDieBase?: boolean;
+  /**
+   * PER-324 — décalage de cran du dé évolutif porté par le personnage (`scalingDieTierBonus`),
+   * appliqué à la résolution des dés évolutifs (`scalingDie`). Défaut 0 = aucun décalage. Passé
+   * par l'hôte qui dispose du personnage ; ce renderer est pur (créatures comprises) donc il ne le
+   * calcule pas lui-même.
+   */
+  scalingTierBonus?: number;
 }) {
   return (
     <>
@@ -1132,7 +1140,8 @@ export function RichInline({
           const { count, die, evolving } = dieAtRank(seg.token, rank);
           // `evolvingDieBase` (créatures, PER-238) : on garde la FACE DE BASE `die` + le « ° », sans
           // résoudre au niveau (non pertinent) ni afficher de « niveau X » dans l'info-bulle.
-          const displayDie = evolving && !evolvingDieBase ? scalingDie(level, progression) : die;
+          const displayDie =
+            evolving && !evolvingDieBase ? scalingDie(level, progression, scalingTierBonus) : die;
           return (
             <DiePart
               key={i}
@@ -1143,7 +1152,7 @@ export function RichInline({
             />
           );
         }
-        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus, abilitySubstitutions);
+        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus, abilitySubstitutions, scalingTierBonus);
         if (seg.kind === 'term') {
           // `[#…]` : substantif « symboles (valeur) ». Un terme nu garde son mot
           // (« rang (5) », « INT (4) ») ; une formule conserve son écriture, suivie de
@@ -1253,6 +1262,12 @@ export interface FeatureTextProps {
    * avertissement à l'affichage. Absent = aucune substitution (usage normal du sort).
    */
   abilitySubstitutions?: AbilitySubstitution[];
+  /**
+   * PER-324 — décalage de cran du dé évolutif porté par le personnage (`scalingDieTierBonus`),
+   * propagé à `RichInline` pour résoudre les dés évolutifs du texte. Défaut 0 = aucun décalage
+   * (contextes sans personnage). L'hôte qui dispose du personnage renseigne cette valeur.
+   */
+  scalingTierBonus?: number;
 }
 
 /**
@@ -1270,6 +1285,7 @@ export function FeatureText({
   milestoneBonus,
   dense,
   abilitySubstitutions,
+  scalingTierBonus = 0,
 }: FeatureTextProps) {
   // Bascule « Texte d'origine » (PER-88) : quand elle est active (Provider dans l'en-tête
   // de la section), on rend le verbatim TOTALEMENT BRUT — le `text` extrait du PDF, tel
@@ -1306,6 +1322,7 @@ export function FeatureText({
         rank={rank}
         milestoneBonus={milestoneBonus}
         abilitySubstitutions={abilitySubstitutions}
+        scalingTierBonus={scalingTierBonus}
       />
     ) : (
       <RichTextRun value={value} />

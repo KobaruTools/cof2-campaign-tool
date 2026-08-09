@@ -43,9 +43,11 @@ export function abilityBreakdown(
   });
 
   for (const ft of featureTerms) {
-    // Libellé = nom de la capacité ; la PROVENANCE (voie) est portée par la puce de voie
-    // (`CapabilityChip`) rendue sous le libellé quand `featureId` est présent (PER-73).
-    terms.push({ label: ft.name, value: ft.value, featureId: ft.featureId });
+    // Quand la capacité source est identifiée (PER-73), c'est la PUCE de voie (`CapabilityChip` :
+    // couleur + icône + nom) qui porte le nom — on laisse donc le libellé VIDE pour ne pas afficher
+    // le nom deux fois (texte + puce), cf. rendu de `BreakdownContent`. Sans `featureId`, on retombe
+    // sur le nom en clair.
+    terms.push({ label: ft.featureId ? '' : ft.name, value: ft.value, featureId: ft.featureId });
   }
 
   return { terms, total: sum(terms), page: 28 };

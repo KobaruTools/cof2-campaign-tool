@@ -11,6 +11,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import type { Die } from '@/data/schema';
+import type { RestRecoveryHealBonus } from '@/lib/character/effects';
 import { AppAlert } from '@/components/AppAlert';
 import { DieIcon } from '@/components/DieIcon';
 import { SourceRef } from '@/components/SourceRef';
@@ -25,10 +26,17 @@ export interface ShortRestDialogProps {
   /** Niveau du personnage (pour le ½ niveau ajouté au soin). */
   level: number;
   /**
-   * Applique le repos court. `recoveryDieRoll` = résultat du dé lancé à la table pour
-   * dépenser un DR (soin `dé + ½ niveau`), ou `null` pour un repos sans soin.
+   * Bonus de soin par DR ACTIFS (Survie « en milieu naturel », native ou empruntée) : un dé
+   * supplémentaire par bonus, lancé à la table et saisi ici, ajouté au soin de la dépense de DR.
+   * Vide → repos standard sans saisie supplémentaire.
    */
-  onConfirm: (recoveryDieRoll: number | null) => void;
+  healBonuses?: RestRecoveryHealBonus[];
+  /**
+   * Applique le repos court. `recoveryDieRoll` = résultat du dé lancé à la table pour
+   * dépenser un DR (soin `dé + ½ niveau`), ou `null` pour un repos sans soin. `extraHeal` =
+   * total des dés de bonus saisis (Survie…), déjà sommé ; 0 si aucun.
+   */
+  onConfirm: (recoveryDieRoll: number | null, extraHeal: number) => void;
 }
 
 /** Nombre de faces d'un dé (`'d8'` → 8). */
@@ -48,23 +56,37 @@ export function ShortRestDialog({
   recoveryDiceCurrent,
   recoveryDie,
   level,
+  healBonuses = [],
   onConfirm,
 }: ShortRestDialogProps) {
   const [roll, setRoll] = useState('');
+  // Saisie des dés de bonus (Survie…), une par capacité source, indexée par `featureId`.
+  const [bonusRolls, setBonusRolls] = useState<Record<string, string>>({});
   const halfLevel = Math.floor(level / 2);
   const faces = dieFaces(recoveryDie);
   const parsedRoll = Math.max(0, Math.round(Number.parseInt(roll, 10) || 0));
   const canHeal = recoveryDiceCurrent > 0;
   const rollValid = canHeal && parsedRoll >= 1 && parsedRoll <= faces;
-  const healTotal = parsedRoll + halfLevel;
+  // Somme des dés de bonus VALIDES (dans 1..faces du dé de bonus) ; une saisie vide/hors plage compte 0
+  // — le bonus reste facultatif et ne bloque jamais le soin de base.
+  const bonusHeal = healBonuses.reduce((sum, b) => {
+    const bf = dieFaces(b.die);
+    const v = Math.max(0, Math.round(Number.parseInt(bonusRolls[b.featureId] ?? '', 10) || 0));
+    return sum + (v >= 1 && v <= bf ? v : 0);
+  }, 0);
+  const healTotal = parsedRoll + halfLevel + bonusHeal;
 
   const close = () => {
     setRoll('');
+    setBonusRolls({});
     onClose();
   };
   const confirm = (recoveryDieRoll: number | null) => {
+    // Le bonus ne s'applique QUE si un DR est réellement dépensé (soin) : repos sans soin → extraHeal 0.
+    const extra = recoveryDieRoll != null ? bonusHeal : 0;
     setRoll('');
-    onConfirm(recoveryDieRoll);
+    setBonusRolls({});
+    onConfirm(recoveryDieRoll, extra);
   };
 
   return (
@@ -97,13 +119,43 @@ export function ShortRestDialog({
                 helperText={
                   parsedRoll >= 1
                     ? rollValid
-                      ? `Soin appliqué : ${parsedRoll} + ${halfLevel} = ${healTotal} PV (−1 DR)`
+                      ? `Soin appliqué : ${parsedRoll} + ${halfLevel}${bonusHeal ? ` + ${bonusHeal}` : ''} = ${healTotal} PV (−1 DR)`
                       : `Le résultat doit être compris entre 1 et ${faces}.`
                     : `Saisissez le résultat du dé (1 à ${faces}).`
                 }
                 error={parsedRoll >= 1 && !rollValid}
                 fullWidth
               />
+              {healBonuses.map((b) => {
+                const bf = dieFaces(b.die);
+                const raw = bonusRolls[b.featureId] ?? '';
+                const v = Math.max(0, Math.round(Number.parseInt(raw, 10) || 0));
+                const invalid = raw !== '' && (v < 1 || v > bf);
+                return (
+                  <Box key={b.featureId} sx={{ mt: 1.5 }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
+                      <DieIcon die={b.die} size={20} />
+                      <Typography variant="body2">
+                        Soin supplémentaire — <strong>{b.name}</strong>
+                        {b.conditionLabel ? ` (${b.conditionLabel})` : ''} : +{b.count > 1 ? b.count : ''}
+                        {b.die}{b.evolving ? '°' : ''} PV{' '}
+                        {b.sourcePage != null && <SourceRef page={b.sourcePage} />}
+                      </Typography>
+                    </Stack>
+                    <TextField
+                      type="number"
+                      size="small"
+                      label={`Résultat du ${b.die}${b.evolving ? '°' : ''} lancé`}
+                      value={raw}
+                      onChange={(e) => setBonusRolls((prev) => ({ ...prev, [b.featureId]: e.target.value }))}
+                      slotProps={{ htmlInput: { min: 1, max: bf } }}
+                      helperText={invalid ? `Le résultat doit être compris entre 1 et ${bf}.` : `Facultatif — 1 à ${bf}.`}
+                      error={invalid}
+                      fullWidth
+                    />
+                  </Box>
+                );
+              })}
             </Box>
           ) : (
             <AppAlert severity="info">

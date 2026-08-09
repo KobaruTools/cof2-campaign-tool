@@ -45,6 +45,7 @@ import type {
 import { ABILITY_IDS, FINESSE_ATTACK_MODES, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/schema';
 import { scalingDie, type DerivedMods } from '@/lib/engine';
 import {
+  borrowedFeatureIds,
   borrowedHostPathByFeatureId,
   effectiveFeatureIdsForMods,
   getOptionSelections,
@@ -228,16 +229,87 @@ export interface RangedAttackElementView {
 }
 
 /**
+ * PER-324 — décalage de cran du dé évolutif (« dé évolutif +1 cran », table p. 43) porté par le
+ * personnage : somme des `value` des effets `scaling-die-tier-bonus` de ses capacités ACTIVES (au
+ * sens de `activeFeatureIdsForMods`). Retourne 0 quand aucune capacité active ne le porte — soit le
+ * comportement identique (aucun décalage). Cette valeur se threade partout où `scalingDie` est résolu
+ * pour ce personnage.
+ */
+export function scalingDieTierBonus(character: Character): number {
+  let total = 0;
+  for (const id of activeFeatureIdsForMods(character)) {
+    const effects = featureById.get(id)?.effects;
+    if (!effects) continue;
+    for (const e of effects) {
+      if (e.kind === 'scaling-die-tier-bonus') total += e.value;
+    }
+  }
+  return total;
+}
+
+/** Bonus de soin par DR dépensé au repos, ACTIF (interrupteur ON), résolu au niveau du personnage. */
+export interface RestRecoveryHealBonus {
+  featureId: string;
+  /** Nom de la capacité source (français) — pour le libellé de la modale de repos. */
+  name: string;
+  /** Nombre de dés (généralement 1). */
+  count: number;
+  /** Dé RÉSOLU au niveau (+ décalage de cran) : ex. `d4` → `d6` avec le bonus demi-elfe. */
+  die: Die;
+  /** Dé évolutif ? (conserve le marqueur `°` dans l'UI). */
+  evolving: boolean;
+  /** Contexte requis (repris de l'interrupteur), ex. « en milieu naturel ». */
+  conditionLabel?: string;
+  sourcePage?: number;
+}
+
+/**
+ * Bonus de soin par dé de récupération dépensé, ACTIFS au repos (Survie, rôdeur p. 72 : « s'il dépense
+ * 1 DR, il guérit 1d4° PV supplémentaire » ; et sa version EMPRUNTÉE, Le Compagnon). Une capacité
+ * possédée OU empruntée portant `recoveryDieHealBonus` n'est retenue que si son effet conditionnel est
+ * ACTIF (interrupteur « en milieu naturel » ON, `hasActiveConditionalEffect`) — c'est le « uniquement si
+ * la skill est cochée » du gating. Le dé évolutif est résolu au niveau du personnage (+ décalage de
+ * cran, cf. `scalingDieTierBonus`). Le résultat du dé est LANCÉ à la table et saisi dans la modale de
+ * repos ; le moteur l'ajoute au soin de la dépense de DR (repos court ET long). Vide = repos standard.
+ */
+export function restRecoveryDieHealBonuses(character: Character): RestRecoveryHealBonus[] {
+  const out: RestRecoveryHealBonus[] = [];
+  const tierBonus = scalingDieTierBonus(character);
+  const seen = new Set<string>();
+  for (const id of [...character.featureIds, ...borrowedFeatureIds(character)]) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const feature = featureById.get(id);
+    const bonus = feature?.recoveryDieHealBonus;
+    if (!feature || !bonus) continue;
+    if (!hasActiveConditionalEffect(character, id)) continue; // Gate : interrupteur ON.
+    const die = bonus.dice.evolving
+      ? scalingDie(character.level, progression, tierBonus)
+      : bonus.dice.die;
+    out.push({
+      featureId: id,
+      name: feature.name,
+      count: bonus.dice.count,
+      die,
+      evolving: !!bonus.dice.evolving,
+      conditionLabel: bonus.conditionLabel,
+      sourcePage: bonus.sourcePage,
+    });
+  }
+  return out;
+}
+
+/**
  * Résout une notation de dé SIMPLE (sans palier `|C@R`) à un niveau donné : un dé évolutif `°` prend
  * sa face au niveau courant (`scalingDie`, p. 43), un dé fixe reste tel quel. Le nombre de dés `1` est
  * omis (convention d'affichage). Notation inattendue → renvoyée telle quelle.
  */
-function resolveSimpleBonusDie(notation: string, level: number): string {
+function resolveSimpleBonusDie(notation: string, level: number, tierBonus = 0): string {
   const m = /^(\d*)d(\d+)(°?)$/.exec(notation.trim());
   if (!m) return notation;
   const [, countStr, faces, marker] = m;
   const evolving = marker === '°';
-  const die: Die = evolving ? scalingDie(level, progression) : (`d${faces}` as Die);
+  const die: Die = evolving ? scalingDie(level, progression, tierBonus) : (`d${faces}` as Die);
   const count = countStr && countStr !== '1' ? countStr : '';
   return `${count}${die}${evolving ? '°' : ''}`;
 }
@@ -252,7 +324,9 @@ export function rangedAttackElement(character: Character): RangedAttackElementVi
       return {
         featureId: id,
         element: chosen as ResistibleDamageType,
-        bonusDie: effect.bonusDie ? resolveSimpleBonusDie(effect.bonusDie, character.level) : undefined,
+        bonusDie: effect.bonusDie
+          ? resolveSimpleBonusDie(effect.bonusDie, character.level, scalingDieTierBonus(character))
+          : undefined,
       };
     }
   }

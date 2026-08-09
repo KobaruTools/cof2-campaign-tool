@@ -10,7 +10,7 @@ import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
 import type { Die } from '@/data/schema';
-import type { CapacityResourceGauge } from '@/lib/character/effects';
+import type { CapacityResourceGauge, RestRecoveryHealBonus } from '@/lib/character/effects';
 import { currentLuck, currentMana, currentRecoveryDice } from '@/lib/character/gauges';
 import { classColor } from '@/lib/ui/classColors';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -91,14 +91,20 @@ export interface PlayerStatusPanelProps {
   onSetRecoveryDiceCurrent: (value: number) => void;
   /**
    * Repos court (récupération rapide). `recoveryDieRoll` = résultat du dé saisi pour
-   * dépenser un DR (soin), ou `null` pour un repos sans soin.
+   * dépenser un DR (soin), ou `null` pour un repos sans soin. `extraHeal` = soin bonus par DR
+   * (Survie « en milieu naturel »), déjà sommé ; 0 par défaut.
    */
-  onShortRest: (recoveryDieRoll: number | null) => void;
+  onShortRest: (recoveryDieRoll: number | null, extraHeal?: number) => void;
   /**
    * Repos long (récupération complète). `heal = true` → dépenser le DR gagné pour un soin
-   * à la valeur max du dé (p. 222).
+   * à la valeur max du dé (p. 222). `extraHeal` = soin bonus par DR, déjà sommé ; 0 par défaut.
    */
-  onLongRest: (heal: boolean) => void;
+  onLongRest: (heal: boolean, extraHeal?: number) => void;
+  /**
+   * Bonus de soin par DR ACTIFS à proposer dans les modales de repos (Survie native/empruntée).
+   * Vide/absent → repos standard sans saisie supplémentaire.
+   */
+  recoveryHealBonuses?: RestRecoveryHealBonus[];
   /** Doses d'élixir (forgesort) qui seront perdues par un repos long (avertissement, p. 98). */
   elixirDosesToLose?: number;
   /**
@@ -142,6 +148,7 @@ export function PlayerStatusPanel({
   onSetRecoveryDiceCurrent,
   onShortRest,
   onLongRest,
+  recoveryHealBonuses = [],
   elixirDosesToLose = 0,
   restSlot,
 }: PlayerStatusPanelProps) {
@@ -272,8 +279,9 @@ export function PlayerStatusPanel({
         recoveryDiceCurrent={currentRecoveryDice(recoveryDiceMax, depletion)}
         recoveryDie={recoveryDie}
         level={level}
-        onConfirm={(recoveryDieRoll) => {
-          onShortRest(recoveryDieRoll);
+        healBonuses={recoveryHealBonuses}
+        onConfirm={(recoveryDieRoll, extraHeal) => {
+          onShortRest(recoveryDieRoll, extraHeal);
           setShortRestOpen(false);
         }}
       />
@@ -286,8 +294,9 @@ export function PlayerStatusPanel({
         level={level}
         lethalDamage={lethal}
         elixirDosesToLose={elixirDosesToLose}
-        onConfirm={(heal) => {
-          onLongRest(heal);
+        healBonuses={recoveryHealBonuses}
+        onConfirm={(heal, extraHeal) => {
+          onLongRest(heal, extraHeal);
           setLongRestOpen(false);
         }}
       />

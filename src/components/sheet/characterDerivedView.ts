@@ -29,6 +29,7 @@ import {
   rangedAttackElement,
   type RangedAttackElementView,
   rangedAttackMagicalSourceId,
+  scalingDieTierBonus,
   stackedDamageReductions,
   type EffectContext,
 } from '@/lib/character/effects';
@@ -177,6 +178,9 @@ function wornWeaponDamage(
   const worn = wornWeaponForMode(character, mode, slot);
   if (!worn) return null;
   const { item, line } = worn;
+  // PER-324 — décalage de cran du dé évolutif porté par le personnage, appliqué à la résolution
+  // des dés de DM d'arme au niveau (défaut 0 = aucun décalage).
+  const tierBonus = scalingDieTierBonus(character);
   const baseDamage =
     mode === 'melee' && line.worn?.grip === 'twoHands' && item.twoHandedDamage ? item.twoHandedDamage : item.damage;
   // CANON DOUBLE (artilleur-r4, p. 63, PER-284) : « Il double le dé de DM de l'arme (mais pas les dés
@@ -189,7 +193,7 @@ function wornWeaponDamage(
   const dmg = doubledDie ? { ...baseDamage, count: baseDamage.count * 2 } : baseDamage;
   // Parenthèses de non-létalité gérées par un badge dédié, pas par le formateur ici. Le NIVEAU
   // résout les dés évolutifs (« 5d4° » → « 5d8° » au niveau 9, table p. 43) — cf. PER-286.
-  const dice = formatWeaponDamage({ ...dmg, nonLethal: false }, character.level);
+  const dice = formatWeaponDamage({ ...dmg, nonLethal: false }, character.level, tierBonus);
   // Carac de base : FOR au contact (p. 183), aucune à distance (p. 185). Les capacités ajoutent
   // leurs bonus PERMANENTS par-dessus (Archer émérite : +PER à l'arc).
   const baseAbilities: AbilityId[] = mode === 'melee' ? ['FOR'] : [];
@@ -242,6 +246,7 @@ function wornWeaponDamage(
           diceNote: `Dé de DM DOUBLÉ par Canon double : ${formatWeaponDamage(
             { ...baseDamage, nonLethal: false },
             character.level,
+            tierBonus,
           )} → ${dice} (les dés bonus et les bonus, eux, ne sont pas doublés). Un tir consomme 2 projectiles ; avec un seul coup chargé, le dé revient à la normale (p. 63).`,
         }
       : {}),
@@ -691,15 +696,18 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // du flibustier r8, PER-74). `maxHp` vient de `deriveStats(derivedInput)` (undefined si profil incomplet
   // → les bonus `requiresLowHp` restent inactifs, comportement sûr).
   const maxHp = derivedInput ? deriveStats(derivedInput).maxHp : undefined;
+  // PER-324 — décalage de cran du dé évolutif porté par le personnage, appliqué aux riders +1d4°
+  // des armes magiques (défaut 0 = aucun décalage).
+  const tierBonus = scalingDieTierBonus(character);
   // Aux riders des capacités s'ajoutent ceux des propriétés de l'arme magique en main (Fléau, Élément,
   // Affûtée « aux critiques » ; +1d4°, p. 251, PER-307), résolus au niveau du personnage.
   const meleeSituationalDamage = [
     ...weaponDamageBonuses(character, 'melee', meleeWorn, maxHp).situational,
-    ...magicWeaponSituationalDamage(meleeWornLine, meleeWorn?.name ?? '', character.level),
+    ...magicWeaponSituationalDamage(meleeWornLine, meleeWorn?.name ?? '', character.level, tierBonus),
   ];
   const rangedSituationalDamage = [
     ...weaponDamageBonuses(character, 'ranged', rangedWorn, maxHp).situational,
-    ...magicWeaponSituationalDamage(rangedWornLine, rangedWorn?.name ?? '', character.level),
+    ...magicWeaponSituationalDamage(rangedWornLine, rangedWorn?.name ?? '', character.level, tierBonus),
   ];
   // PER-116/307 — bonus situationnels de la MAIN SECONDAIRE (combat à deux armes) : calculés pour SON
   // arme (donc filtrés par SA condition + ses propriétés magiques), pour être affichés SOUS sa ligne et
@@ -707,7 +715,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const offHandMeleeSituationalDamage = offHandMelee
     ? [
         ...weaponDamageBonuses(character, 'melee', offHandMelee.item, maxHp).situational,
-        ...magicWeaponSituationalDamage(offHandMelee.line, offHandMelee.item.name, character.level),
+        ...magicWeaponSituationalDamage(offHandMelee.line, offHandMelee.item.name, character.level, tierBonus),
       ]
     : [];
   const meleeAttackNotes = [...flayerMeleeAttackNotes(modFeatureIds), ...warmageMeleeAttackNotes(modFeatureIds)];

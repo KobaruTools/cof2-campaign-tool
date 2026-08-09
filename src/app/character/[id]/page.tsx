@@ -455,6 +455,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setDrCurrent,
     doShortRest,
     doLongRest,
+    recoveryHealBonuses,
     setCompanionDamage,
     setCompanionHeal,
     setCompanionReset,
@@ -1140,6 +1141,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onSetRecoveryDiceCurrent={setDrCurrent}
                 onShortRest={doShortRest}
                 onLongRest={doLongRest}
+                recoveryHealBonuses={recoveryHealBonuses}
                 elixirDosesToLose={elixirDosesToLose}
                 // Demander une pause à la table (PER-313) : posé sur la rangée des repos, là où le
                 // joueur a déjà « Repos court » et « Repos long ». Ne s'affiche qu'en session, et

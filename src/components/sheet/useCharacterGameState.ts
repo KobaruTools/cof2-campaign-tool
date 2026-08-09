@@ -22,7 +22,12 @@
 import * as actions from '@/lib/character/sheetActions';
 import type { UseItemIntent } from '@/lib/character/sheetActions';
 import { containsGameStateKey } from '@/lib/character/gameState';
-import { capacityResourceGauges, type CapacityResourceGauge } from '@/lib/character/effects';
+import {
+  capacityResourceGauges,
+  restRecoveryDieHealBonuses,
+  type CapacityResourceGauge,
+  type RestRecoveryHealBonus,
+} from '@/lib/character/effects';
 import { withSupersededBuffTogglesOff } from '@/lib/character/groupBuffs';
 import { toggleCrystalActive } from '@/lib/character/crystals';
 import type { Character, LoadedAmmunitionKind, Purse, WornState } from '@/lib/character/types';
@@ -119,8 +124,14 @@ export interface CharacterGameState {
   setLuckRestore: (amount: number) => void;
   setLuckReset: () => void;
   setDrCurrent: (value: number) => void;
-  doShortRest: (recoveryDieRoll: number | null) => void;
-  doLongRest: (heal: boolean) => void;
+  /** `extraHeal` = soin bonus par DR (Survie « en milieu naturel », dés déjà lancés+sommés) ; 0 par défaut. */
+  doShortRest: (recoveryDieRoll: number | null, extraHeal?: number) => void;
+  doLongRest: (heal: boolean, extraHeal?: number) => void;
+  /**
+   * Bonus de soin par DR ACTIFS (interrupteur ON) que la modale de repos doit proposer à saisir
+   * (Survie native ou empruntée). Vide → repos standard sans bonus.
+   */
+  recoveryHealBonuses: RestRecoveryHealBonus[];
 
   // --- Compagnons (PER-233 / PER-235) ------------------------------------------------------
   setCompanionDamage: (key: string, amount: number, kind: 'lethal' | 'temp') => void;
@@ -253,9 +264,10 @@ export function useCharacterGameState(
     setLuckRestore: (amount) => update(actions.restoreCharacterLuck(target, amount, luckMax)),
     setLuckReset: bind(actions.resetCharacterLuck),
     setDrCurrent: (value) => update(actions.setAvailableRecoveryDice(target, value, recoveryDiceMax)),
-    doShortRest: (recoveryDieRoll) =>
-      update(actions.applyShortRest(target, recoveryDieRoll, recoveryDiceMax)),
-    doLongRest: (heal) => update(actions.applyLongRest(target, heal, recoveryDie)),
+    doShortRest: (recoveryDieRoll, extraHeal = 0) =>
+      update(actions.applyShortRest(target, recoveryDieRoll, recoveryDiceMax, extraHeal)),
+    doLongRest: (heal, extraHeal = 0) => update(actions.applyLongRest(target, heal, recoveryDie, extraHeal)),
+    recoveryHealBonuses: restRecoveryDieHealBonuses(target),
 
     setCompanionDamage: bind(actions.damageCompanion),
     setCompanionHeal: bind(actions.healCompanion),

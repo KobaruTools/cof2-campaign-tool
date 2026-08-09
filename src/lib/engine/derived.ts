@@ -131,12 +131,21 @@ export function recoveryDie(family: Family): Die {
  * niveau ; le marqueur « ° » de l'UI sert seulement à signaler qu'il évoluera.
  * Retourne le dé du seuil le plus élevé dont `minLevel` est atteint.
  */
-export function scalingDie(level: number, progression: ProgressionRules): Die {
-  let die = progression.scalingDice[0]?.die ?? 'd4';
-  for (const tier of progression.scalingDice) {
-    if (level >= tier.minLevel) die = tier.die;
+export function scalingDie(level: number, progression: ProgressionRules, tierBonus = 0): Die {
+  const tiers = progression.scalingDice;
+  if (tiers.length === 0) return 'd4';
+  // Index du cran ATTEINT : dernier seuil dont `minLevel` est atteint (repli sur le premier
+  // cran si le niveau est sous tous les seuils).
+  let idx = 0;
+  for (let i = 0; i < tiers.length; i++) {
+    if (level >= tiers[i].minLevel) idx = i;
   }
-  return die;
+  // PER-324 — décalage de cran optionnel (« dé évolutif +1 cran »). PLAFOND au dernier cran de
+  // la table (d12, niv.15) : la ligne « d12 → 2d6 » (niv.15) n'est pas exprimable dans le type
+  // `Die` (une seule face), donc on plafonne à d12 — le « 2d6 » reste verbatim à la table p. 43,
+  // hors de cette résolution mono-dé. `tierBonus` négatif ignoré (plancher 0).
+  const bumped = Math.min(idx + Math.max(0, tierBonus), tiers.length - 1);
+  return tiers[bumped].die;
 }
 
 // ---------------------------------------------------------------------------

@@ -1684,6 +1684,15 @@ export const adventurerFeatures: Feature[] = [
         activation: { kind: 'condition', label: 'en milieu naturel', activeByDefault: false },
       },
     ],
+    // Soin supplémentaire par DR dépensé, gaté par l'interrupteur « en milieu naturel » ci-dessus
+    // (effet conditionnel index 0). Le 1d4° est lancé à la table et saisi dans la modale de repos
+    // (court/long) ; le moteur l'ajoute au soin de la dépense de DR. La formule « [DR max + ½ niveau] »
+    // du texte reste littérale (le soin de base du repos est déjà calculé par ailleurs).
+    recoveryDieHealBonus: {
+      dice: { count: 1, die: 'd4', evolving: true },
+      conditionLabel: 'en milieu naturel',
+      sourcePage: 72,
+    },
     sourcePage: 72,
   },
   {

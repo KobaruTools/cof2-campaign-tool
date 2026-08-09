@@ -503,6 +503,9 @@ function applyAbilitySubstitution(
  * `rank` (terme `rang`) = rang ATTEINT dans la voie hôte de la capacité, fourni par
  * l'appelant (« son rang » dynamique) — cf. `pathRank` côté `FeatureText`. Défaut 0
  * pour les appels hors contexte de personnage.
+ *
+ * `scalingTierBonus` (PER-324) = décalage de cran du dé évolutif porté par le personnage
+ * (`scalingDieTierBonus`) ; défaut 0 = aucun décalage (appels sans personnage).
  */
 export function resolveExpr(
   terms: ExprTerm[],
@@ -512,6 +515,7 @@ export function resolveExpr(
   rank = 0,
   milestoneBonus = 0,
   substitutions?: AbilitySubstitution[],
+  scalingTierBonus = 0,
 ): ResolvedExpr {
   const allParts: ResolvedPart[] = terms.map((term) => {
     switch (term.kind) {
@@ -585,7 +589,7 @@ export function resolveExpr(
         // Nombre, faces ET caractère évolutif résolus au rang de voie atteint (paliers
         // `countSteps`/`dieSteps` ; un palier `|1d4°@R` peut rendre le dé évolutif).
         const { count, die, evolving } = dieAtRank(term.token, rank);
-        const displayDie = evolving ? scalingDie(level, progression) : die;
+        const displayDie = evolving ? scalingDie(level, progression, scalingTierBonus) : die;
         const prefix = count > 1 ? String(count) : '';
         return {
           kind: 'die',

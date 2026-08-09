@@ -83,9 +83,10 @@ export function magicWeaponFlatDamage(
 // ARME — riders de DM situationnels (Fléau, Élément, Affûtée « aux critiques »)
 // ---------------------------------------------------------------------------
 
-/** Face concrète d'un dé évolutif « +1d4° » au niveau du personnage (table p. 43). */
-function evolvingD4(count: number, level: number): NonNullable<SituationalDamageBonus['dice']> {
-  return { count, die: scalingDie(level, progression), evolving: true };
+/** Face concrète d'un dé évolutif « +1d4° » au niveau du personnage (table p. 43). `tierBonus`
+ * (PER-324, défaut 0) décale le cran du dé évolutif ; 0 = comportement identique. */
+function evolvingD4(count: number, level: number, tierBonus = 0): NonNullable<SituationalDamageBonus['dice']> {
+  return { count, die: scalingDie(level, progression, tierBonus), evolving: true };
 }
 
 /**
@@ -99,6 +100,7 @@ export function magicWeaponSituationalDamage(
   line: EquipmentLine | null | undefined,
   name: string,
   level: number,
+  tierBonus = 0,
 ): SituationalDamageBonus[] {
   const out: SituationalDamageBonus[] = [];
   for (const prop of propertiesOf(line)) {
@@ -107,19 +109,19 @@ export function magicWeaponSituationalDamage(
       const category = prop.creatureCategory?.trim();
       out.push({
         ...base,
-        dice: evolvingD4(factor(prop), level),
+        dice: evolvingD4(factor(prop), level, tierBonus),
         conditionLabel: category ? `contre les ${category}` : 'contre une catégorie de créature',
       });
     } else if (prop.kind === 'elemental') {
       out.push({
         ...base,
-        dice: evolvingD4(factor(prop), level),
+        dice: evolvingD4(factor(prop), level, tierBonus),
         conditionLabel: magicPropertyLabel(prop).toLowerCase(),
       });
     } else if (prop.kind === 'sharp') {
       out.push({
         ...base,
-        dice: evolvingD4(factor(prop), level),
+        dice: evolvingD4(factor(prop), level, tierBonus),
         conditionLabel: 'aux attaques critiques',
       });
     }

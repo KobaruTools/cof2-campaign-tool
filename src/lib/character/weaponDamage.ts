@@ -22,9 +22,12 @@ import type { WeaponDamage } from '@/data/schema';
  * mais le dé concret atteint au niveau ; le marqueur ° signale seulement qu'il évoluera »), déjà
  * appliquée aux dés bonus des capacités (`resolveSimpleBonusDie`). Sans `level` — catalogue
  * consulté hors personnage —, le dé de base est rendu tel quel, marqueur compris.
+ *
+ * `tierBonus` (PER-324, défaut 0) décale le cran du dé évolutif (« +1 cran », `scalingDie`) : 0 =
+ * comportement identique. Renseigné par l'appelant qui dispose du personnage (`scalingDieTierBonus`).
  */
-export function formatWeaponDamage(damage: WeaponDamage, level?: number): string {
-  const die = damage.evolving && level != null ? scalingDie(level, progression) : damage.die;
+export function formatWeaponDamage(damage: WeaponDamage, level?: number, tierBonus = 0): string {
+  const die = damage.evolving && level != null ? scalingDie(level, progression, tierBonus) : damage.die;
   let text = `${damage.count}${die}${damage.evolving ? '°' : ''}`;
   if (damage.modifier) text += damage.modifier > 0 ? `+${damage.modifier}` : `${damage.modifier}`;
   return damage.nonLethal ? `(${text})` : text;

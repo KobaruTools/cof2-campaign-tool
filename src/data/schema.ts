@@ -562,7 +562,23 @@ export type FeatureEffect =
   | RangedAttackElementalEffect
   | BoundWeaponAttackDieEffect
   | WeaponAuraElementalEffect
+  | ScalingDieTierBonusEffect
   | FinesseAttackEffect;
+
+/**
+ * Décale d'un ou plusieurs CRANS le dé évolutif (« d4° », table p. 43) du personnage :
+ * le cran atteint au niveau courant est augmenté de `value` catégories dans la suite
+ * d4 → d6 → d8 → d10 → d12 (ex. Capacité d'apprentissage du demi-elfe, Le Compagnon :
+ * +1 cran → d6 au lieu de d4). Le moteur PLAFONNE au dernier cran (d12) : le passage
+ * « d12 → 2d6 » au niveau 15 n'est pas exprimable dans le type `Die` (deux dés) et reste
+ * appliqué à la table (verbatim de la capacité). S'applique à TOUS les dés évolutifs du
+ * personnage (DM de capacités, dés bonus…), résolus par `scalingDie`.
+ */
+export interface ScalingDieTierBonusEffect {
+  kind: 'scaling-die-tier-bonus';
+  /** Nombre de crans ajoutés (entier positif ; +1 = une catégorie de dé). */
+  value: number;
+}
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -3855,6 +3871,22 @@ export interface Feature {
    * Absent = la capacité n'a pas d'usage limité décompté.
    */
   usageCounter?: UsageCounter;
+  /**
+   * Soin SUPPLÉMENTAIRE par dé de récupération dépensé lors d'un repos (Survie, rôdeur, p. 72 :
+   * « s'il dépense 1 DR, il guérit 1d4° PV supplémentaire »). N'est accordé que si le PREMIER effet
+   * conditionnel de la capacité est ACTIF (interrupteur « en milieu naturel » ON, cf. `isEffectActive`)
+   * — sinon aucun bonus. Le dé (souvent évolutif « 1d4° », résolu par `scalingDie` au niveau + décalage
+   * de cran) est LANCÉ à la table et saisi par le joueur dans la modale de repos (court ET long), puis
+   * ajouté au soin de la dépense de DR. S'applique aussi bien à la capacité native qu'EMPRUNTÉE (l'octroi
+   * demi-elfe, Le Compagnon). Absent = pas de bonus de soin au repos.
+   */
+  recoveryDieHealBonus?: {
+    /** Dé du soin supplémentaire par DR (ex. `{ count: 1, die: 'd4', evolving: true }`). */
+    dice: { count: number; die: Die; evolving?: boolean };
+    /** Libellé du contexte requis, repris pour l'UI du repos (ex. « en milieu naturel »). */
+    conditionLabel?: string;
+    sourcePage?: number;
+  };
   /**
    * États préjudiciables que cette capacité peut infliger, chacun UNE SEULE FOIS par combat (Botte
    * secrète, spadassin-r5, p. 77), EN PLUS du `text` verbatim (PER-206). Rendu en boutons-bascule

@@ -75,6 +75,7 @@ import {
   escalatingManaSurcharge,
   fabulousCapacityTarget,
   resolveFamiliarGrantedPower,
+  scalingDieTierBonus,
   familiarLearnedSpellId,
   familiarLearnedSpellUsageMax,
   familiarPowerUsedKey,
@@ -945,6 +946,8 @@ function BorrowedPowerRow({
   abilitySubstitutions?: AbilitySubstitution[];
 }) {
   const [expanded, setExpanded] = useState(false);
+  // PER-324 — décalage de cran du dé évolutif (r3) porté par le personnage, alimentant `FeatureText`.
+  const scalingTierBonus = scalingDieTierBonus(character);
   const spell = featureById.get(spellId);
   if (!spell) return null;
   const usedKey = borrowedPowerUsedKey(hostId, spellId);
@@ -1052,6 +1055,7 @@ function BorrowedPowerRow({
             pathRank={spell.rank}
             dense
             abilitySubstitutions={abilitySubstitutions}
+            scalingTierBonus={scalingTierBonus}
           />
         </Box>
       </Collapse>
@@ -2606,6 +2610,9 @@ function PathBlock({
   testBonuses?: TestDomainBonus[];
 }) {
   const { path, features } = group;
+  // PER-324 — décalage de cran du dé évolutif (r3) porté par le personnage, alimentant `FeatureText`
+  // (0 = aucun décalage / hors personnage).
+  const scalingTierBonus = character ? scalingDieTierBonus(character) : 0;
   // PER-74 — props de marqueurs/mana à injecter pour la capacité cible de la Capacité fabuleuse (r5).
   // `promote` : le (L) devient (A) (halo). `concentrate` : le sort (A) garde son marqueur mais son coût
   // est réduit de 2 PM EN PERMANENCE (concentration forcée sur la goutte, JAMAIS sur les marqueurs —
@@ -3610,7 +3617,7 @@ function PathBlock({
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} />
+                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} scalingTierBonus={scalingTierBonus} />
                 <FeatureSourcePage feature={openFeature} />
                 {openFeature.referencedFeatures && openFeature.referencedFeatures.length > 0 && (
                   <>
@@ -3786,32 +3793,37 @@ function PathBlock({
                               grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
                             }
                             footer={
-                              hasChoices(borrowed) ? (
-                                <>
-                                  <Divider sx={{ my: 1 }} />
-                                  {renderChoiceDisplay(borrowed, {
-                                    onEdit: canEditChoices
-                                      ? () => {
+                              <>
+                                {/* Toggle(s) d'effet conditionnel de l'emprunt (PER-324, ex. Survie « en milieu
+                                    naturel ») — même exposition que la carte native. Rien si aucun. */}
+                                {renderEffectToggles(borrowed)}
+                                {hasChoices(borrowed) ? (
+                                  <>
+                                    <Divider sx={{ my: 1 }} />
+                                    {renderChoiceDisplay(borrowed, {
+                                      onEdit: canEditChoices
+                                        ? () => {
+                                            setOpenFeature(null);
+                                            requestChoiceEdit(borrowed);
+                                          }
+                                        : undefined,
+                                    })}
+                                    {onChoiceChange && (
+                                      <Button
+                                        size="small"
+                                        startIcon={<EditIcon fontSize="small" />}
+                                        sx={{ mt: 1 }}
+                                        onClick={() => {
                                           setOpenFeature(null);
-                                          requestChoiceEdit(borrowed);
-                                        }
-                                      : undefined,
-                                  })}
-                                  {onChoiceChange && (
-                                    <Button
-                                      size="small"
-                                      startIcon={<EditIcon fontSize="small" />}
-                                      sx={{ mt: 1 }}
-                                      onClick={() => {
-                                        setOpenFeature(null);
-                                        setChoiceEditFeature(borrowed);
-                                      }}
-                                    >
-                                      Modifier le choix
-                                    </Button>
-                                  )}
-                                </>
-                              ) : null
+                                          setChoiceEditFeature(borrowed);
+                                        }}
+                                      >
+                                        Modifier le choix
+                                      </Button>
+                                    )}
+                                  </>
+                                ) : null}
+                              </>
                             }
                           />
                         );
@@ -4100,7 +4112,7 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} />
+              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} scalingTierBonus={scalingTierBonus} />
               <FeatureSourcePage feature={feature} />
               {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
                 <>
@@ -4237,14 +4249,21 @@ function PathBlock({
                             grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
                           }
                           footer={
-                            hasChoices(borrowed) ? (
-                              <>
-                                <Divider sx={{ my: 1 }} />
-                                {onChoiceChange
-                                  ? renderChoiceEditor(borrowed)
-                                  : renderChoiceDisplay(borrowed, { onEdit: onEnableFeatureEditing })}
-                              </>
-                            ) : null
+                            <>
+                              {/* Interrupteurs d'effets conditionnels de la capacité EMPRUNTÉE (PER-324) : une
+                                  capacité empruntée porteuse d'un effet à interrupteur (ex. Survie « en milieu
+                                  naturel ») doit exposer le MÊME toggle que sa version native — sinon on ne peut
+                                  pas activer son effet (dont le bonus de soin par DR au repos). Rien si aucun. */}
+                              {renderEffectToggles(borrowed)}
+                              {hasChoices(borrowed) ? (
+                                <>
+                                  <Divider sx={{ my: 1 }} />
+                                  {onChoiceChange
+                                    ? renderChoiceEditor(borrowed)
+                                    : renderChoiceDisplay(borrowed, { onEdit: onEnableFeatureEditing })}
+                                </>
+                              ) : null}
+                            </>
                           }
                         />
                       );

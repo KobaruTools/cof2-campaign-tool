@@ -690,10 +690,11 @@ export function applyShortRest(
   character: Character,
   recoveryDieRoll: number | null,
   recoveryDiceMax: number,
+  extraHeal = 0,
 ): Partial<Character> {
   return shortRest(
     character,
-    recoveryDieRoll != null ? { dieRoll: recoveryDieRoll, recoveryDiceMax } : undefined,
+    recoveryDieRoll != null ? { dieRoll: recoveryDieRoll, recoveryDiceMax, extraHeal } : undefined,
   );
 }
 
@@ -706,10 +707,11 @@ export function applyLongRest(
   character: Character,
   heal: boolean,
   recoveryDie: string,
+  extraHeal = 0,
 ): Partial<Character> {
   return longRest(
     character,
-    heal ? { dieFaces: Number.parseInt(recoveryDie.slice(1), 10) || 0 } : undefined,
+    heal ? { dieFaces: Number.parseInt(recoveryDie.slice(1), 10) || 0, extraHeal } : undefined,
   );
 }
 

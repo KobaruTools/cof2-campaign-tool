@@ -498,6 +498,7 @@ function GmSheetDrawerContent({
                 onSetRecoveryDiceCurrent={game.setDrCurrent}
                 onShortRest={game.doShortRest}
                 onLongRest={game.doLongRest}
+                recoveryHealBonuses={game.recoveryHealBonuses}
                 elixirDosesToLose={elixirDosesToLose}
               />
             </SheetSection>
