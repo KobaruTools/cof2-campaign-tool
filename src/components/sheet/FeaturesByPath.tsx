@@ -3255,6 +3255,12 @@ function PathBlock({
             {hasEffectToggles(feature) && (
               <Box sx={{ mt: 0.5, width: '100%' }}>{renderEffectToggles(feature, { compact: true })}</Box>
             )}
+            {/* Interrupteur(s) d'effet conditionnel de la capacité EMPRUNTÉE (PER-324, ex. Survie « en
+                milieu naturel ») en mode COLONNE : même exposition compacte que l'hôte — sans quoi on ne
+                pourrait pas activer l'effet (dont le bonus de soin par DR au repos) sans ouvrir la modale. */}
+            {borrowed && hasEffectToggles(borrowed) && (
+              <Box sx={{ mt: 0.5, width: '100%' }}>{renderEffectToggles(borrowed, { compact: true })}</Box>
+            )}
             {/* Rappel compact de l'élément résisté choisi (Maîtrise des éléments, PER-137) : badge bleu
                 « Feu/Froid… » pour ne pas oublier que l'effet est actif (le sélecteur est dans la modale). */}
             {(() => {
