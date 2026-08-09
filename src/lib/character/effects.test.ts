@@ -562,6 +562,8 @@ describe('effectContext', () => {
       staffWielded: false,
       // Options de la monture chevauchée (PER-74, chevalier dragon r4) : à pied ici.
       ridingOptionIds: [],
+      // Élément de prédilection résolu par capacité (PER-74, élémentaliste r8) : aucune ici.
+      resolvedElements: {},
     });
   });
 });

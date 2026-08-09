@@ -180,6 +180,11 @@ export interface DerivedStatsGridProps {
    * impitoyable), en badge sous la carte « Attaque au contact ». Vide ou absent = aucune.
    */
   meleeAttackNotes?: FeatureEffectNote[];
+  /**
+   * PER-74 — notes d'effet de capacité (Métamorphose élémentaire, élémentaliste r8, forme Air : DM ÷2),
+   * en badge sous la carte « Attaque à distance ». Vide ou absent = aucune.
+   */
+  rangedAttackNotes?: FeatureEffectNote[];
 }
 
 interface StatLine {
@@ -228,6 +233,7 @@ export function DerivedStatsGrid({
   boundWeaponAttackDie = null,
   attackMalusDie = [],
   meleeAttackNotes,
+  rangedAttackNotes,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -380,6 +386,8 @@ export function DerivedStatsGrid({
                 elemental={rangedAttackElement}
                 attackBonusDie={attackDiceFor('ranged')}
                 attackMalusDie={attackMalusDie}
+                notes={rangedAttackNotes ?? []}
+                level={input.level}
               />
             </Grid>
           );

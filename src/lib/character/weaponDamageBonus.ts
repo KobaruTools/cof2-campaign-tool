@@ -35,7 +35,7 @@ import {
   splitRepeatableSelections,
   weaponFamiliesMatchChoice,
 } from '@/lib/character/choices';
-import { declineForFeature } from '@/lib/character/dragonElement';
+import { declineForFeature, resolveFeatureElement } from '@/lib/character/dragonElement';
 import type { Character } from '@/lib/character/types';
 import { currentHp } from '@/lib/character/gauges';
 
@@ -222,6 +222,10 @@ export function weaponDamageBonuses(
       // Gate AUTO « PV bas » (flibustier r8, PER-74) : le bonus ne compte que si les PV courants sont
       // strictement sous le niveau. Inactif si le `maxHp` n'a pas été fourni au module.
       if (effect.requiresLowHp && !lowHpActive) return;
+      // Gating par ÉLÉMENT RÉSOLU (PER-74) : un bonus propre à une seule branche d'une capacité à
+      // interrupteur partagé (élémentaliste r8 : +2d4° DM de feu au contact sous la forme Feu
+      // seulement) — cf. `WeaponDamageBonusEffect.requiresElement`.
+      if (effect.requiresElement && resolveFeatureElement(character, feature)?.id !== effect.requiresElement) return;
 
       const source: WeaponDamageBonusSource = {
         featureId,

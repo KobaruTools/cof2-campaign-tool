@@ -163,6 +163,15 @@ export interface EffectContext {
    * comme « à pied » (les appels « catalogue seul » n'ont pas d'état de jeu).
    */
   ridingOptionIds?: string[];
+  /**
+   * Élément de prédilection RÉSOLU (`ResistibleDamageType.id`) de chaque capacité portant un
+   * `Feature.elementFromChoice`, par id de capacité (PER-74, Métamorphose élémentaire, élémentaliste
+   * r8, p. 157) — précalculé depuis le `Character` complet (`resolveFeatureElement`) pour que les
+   * agrégateurs PURS ne dépendant que de `ctx` (`effectContributions`/`modsFromFeatures`) puissent
+   * filtrer un `StatBonus.requiresElement` sans avoir besoin du personnage. Absent/capacité sans
+   * choix fait → pas d'entrée (les bonus `requiresElement` de cette capacité ne comptent pas).
+   */
+  resolvedElements?: Partial<Record<string, ResistibleDamageType>>;
 }
 
 /**
@@ -570,6 +579,10 @@ export function activeFormAbilityBonusSources(
       if (e.kind !== 'active-form-ability-bonus') continue;
       const active = e.whenAnyActive.some((ref) => isEffectActive(character, ref.featureId, ref.index));
       if (!active) continue;
+      // Gating par ÉLÉMENT RÉSOLU de LA CAPACITÉ PORTEUSE (PER-74) : un delta propre à une seule
+      // branche d'une capacité à interrupteur partagé (élémentaliste r8) — cf.
+      // `ActiveFormAbilityBonusEffect.requiresElement`.
+      if (e.requiresElement && resolveFeatureElement(character, feature)?.id !== e.requiresElement) continue;
       for (const [ability, value] of Object.entries(e.abilities) as [AbilityId, number][]) {
         if (!value) continue;
         (out[ability] ??= []).push({ featureId: id, name: feature.name, value });
@@ -615,7 +628,23 @@ export function effectContext(character: Character): EffectContext {
     ),
     staffWielded: isStaffWielded(character.equipment),
     ridingOptionIds: ridingMountOptionIds(character),
+    resolvedElements: resolvedElementsFromFeatures(character),
   };
+}
+
+/**
+ * Élément de prédilection RÉSOLU de chaque capacité ACQUISE portant un `elementFromChoice` (PER-74),
+ * par id de capacité — cf. `EffectContext.resolvedElements`.
+ */
+function resolvedElementsFromFeatures(character: Character): Partial<Record<string, ResistibleDamageType>> {
+  const out: Partial<Record<string, ResistibleDamageType>> = {};
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.elementFromChoice) continue;
+    const element = resolveFeatureElement(character, feature);
+    if (element) out[id] = element.id;
+  }
+  return out;
 }
 
 /**
@@ -827,6 +856,9 @@ function effectContributions(
     if (!isConditionalActive(effect, featureId, index, ctx)) return [];
     const out: Array<{ stat: DerivedStatId; value: number }> = [];
     for (const b of effect.bonuses) {
+      // Gating par ÉLÉMENT RÉSOLU (PER-74) : un bonus PROPRE à une branche, au sein d'un effet
+      // partagé par les 4 branches (un seul interrupteur) — cf. `StatBonus.requiresElement`.
+      if (b.requiresElement && ctx?.resolvedElements?.[featureId] !== b.requiresElement) continue;
       const v = resolveValue(b.value, pathId, pathRanks, ctx);
       if (v !== null) out.push({ stat: b.stat, value: v });
     }
@@ -2962,6 +2994,10 @@ export function damageReductionSources(character: Character): DamageReductionSou
       // Gating par RANG de voie (ex. Invulnérable : ÷2 poison/maladie ≤ r4, immunité ≥ r5).
       if (dr.minPathRank !== undefined && rank < dr.minPathRank) continue;
       if (dr.maxPathRank !== undefined && rank > dr.maxPathRank) continue;
+      // Gating par ÉLÉMENT RÉSOLU (PER-74) : une entrée propre à une seule branche d'une capacité à
+      // interrupteur partagé (élémentaliste r8 : RD 10 sous la forme Air seulement, contre RD 5 pour
+      // les 3 autres) — cf. `DamageReduction.requiresElement`.
+      if (dr.requiresElement && resolveFeatureElement(character, feature)?.id !== dr.requiresElement) continue;
       // SCOPE choisi à la table (ex. Maîtrise des éléments) : la RD n'est comptée que si un élément
       // valide est sélectionné (`effectInputs[id]`, hors mode édition) ; ce choix devient le scope.
       let scopes = dr.scopes;

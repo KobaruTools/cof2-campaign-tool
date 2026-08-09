@@ -2438,26 +2438,57 @@ export const prestigeFeatures2: Feature[] = [
       "Le personnage peut prendre une seule forme élémentaire de son choix pendant [5 + INT] minutes. La forme élémentaire lui permet de retrancher 5 points à tous les DM subis (RD 5), elle l'immunise aux DM de la forme choisie et lui octroie les capacités suivantes :\n- Feu : le personnage ajoute +2d4° DM de feu à toutes ses attaques au contact. Une créature qui s'attaque à lui avec des armes naturelles subit 1d4° DM pour chaque attaque réussie.\n- Eau : le personnage guérit toutes ses blessures au rythme de 1d4° PV par round et il peut déformer son corps pour passer dans le moindre interstice.\n- Terre : le personnage obtient un bonus de +3 en FOR (+3 attaque et DM au contact et +3 tests de FOR) et en DEF.\n- Air : le personnage peut voler (à une vitesse de 20 m par action de mouvement), il divise par deux les DM de ses attaques physiques mais pas ceux des sorts) et sa RD passe à 10.",
     // PER-137 : RD −5 sur TOUS les DM, CONDITIONNELLE à la forme élémentaire (durée du sort). Marqueur
     // d'état pour l'affichage.
-    // 2026-08-08 (retour propriétaire, 1ʳᵉ passe) : durée PARSÉE (`[=5 + INT]`) ; l'immunité aux DM
-    // de l'élément de prédilection (rang 4) est désormais MÉCANISÉE ci-dessous (2e entrée de RD,
-    // cross-capacité comme r5). CE QUI RESTE (verbatim, en attente d'une 2e passe convenue avec le
-    // propriétaire) : réduire l'affichage aux SEULES capacités de la branche retenue (les 3 autres
-    // passées en note) et mécaniser les bonus propres à chaque branche (+2d4° DM feu, soins 1d4°
-    // PV/round, +3 FOR/DEF, vol + RD 10) — nécessite de choisir COMMENT porter un bonus par branche
-    // sur une TRANSFORMATION (pas de `creatureProfile`ici, contrairement à r6), pas encore tranché.
+    // 2026-08-09 (retour propriétaire, 2e passe) : durée PARSÉE (`[=5 + INT]`) ; immunité + RD mécanisées
+    // PAR BRANCHE (`DamageReduction.requiresElement`, NOUVEAU — RD 5 pour Feu/Eau/Terre, RD 10 pour Air,
+    // au lieu d'une RD 5 uniforme) ; Feu = +{2d4°} DM au contact mécanisé (`weapon-damage-bonus`
+    // `requiresElement`, situationnel, gaté sur l'interrupteur ci-dessous) + riposte au contact
+    // (`elementalistPath.ts`, badge Défense, patron « Riposte », DM subis par l'ADVERSAIRE hors moteur) ;
+    // Terre = +3 FOR mécanisé EN CARAC (`active-form-ability-bonus` `requiresElement`, NOUVEAU — le
+    // reste, attaque/DM/tests, se recalcule automatiquement) + +3 DEF mécanisé en statistique dérivée
+    // (`StatBonus.requiresElement`, NOUVEAU) ; Air = DM physiques ÷2 rappelés en badge sur les cartes
+    // Attaque contact/distance (`elementalistPath.ts`, informatif comme la RD — le moteur ne simule
+    // aucun jet). RESTE verbatim (arbitrage propriétaire explicite) : Eau (soins/déformation, « au
+    // joueur de gérer ») et le VOL de la forme Air (déplacement, hors périmètre des stats dérivées).
+    // Affichage encore À VENIR (signalé, pas un oubli) : réduire les 4 branches du texte à la SEULE
+    // retenue (les 3 autres en note) — différé, cf. mémoire de session.
     richText:
       "Le personnage peut prendre une seule forme élémentaire de son choix pendant [=5 + INT] minutes. La forme élémentaire lui permet de retrancher 5 points à tous les DM subis (RD 5), elle l'immunise aux DM de la forme choisie et lui octroie les capacités suivantes :\n- Feu : le personnage ajoute +{2d4°} DM de feu à toutes ses attaques au contact. Une créature qui s'attaque à lui avec des armes naturelles subit {1d4°} DM pour chaque attaque réussie.\n- Eau : le personnage guérit toutes ses blessures au rythme de {1d4°} PV par round et il peut déformer son corps pour passer dans le moindre interstice.\n- Terre : le personnage obtient un bonus de +3 en FOR (+3 attaque et DM au contact et +3 tests de FOR) et en DEF.\n- Air : le personnage peut voler (à une vitesse de 20 m par action de mouvement), il divise par deux les DM de ses attaques physiques mais pas ceux des sorts) et sa RD passe à 10.",
     elementFromChoice: { choiceFeatureId: 'prestige-elementaliste-r4', choiceIndex: 0 },
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        bonuses: [],
+        // Terre (froid) — +3 DEF (l'autre moitié du bonus, +3 FOR, vit dans l'entrée
+        // `active-form-ability-bonus` ci-dessous : la carac se répercute d'elle-même sur l'attaque/les
+        // DM/les tests, la DEF ne se déduit d'aucune carac).
+        bonuses: [{ stat: 'def', value: 3, requiresElement: 'cold' }],
         activation: { kind: 'temporary', label: 'Forme élémentaire active', activeByDefault: false },
+      },
+      {
+        // Feu — +2d4° DM de feu à toutes les attaques au contact, badge situationnel ambre (patron
+        // Attaque éclair/Chasseur émérite), gaté sur l'interrupteur ci-dessus (index 0) ET l'élément.
+        kind: 'weapon-damage-bonus',
+        dice: { count: 2, die: 'd4', evolving: true },
+        condition: { attackMode: 'melee' },
+        requiresActiveEffectIndex: 0,
+        requiresElement: 'fire',
+        situational: true,
+      },
+      {
+        // Terre (froid) — +3 FOR EN DELTA (comme Forme puissante du lycanthrope), appliqué APRÈS la
+        // valeur saisie : attaque/DM au contact et tests de FOR suivent automatiquement.
+        kind: 'active-form-ability-bonus',
+        abilities: { FOR: 3 },
+        whenAnyActive: [{ featureId: 'prestige-elementaliste-r8', index: 0 }],
+        requiresElement: 'cold',
       },
     ],
     damageReduction: [
-      { kind: 'flat', value: 5 },
       { kind: 'immunity', scopeFromElement: true },
+      { kind: 'flat', value: 5, requiresElement: 'fire' },
+      { kind: 'flat', value: 5, requiresElement: 'acid' },
+      { kind: 'flat', value: 5, requiresElement: 'cold' },
+      // Air (électricité) — RD PORTÉE à 10 (remplace la RD 5 des trois autres branches, verbatim).
+      { kind: 'flat', value: 10, requiresElement: 'lightning' },
     ],
     sourcePage: 157,
   },

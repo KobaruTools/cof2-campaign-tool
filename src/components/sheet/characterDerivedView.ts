@@ -72,6 +72,11 @@ import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import type { FeatureEffectNote } from '@/components/sheet/FeatureEffectBadge';
 import { flayerMeleeAttackNotes, flayerRetaliationBadge } from '@/lib/character/flayerPath';
 import { warmageHasDeflection, warmageMeleeAttackNotes } from '@/lib/character/warmagePath';
+import {
+  elementalistFireRetaliationBadge,
+  elementalistMeleeAttackNotes,
+  elementalistRangedAttackNotes,
+} from '@/lib/character/elementalistPath';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -314,6 +319,12 @@ export interface CharacterDerivedView {
    * affreuses, impitoyable). Purement informatif, jamais un modificateur chiffré. Vide = aucune.
    */
   meleeAttackNotes: FeatureEffectNote[];
+  /**
+   * PER-74 — notes d'effet de capacité affichées en badge sous la carte « Attaque à distance »
+   * (Métamorphose élémentaire, élémentaliste r8, forme Air : DM ÷2). Purement informatif, jamais
+   * un modificateur chiffré. Vide = aucune.
+   */
+  rangedAttackNotes: FeatureEffectNote[];
   /** PER-115 — bonus de DM SITUATIONNELS à distance (Chasseur émérite…), en badges. */
   rangedSituationalDamage: SituationalDamageBonus[];
   /**
@@ -459,6 +470,23 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         },
       ]
     : [];
+  // PER-74 — Métamorphose élémentaire, forme Feu (élémentaliste r8, p. 157) : même patron « Riposte »
+  // que l'Armure à pointes, mais SITUATIONNEL (ne joue que tant que la forme Feu est active) → variante
+  // dédiée `elemental-retaliation` (ambre, cf. `DefenseBadge`), avec l'icône du type de dégât.
+  const elementalRetaliation = elementalistFireRetaliationBadge(character);
+  const elementalRetaliationBadges: DefenseBadgeData[] = elementalRetaliation
+    ? [
+        {
+          key: 'retaliation-elementalist-r8',
+          variant: 'elemental-retaliation' as const,
+          scope: 'fire' as const,
+          text: elementalRetaliation.die,
+          title: 'Métamorphose élémentaire (Feu) — riposte',
+          note: "Sous la forme Feu, une créature qui l'attaque avec des armes naturelles subit ces DM à chaque attaque réussie.",
+          sources: [{ name: 'Métamorphose élémentaire', featureId: 'prestige-elementaliste-r8' }],
+        },
+      ]
+    : [];
   // PER-74 — Déflexion arcanique (guerrier-mage r6, p. 151) : badge de rappel AMBRE (réaction
   // ponctuelle payée en PM, à la discrétion du joueur) — aucune valeur numérique fixe (le combattant
   // choisit +2 DEF pour 1 PM par attaque, +5 pour 3 PM à partir du rang 9).
@@ -480,6 +508,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ...reductionBadges,
     ...rangedMalusBadges,
     ...retaliationBadges,
+    ...elementalRetaliationBadges,
     ...deflectionBadges,
   ];
 
@@ -718,7 +747,12 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         ...magicWeaponSituationalDamage(offHandMelee.line, offHandMelee.item.name, character.level, tierBonus),
       ]
     : [];
-  const meleeAttackNotes = [...flayerMeleeAttackNotes(modFeatureIds), ...warmageMeleeAttackNotes(modFeatureIds)];
+  const meleeAttackNotes = [
+    ...flayerMeleeAttackNotes(modFeatureIds),
+    ...warmageMeleeAttackNotes(modFeatureIds),
+    ...elementalistMeleeAttackNotes(character),
+  ];
+  const rangedAttackNotes = elementalistRangedAttackNotes(character);
 
   return {
     modFeatureIds,
@@ -739,6 +773,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     offHandMeleeSituationalDamage,
     rangedSituationalDamage,
     meleeAttackNotes,
+    rangedAttackNotes,
     rangedAttackMagicalSourceId: rangedAttackMagical,
     rangedAttackElement: rangedAttackEl,
     rangedReplacingFormAttack: formAttackReplacingRanged,

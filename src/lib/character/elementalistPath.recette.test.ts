@@ -18,22 +18,34 @@
  * l'option de rang 4 — plus de tableau verbatim dans le rendu (richText prose seule), le texte des
  * 4 branches reste rappelé en note (`creatureProfile.verbatimSource`, encadré dédié). R7 : dé parsé
  * (`+{1d4°}`) + élément rappelé
- * (`%noun%`), toujours verbatim pour le bonus lui-même. R8 : durée parsée (`[=5 + INT]`), immunité à
- * l'élément de rang 4 désormais mécanisée (2e entrée de RD, cross-capacité comme r5) — la
- * réduction aux seules capacités de la branche retenue et la mécanisation des bonus propres à
- * chaque branche restent EN ATTENTE (pas de primitive de bonus par branche sur une transformation).
+ * (`%noun%`), toujours verbatim pour le bonus lui-même. R8 (3e passe, 2026-08-09) : durée parsée
+ * (`[=5 + INT]`) ; RD/immunité MÉCANISÉES PAR BRANCHE (`DamageReduction.requiresElement`, NOUVEAU —
+ * RD 5 pour Feu/Eau/Terre, RD 10 pour Air) ; Feu = +2d4° DM au contact mécanisé (`weapon-damage-bonus
+ * requiresElement`, badge situationnel) + riposte au contact mécanisée en badge Défense
+ * (`elementalistPath.ts`) ; Terre = +3 FOR mécanisé EN CARAC (`active-form-ability-bonus
+ * requiresElement`, NOUVEAU) + +3 DEF mécanisé en statistique dérivée (`StatBonus.requiresElement`,
+ * NOUVEAU) ; Air = DM ÷2 rappelé en badge sur les cartes d'attaque contact/distance. RESTENT verbatim
+ * (arbitrage propriétaire explicite) : Eau (soins/déformation) et le VOL de la forme Air. La
+ * réduction de l'AFFICHAGE aux seules capacités de la branche retenue reste EN ATTENTE (signalé).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { featureById, pathById } from '@/data';
+import { equipmentById, featureById, pathById } from '@/data';
 import { migrateCharacter } from '@/lib/engine/migrations';
-import { damageReductionSources } from '@/lib/character/effects';
+import { damageReductionSources, effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
+import { weaponDamageBonuses } from '@/lib/character/weaponDamageBonus';
 import { displayCreatureProfile } from '@/lib/character/companions';
 import { declineForFeature } from '@/lib/character/dragonElement';
+import {
+  elementalistFireRetaliationBadge,
+  elementalistMeleeAttackNotes,
+  elementalistRangedAttackNotes,
+} from '@/lib/character/elementalistPath';
 import { checkCompliance } from '@/lib/engine/legality';
 import { rulesContext } from '@/lib/character/rulesContext';
 import type { Character } from '@/lib/character/types';
+import type { Weapon } from '@/data/schema';
 
 const PATH_ID = 'prestige-elementaliste';
 const R4 = `${PATH_ID}-r4`;
@@ -194,21 +206,93 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
     expect(r7.effects).toBeUndefined();
   });
 
-  it('r8 Métamorphose élémentaire : durée parsée + immunité à l’élément de rang 4 mécanisée', () => {
+  it('r8 Métamorphose élémentaire : durée parsée, RD par branche (5 sauf Air = 10)', () => {
     const r8 = featureById.get(R8)!;
     expect(r8.elementFromChoice).toEqual({ choiceFeatureId: R4, choiceIndex: 0 });
     expect(r8.richText).toContain('[=5 + INT]');
     expect(r8.damageReduction).toEqual([
-      { kind: 'flat', value: 5 },
       { kind: 'immunity', scopeFromElement: true },
+      { kind: 'flat', value: 5, requiresElement: 'fire' },
+      { kind: 'flat', value: 5, requiresElement: 'acid' },
+      { kind: 'flat', value: 5, requiresElement: 'cold' },
+      { kind: 'flat', value: 10, requiresElement: 'lightning' },
     ]);
 
-    // La RD (les deux entrées) suit le MÊME interrupteur que « Forme élémentaire active ».
-    const inactive = damageReductionSources(character).filter((d) => d.featureId === R8);
-    expect(inactive).toHaveLength(0);
-    const active: Character = { ...character, effectToggles: { [R8]: [true] } };
-    const drs = damageReductionSources(active).filter((d) => d.featureId === R8);
-    expect(drs).toHaveLength(2);
-    expect(drs[1].reduction).toMatchObject({ kind: 'immunity', scopes: ['fire'] });
+    // Toute la RD (les 5 entrées) suit le MÊME interrupteur que « Forme élémentaire active ».
+    expect(damageReductionSources(character).filter((d) => d.featureId === R8)).toHaveLength(0);
+
+    // Fixture = feu : immunité feu + RD 5 (pas la RD 10, réservée à Air).
+    const feuActif: Character = { ...character, effectToggles: { [R8]: [true] } };
+    const drsFeu = damageReductionSources(feuActif).filter((d) => d.featureId === R8);
+    expect(drsFeu).toHaveLength(2);
+    expect(drsFeu.map((d) => d.reduction)).toContainEqual(expect.objectContaining({ kind: 'immunity', scopes: ['fire'] }));
+    expect(drsFeu.map((d) => d.reduction)).toContainEqual(expect.objectContaining({ kind: 'flat', value: 5 }));
+
+    // Air (électricité) : immunité foudre + RD 10 (pas RD 5).
+    const airActif: Character = {
+      ...character,
+      featureChoices: { [R4]: ['lightning'] },
+      effectToggles: { [R8]: [true] },
+    };
+    const drsAir = damageReductionSources(airActif).filter((d) => d.featureId === R8);
+    expect(drsAir).toHaveLength(2);
+    expect(drsAir.map((d) => d.reduction)).toContainEqual(expect.objectContaining({ kind: 'immunity', scopes: ['lightning'] }));
+    expect(drsAir.map((d) => d.reduction)).toContainEqual(expect.objectContaining({ kind: 'flat', value: 10 }));
+  });
+
+  it('r8 (Feu) : +2d4° DM de feu au contact mécanisé (badge situationnel), inactif hors forme/branche', () => {
+    const epeeLongue = equipmentById.get('epee-longue') as Weapon;
+    const feuActif: Character = { ...character, effectToggles: { [R8]: [true] } }; // fixture = feu
+    const bonus = weaponDamageBonuses(feuActif, 'melee', epeeLongue).situational.find((b) => b.featureId === R8);
+    // Dé évolutif (`°`) résolu à la face du NIVEAU du personnage (p. 43) — pas forcément 1d4 littéral.
+    expect(bonus).toMatchObject({ dice: { count: 2, evolving: true } });
+
+    // Forme inactive (interrupteur éteint) : aucun bonus.
+    expect(weaponDamageBonuses(character, 'melee', epeeLongue).situational.some((b) => b.featureId === R8)).toBe(
+      false,
+    );
+    // Forme active mais MAUVAISE branche (froid → Terre, pas Feu) : aucun bonus.
+    const froidActif: Character = { ...character, featureChoices: { [R4]: ['cold'] }, effectToggles: { [R8]: [true] } };
+    expect(weaponDamageBonuses(froidActif, 'melee', epeeLongue).situational.some((b) => b.featureId === R8)).toBe(
+      false,
+    );
+  });
+
+  it('r8 (Feu) : riposte au contact mécanisée en badge Défense (elemental-retaliation)', () => {
+    const feuActif: Character = { ...character, effectToggles: { [R8]: [true] } }; // fixture = feu
+    expect(elementalistFireRetaliationBadge(feuActif)).toEqual({ die: '1d4°' });
+    expect(elementalistFireRetaliationBadge(character)).toBeNull(); // forme inactive
+    const froidActif: Character = { ...character, featureChoices: { [R4]: ['cold'] }, effectToggles: { [R8]: [true] } };
+    expect(elementalistFireRetaliationBadge(froidActif)).toBeNull(); // mauvaise branche
+  });
+
+  it('r8 (Terre) : +3 FOR en carac (delta, se répercute automatiquement) + +3 DEF mécanisés', () => {
+    const froidActif: Character = { ...character, featureChoices: { [R4]: ['cold'] }, effectToggles: { [R8]: [true] } };
+    const froidInactif: Character = { ...character, featureChoices: { [R4]: ['cold'] } };
+    expect(effectiveAbilities(froidActif).FOR - effectiveAbilities(froidInactif).FOR).toBe(3);
+    expect(
+      (modsFromFeatures(froidActif.featureIds, effectContext(froidActif)).def ?? 0) -
+        (modsFromFeatures(froidInactif.featureIds, effectContext(froidInactif)).def ?? 0),
+    ).toBe(3);
+
+    // Forme active mais MAUVAISE branche (feu, fixture) : ni le +3 FOR, ni le +3 DEF.
+    expect(effectiveAbilities({ ...character, effectToggles: { [R8]: [true] } }).FOR).toBe(
+      effectiveAbilities(character).FOR,
+    );
+  });
+
+  it('r8 (Air) : DM ÷2 rappelé en badge sur les cartes Attaque contact ET distance, ailleurs aucune note', () => {
+    const airActif: Character = {
+      ...character,
+      featureChoices: { [R4]: ['lightning'] },
+      effectToggles: { [R8]: [true] },
+    };
+    expect(elementalistMeleeAttackNotes(airActif)).toEqual([expect.objectContaining({ featureId: R8, color: 'warning' })]);
+    expect(elementalistRangedAttackNotes(airActif)).toEqual([expect.objectContaining({ featureId: R8, color: 'warning' })]);
+
+    // Fixture (feu, forme active) : aucune note DM ÷2 — réservée à Air.
+    const feuActif: Character = { ...character, effectToggles: { [R8]: [true] } };
+    expect(elementalistMeleeAttackNotes(feuActif)).toEqual([]);
+    expect(elementalistRangedAttackNotes(feuActif)).toEqual([]);
   });
 });

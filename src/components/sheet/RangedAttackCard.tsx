@@ -18,6 +18,7 @@ import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseB
 import { WeaponDamageExpr, NoWeaponHint } from '@/components/sheet/WeaponDamageExpr';
 import { WeaponDamageBonusBadge } from '@/components/sheet/WeaponDamageBonusBadge';
 import { ElementalAttackBadge, MagicalAttackBadge } from '@/components/sheet/AttackQualifierBadge';
+import { FeatureEffectBadge, type FeatureEffectNote } from '@/components/sheet/FeatureEffectBadge';
 import type { WeaponDamageView } from '@/components/sheet/characterDerivedView';
 import type { RangedAttackElementView } from '@/lib/character/effects';
 
@@ -50,6 +51,13 @@ export interface RangedAttackCardProps {
   attackBonusDie?: AttackBonusDie[];
   /** PER-281 — libellés des états imposant un dé MALUS aux tests d'attaque (Affaibli/Immobilisé). */
   attackMalusDie?: string[];
+  /**
+   * PER-74 — notes d'effet de capacité (Métamorphose élémentaire, élémentaliste r8, forme Air : DM ÷2),
+   * en badge sous cette carte. Vide ou absent = aucune.
+   */
+  notes?: FeatureEffectNote[];
+  /** Niveau du personnage : requis pour résoudre les dés ÉVOLUTIFS des notes d'effet (PER-74). */
+  level?: number;
 }
 
 /**
@@ -71,6 +79,8 @@ export function RangedAttackCard({
   elemental,
   attackBonusDie = [],
   attackMalusDie = [],
+  notes = [],
+  level = 1,
 }: RangedAttackCardProps) {
   return (
     <Card
@@ -176,6 +186,15 @@ export function RangedAttackCard({
               />
             )}
             {elemental && <ElementalAttackBadge view={elemental} />}
+          </Box>
+        )}
+
+        {/* PER-74 — notes d'effet de capacité (Métamorphose élémentaire, forme Air : DM ÷2). */}
+        {notes.length > 0 && (
+          <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {notes.map((n) => (
+              <FeatureEffectBadge key={n.featureId} note={n} abilities={abilities} level={level} />
+            ))}
           </Box>
         )}
       </CardContent>

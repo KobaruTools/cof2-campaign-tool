@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CallSplitIcon from '@mui/icons-material/CallSplit';
 import OpacityIcon from '@mui/icons-material/Opacity';
 import PersonalInjuryIcon from '@mui/icons-material/PersonalInjury';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
@@ -12,13 +13,15 @@ import { AttackQualifierBadge, type AttackBadgeColor } from '@/components/sheet/
 import { CapabilityChip, RichInline } from '@/components/sheet/FeatureRichText';
 
 /** Clé d'icône d'un effet de capacité (résolue ici, pour garder la couche de données SANS JSX). */
-export type FeatureEffectIcon = 'bleeding' | 'grievous-wounds' | 'merciless' | 'arcane-strike';
+export type FeatureEffectIcon = 'bleeding' | 'grievous-wounds' | 'merciless' | 'arcane-strike' | 'half-damage';
 
 const ICONS: Record<FeatureEffectIcon, ReactNode> = {
   bleeding: <OpacityIcon sx={{ fontSize: 18 }} />,
   'grievous-wounds': <PersonalInjuryIcon sx={{ fontSize: 18 }} />,
   merciless: <WhatshotIcon sx={{ fontSize: 18 }} />,
   'arcane-strike': <AutoAwesomeIcon sx={{ fontSize: 18 }} />,
+  // Métamorphose élémentaire, forme Air (élémentaliste r8, PER-74) : DM physiques divisés par 2.
+  'half-damage': <CallSplitIcon sx={{ fontSize: 18 }} />,
 };
 
 /**

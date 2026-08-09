@@ -23,6 +23,7 @@ export type DefenseBadgeVariant =
   | 'critical'
   | 'ranged-malus'
   | 'retaliation'
+  | 'elemental-retaliation'
   | 'arcane-deflection';
 
 /**
@@ -79,6 +80,10 @@ const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary' | 'w
   // en dur) — retour propriétaire (2026-08-05) : un badge autonome rouge n'existait pas avant sur
   // cette carte, ne pas en introduire un pour un effet qui ne touche jamais les stats du porteur.
   retaliation: 'info',
+  // Riposte de la forme Feu (Métamorphose élémentaire, élémentaliste r8, PER-74) : contrairement à
+  // « retaliation » (Armure à pointes, permanente), celle-ci ne joue que tant que la forme Feu est
+  // ACTIVE (interrupteur temporaire) → AMBRE, comme les autres effets situationnels de cette carte.
+  'elemental-retaliation': 'warning',
   // Déflexion arcanique (guerrier-mage r6, PER-74) : réaction ponctuelle payée en PM, à la
   // discrétion du joueur — AMBRE (situationnel), comme l'immunité situationnelle ci-dessus. Ne
   // modifie aucune stat calculée (le joueur gère lui-même sa dépense de PM).
@@ -177,8 +182,10 @@ export function DefenseBadge({
         {statusEffect && <StatusEffectIcon effect={statusEffect} size={iconSize} />}
         {/* Bouclier générique conservé pour les immunités SANS icône dédiée (ex. « tous DM »). */}
         {variant === 'immunity' && !scope && !statusEffect && <ShieldIcon sx={{ fontSize: iconSize }} />}
-        {/* Riposte (Armure à pointes) : même bouclier générique, teinté ROUGE par la variante. */}
-        {variant === 'retaliation' && <ShieldIcon sx={{ fontSize: iconSize }} />}
+        {/* Riposte (Armure à pointes / forme Feu) : même bouclier générique, teinté par la variante. */}
+        {(variant === 'retaliation' || variant === 'elemental-retaliation') && (
+          <ShieldIcon sx={{ fontSize: iconSize }} />
+        )}
         {/* Immunité SITUATIONNELLE (PER-74) : tête de démon EN TÊTE du badge, devant l'icône du type
             de dégât — c'est la nature de l'agresseur qui conditionne tout, elle doit se voir d'abord. */}
         {variant === 'situational-immunity' && (
