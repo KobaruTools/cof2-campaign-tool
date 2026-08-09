@@ -2318,9 +2318,13 @@ export const prestigeFeatures2: Feature[] = [
           {
             id: 'lightning',
             label: 'Électricité',
+            // Vol : même patron que les autres compagnons/créatures dotés d'un déplacement aérien
+            // (`CreatureSpecialAbility` name+text, ex. le démonet du bestiaire, p. 277 : « Un démonet
+            // peut se déplacer en vol de 10 m par action de mouvement. ») plutôt qu'une simple `note`
+            // — rendu en gras+texte dans le cadre de la mini-fiche (`CreatureSpecialAbilityBlocks`).
             creatureUpgrade: {
               damageReduction: { kind: 'immunity', scopes: ['lightning'] },
-              note: 'Peut voler à 30 m par round.',
+              specialAbilities: [{ name: 'Vol', text: 'Vol de 30 m.' }],
             },
           },
           {

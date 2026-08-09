@@ -80,7 +80,7 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
     });
     expect(opts.find((o) => o.id === 'lightning')?.creatureUpgrade).toEqual({
       damageReduction: { kind: 'immunity', scopes: ['lightning'] },
-      note: 'Peut voler à 30 m par round.',
+      specialAbilities: [{ name: 'Vol', text: 'Vol de 30 m.' }],
     });
     expect(opts.find((o) => o.id === 'acid')?.creatureUpgrade).toEqual({
       damageReduction: { kind: 'immunity', scopes: ['acid'] },
@@ -177,11 +177,11 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
     expect(profile.damageReduction).toEqual([{ kind: 'immunity', scopes: ['cold'] }]);
   });
 
-  it('r6 (électricité) : immunité foudre + note de vol, aucun bonus chiffré', () => {
+  it('r6 (électricité) : immunité foudre + capacité spéciale « Vol », aucun bonus chiffré', () => {
     const r6 = featureById.get(R6)!;
     const air: Character = { ...character, featureChoices: { [R4]: ['lightning'] } };
     const profile = displayCreatureProfile(r6, air)!;
-    expect(profile.note).toBe('Peut voler à 30 m par round.');
+    expect(profile.specialAbilities).toEqual([{ name: 'Vol', text: 'Vol de 30 m.' }]);
     expect(profile.damageReduction).toEqual([{ kind: 'immunity', scopes: ['lightning'] }]);
   });
 
