@@ -49,6 +49,13 @@ export interface WizardDraft {
   ancestryId: string;
   /** Voie de peuple retenue (le demi-elfe choisit ; sinon l'unique voie). */
   ancestryPathId: string | null;
+  /**
+   * Demi-elfe « version Le Compagnon » (PER-324) : ascendance elfique quand la VOIE DU DEMI-ELFE
+   * optionnelle est retenue (`ancestryPathId === 'demi-elfe'`). Détermine le domaine du sort de rang 4
+   * (haut → ensorceleur, sylvain → druide). Absent = demi-elfe standard / autre peuple. Optionnel pour
+   * rester compatible avec un brouillon persisté avant l'ajout du champ.
+   */
+  demiElfeElfAncestry?: 'elfe-haut' | 'elfe-sylvain';
 
   // Étape profil
   classId: string;
@@ -306,6 +313,11 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     baseAbilities: draft.baseAbilities,
     ancestryChoices: draft.ancestryChoices,
     ancestryPathId: effectiveAncestryPath(draft),
+    // Demi-elfe « version Le Compagnon » (PER-324) : ne persiste l'ascendance elfe QUE si la voie du
+    // demi-elfe est effectivement retenue (sinon le champ n'a pas de sens et reste absent).
+    ...(effectiveAncestryPath(draft) === 'demi-elfe' && draft.demiElfeElfAncestry
+      ? { demiElfeElfAncestry: draft.demiElfeElfAncestry }
+      : {}),
     featureIds,
     featureChoices: draft.featureChoices ?? {},
     effectToggles: {},

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ABILITY_IDS } from '@/data/schema';
-import { featureById } from '@/data';
+import { featureById, pathById } from '@/data';
 import { modsFromFeatures } from './effects';
 import { SCHEMA_VERSION, type Character } from './types';
 import {
@@ -354,6 +354,43 @@ describe('eligibleFeaturesForChoice', () => {
     // Sans le filtre, le domaine contient aussi des non-sorts → strictement plus large.
     const without = eligibleFeaturesForChoice(c, 'demi-orc-r2', base);
     expect(without.length).toBeGreaterThan(withSpells.length);
+  });
+
+  // PER-324, demi-elfe « Sang féerique » : « selon son ascendance » (elfe haut → ensorceleur, sylvain → druide).
+  it('restrictByDemiElfeAncestry : restreint le domaine selon l’ascendance elfe du personnage', () => {
+    const choice: PathFeatureChoice = {
+      kind: 'feature-from-path',
+      prompt: 'test',
+      allowedRanks: [1, 2, 3],
+      classIds: ['ensorceleur', 'druide'],
+      spellsOnly: true,
+      restrictByDemiElfeAncestry: true,
+    };
+    const classIdsOf = (pathId: string): string[] => {
+      const p = pathById.get(pathId);
+      return p && p.type === 'class' ? p.classIds : [];
+    };
+    const sylvain = eligibleFeaturesForChoice(
+      makeCharacter({ demiElfeElfAncestry: 'elfe-sylvain' }),
+      'demi-orc-r2',
+      choice,
+    );
+    const haut = eligibleFeaturesForChoice(
+      makeCharacter({ demiElfeElfAncestry: 'elfe-haut' }),
+      'demi-orc-r2',
+      choice,
+    );
+    expect(sylvain.length).toBeGreaterThan(0);
+    expect(haut.length).toBeGreaterThan(0);
+    // Sylvain → SEULS des sorts de druide (aucun d'ensorceleur) ; haut → l'inverse.
+    expect(sylvain.every((f) => classIdsOf(f.pathId).includes('druide'))).toBe(true);
+    expect(sylvain.some((f) => classIdsOf(f.pathId).includes('ensorceleur'))).toBe(false);
+    expect(haut.every((f) => classIdsOf(f.pathId).includes('ensorceleur'))).toBe(true);
+    // Ascendance non renseignée → repli permissif : le domaine contient les DEUX profils.
+    const none = eligibleFeaturesForChoice(makeCharacter(), 'demi-orc-r2', choice).map((f) => f.id);
+    for (const f of [...sylvain, ...haut]) expect(none).toContain(f.id);
+    expect(none.length).toBeGreaterThan(sylvain.length);
+    expect(none.length).toBeGreaterThan(haut.length);
   });
 
   it('familyScope same-family : voies des profils de la famille du personnage', () => {

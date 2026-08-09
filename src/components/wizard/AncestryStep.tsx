@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
+import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
@@ -128,8 +129,17 @@ export function AncestryStep({ draft, patch }: StepProps) {
       ancestryId: id,
       ancestryChoices: initialChoices(p),
       ancestryPathId: p.ancestryPathIds.length === 1 ? p.ancestryPathIds[0] : null,
+      // Changer de peuple efface l'ascendance elfe du demi-elfe « version Le Compagnon » (PER-324).
+      demiElfeElfAncestry: undefined,
     });
   };
+
+  // Demi-elfe « version Le Compagnon » (PER-324) : la voie optionnelle n'est proposée que si le
+  // contenu payant est chargé (`pathById.has('demi-elfe')`) et le peuple est demi-elfe. La case
+  // bascule la voie de peuple sur `demi-elfe` (au lieu du choix culturel humain/elfe) et fait
+  // apparaître le choix d'ascendance elfe, requis pour « Sang féerique » (rang 4).
+  const companionDemiElfe = draft.ancestryId === 'demi-elfe' && pathById.has('demi-elfe');
+  const companionPathActive = companionDemiElfe && draft.ancestryPathId === 'demi-elfe';
 
   return (
     <Stack spacing={3}>
@@ -217,12 +227,18 @@ export function AncestryStep({ draft, patch }: StepProps) {
               </Stack>
             </Box>
 
-            {ancestry.ancestryPathIds.length > 1 && (
+            {/* Sélecteur de voie culturelle standard — masqué en mode Compagnon (la voie devient
+                `demi-elfe`, absente de cette liste). */}
+            {ancestry.ancestryPathIds.length > 1 && !companionPathActive && (
               <FormControl sx={{ mt: 1, minWidth: { xs: '100%', sm: 260 } }} size="small">
                 <InputLabel>Voie de peuple</InputLabel>
                 <Select
                   label="Voie de peuple"
-                  value={draft.ancestryPathId ?? ''}
+                  value={
+                    draft.ancestryPathId && ancestry.ancestryPathIds.includes(draft.ancestryPathId)
+                      ? draft.ancestryPathId
+                      : ''
+                  }
                   onChange={(e) => patch({ ancestryPathId: e.target.value })}
                 >
                   {ancestry.ancestryPathIds.map((vid) => (
@@ -232,6 +248,50 @@ export function AncestryStep({ draft, patch }: StepProps) {
                   ))}
                 </Select>
               </FormControl>
+            )}
+
+            {/* Voie du demi-elfe optionnelle (Le Compagnon, PER-324). */}
+            {companionDemiElfe && (
+              <Box sx={{ mt: 1.5 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={companionPathActive}
+                      onChange={(e) =>
+                        patch(
+                          e.target.checked
+                            ? {
+                                ancestryPathId: 'demi-elfe',
+                                demiElfeElfAncestry: draft.demiElfeElfAncestry ?? 'elfe-haut',
+                              }
+                            : { ancestryPathId: null, demiElfeElfAncestry: undefined },
+                        )
+                      }
+                    />
+                  }
+                  label={pathById.get('demi-elfe')?.name ?? 'Voie du demi-elfe'}
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: companionPathActive ? 1.5 : 0 }}>
+                  Voie optionnelle pour un demi-elfe qui ne s’est assimilé à aucune de ses deux cultures.
+                  Elle remplace le choix de voie culturelle ; l’ascendance elfe reste et détermine le sort
+                  de « Sang féerique » (rang 4).
+                </Typography>
+                {companionPathActive && (
+                  <FormControl>
+                    <FormLabel>Ascendance elfique</FormLabel>
+                    <RadioGroup
+                      row
+                      value={draft.demiElfeElfAncestry ?? 'elfe-haut'}
+                      onChange={(e) =>
+                        patch({ demiElfeElfAncestry: e.target.value as 'elfe-haut' | 'elfe-sylvain' })
+                      }
+                    >
+                      <FormControlLabel value="elfe-haut" control={<Radio />} label="Elfe haut (sorts d’ensorceleur)" />
+                      <FormControlLabel value="elfe-sylvain" control={<Radio />} label="Elfe sylvain (sorts de druide)" />
+                    </RadioGroup>
+                  </FormControl>
+                )}
+              </Box>
             )}
           </CardContent>
         </Card>

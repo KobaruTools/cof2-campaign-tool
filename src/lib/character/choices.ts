@@ -404,12 +404,24 @@ function featuresInChoiceDomain(
     if (!familiarProfileClassId) return [];
   }
 
+  // Sang féerique (PER-324) : « selon son ascendance », le domaine se restreint à ensorceleur (elfe haut)
+  // ou druide (elfe sylvain). L'ascendance elfe est portée par le personnage (`demiElfeElfAncestry`).
+  // Non renseignée → on garde les deux profils déclarés (`choice.classIds`), permissif : le joueur pourra
+  // encore fixer son ascendance (à la création ou via la modale de la section Identité).
+  const ancestryClassId =
+    choice.restrictByDemiElfeAncestry && character.demiElfeElfAncestry
+      ? character.demiElfeElfAncestry === 'elfe-haut'
+        ? 'ensorceleur'
+        : 'druide'
+      : undefined;
+  const effectiveClassIds = ancestryClassId ? [ancestryClassId] : choice.classIds;
+
   // Ensemble des voies de profil admissibles selon les contraintes.
   const classPathIds = new Set<string>();
   for (const path of paths) {
     if (path.type !== 'class') continue;
     if (choice.pathIds && !choice.pathIds.includes(path.id)) continue;
-    if (choice.classIds && !path.classIds.some((c) => choice.classIds!.includes(c))) continue;
+    if (effectiveClassIds && !path.classIds.some((c) => effectiveClassIds!.includes(c))) continue;
     if (familiarProfileClassId && !path.classIds.includes(familiarProfileClassId)) continue;
     if (choice.familyScope) {
       // `same-family` = famille du personnage ; sinon une `FamilyId` LITTÉRALE (touche à tout).

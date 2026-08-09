@@ -2647,6 +2647,14 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * `borrowedNoManaFeatureIds` (choices.ts) → agrégé au set noMana de `spellCount`. Absent = +1 PM normal.
    */
   noManaCost?: boolean;
+  /**
+   * Restreint le domaine du choix selon l'ASCENDANCE ELFE du demi-elfe « version Le Compagnon »
+   * (PER-324, « Sang féerique » : « selon son ascendance ») : elfe haut → sorts d'ensorceleur seuls,
+   * elfe sylvain → sorts de druide seuls. Lit `Character.demiElfeElfAncestry` ; si l'ascendance n'est
+   * pas renseignée, on retombe sur les `classIds` déclarés (permissif). À combiner avec `spellsOnly`
+   * et `classIds: ['ensorceleur', 'druide']` (repli). Absent = pas de restriction par ascendance.
+   */
+  restrictByDemiElfeAncestry?: boolean;
 }
 
 /**

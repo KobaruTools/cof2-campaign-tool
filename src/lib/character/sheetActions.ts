@@ -716,6 +716,55 @@ export function applyLongRest(
 }
 
 // ---------------------------------------------------------------------------
+// Demi-elfe — voie de peuple « version Le Compagnon » (PER-324, édition rétroactive)
+// ---------------------------------------------------------------------------
+
+/**
+ * Change la VOIE DE PEUPLE d'un demi-elfe APRÈS création (le wizard ne permet pas de la modifier),
+ * via la modale dédiée de la section Identité. Bascule entre les voies culturelles du livre de base
+ * (`humain`/`elfe-haut`/`elfe-sylvain`) et la « Voie du demi-elfe » optionnelle (`demi-elfe`, Le Compagnon).
+ *
+ * Remappe les capacités de voie de peuple ACQUISES (`<voie>-rN` → `<nouvelle voie>-rN`, même rang), dans
+ * `featureIds` ET dans l'historique de montée de niveau, et PURGE les choix (`featureChoices`) attachés
+ * aux rangs de l'ancienne voie (ils ne se transposent pas d'une voie à l'autre — à re-régler ensuite).
+ * `elfAncestry` n'est conservé que pour la voie `demi-elfe` (détermine « Sang féerique », rang 4) ; il est
+ * effacé pour une voie culturelle. Patch vide si rien ne change.
+ */
+export function setDemiElfeAncestryPath(
+  character: Character,
+  newPathId: string,
+  elfAncestry?: 'elfe-haut' | 'elfe-sylvain',
+): Partial<Character> {
+  const oldPathId = character.ancestryPathId;
+  const nextElf = newPathId === 'demi-elfe' ? (elfAncestry ?? 'elfe-haut') : undefined;
+  if (oldPathId === newPathId && character.demiElfeElfAncestry === nextElf) return {};
+
+  const remapId = (id: string): string => {
+    if (!oldPathId) return id;
+    const m = new RegExp(`^${oldPathId}-r(\\d+)$`).exec(id);
+    return m ? `${newPathId}-r${m[1]}` : id;
+  };
+  const featureIds = character.featureIds.map(remapId);
+  const levelUpHistory = character.levelUpHistory.map((entry) => ({
+    ...entry,
+    chosenFeatureIds: entry.chosenFeatureIds.map(remapId),
+  }));
+  // Purge les choix des rangs de l'ANCIENNE voie de peuple (non transposables).
+  const featureChoices = { ...character.featureChoices };
+  if (oldPathId) {
+    const oldRankRe = new RegExp(`^${oldPathId}-r\\d+$`);
+    for (const key of Object.keys(featureChoices)) if (oldRankRe.test(key)) delete featureChoices[key];
+  }
+  return {
+    ancestryPathId: newPathId,
+    demiElfeElfAncestry: nextElf,
+    featureIds,
+    featureChoices,
+    levelUpHistory,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Compagnons (PER-233 / PER-235)
 // ---------------------------------------------------------------------------
 

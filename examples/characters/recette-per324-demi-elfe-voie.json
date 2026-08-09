@@ -3,7 +3,7 @@
   "id": "recette-per324-demi-elfe-voie",
   "name": "Recette PER-324 — Demi-elfe (Voie du demi-elfe)",
   "identity": {
-    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : demi-elfe ENSORCELEUR de niveau 9 ayant pris la VOIE DU DEMI-ELFE optionnelle (au lieu des voies humain/elfe). r1 Héritages : origine « Citadin » → +3 en Commerce et Résistance aux maladies. r2 Nomade : capacité Survie (rôdeur) réellement acquise. r4 Sang féerique : un sort d’ensorceleur/druide (rang 1-3), connu mais SANS PM gagné (incantations gratuites et lancer en armure suivis à la table). r5 Empathie fantastique : +1 PER et +1 CHA."
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : demi-elfe ENSORCELEUR de niveau 9 ayant coché « version Le Compagnon » à la création → VOIE DU DEMI-ELFE (au lieu d’une voie culturelle) et ascendance elfe SYLVAIN. r1 Héritages : origine « Citadin » → +3 Commerce/Résistance aux maladies. r2 Nomade : Survie (rôdeur) acquise, avec l’interrupteur « en milieu naturel » (soin de DR au repos). r3 : dé évolutif décalé de +1 cran (d10 au lieu de d8 au niveau 9). r4 Sang féerique : un sort de DRUIDE (ascendance sylvain), rang 1-3, connu SANS PM. r5 : +1 PER et +1 CHA."
   },
   "campaignId": null,
   "playerId": null,
@@ -69,7 +69,8 @@
   "mounts": [],
   "poisonedWeapons": [],
   "overrides": {},
-  "notes": "PER-324 — Voie du demi-elfe (contenu payant « Le Compagnon »). Vérifier : voie proposée au demi-elfe (4e option), r1 +3 Commerce/Résistance aux maladies, r2 carte Survie empruntée, r4 sort féerique connu sans PM (notice « Sang féerique »), r5 +1 PER/+1 CHA. Incantations gratuites 3/2/1 par jour suivies à la table.",
+  "notes": "PER-324 — Voie du demi-elfe (Le Compagnon). Modèle révisé : case « version Le Compagnon » à la création → voie demi-elfe + ascendance elfe (ici SYLVAIN → sorts de druide). r2 Survie empruntée avec interrupteur « en milieu naturel » (soin de DR au repos). r3 dé évolutif +1 cran. r4 sort de druide sans PM. Modale rétroactive dans la section Identité pour éditer la voie/ascendance après création.",
   "createdAt": "2026-01-01T00:00:00.000Z",
-  "updatedAt": "2026-01-01T00:00:00.000Z"
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "demiElfeElfAncestry": "elfe-sylvain"
 }

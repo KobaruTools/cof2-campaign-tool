@@ -931,6 +931,16 @@ export interface Character {
    */
   ancestryPathId: string | null;
 
+  /**
+   * Demi-elfe « version Le Compagnon » (PER-324) : ascendance elfique du personnage quand il suit la
+   * VOIE DU DEMI-ELFE optionnelle (`ancestryPathId === 'demi-elfe'`). Le livre de base fait choisir au
+   * demi-elfe une voie culturelle (humain/elfe haut/elfe sylvain) ; la voie du Compagnon la REMPLACE,
+   * mais l'ascendance elfe subsiste et détermine le domaine du sort de « Sang féerique » (rang 4 :
+   * elfe haut → ensorceleur, elfe sylvain → druide). Champ OPTIONNEL, sans migration : absent = demi-elfe
+   * standard (ou tout autre peuple). Modifiable APRÈS création via la modale dédiée de la section Identité.
+   */
+  demiElfeElfAncestry?: 'elfe-haut' | 'elfe-sylvain';
+
   /** Ids des capacités acquises (toutes voies confondues). */
   featureIds: string[];
 

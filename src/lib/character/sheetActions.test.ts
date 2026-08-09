@@ -39,6 +39,7 @@ import {
   restoreCharacterMana,
   setAvailableRecoveryDice,
   setCompanionDepletion,
+  setDemiElfeAncestryPath,
   setEffectInput,
   setEquipmentWorn,
   setMountBarde,
@@ -889,5 +890,60 @@ describe('montures possédées (PER-216)', () => {
     expect(damageMount(withMount(), 'inconnue', 3, 'lethal')).toEqual({});
     expect(healMount(withMount(), 'inconnue', 3)).toEqual({});
     expect(resetMountHp(withMount(), 'inconnue')).toEqual({});
+  });
+});
+
+describe('setDemiElfeAncestryPath (PER-324) — édition rétroactive de la voie de peuple', () => {
+  // Demi-elfe de niveau 3 sur une voie CULTURELLE (elfe-haut, ranks 1-3), avec un choix sur le rang 1.
+  const cultural = (): Character => ({
+    ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+    ancestryId: 'demi-elfe',
+    ancestryPathId: 'elfe-haut',
+    level: 3,
+    featureIds: ['elfe-haut-r1', 'elfe-haut-r2', 'elfe-haut-r3', 'combat-r1'],
+    featureChoices: { 'elfe-haut-r1': ['x'], 'combat-r1': ['y'] },
+    levelUpHistory: [
+      { level: 1, chosenFeatureIds: ['elfe-haut-r1', 'combat-r1'] },
+      { level: 2, chosenFeatureIds: ['elfe-haut-r2'] },
+      { level: 3, chosenFeatureIds: ['elfe-haut-r3'] },
+    ],
+  });
+
+  it('bascule sur la Voie du demi-elfe : remappe les capacités de voie de peuple, purge leurs choix, fixe l’ascendance', () => {
+    const patch = setDemiElfeAncestryPath(cultural(), 'demi-elfe', 'elfe-sylvain');
+    expect(patch.ancestryPathId).toBe('demi-elfe');
+    expect(patch.demiElfeElfAncestry).toBe('elfe-sylvain');
+    // Rangs de voie de peuple remappés (même numéro), capacité HORS voie de peuple intacte.
+    expect(patch.featureIds).toEqual(['demi-elfe-r1', 'demi-elfe-r2', 'demi-elfe-r3', 'combat-r1']);
+    // Choix de l'ANCIENNE voie de peuple purgé ; les autres choix conservés.
+    expect(patch.featureChoices).toEqual({ 'combat-r1': ['y'] });
+    // Historique de montée de niveau remappé lui aussi.
+    expect(patch.levelUpHistory?.[0].chosenFeatureIds).toEqual(['demi-elfe-r1', 'combat-r1']);
+    expect(patch.levelUpHistory?.[2].chosenFeatureIds).toEqual(['demi-elfe-r3']);
+  });
+
+  it('revient à une voie culturelle : efface l’ascendance elfe (champ sans objet hors voie Compagnon)', () => {
+    const onCompanion: Character = {
+      ...cultural(),
+      ancestryPathId: 'demi-elfe',
+      demiElfeElfAncestry: 'elfe-haut',
+      featureIds: ['demi-elfe-r1', 'demi-elfe-r2', 'demi-elfe-r3'],
+      featureChoices: { 'demi-elfe-r1': ['city-dweller'] },
+      levelUpHistory: [{ level: 1, chosenFeatureIds: ['demi-elfe-r1'] }],
+    };
+    const patch = setDemiElfeAncestryPath(onCompanion, 'humain');
+    expect(patch.ancestryPathId).toBe('humain');
+    expect(patch.demiElfeElfAncestry).toBeUndefined();
+    expect(patch.featureIds).toEqual(['humain-r1', 'humain-r2', 'humain-r3']);
+    expect(patch.featureChoices).toEqual({});
+  });
+
+  it('ne renvoie aucun patch quand voie et ascendance sont déjà les valeurs demandées', () => {
+    const onCompanion: Character = {
+      ...cultural(),
+      ancestryPathId: 'demi-elfe',
+      demiElfeElfAncestry: 'elfe-sylvain',
+    };
+    expect(setDemiElfeAncestryPath(onCompanion, 'demi-elfe', 'elfe-sylvain')).toEqual({});
   });
 });

@@ -28,7 +28,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
-import { ancestryById, classById, families, progression } from '@/data';
+import { ancestryById, classById, families, pathById, progression } from '@/data';
 import { checkCompliance } from '@/lib/engine';
 import type { AbilityId, StartingEquipmentChoiceOption } from '@/data/schema';
 import type { CharacterStatus, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
@@ -117,6 +117,8 @@ import { weaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange'
 import { boundWeaponPathFor } from '@/lib/character/boundWeapon';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
+import { DemiElfeAncestryDialog } from '@/components/sheet/DemiElfeAncestryDialog';
+import { setDemiElfeAncestryPath } from '@/lib/character/sheetActions';
 import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
 import { LevelUpDialog } from '@/components/sheet/LevelUpDialog';
 import { LevelHistory } from '@/components/sheet/LevelHistory';
@@ -544,6 +546,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       baseAbilities: { ...character.baseAbilities, [abilityId]: value - delta },
     });
   };
+  const [demiElfeDialogOpen, setDemiElfeDialogOpen] = useState(false);
   const setIdentity = (identityPatch: Partial<Identity>) =>
     update({ identity: { ...character.identity, ...identityPatch } });
   const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
@@ -1465,13 +1468,34 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             {/* Vocation RP du prêtre spécialiste (PER-218) : descriptif, au-dessus des champs libres. */}
             <PriestVocationIdentityLine vocation={character.priestVocation} />
             {editingBlocks.identity ? (
-              <IdentityEditor
-                name={character.name}
-                identity={character.identity}
-                ancestry={ancestry}
-                onName={(name) => update({ name })}
-                onIdentity={setIdentity}
-              />
+              <>
+                <IdentityEditor
+                  name={character.name}
+                  identity={character.identity}
+                  ancestry={ancestry}
+                  onName={(name) => update({ name })}
+                  onIdentity={setIdentity}
+                />
+                {/* Édition rétroactive de la voie de peuple du demi-elfe (PER-324) : l'assistant fige ce
+                    choix, cette modale permet de basculer vers/depuis la « Voie du demi-elfe » (Le Compagnon)
+                    et de fixer l'ascendance elfe. Réservée au peuple demi-elfe, contenu Compagnon chargé. */}
+                {character.ancestryId === 'demi-elfe' && pathById.has('demi-elfe') && (
+                  <>
+                    <Button size="small" variant="outlined" sx={{ mt: 1.5 }} onClick={() => setDemiElfeDialogOpen(true)}>
+                      Voie de peuple du demi-elfe…
+                    </Button>
+                    <DemiElfeAncestryDialog
+                      open={demiElfeDialogOpen}
+                      onClose={() => setDemiElfeDialogOpen(false)}
+                      currentPathId={character.ancestryPathId}
+                      currentElfAncestry={character.demiElfeElfAncestry}
+                      onApply={(newPathId, elfAncestry) =>
+                        update(setDemiElfeAncestryPath(character, newPathId, elfAncestry))
+                      }
+                    />
+                  </>
+                )}
+              </>
             ) : (
               <IdentityFields
                 identity={character.identity}
