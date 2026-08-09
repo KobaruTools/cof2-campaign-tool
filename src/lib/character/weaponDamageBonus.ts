@@ -96,7 +96,10 @@ export function weaponConditionMet(
   // Un `attackMode` exige une arme du bon mode en main : un supplément de DM d'arme n'a rien à
   // agrémenter sans arme (PER-139, « suit l'arme de contact effectivement maniée »). Les conditions
   // de sous-type/famille ci-dessous l'imposaient déjà indirectement ; ici on couvre le mode SEUL.
-  if (cond.attackMode === 'melee' && !weapon?.melee) return false;
+  // EXCEPTION `includesUnarmed` (PER-74) : l'effet porte sur l'attaque au contact elle-même et non
+  // sur l'arme, il vaut donc aussi poings nus (forme Feu de l'élémentaliste : le personnage brûle,
+  // qu'il tienne une épée ou rien du tout).
+  if (cond.attackMode === 'melee' && !weapon?.melee && !cond.includesUnarmed) return false;
   if (cond.attackMode === 'ranged' && !weapon?.ranged) return false;
   if (cond.rangedKinds && cond.rangedKinds.length > 0) {
     if (!weapon || !weapon.ranged || !weapon.rangedKind) return false;

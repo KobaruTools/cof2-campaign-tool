@@ -2449,10 +2449,12 @@ export const prestigeFeatures2: Feature[] = [
     // Attaque contact/distance (`elementalistPath.ts`, informatif comme la RD — le moteur ne simule
     // aucun jet). RESTE verbatim (arbitrage propriétaire explicite) : Eau (soins/déformation, « au
     // joueur de gérer ») et le VOL de la forme Air (déplacement, hors périmètre des stats dérivées).
-    // Affichage encore À VENIR (signalé, pas un oubli) : réduire les 4 branches du texte à la SEULE
-    // retenue (les 3 autres en note) — différé, cf. mémoire de session.
+    // Affichage (retour propriétaire 2026-08-09) : les 4 branches portent un marqueur `%branch:…%`
+    // (`dragonElement.ts`) — seule celle de l'élément retenu au rang 4 reste dans le corps du texte,
+    // les 3 autres passent en note à la fin. Tant qu'aucun élément n'est choisi, les 4 restent en
+    // place (texte imprimé) : on ne cache rien sur la foi d'un repli arbitraire.
     richText:
-      "Le personnage peut prendre une seule forme élémentaire de son choix pendant [=5 + INT] minutes. La forme élémentaire lui permet de retrancher 5 points à tous les DM subis (RD 5), elle l'immunise aux DM de la forme choisie et lui octroie les capacités suivantes :\n- Feu : le personnage ajoute +{2d4°} DM de feu à toutes ses attaques au contact. Une créature qui s'attaque à lui avec des armes naturelles subit {1d4°} DM pour chaque attaque réussie.\n- Eau : le personnage guérit toutes ses blessures au rythme de {1d4°} PV par round et il peut déformer son corps pour passer dans le moindre interstice.\n- Terre : le personnage obtient un bonus de +3 en FOR (+3 attaque et DM au contact et +3 tests de FOR) et en DEF.\n- Air : le personnage peut voler (à une vitesse de 20 m par action de mouvement), il divise par deux les DM de ses attaques physiques mais pas ceux des sorts) et sa RD passe à 10.",
+      "Le personnage peut prendre une seule forme élémentaire de son choix pendant [=5 + INT] minutes. La forme élémentaire lui permet de retrancher 5 points à tous les DM subis (RD 5), elle l'immunise aux DM de la forme choisie et lui octroie les capacités suivantes :\n- %branch:fire%Feu : le personnage ajoute +{2d4°} DM de feu à toutes ses attaques au contact. Une créature qui s'attaque à lui avec des armes naturelles subit {1d4°} DM pour chaque attaque réussie.\n- %branch:acid%Eau : le personnage guérit toutes ses blessures au rythme de {1d4°} PV par round et il peut déformer son corps pour passer dans le moindre interstice.\n- %branch:cold%Terre : le personnage obtient un bonus de +3 en FOR (+3 attaque et DM au contact et +3 tests de FOR) et en DEF.\n- %branch:lightning%Air : le personnage peut voler (à une vitesse de 20 m par action de mouvement), il divise par deux les DM de ses attaques physiques mais pas ceux des sorts) et sa RD passe à 10.",
     elementFromChoice: { choiceFeatureId: 'prestige-elementaliste-r4', choiceIndex: 0 },
     effects: [
       {
@@ -2466,9 +2468,11 @@ export const prestigeFeatures2: Feature[] = [
       {
         // Feu — +2d4° DM de feu à toutes les attaques au contact, badge situationnel ambre (patron
         // Attaque éclair/Chasseur émérite), gaté sur l'interrupteur ci-dessus (index 0) ET l'élément.
+        // « TOUTES ses attaques au contact » : mains nues comprises (`includesUnarmed`) — sous cette
+        // forme le personnage EST fait de feu, exiger une arme en main serait un contresens.
         kind: 'weapon-damage-bonus',
         dice: { count: 2, die: 'd4', evolving: true },
-        condition: { attackMode: 'melee' },
+        condition: { attackMode: 'melee', includesUnarmed: true },
         requiresActiveEffectIndex: 0,
         requiresElement: 'fire',
         situational: true,

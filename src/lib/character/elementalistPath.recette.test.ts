@@ -253,6 +253,16 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
     // Dé évolutif (`°`) résolu à la face du NIVEAU du personnage (p. 43) — pas forcément 1d4 littéral.
     expect(bonus).toMatchObject({ dice: { count: 2, evolving: true } });
 
+    // MAINS NUES (retour propriétaire 2026-08-09) : « toutes ses attaques au contact » vaut aussi
+    // sans arme — sous la forme Feu, le personnage EST fait de feu (`condition.includesUnarmed`).
+    expect(
+      weaponDamageBonuses(feuActif, 'melee', null).situational.find((b) => b.featureId === R8),
+    ).toMatchObject({ dice: { count: 2, evolving: true } });
+    // Le bonus reste propre au CONTACT : rien à distance, arme ou pas.
+    expect(weaponDamageBonuses(feuActif, 'ranged', null).situational.some((b) => b.featureId === R8)).toBe(
+      false,
+    );
+
     // Forme inactive (interrupteur éteint) : aucun bonus.
     expect(weaponDamageBonuses(character, 'melee', epeeLongue).situational.some((b) => b.featureId === R8)).toBe(
       false,
@@ -270,6 +280,25 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
     expect(elementalistFireRetaliationBadge(character)).toBeNull(); // forme inactive
     const froidActif: Character = { ...character, featureChoices: { [R4]: ['cold'] }, effectToggles: { [R8]: [true] } };
     expect(elementalistFireRetaliationBadge(froidActif)).toBeNull(); // mauvaise branche
+  });
+
+  it('r8 : le texte ne garde que la branche retenue, les trois autres passent en note', () => {
+    const r8 = featureById.get(R8)!;
+    // Fixture = feu : la branche Feu reste dans le corps du texte…
+    const feu = declineForFeature(character, r8, r8.richText!);
+    expect(feu).toContain('Feu : le personnage ajoute');
+    expect(feu.indexOf('Feu : le personnage ajoute')).toBeLessThan(feu.indexOf('Note — autres formes'));
+    // …les trois autres sont rejetées APRÈS la note, et aucun marqueur ne fuit à l'écran.
+    for (const autre of ['Eau : le personnage guérit', 'Terre : le personnage obtient', 'Air : le personnage peut voler'])
+      expect(feu.indexOf(autre)).toBeGreaterThan(feu.indexOf('Note — autres formes'));
+    expect(feu).not.toContain('%branch:');
+
+    // Élément non choisi : les quatre branches restent en place (texte du livre), pas de note.
+    const sansChoix: Character = { ...character, featureChoices: {} };
+    const brut = declineForFeature(sansChoix, r8, r8.richText!);
+    expect(brut).not.toContain('Note — autres formes');
+    expect(brut).not.toContain('%branch:');
+    expect(brut).toContain('Air : le personnage peut voler');
   });
 
   it('r8 (Terre) : +3 FOR en carac (delta, se répercute automatiquement) + +3 DEF mécanisés', () => {

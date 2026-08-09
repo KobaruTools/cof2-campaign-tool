@@ -182,3 +182,41 @@ describe('voie du chevalier dragon — cohérence des données tokenisées', () 
     }
   });
 });
+
+/**
+ * PER-74 (retour propriétaire 2026-08-09) — Métamorphose élémentaire (élémentaliste r8, p. 157)
+ * décrit ses QUATRE formes d'un bloc, alors qu'un personnage n'en a qu'une. Le marqueur
+ * `%branch:<élément>%` garde la sienne dans le corps du texte et rejette les autres en note.
+ */
+describe('declineText — branches élémentaires (%branch:…%)', () => {
+  const el = (id: string) => DRAGON_ELEMENTS.find((e) => e.id === id)!;
+  const TEXT =
+    'Formes :\n' +
+    '- %branch:fire%Feu : +2d4 DM.\n' +
+    '- %branch:acid%Eau : guérison.\n' +
+    '- %branch:cold%Terre : +3 FOR.\n' +
+    '- %branch:lightning%Air : vol.';
+
+  it('garde la branche de l’élément retenu et rejette les autres en note', () => {
+    const out = declineText(TEXT, el('cold'));
+    expect(out).toBe(
+      'Formes :\n- Terre : +3 FOR.\n\nNote — autres formes, non retenues :\n' +
+        '- Feu : +2d4 DM.\n- Eau : guérison.\n- Air : vol.',
+    );
+  });
+
+  it('sans élément retenu, les quatre branches restent en place (texte imprimé)', () => {
+    const out = declineText(TEXT, null);
+    expect(out).toBe('Formes :\n- Feu : +2d4 DM.\n- Eau : guérison.\n- Terre : +3 FOR.\n- Air : vol.');
+    expect(out).not.toContain('Note —');
+  });
+
+  it('un texte sans marqueur de branche traverse inchangé', () => {
+    expect(declineText('Résistance %toThe%', el('acid'))).toBe("Résistance à l'acide");
+  });
+
+  it('les tokens de la branche RETENUE sont résolus, ceux des autres partent avec elles', () => {
+    const out = declineText('- %branch:fire%Feu %noun%\n- %branch:cold%Terre %noun%', el('fire'));
+    expect(out).toBe('- Feu feu\n\nNote — autres formes, non retenues :\n- Terre feu');
+  });
+});

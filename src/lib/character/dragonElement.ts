@@ -65,6 +65,44 @@ const COLOR_SUFFIX_TOKEN = '%colorSuffix%';
 const TOKEN_RE = new RegExp([...Object.keys(TOKEN_FIELDS), COLOR_SUFFIX_TOKEN].join('|'), 'g');
 
 /**
+ * Marqueur de BRANCHE élémentaire en tête de ligne (PER-74) : `- %branch:fire%Feu : …`. Le livre
+ * décrit d'un bloc les quatre formes de la Métamorphose élémentaire (p. 157), mais un personnage
+ * n'en a qu'une : lire les trois autres au milieu de la sienne coûte plus qu'elles n'apprennent.
+ * La puce, le tiret ou l'indentation qui précèdent le marqueur sont conservés.
+ */
+const BRANCH_RE = /^([ \t]*(?:[-•*][ \t]*)?)%branch:([a-zA-Z-]+)%[ \t]*/;
+
+/** En-tête de la note qui recueille les branches NON retenues. */
+const OTHER_BRANCHES_NOTE = 'Note — autres formes, non retenues :';
+
+/**
+ * Réduit un texte à branches à la SEULE branche de `element`, les autres étant rejetées en note à la
+ * fin. Sans élément retenu (choix non fait, capacité non déclinable), rien n'est filtré : on affiche
+ * le texte du livre au complet, marqueurs retirés — cacher trois branches sur la foi d'un repli
+ * arbitraire affirmerait un choix que le joueur n'a pas fait.
+ *
+ * Un texte sans marqueur traverse INCHANGÉ (même référence).
+ */
+function keepElementBranch(value: string, element: DragonElement | null | undefined): string {
+  if (!value.includes('%branch:')) return value;
+  const kept: string[] = [];
+  const others: string[] = [];
+  for (const line of value.split('\n')) {
+    const m = BRANCH_RE.exec(line);
+    if (!m) {
+      kept.push(line);
+      continue;
+    }
+    const stripped = m[1] + line.slice(m[0].length);
+    // Sans élément retenu, toutes les branches restent en place (texte imprimé).
+    if (!element || m[2] === element.id) kept.push(stripped);
+    else others.push(stripped);
+  }
+  if (others.length === 0) return kept.join('\n');
+  return `${kept.join('\n')}\n\n${OTHER_BRANCHES_NOTE}\n${others.join('\n')}`;
+}
+
+/**
  * Remplace les tokens de déclinaison d'un texte par les formes fléchies de `element`. `element`
  * `null`/absent → repli sur le ROUGE (le texte imprimé du livre), jamais sur un token brut ; seul
  * `%colorSuffix%` s'efface alors (cf. ci-dessus). Une chaîne sans token est renvoyée TELLE QUELLE
@@ -74,7 +112,9 @@ const TOKEN_RE = new RegExp([...Object.keys(TOKEN_FIELDS), COLOR_SUFFIX_TOKEN].j
 export function declineText(value: string, element: DragonElement | null | undefined): string {
   if (!value.includes('%')) return value;
   const el = element ?? PRINTED_ELEMENT;
-  return value.replace(TOKEN_RE, (token) =>
+  // Les branches sont triées AVANT la substitution : le texte d'une branche peut lui-même porter des
+  // tokens (`%noun%`), et il n'y a aucune raison de les résoudre sur des lignes qu'on va écarter.
+  return keepElementBranch(value, element).replace(TOKEN_RE, (token) =>
     token === COLOR_SUFFIX_TOKEN ? (element ? ` ${element.color}` : '') : el[TOKEN_FIELDS[token]],
   );
 }

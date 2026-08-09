@@ -1923,6 +1923,15 @@ export interface WeaponDamageCondition {
   /** Mode d'attaque requis. Absent = les deux (contact ET distance). */
   attackMode?: 'melee' | 'ranged';
   /**
+   * Le bonus vaut AUSSI à MAINS NUES (PER-74) : `attackMode: 'melee'` n'exige alors plus d'arme de
+   * contact en main. Réservé aux effets qui portent sur l'attaque elle-même et non sur l'arme —
+   * Métamorphose élémentaire, forme Feu (élémentaliste r8, p. 157) : « +2d4° DM de feu à toutes ses
+   * attaques au contact », le personnage EST fait de feu, il n'a pas besoin d'une épée pour brûler.
+   * Absent = comportement par défaut (PER-139 : un supplément de DM d'ARME n'a rien à agrémenter
+   * sans arme).
+   */
+  includesUnarmed?: boolean;
+  /**
    * Sous-types d'arme à DISTANCE admissibles (ex. `['bow']` pour « à l'arc »). Implique une arme
    * à distance de ce sous-type en main. Absent = tout sous-type (aucune contrainte de sous-type).
    */
