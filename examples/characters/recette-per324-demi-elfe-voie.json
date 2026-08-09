@@ -3,7 +3,7 @@
   "id": "recette-per324-demi-elfe-voie",
   "name": "Recette PER-324 — Demi-elfe (Voie du demi-elfe)",
   "identity": {
-    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : demi-elfe ENSORCELEUR de niveau 9 ayant coché « version Le Compagnon » à la création → VOIE DU DEMI-ELFE (au lieu d’une voie culturelle) et ascendance elfe SYLVAIN. r1 Héritages : origine « Citadin » → +3 Commerce/Résistance aux maladies. r2 Nomade : Survie (rôdeur) acquise, avec l’interrupteur « en milieu naturel » (soin de DR au repos). r3 : dé évolutif décalé de +1 cran (d10 au lieu de d8 au niveau 9). r4 Sang féerique : un sort de DRUIDE (ascendance sylvain), rang 1-3, connu SANS PM. r5 : +1 PER et +1 CHA."
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : demi-elfe ENSORCELEUR de niveau 9 ayant coché « version Le Compagnon » à la création → VOIE DU DEMI-ELFE (au lieu d’une voie culturelle) et ascendance elfe SYLVAIN. r1 Héritages : origine « Citadin » → +3 Commerce/Résistance aux maladies. r2 Nomade : Survie (rôdeur) acquise, avec l’interrupteur « en milieu naturel » (soin de DR au repos). r3 : dé évolutif décalé de +1 cran (d10 au lieu de d8 au niveau 9). r4 Sang féerique : un sort de DRUIDE (ascendance sylvain), rang 1-3, connu sans +1 PM au réservoir. Comme le personnage EST lanceur de sorts, il a des INCANTATIONS GRATUITES quotidiennes (2/jour pour un sort de rang 2) ET peut EN PLUS le lancer en dépensant des PM (compteur visible sur la carte de l’emprunt). r5 : +1 PER et +1 CHA."
   },
   "campaignId": null,
   "playerId": null,
@@ -39,7 +39,12 @@
     "demi-elfe-r2",
     "demi-elfe-r3",
     "demi-elfe-r4",
-    "demi-elfe-r5"
+    "demi-elfe-r5",
+    "air-r1",
+    "air-r2",
+    "air-r3",
+    "air-r4",
+    "air-r5"
   ],
   "featureChoices": {
     "demi-elfe-r1": [
@@ -49,7 +54,7 @@
       "survie-r1"
     ],
     "demi-elfe-r4": [
-      "animaux-r3"
+      "protecteur-r2"
     ]
   },
   "effectToggles": {},
