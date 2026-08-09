@@ -331,6 +331,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
   // Index de la ligne de CHOIX d'équipement de départ en cours de résolution (PER-220) ; null = fermée.
   const [choiceIndex, setChoiceIndex] = useState<number | null>(null);
+  // Modale d'édition rétroactive de la voie de peuple du demi-elfe (PER-324) ; DOIT rester ici, en tête
+  // avec les autres hooks, avant tout `return` anticipé (Rules of Hooks).
+  const [demiElfeDialogOpen, setDemiElfeDialogOpen] = useState(false);
   // Ancre du menu de statut (PER-183) ; null = fermé.
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   // Statut d'archivage en attente de confirmation (mort/retiré) ; null = aucune. Le
@@ -546,7 +549,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       baseAbilities: { ...character.baseAbilities, [abilityId]: value - delta },
     });
   };
-  const [demiElfeDialogOpen, setDemiElfeDialogOpen] = useState(false);
   const setIdentity = (identityPatch: Partial<Identity>) =>
     update({ identity: { ...character.identity, ...identityPatch } });
   const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
