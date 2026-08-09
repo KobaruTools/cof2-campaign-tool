@@ -20,6 +20,7 @@ vi.mock('@/data', () => ({
   registerContentBundle,
   getContentVersion: () => 0,
   subscribeContent: () => () => {},
+  setContentLoading: () => {},
 }));
 vi.mock('@/lib/bestiary/repo', () => ({ fetchSourceManifest }));
 vi.mock('@/lib/supabase/client', () => ({

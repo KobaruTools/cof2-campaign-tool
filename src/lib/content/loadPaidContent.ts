@@ -11,7 +11,7 @@
  * simplement ABSENTS des registres (`.get(id)` → `undefined`), sans placeholder ni
  * fuite de verbatim ; la fiche reste calculée et affichée à partir de ses stats.
  */
-import { registerContentBundle } from '@/data';
+import { registerContentBundle, setContentLoading } from '@/data';
 import { fetchSourceManifest } from '@/lib/bestiary/repo';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import {
@@ -45,7 +45,14 @@ let loadPromise: Promise<LoadPaidContentResult> | null = null;
 
 /** Charge et fusionne le contenu payant accessible au compte courant (voir en-tête). */
 export function loadPaidContent(): Promise<LoadPaidContentResult> {
-  loadPromise ??= runLoad().catch(() => EMPTY);
+  if (!loadPromise) {
+    // Posé AVANT le premier `await` : les vues abonnées (`usePaidContentLoading`) le
+    // voient dès le montage de `PaidContentBoot`, avant même la lecture de session.
+    setContentLoading(true);
+    loadPromise = runLoad()
+      .catch(() => EMPTY)
+      .finally(() => setContentLoading(false));
+  }
   return loadPromise;
 }
 

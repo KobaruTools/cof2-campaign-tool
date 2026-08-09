@@ -155,3 +155,24 @@ export function bumpContentVersion(): void {
   version += 1;
   for (const callback of subscribers) callback();
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// État de chargement — même pub/sub que la version : un chargement en cours
+// n'ajoute encore aucune entrée (pas de bump de version) mais les vues qui
+// affichent un loader neutre le temps du chargement doivent quand même se
+// re-rendre à son démarrage ET à sa fin (`loadPaidContent`).
+// ────────────────────────────────────────────────────────────────────────────
+
+let loading = false;
+
+/** Un chargement de contenu payant (réseau ou cache) est-il en cours ? */
+export function isContentLoading(): boolean {
+  return loading;
+}
+
+/** Bascule l'état de chargement et notifie les abonnés (sans effet si inchangé). */
+export function setContentLoading(value: boolean): void {
+  if (loading === value) return;
+  loading = value;
+  for (const callback of subscribers) callback();
+}

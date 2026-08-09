@@ -23,6 +23,7 @@ import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -125,6 +126,7 @@ import { IdentityEditor } from '@/components/sheet/IdentityEditor';
 import { DemiElfeAncestryDialog } from '@/components/sheet/DemiElfeAncestryDialog';
 import { setDemiElfeAncestryPath } from '@/lib/character/sheetActions';
 import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
+import { usePaidContentLoading } from '@/lib/content/usePaidContentLoading';
 import { LevelUpDialog } from '@/components/sheet/LevelUpDialog';
 import { LevelHistory } from '@/components/sheet/LevelHistory';
 import { LevelUndoButton } from '@/components/sheet/LevelUndoButton';
@@ -389,6 +391,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Contenu payant « Le Compagnon » (PER-321) en cours de chargement — lu ICI, AVANT
+  // les retours anticipés ci-dessous, car un Hook ne peut pas être appelé conditionnellement.
+  const paidContentLoading = usePaidContentLoading();
+
   // Spinner tant que le staging local n'est pas relu, ou que le chargement cloud
   // est en cours sans avoir encore trouvé la fiche (évite un « introuvable » fugace
   // sur accès direct à l'URL avant que le cloud ait répondu).
@@ -648,6 +654,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Conformité aux règles : recalculée à chaque rendu (donc en direct pendant
   // l'édition). Non bloquante — simple aide affichée (PER-47).
   const warnings = checkCompliance(character, rulesContext, firearmsAllowed);
+  // Contenu payant « Le Compagnon » (PER-321) encore en cours de fusion : le temps qu'il
+  // arrive, un peuple/une voie/une capacité payante référencée par le personnage n'est pas
+  // encore dans les registres — `checkCompliance` ci-dessus remonte alors de FAUX écarts
+  // `UNKNOWN_FEATURE`. On les détecte pour afficher un loader neutre à la place (cf.
+  // `ComplianceWarnings`) et pour squeletter la section « Voies & capacités » en dessous.
+  const pendingPaidFeatures =
+    paidContentLoading && warnings.some((w) => w.code === 'UNKNOWN_FEATURE');
 
   // Dérivations d'AFFICHAGE (PER-262) : tout ce que les blocs « Caractéristiques »,
   // « Statistiques dérivées » et « Compétences & tests » attendent en props — modificateurs
@@ -1048,7 +1061,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           </Box>
 
-          <ComplianceWarnings warnings={warnings} />
+          <ComplianceWarnings warnings={warnings} paidContentPending={paidContentLoading} />
 
           {/* REPLI (PER-358) : sans stats dérivées, pas de section « État du personnage » — les états
               du joueur s'afficheraient nulle part. Cf. `sessionStatusBlock`. */}
@@ -1340,6 +1353,21 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               <ManeuversPanel abilities={effectCtx.abilities} level={character.level} />
             ) : (
             <>
+            {pendingPaidFeatures ? (
+              // Contenu payant pas encore fusionné (cf. `pendingPaidFeatures` ci-dessus) : on
+              // squelette la section plutôt que de rendre des capacités/voies manquantes.
+              <Stack spacing={1.5} aria-hidden>
+                {Array.from({ length: 4 }, (_, i) => (
+                  <Skeleton
+                    key={i}
+                    animation="wave"
+                    variant="rounded"
+                    height={56}
+                    sx={{ borderRadius: 1 }}
+                  />
+                ))}
+              </Stack>
+            ) : (
             <FeaturesByPath
               featureIds={character.featureIds}
               classId={character.classId}
@@ -1393,6 +1421,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // bonus de test est DOMINÉ (ne se cumule pas) — barré + capacité qui le domine (PER-73).
               testBonuses={display.testBonuses}
             />
+            )}
             {/* Annonce d'un effet de groupe (PER-358), SOUS le tableau des voies : c'est là que le
                 barde lit « Chant des héros », donc là qu'il pense à le lancer. Le composant ne rend
                 rien hors session ni si aucun rang débloqué ne confère d'effet de groupe — le joueur

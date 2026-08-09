@@ -191,6 +191,8 @@ export function registerContentBundle(bundle: ContentBundle): MergeReport {
 export {
   getContentVersion,
   subscribeContent,
+  isContentLoading,
+  setContentLoading,
 } from './contentRegistry';
 export type { ContentBundle };
 
