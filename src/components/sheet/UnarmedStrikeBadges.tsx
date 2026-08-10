@@ -73,7 +73,7 @@ function badgeTooltip(verbatim: string, featureId?: string) {
 
 /** Verbatim de la règle des DM temporaires (arme `mains-nues`, p. 183/219). */
 const NON_LETHAL_RULE =
-  'Dans le cas du combat à mains nues, les DM sont généralement temporaires (voir DM temporaires, p. 219).';
+  'Dans le cas du combat à mains nues, les DM sont généralement temporaires — voir DM temporaires (p. 219).';
 /** Verbatim du trait de profil du moine (p. 119). */
 const MONK_LETHAL_CHOICE =
   'Tous les moines infligent des DM létaux avec les attaques à mains nues lorsqu’ils le souhaitent (p. 119).';
