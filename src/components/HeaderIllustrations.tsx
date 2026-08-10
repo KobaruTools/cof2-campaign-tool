@@ -3,6 +3,14 @@
 import { useRef } from 'react';
 import Box from '@mui/material/Box';
 import { useMouseParallax } from '@/lib/ui/useMouseParallax';
+import { useHasTransparentBackground } from '@/lib/image/useHasTransparentBackground';
+
+// Taille du cadre de repli (PER-384) quand le portrait de profil n'est pas détouré
+// (photo personnalisée à fond plein) : troisième format, distinct des vignettes
+// carrées 72px (`CharacterPreviewCard`) et 44px (tracker d'initiative) — le filigrane
+// qu'il remplace occupe tout le haut de l'écran, ce cadre doit rester visible à cette
+// échelle sans reproduire la taille du filigrane.
+const FALLBACK_FRAME_SIZE = 120;
 
 // Fraction du défilement répercutée sur l'image (parallaxe vertical). Volontairement
 // faible : l'effet doit rester à peine perceptible.
@@ -54,6 +62,10 @@ export function HeaderIllustrations({
   // suivi de la souris lissé (interpolation exponentielle vers la cible).
   const ancestryImgRef = useRef<HTMLImageElement>(null);
   const classImgRef = useRef<HTMLImageElement>(null);
+  const classSrc = classId ? classPortraitSrc ?? `/classes/${classId}.webp` : undefined;
+  // PER-384 : une photo personnalisée à fond plein casserait le filigrane (rectangle
+  // disgracieux) — on bascule alors sur un petit cadre carré bordé, cf. plus bas.
+  const classHasTransparentBackground = useHasTransparentBackground(classSrc);
   useMouseParallax(
     ({ x, y, scrollY }) => {
       const mx = x.toFixed(2);
@@ -101,11 +113,11 @@ export function HeaderIllustrations({
           }}
         />
       )}
-      {classId && (
+      {classId && classHasTransparentBackground && (
         <Box
           component="img"
           ref={classImgRef}
-          src={classPortraitSrc ?? `/classes/${classId}.webp`}
+          src={classSrc}
           alt=""
           aria-hidden
           sx={{
@@ -124,6 +136,32 @@ export function HeaderIllustrations({
             opacity: 0.4,
             pointerEvents: 'none',
             zIndex: -1,
+          }}
+        />
+      )}
+      {classId && !classHasTransparentBackground && (
+        // PER-384 : portrait personnalisé à fond plein — le filigrane bord-à-bord
+        // ferait apparaître son rectangle de fond, donc repli en petit cadre bordé,
+        // ancré dans le coin haut-droit du bloc d'en-tête (pas de la vitruve, pas de
+        // suivi souris/scroll : ce n'est plus un filigrane d'arrière-plan).
+        <Box
+          component="img"
+          src={classSrc}
+          alt=""
+          aria-hidden
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: FALLBACK_FRAME_SIZE,
+            height: FALLBACK_FRAME_SIZE,
+            borderRadius: 2,
+            objectFit: 'cover',
+            objectPosition: 'top',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            bgcolor: 'rgba(255, 255, 255, 0.04)',
+            zIndex: 1,
           }}
         />
       )}

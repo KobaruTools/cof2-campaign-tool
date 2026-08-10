@@ -12,7 +12,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import Cropper, { type Area, type Point } from 'react-easy-crop';
-import { AppAlert } from '@/components/AppAlert';
 import { cropImageToFile } from '@/lib/image/cropImage';
 
 export interface PortraitImportDialogProps {
@@ -174,10 +173,6 @@ export function PortraitImportDialog({ file, onCancel, onConfirm }: PortraitImpo
             Déplacez et zoomez pour cadrer l'image sur la zone carrée — elle sera ensuite
             automatiquement redimensionnée et compressée avant l'envoi.
           </Typography>
-          <AppAlert severity="info">
-            Les fonds transparents (images détourées) ne sont pas encore détectés automatiquement :
-            une image avec un fond plein s'affichera avec ce fond sur la fiche et l'écran de MJ.
-          </AppAlert>
         </Stack>
       </DialogContent>
       <DialogActions>
