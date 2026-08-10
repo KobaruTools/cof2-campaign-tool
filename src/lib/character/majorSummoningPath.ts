@@ -13,6 +13,7 @@
  * l'action d'attaque qu'exigerait normalement la Concentration accrue).
  */
 import type { Feature } from '@/data/schema';
+import type { CustomCreature } from '@/lib/session/customCreature';
 import { isEffectActive } from './effects';
 import type { Character } from './types';
 
@@ -54,3 +55,39 @@ export function ghostShipManaCostFeature<T extends Pick<Feature, 'id' | 'rank'>>
   if (!character || feature.id !== GHOST_SHIP_FEATURE_ID || !ghostShipActive(character)) return feature;
   return { ...feature, rank: 8 };
 }
+
+/** Id de la capacité Chasseur ailé (r7, p. 160). */
+export const HAWK_HUNTER_FEATURE_ID = 'prestige-invocation-majeure-r7';
+/** Index de l'interrupteur « Chasseur ailé invoqué » sur cette capacité. */
+export const HAWK_HUNTER_TOGGLE_INDEX = 0;
+
+/**
+ * Chasseur ailé projeté en créature de COMBAT (PER-363, p. 160, retour propriétaire) : ce n'est
+ * PAS un compagnon (`CreatureProfile.summonedEnemy`, `schema.ts`) — le livre le décrit en service
+ * du personnage tant que sa mission n'est pas jouée, mais dès qu'il entre en scène (mission
+ * échouée, ou toute autre raison que le MJ arbitre) « il l'attaque jusqu'à ce qu'il soit vaincu » :
+ * un ADVERSAIRE, pas un allié affiché sur la fiche. Seul le MJ (jamais le joueur) peut donc
+ * l'ajouter à l'écran de combat, en cochant l'interrupteur depuis la fiche du personnage
+ * (`useCharacterGameState.ts`, `FeaturesByPath.tsx`). Stats fixes (NC5, p. 160) — aucune ne dérive
+ * du personnage, donc un simple `CustomCreature`, pas une conversion générique de `CreatureProfile`.
+ */
+export const HAWK_HUNTER_CUSTOM_CREATURE: CustomCreature = {
+  initiative: 12,
+  hitPoints: 50,
+  defense: 18,
+  agility: 1,
+  nc: '5',
+  description:
+    "Le personnage invoque à son service une créature ailée de grande taille pendant 24 h. À son arrivée, il doit lui donner la mission de trouver et de lui rapporter une personne ou un objet. Le chasseur se met immédiatement en chasse avec un instinct infaillible et la trouve à moins que la cible ne soit dissimulée par magie (sort de non-détection, par exemple). Le chasseur utilise au mieux ses capacités et son intelligence pour réussir sa mission, mais il ne combat pas, sauf pour se défendre. Il parcourt jusqu'à 25 km/h. En cas de réussite, le chasseur rapporte l'objet ou la créature et le dépose devant l'invocateur. À la fin de la durée du sort, si le chasseur ailé n'a pas pu remplir sa mission, il entre dans une rage destructrice, il retrouve alors le personnage qui l'a invoqué et l'attaque jusqu'à ce qu'il soit vaincu (il n'utilise pas sa capacité d'Enlèvement pour ce combat).",
+  attacks: [{ name: 'Serres', bonus: '+10', damage: '2d6+6' }],
+  specialAbilities: [
+    {
+      name: 'Vol rapide',
+      text: "Le chasseur ailé obtient une action de mouvement supplémentaire par round lorsqu'il est en vol. Au premier round de combat, la créature obtient un bonus de +5 en attaque et +1d6 aux DM si elle est en vol et attaque une créature au sol, elle peut tenter un enlèvement.",
+    },
+    {
+      name: 'Enlèvement',
+      text: "Le chasseur ailé peut tenter d'agripper une cible de taille moyenne ou inférieure en action d'attaque. La cible peut faire un test de FOR opposé pour échapper à son étreinte à sa première attaque, en cas d'échec, elle est immobilisée et elle ne peut pas se libérer avant que le serviteur ne décide de la relâcher ou qu'il soit vaincu.",
+    },
+  ],
+};

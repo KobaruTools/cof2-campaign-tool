@@ -26,6 +26,7 @@ import type { UseItemIntent } from '@/lib/character/sheetActions';
 import { containsGameStateKey } from '@/lib/character/gameState';
 import {
   capacityResourceGauges,
+  isEffectActive,
   restRecoveryDieHealBonuses,
   type CapacityResourceGauge,
   type RestRecoveryHealBonus,
@@ -37,10 +38,16 @@ import {
   withAssignedCrystalsOff,
   withReceivedCrystals,
 } from '@/lib/character/crystals';
+import {
+  HAWK_HUNTER_CUSTOM_CREATURE,
+  HAWK_HUNTER_FEATURE_ID,
+  HAWK_HUNTER_TOGGLE_INDEX,
+} from '@/lib/character/majorSummoningPath';
 import type { Character, LoadedAmmunitionKind, Purse, WornState } from '@/lib/character/types';
 import { loadingContext, type LoadingContext } from '@/lib/character/weaponLoading';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
 import { deriveStats, type DerivedStats } from '@/lib/engine';
+import { addCustomCreatures } from '@/lib/session/combatState';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import { useCharactersStore } from '@/stores/characters';
 import { useCrystalAssignmentStore } from '@/stores/crystalAssignment';
@@ -298,7 +305,31 @@ export function useCharacterGameState(
     capacityGauges: capacityResourceGauges(target),
     elixirDosesToLose: actions.elixirDosesToLose(target),
 
-    setEffectToggleValue: bind(actions.toggleEffect),
+    // Chasseur ailé (PER-363, r7, p. 160) : cet interrupteur n'est PAS un toggle de compagnon (le
+    // chasseur est un ADVERSAIRE, jamais affiché sur la fiche — `CreatureProfile.summonedEnemy`) :
+    // l'activer AJOUTE la créature comme ENNEMIE dans l'écran de combat, réservé au MJ (la fiche
+    // désactive déjà le contrôle pour un joueur, `FeaturesByPath.tsx` — `!isPlayer` ici n'est qu'une
+    // garde de second rang, la RLS `campaign_combat` refuserait l'écriture de toute façon). Seule la
+    // transition INACTIF → ACTIF déclenche l'ajout (réactiver un interrupteur déjà actif ne duplique
+    // pas la créature) ; désactiver ne retire rien du combat — une fois engagée, la créature est gérée
+    // comme n'importe quel adversaire depuis le tracker, plus depuis cet interrupteur.
+    setEffectToggleValue: (featureId, index, active) => {
+      if (
+        featureId === HAWK_HUNTER_FEATURE_ID &&
+        index === HAWK_HUNTER_TOGGLE_INDEX &&
+        active &&
+        !isPlayer &&
+        target.campaignId &&
+        !isEffectActive(target, featureId, index)
+      ) {
+        useCampaignCombatStore
+          .getState()
+          .applyLocalCombat(target.campaignId, (prev) =>
+            addCustomCreatures(prev, HAWK_HUNTER_CUSTOM_CREATURE, { side: 'enemy', name: 'Chasseur ailé' }),
+          );
+      }
+      update(actions.toggleEffect(target, featureId, index, active));
+    },
     setEffectInputValue: bind(actions.setEffectInput),
     setUsageCounterValue: bind(actions.setUsageCounter),
     liftShortRestLock: bind(actions.liftShortRestLock),

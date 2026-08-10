@@ -517,6 +517,9 @@ export function listCompanions(character: Character): CompanionEntry[] {
     // FORME du personnage lui-même (PER-74, ex. Transformation en loup) : rendue en stat-block INLINE
     // sur la carte de la capacité, mais ce n'est PAS un compagnon → jamais dans la section « Compagnons ».
     if (profile.transformation) continue;
+    // ADVERSAIRE de combat déguisé en « invocation » (PER-363, Chasseur ailé) : jamais un compagnon,
+    // même marqueur actif — son toggle ajoute plutôt une créature ennemie côté écran MJ (ailleurs).
+    if (profile.summonedEnemy) continue;
     // Invocation à instance UNIQUE (démon, arbre animé, familier/serviteur invoqués…) : masquée
     // tant que son marqueur d'invocation n'est pas actif. Les compagnons multi-instances (zombie)
     // ont leur propre gating (présence = au moins une instance créée) — le marqueur ne s'applique

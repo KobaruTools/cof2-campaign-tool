@@ -4,9 +4,11 @@ import { resolveCreatureAbilities } from '@/lib/ui/creature';
 import { createBlankCharacter } from './factory';
 import type { Character, Depletion } from './types';
 import {
+  applyCreatureUpgrades,
   companionMountEnSelle,
   creatureDefenseBreakdown,
   displayCreatureProfile,
+  effectiveCreatureProfile,
   listCompanions,
   pruneCompanionDepletion,
   pruneCompanionInstances,
@@ -197,7 +199,7 @@ describe('listCompanions', () => {
     expect(resolveCreatureMaxHp(invoked[0].profile, char().abilities, 5, 2)).toBeNull();
   });
 
-  it('invocation majeure (PER-363) : Monture fantôme et Chasseur ailé coexistent (companionSlot)', () => {
+  it('invocation majeure (PER-363) : Monture fantôme est un compagnon, Chasseur ailé JAMAIS (summonedEnemy)', () => {
     const featureIds = ['prestige-invocation-majeure-r4', 'prestige-invocation-majeure-r7'];
     // Aucune des deux invoquée → aucun compagnon.
     expect(listCompanions(char({ classId: 'magicien', featureIds }))).toHaveLength(0);
@@ -206,8 +208,10 @@ describe('listCompanions', () => {
       char({ classId: 'magicien', featureIds, effectToggles: { 'prestige-invocation-majeure-r4': [true] } }),
     );
     expect(mountOnly.map((e) => e.profile.name)).toEqual(['Monture fantôme']);
-    // Les DEUX invoquées EN MÊME TEMPS → deux entrées distinctes (même voie, slots différents) —
-    // sans `companionSlot`, le dédoublonnage par voie aurait masqué la monture (rang le plus bas).
+    // Les DEUX « invoquées » EN MÊME TEMPS (interrupteur actif) → SEULE la monture reste un
+    // compagnon. Le chasseur ailé est un ADVERSAIRE (retour propriétaire, PER-363) : son interrupteur
+    // ajoute une créature ennemie dans l'écran de combat (`useCharacterGameState.ts`, MJ uniquement)
+    // — il ne doit JAMAIS apparaître dans la section « Compagnons », ni côté joueur ni côté roster MJ.
     const both = listCompanions(
       char({
         classId: 'magicien',
@@ -218,10 +222,14 @@ describe('listCompanions', () => {
         },
       }),
     );
-    expect(both.map((e) => e.profile.name).sort()).toEqual(['Chasseur ailé', 'Monture fantôme']);
+    expect(both.map((e) => e.profile.name)).toEqual(['Monture fantôme']);
   });
 
   it("invocation majeure (PER-363) : l'amélioration « Court sur l'eau »/« Vol » de r6/r8 ne cible QUE la monture, pas le chasseur (targetSlot)", () => {
+    // Chasseur ailé n'apparaissant plus JAMAIS dans `listCompanions` (summonedEnemy), on vérifie le
+    // primitif `targetSlot` directement sur les profils résolus (même mécanisme que `listCompanions`
+    // utiliserait s'il ne le filtrait pas) — la garantie utile reste : l'amélioration de r6/r8 ne
+    // doit cibler QUE le slot de la monture, jamais celui du chasseur, même de manière invisible.
     const c = char({
       classId: 'magicien',
       featureIds: [
@@ -230,20 +238,19 @@ describe('listCompanions', () => {
         'prestige-invocation-majeure-r7',
         'prestige-invocation-majeure-r8',
       ],
-      effectToggles: {
-        'prestige-invocation-majeure-r4': [true],
-        'prestige-invocation-majeure-r7': [true],
-      },
     });
-    const byName = new Map(listCompanions(c).map((e) => [e.profile.name, e.profile.specialAbilities ?? []]));
-    expect(byName.get('Monture fantôme')?.map((a) => a.name)).toEqual([
+    const mountFeature = featureById.get('prestige-invocation-majeure-r4')!;
+    const hawkFeature = featureById.get('prestige-invocation-majeure-r7')!;
+    const mountProfile = applyCreatureUpgrades(effectiveCreatureProfile(mountFeature, c)!, c, mountFeature.pathId);
+    const hawkProfile = applyCreatureUpgrades(effectiveCreatureProfile(hawkFeature, c)!, c, hawkFeature.pathId);
+    expect(mountProfile.specialAbilities?.map((a) => a.name)).toEqual([
       'Insensible aux terrains difficiles',
       "Court sur l'eau",
       'Vol',
     ]);
     // Le chasseur garde SES DEUX SEULES capacités — sans `targetSlot`, il hériterait à tort de
     // « Court sur l'eau »/« Vol » (même `pathId` que la monture).
-    expect(byName.get('Chasseur ailé')?.map((a) => a.name)).toEqual(['Vol rapide', 'Enlèvement']);
+    expect(hawkProfile.specialAbilities?.map((a) => a.name)).toEqual(['Vol rapide', 'Enlèvement']);
   });
 
   it('zombies (PER-235) : une entrée par instance, clé composite + numérotation, supprimable', () => {

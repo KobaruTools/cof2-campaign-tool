@@ -668,21 +668,28 @@ for (const c of features) {
 // un `companionType` valide. Le gating de PRÉSENCE (marqueur temporaire, PER-235) est un axe
 // INDÉPENDANT de la taxonomie (cf. doc de `CompanionType`) : aucune cohérence croisée à exiger.
 for (const c of features) {
-  const profiles: { where: string; name: string; companionType?: string; transformation?: boolean }[] = [];
+  const profiles: { where: string; name: string; companionType?: string; transformation?: boolean; summonedEnemy?: boolean }[] = [];
   if (c.creatureProfile)
-    profiles.push({ where: 'capacité', name: c.creatureProfile.name, companionType: c.creatureProfile.companionType, transformation: c.creatureProfile.transformation });
+    profiles.push({ where: 'capacité', name: c.creatureProfile.name, companionType: c.creatureProfile.companionType, transformation: c.creatureProfile.transformation, summonedEnemy: c.creatureProfile.summonedEnemy });
   for (const choice of c.choices ?? []) {
     if (choice.kind !== 'option') continue;
     for (const opt of choice.options)
       if (opt.creatureProfile)
-        profiles.push({ where: `option ${opt.id}`, name: opt.creatureProfile.name, companionType: opt.creatureProfile.companionType, transformation: opt.creatureProfile.transformation });
+        profiles.push({ where: `option ${opt.id}`, name: opt.creatureProfile.name, companionType: opt.creatureProfile.companionType, transformation: opt.creatureProfile.transformation, summonedEnemy: opt.creatureProfile.summonedEnemy });
   }
-  for (const { where, name, companionType, transformation } of profiles) {
+  for (const { where, name, companionType, transformation, summonedEnemy } of profiles) {
     // Une FORME du personnage (PER-74, `transformation`) n'est PAS un compagnon : elle N'A PAS de
     // companionType (les deux sont mutuellement exclusifs) et échappe donc à l'exigence de taxonomie.
     if (transformation) {
       if (companionType !== undefined)
         err(`[capacite ${c.id}] ${where}: creatureProfile « ${name} » a transformation ET companionType (exclusifs)`);
+      continue;
+    }
+    // Un ADVERSAIRE déguisé en « invocation » (PER-363, `summonedEnemy`) n'est PAS non plus un
+    // compagnon — même exclusion mutuelle que `transformation`, mêmes raisons.
+    if (summonedEnemy) {
+      if (companionType !== undefined)
+        err(`[capacite ${c.id}] ${where}: creatureProfile « ${name} » a summonedEnemy ET companionType (exclusifs)`);
       continue;
     }
     if (companionType === undefined) {

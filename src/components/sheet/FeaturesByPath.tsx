@@ -96,7 +96,13 @@ import { featureIdsFromHistory } from '@/lib/character/levelUp';
 import { spellArmorManaSurcharge } from '@/lib/character/manaSurcharge';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { combatRitualDiscount } from '@/lib/character/warmagePath';
-import { ghostShipActive, ghostShipManaCostFeature, majorSummoningManaDiscount } from '@/lib/character/majorSummoningPath';
+import {
+  HAWK_HUNTER_FEATURE_ID,
+  ghostShipActive,
+  ghostShipManaCostFeature,
+  majorSummoningManaDiscount,
+} from '@/lib/character/majorSummoningPath';
+import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { archmageStaffSpellGranted } from '@/lib/character/archmagePath';
 import { useContentVersion } from '@/lib/content/useContentVersion';
 // Restriction FINE d'usage d'armure par capacité d'origine (PER-86) : rendu VISUEL (rang
@@ -2696,6 +2702,9 @@ function PathBlock({
   testBonuses?: TestDomainBonus[];
 }) {
   const { path, features } = group;
+  // PER-363 — Chasseur ailé (r7) : son interrupteur devient MJ-only (voir `renderEffectToggles`) ;
+  // `isPlayer` reflète la SESSION courante (magic link joueur), pas le personnage affiché.
+  const { isPlayer } = useIsPlayerSession();
   // PER-324 — décalage de cran du dé évolutif (r3) porté par le personnage, alimentant `FeatureText`
   // (0 = aucun décalage / hors personnage).
   const scalingTierBonus = character ? scalingDieTierBonus(character) : 0;
@@ -3004,13 +3013,18 @@ function PathBlock({
    */
   const renderEffectToggles = (feature: Feature, opts: { compact?: boolean } = {}) => {
     if (!character || conditionalEffectsOf(feature.id).length === 0) return null;
+    // Chasseur ailé (PER-363, r7) : interrupteur MJ-only (il ajoute un ADVERSAIRE au combat, pas un
+    // compagnon) — non-interactif pour un joueur qui consulte sa propre fiche. `isPlayer` reflète la
+    // session courante (magic link joueur), pas le personnage affiché : la même fiche reste
+    // actionnable pour le MJ (via `GmSheetDrawer`, qui réutilise ce même composant).
+    const hawkHunterLockedForPlayer = feature.id === HAWK_HUNTER_FEATURE_ID && isPlayer;
     return (
       <FeatureEffectToggles
         character={character}
         featureId={feature.id}
         compact={opts.compact}
         onToggle={onToggleEffect}
-        disabled={isDisabled(feature)}
+        disabled={isDisabled(feature) || hawkHunterLockedForPlayer}
         sessionStatusIds={sessionStatusIds}
       />
     );
@@ -4051,6 +4065,17 @@ function PathBlock({
                 {hasEffectToggles(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
+                    {/* PER-363 — Chasseur ailé (r7) : avertissement AU-DESSUS de l'interrupteur, sur
+                        TOUTE fiche (joueur ou MJ) — le joueur doit comprendre pourquoi il ne peut pas
+                        cliquer, le MJ pourquoi cocher n'ajoute rien à ses Compagnons. */}
+                    {openFeature.id === HAWK_HUNTER_FEATURE_ID && (
+                      <AppAlert severity="warning" sx={{ mb: 1 }}>
+                        Cette invocation devient un ADVERSAIRE si elle échoue sa mission : « il
+                        l'attaque jusqu'à ce qu'il soit vaincu » (p. 160). Elle n'apparaît donc jamais
+                        dans tes Compagnons — seul le MJ peut l'invoquer, ce qui l'ajoute comme ennemi
+                        dans l'écran de combat.
+                      </AppAlert>
+                    )}
                     {renderEffectToggles(openFeature)}
                     {openFeature.id === 'animaux-r5' && character && (
                       <AnimalFormSelector character={character} onSetInput={onSetEffectInput} />
