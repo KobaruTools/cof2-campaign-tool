@@ -32,6 +32,13 @@ export interface BreakdownTerm {
    */
   featureId?: string;
   /**
+   * Cristal SOURCE de ce terme (PER-360, voie des cristaux p. 156). Présent → l'UI affiche une puce
+   * de cristal (`CrystalChip`) au lieu du libellé, avec en info-bulle l'effet verbatim et QUI l'a
+   * confié : un cristal peut venir de n'importe quel mage de la table, la ligne « Capacités / divers »
+   * ne suffit pas à le dire. `castBy` = nom du JOUEUR qui l'a confié (absent = c'est le sien).
+   */
+  crystal?: { id: string; castBy?: string };
+  /**
    * Effet conditionnel / temporaire (vs bonus permanent) ? Affiché comme marqueur
    * « (conditionnel) » discret à côté du libellé/de la puce. Sert aux sous-termes de
    * « Capacités / divers » (le libellé reste le nom nu, porté par la puce de voie).

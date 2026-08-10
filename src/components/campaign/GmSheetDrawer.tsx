@@ -451,7 +451,13 @@ function GmSheetDrawerContent({
           {/* REPLI (PER-358), comme sur la fiche : sans stats dérivées, il n'y a pas de section
               « État du personnage » — les états s'afficheraient nulle part. */}
           {!masterDerived && appliedStatuses.length > 0 && (
-            <ActiveStatusPanel statuses={appliedStatuses} roundNumber={roundNumber} />
+            <ActiveStatusPanel
+              statuses={appliedStatuses}
+              roundNumber={roundNumber}
+              // Rendre un cristal confié (PER-360) : le seul geste de ce panneau ouvert au MJ, et
+              // le même qu'il a sur la bande d'initiative — le cristal repart éteint chez son mage.
+              onReleaseCrystal={(crystalId) => game.releaseCrystal(crystalId)}
+            />
           )}
 
           <SheetSection title="Caractéristiques" icon="abilities">
@@ -465,6 +471,7 @@ function GmSheetDrawerContent({
               abilityOverrides={display.abilityOverrides}
               abilityFormBonuses={display.abilityFormBonuses}
               abilityEquipmentBonuses={display.abilityEquipmentBonuses}
+              abilityCrystalBonuses={display.abilityCrystalBonuses}
               bonusDieSources={display.bonusDieSourcesDetailed}
             />
           </SheetSection>
@@ -539,7 +546,13 @@ function GmSheetDrawerContent({
                   renoncement, qui n'appartient qu'au joueur (il a la sienne, sur la palette). */}
               {appliedStatuses.length > 0 && (
                 <Box sx={{ mb: 2 }}>
-                  <ActiveStatusPanel statuses={appliedStatuses} roundNumber={roundNumber} />
+                  <ActiveStatusPanel
+              statuses={appliedStatuses}
+              roundNumber={roundNumber}
+              // Rendre un cristal confié (PER-360) : le seul geste de ce panneau ouvert au MJ, et
+              // le même qu'il a sur la bande d'initiative — le cristal repart éteint chez son mage.
+              onReleaseCrystal={(crystalId) => game.releaseCrystal(crystalId)}
+            />
                 </Box>
               )}
               <PlayerStatusPanel

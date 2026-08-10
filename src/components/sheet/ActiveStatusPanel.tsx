@@ -27,6 +27,7 @@ import { ClearStatusButton, StatusChipVisual } from '@/components/campaign/Comba
 import { statusLabel } from '@/lib/ui/statusPalette';
 import {
   isBeneficialStatus,
+  isCrystalStatus,
   statusRemainingRounds,
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
@@ -41,6 +42,11 @@ export interface ActiveStatusPanelProps {
    */
   onWaiveBuff?: (id: BeneficialEffectId) => void;
   /**
+   * Le porteur REND un cristal qu'on lui avait confié (PER-360). Absent = aucune croix sur les
+   * cristaux : sur la fiche vue par un tiers, ce ne serait le geste de personne.
+   */
+  onReleaseCrystal?: (crystalId: string) => void;
+  /**
    * Manche courante du combat en cours (« Tour N » de l'écran de MJ), dont se déduisent les tours
    * restants des états à durée (PER-305). Le joueur voit ainsi combien de temps il subit encore
    * l'état, exactement comme le MJ — mais sans pouvoir y toucher.
@@ -48,7 +54,12 @@ export interface ActiveStatusPanelProps {
   roundNumber: number;
 }
 
-export function ActiveStatusPanel({ statuses, onWaiveBuff, roundNumber }: ActiveStatusPanelProps) {
+export function ActiveStatusPanel({
+  statuses,
+  onWaiveBuff,
+  onReleaseCrystal,
+  roundNumber,
+}: ActiveStatusPanelProps) {
   // Rien à afficher hors session ni sans état posé (l'appelant ne passe la liste qu'en session).
   if (statuses.length === 0) return null;
 
@@ -56,17 +67,33 @@ export function ActiveStatusPanel({ statuses, onWaiveBuff, roundNumber }: Active
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {statuses.map((s) => {
           const remaining = statusRemainingRounds(s, roundNumber);
-          // Croix de renoncement : sur les seuls buffs, et seulement sur SA fiche. Soudée à la puce
-          // (coins carrés à la jonction), exactement comme sur la palette du MJ.
-          const waivable = onWaiveBuff !== undefined && isBeneficialStatus(s.id);
+          // Croix de renoncement : sur les seuls buffs de groupe, et seulement sur SA fiche. Soudée à
+          // la puce (coins carrés à la jonction), exactement comme sur la palette du MJ.
+          //
+          // Un CRISTAL CONFIÉ (PER-360) porte lui aussi une croix, mais elle ne dit pas la même chose :
+          // le porteur ne « s'écarte » pas d'un effet, il REND un objet qui ne lui appartient pas. Le
+          // cristal repart chez le mage qui l'a fabriqué, ÉTEINT — le rallumer lui coûtera une action
+          // limitée (p. 156), qu'il n'a pas dépensée.
+          const crystal = isCrystalStatus(s.id);
+          const waivable =
+            !crystal && onWaiveBuff !== undefined && isBeneficialStatus(s.id);
+          const releasable = crystal && onReleaseCrystal !== undefined;
           return (
             <Stack key={s.id} direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-              {waivable ? (
+              {waivable || releasable ? (
                 <Box sx={{ display: 'flex' }}>
                   <StatusChipVisual id={s.id} squareRight castBy={s.castBy} />
                   <ClearStatusButton
-                    label={`Écarter ${statusLabel(s.id)} de ta fiche (pour toi seul)`}
-                    onClear={() => onWaiveBuff(s.id as BeneficialEffectId)}
+                    label={
+                      releasable
+                        ? `Rendre ${statusLabel(s.id)} à son propriétaire (il le récupérera éteint)`
+                        : `Écarter ${statusLabel(s.id)} de ta fiche (pour toi seul)`
+                    }
+                    onClear={() =>
+                      releasable
+                        ? onReleaseCrystal(s.id)
+                        : onWaiveBuff!(s.id as BeneficialEffectId)
+                    }
                   />
                 </Box>
               ) : (

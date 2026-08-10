@@ -17,6 +17,11 @@ export interface AbilityFeatureTerm {
   value: number;
   /** Id de la capacité source → puce de voie dans le détail (PER-73). */
   featureId?: string;
+  /**
+   * Cristal source (PER-360) → puce de cristal dans le détail, avec l'effet verbatim et le joueur qui
+   * l'a confié en info-bulle. Exclusif de `featureId` : un cristal n'est pas une capacité.
+   */
+  crystal?: { id: string; castBy?: string };
 }
 
 /**
@@ -47,7 +52,13 @@ export function abilityBreakdown(
     // couleur + icône + nom) qui porte le nom — on laisse donc le libellé VIDE pour ne pas afficher
     // le nom deux fois (texte + puce), cf. rendu de `BreakdownContent`. Sans `featureId`, on retombe
     // sur le nom en clair.
-    terms.push({ label: ft.featureId ? '' : ft.name, value: ft.value, featureId: ft.featureId });
+    // Même règle pour un CRISTAL (PER-360) : la puce porte son nom, le libellé reste vide.
+    terms.push({
+      label: ft.featureId || ft.crystal ? '' : ft.name,
+      value: ft.value,
+      featureId: ft.featureId,
+      crystal: ft.crystal,
+    });
   }
 
   return { terms, total: sum(terms), page: 28 };

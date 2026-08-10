@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import type { StatBreakdown } from '@/lib/ui/derivedStatBreakdown';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { CrystalChip } from '@/components/sheet/CrystalChip';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 
 export interface BreakdownContentProps {
@@ -66,7 +67,11 @@ export function BreakdownContent({ title, breakdown, page, section }: BreakdownC
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {t.featureId && t.label ? (
+            {t.crystal ? (
+              // Cristal (PER-360) : puce dédiée — un cristal n'est pas une capacité, et il peut venir
+              // d'un autre joueur. L'info-bulle porte l'effet verbatim et QUI l'a confié.
+              <CrystalChip crystalId={t.crystal.id} castBy={t.crystal.castBy} />
+            ) : t.featureId && t.label ? (
               // Terme portant À LA FOIS un libellé et une capacité source (ex. « Agilité (AGI) » calculée
               // via Vive attaque, PER-74) : on garde le libellé ET on accole la puce de la capacité.
               <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
@@ -103,7 +108,13 @@ export function BreakdownContent({ title, breakdown, page, section }: BreakdownC
                   component="span"
                   sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}
                 >
-                  {s.featureId ? <CapabilityChip featureId={s.featureId} label={null} /> : s.label}
+                  {s.crystal ? (
+                    <CrystalChip crystalId={s.crystal.id} castBy={s.crystal.castBy} />
+                  ) : s.featureId ? (
+                    <CapabilityChip featureId={s.featureId} label={null} />
+                  ) : (
+                    s.label
+                  )}
                   {s.conditional && <em style={{ marginLeft: 4 }}>(conditionnel)</em>}
                 </Box>
                 <span style={{ whiteSpace: 'nowrap' }}>{signed(s.value)}</span>

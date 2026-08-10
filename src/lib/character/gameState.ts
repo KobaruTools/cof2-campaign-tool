@@ -42,6 +42,10 @@ export const GAME_STATE_KEYS = [
   'mounts',
   'equipment',
   'purse',
+  // Cristaux activés (PER-360) : allumer/éteindre un cristal est un geste de PARTIE (action limitée,
+  // p. 156), pas une édition de construction — et il doit se propager en direct, un porteur pouvant
+  // rendre le cristal qu'on lui a confié depuis sa propre fiche.
+  'activeCrystalIds',
 ] as const;
 
 export type GameStateKey = (typeof GAME_STATE_KEYS)[number];

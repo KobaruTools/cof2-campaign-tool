@@ -63,6 +63,7 @@ import {
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
 import { unlockedGroupBuffIds } from '@/lib/character/groupBuffs';
+import { withReceivedCrystals } from '@/lib/character/crystals';
 import { featureById } from '@/data';
 import {
   BENEFICIAL_EFFECT_IDS,
@@ -398,7 +399,13 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
   const characterRows = useMemo<InitiativeRow[]>(
     () =>
       claimed.map((character) => {
-        const view = buildCharacterDerivedView(character);
+        // Cristaux CONFIÉS à ce personnage (PER-360, p. 156) : ils sont posés sur lui comme des états
+        // de combat, mais leurs chiffres passent par le canal des cristaux (l'état, lui, ne porte
+        // aucun `modifiers`). D'où la copie de calcul, qui fait profiter le tracker de la même
+        // cascade que la fiche — un +1 PER confié y remonte l'Initiative comme il se doit.
+        const view = buildCharacterDerivedView(
+          withReceivedCrystals(character, (statuses[character.id] ?? []).map((s) => s.id)),
+        );
         const derived = view.derivedInput ? deriveStats(view.derivedInput) : null;
         const summary = summarize(character);
         const maxHp = character.overrides.maxHp ?? derived?.maxHp ?? 0;

@@ -15,7 +15,7 @@
  * tour (PER-262) : ce module est l'unique source de ces dérivations pour les deux vues.
  */
 import { featureById } from '@/data';
-import { ABILITY_IDS } from '@/data/schema';
+import { ABILITY_IDS, type AbilityId } from '@/data/schema';
 import { abilityBonusSourcesFromEquipment, armorEncumbrancePenalty } from '@/lib/character/equipment';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import {
@@ -39,9 +39,20 @@ import {
 } from '@/lib/character/effects';
 import { boundWeaponAttackDie as boundWeaponAttackDieSource } from '@/lib/character/boundWeapon';
 import { orphanSourceTerms } from '@/lib/character/orphanPoints';
+import {
+  crystalAbilitySources,
+  crystalStatSources,
+  type CrystalSourceTerm,
+} from '@/lib/character/crystals';
 import type { Character } from '@/lib/character/types';
-import type { StatusSheetImpact } from '@/lib/character/statusEffects';
-import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
+import { isCrystalStatus, type StatusSheetImpact } from '@/lib/character/statusEffects';
+import type { BreakdownTerm, ModSources } from '@/lib/ui/derivedStatBreakdown';
+
+/**
+ * Bonus de carac d'un cristal, enrichi du joueur qui l'a confié (`castBy` — nom du JOUEUR figé à la
+ * pose de l'état, jamais celui du personnage). Absent quand le cristal est celui du personnage.
+ */
+export type CrystalAbilityBonus = CrystalSourceTerm & { castBy?: string };
 import type { CharacterDerivedView } from './characterDerivedView';
 
 export interface SheetDisplayView {
@@ -56,6 +67,12 @@ export interface SheetDisplayView {
   abilityMods: ReturnType<typeof abilityModsFromFeatures>;
   /** Capacités à l'origine de ces modificateurs (détail d'une caractéristique). */
   abilityModSources: ReturnType<typeof abilityModSources>;
+  /**
+   * Bonus de caractéristique apportés par les CRISTAUX (PER-360) — les siens et ceux qu'on lui a
+   * confiés, chacun avec le joueur qui l'a confié. Comptés par le moteur (`effectiveAbilities`) mais
+   * absents de `abilityMods`, qui ne connaît que les capacités : la grille les additionne donc à part.
+   */
+  abilityCrystalBonuses: Partial<Record<AbilityId, CrystalAbilityBonus[]>>;
   /** Valeurs ABSOLUES imposées par une transformation active (PER-74, forme de loup). */
   abilityOverrides: ReturnType<typeof activeAbilityOverrideSources>;
   /** Bonus de carac EN DELTA conditionnés à une forme active (PER-74, Forme puissante). */
@@ -142,6 +159,24 @@ export function buildSheetDisplayView(
       extraModSources[k] = [...(extraModSources[k] ?? []), ...(list ?? [])];
     }
   }
+  // Cristaux de la Voie des cristaux (PER-360) : ceux que le personnage a activés et ceux qu'on lui a
+  // confiés. Déjà fondus dans le score par le canal des cristaux ; ici on ne fait que NOMMER la source
+  // sous « Capacités / divers », avec le joueur qui l'a confié quand le cristal vient d'ailleurs (lu
+  // sur l'état posé, seul porteur de cette information).
+  const crystalCastBy = new Map<string, string>();
+  for (const applied of statusImpact?.statuses ?? []) {
+    if (isCrystalStatus(applied.id) && applied.castBy) crystalCastBy.set(applied.id, applied.castBy);
+  }
+  const crystalTerm = (s: CrystalSourceTerm): BreakdownTerm => ({
+    label: s.label,
+    value: s.value,
+    crystal: { id: s.crystalId, ...(s.received ? { castBy: crystalCastBy.get(s.crystalId) } : {}) },
+  });
+  for (const [key, list] of Object.entries(crystalStatSources(character))) {
+    const k = key as keyof ModSources;
+    extraModSources[k] = [...(extraModSources[k] ?? []), ...(list ?? []).map(crystalTerm)];
+  }
+
   // États de combat appliqués par le MJ en session (PER-281) : leurs deltas chiffrés (DEF/Init./
   // attaques) sont fondus dans `derivedInput.mods` par l'appelant ; ici on n'ajoute que la
   // ventilation « État : Aveuglé -5 » au détail « i ». `undefined` hors session → aucun terme.
@@ -182,6 +217,15 @@ export function buildSheetDisplayView(
     extraModSources,
     abilityMods: abilityModsFromFeatures(modFeatureIds, character.featureChoices),
     abilityModSources: abilityModSources(modFeatureIds, character.featureChoices),
+    abilityCrystalBonuses: Object.fromEntries(
+      Object.entries(crystalAbilitySources(character)).map(([ability, list]) => [
+        ability,
+        (list ?? []).map((s) => ({
+          ...s,
+          ...(s.received ? { castBy: crystalCastBy.get(s.crystalId) } : {}),
+        })),
+      ]),
+    ),
     abilityOverrides: activeAbilityOverrideSources(character),
     abilityFormBonuses: activeFormAbilityBonusSources(character),
     abilityEquipmentBonuses: abilityBonusSourcesFromEquipment(character.equipment),

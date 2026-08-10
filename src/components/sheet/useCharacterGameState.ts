@@ -19,6 +19,8 @@
  * Ce qui n'est PAS ici : les setters du mode « Modifier » (caractéristiques, identité, capacités,
  * surcharges, statut, attribution) — ils restent dans la fiche, avec `update`.
  */
+import { useEffect } from 'react';
+
 import * as actions from '@/lib/character/sheetActions';
 import type { UseItemIntent } from '@/lib/character/sheetActions';
 import { containsGameStateKey } from '@/lib/character/gameState';
@@ -29,12 +31,20 @@ import {
   type RestRecoveryHealBonus,
 } from '@/lib/character/effects';
 import { withSupersededBuffTogglesOff } from '@/lib/character/groupBuffs';
-import { toggleCrystalActive } from '@/lib/character/crystals';
+import {
+  crystalsHeldByOthers,
+  toggleCrystalActive,
+  withAssignedCrystalsOff,
+  withReceivedCrystals,
+} from '@/lib/character/crystals';
 import type { Character, LoadedAmmunitionKind, Purse, WornState } from '@/lib/character/types';
 import { loadingContext, type LoadingContext } from '@/lib/character/weaponLoading';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
 import { deriveStats, type DerivedStats } from '@/lib/engine';
+import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import { useCharactersStore } from '@/stores/characters';
+import { useCrystalAssignmentStore } from '@/stores/crystalAssignment';
+import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { buildCharacterDerivedView, type CharacterDerivedView } from './characterDerivedView';
 
 export interface CharacterGameState {
@@ -81,6 +91,11 @@ export interface CharacterGameState {
   createElixir: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156) — état de jeu, hors mode édition. */
   setActiveCrystal: (crystalId: string, active: boolean) => void;
+  /**
+   * Le personnage REND un cristal qu'on lui avait confié (PER-360) : la puce quitte sa fiche et le
+   * cristal retourne, éteint, chez le mage qui l'a fabriqué. Sans effet en lecture seule.
+   */
+  releaseCrystal: (crystalId: string) => void;
 
   // --- Objets & équipement porté -----------------------------------------------------------
   /**
@@ -176,6 +191,37 @@ export function useCharacterGameState(
   const upsert = useCharactersStore((s) => s.upsert);
   const applyGameState = useCharactersStore((s) => s.applyGameState);
   const giveItemAction = useCharactersStore((s) => s.giveItem);
+  // Cristaux que CE personnage a confiés à d'autres (PER-360) : ils sortent de son calcul, leur effet
+  // jouant désormais sur le porteur. Carte locale (jamais persistée) : c'est la couche OPTIMISTE, qui
+  // fait quitter le bonus de la fiche à l'instant du clic, sans attendre l'aller-retour par le MJ.
+  const crystalAssignments = useCrystalAssignmentStore((s) =>
+    character ? (s.byCharacter[character.id] ?? null) : null,
+  );
+  // …et l'ÉTAT PARTAGÉ, qui fait foi (leçon de PER-358) : un cristal posé sur un AUTRE combattant
+  // n'est plus sur moi, même après un rechargement de page qui aurait vidé la carte locale. Sans
+  // cela, le bonus recompterait chez son propriétaire ET chez son porteur.
+  //
+  // Le rapprochement se fait sur l'id du cristal, seule information que porte l'état posé : si deux
+  // mages de la voie avaient le MÊME cristal actif et que l'un le confiait, l'autre le perdrait aussi
+  // de son calcul. Cas d'école à une table où les voies de prestige ne se dupliquent pas.
+  const campaignStatuses = useCampaignCombatStore((s) =>
+    character?.campaignId ? s.byCampaign[character.campaignId]?.statuses : undefined,
+  );
+  // Ce client est-il celui du MJ ? Un client ne reçoit PAS ses propres broadcasts : si le MJ (qui
+  // consulte volontiers la fiche d'un joueur) annonçait une attribution de cristal, personne ne
+  // l'exécuterait. Il l'exécute donc lui-même — cf. `stores/crystalAssignment`.
+  const { isPlayer } = useIsPlayerSession();
+  const syncCrystalAssignments = useCrystalAssignmentStore((s) => s.syncActive);
+  // Un cristal ÉTEINT n'a plus d'attribution : sans cette purge, le rallumer le renverrait aussitôt
+  // à son ancien porteur (carte locale prioritaire sur l'état partagé). Couvre les deux extinctions
+  // qui ne viennent pas d'un clic sur le sélecteur : le porteur qui rend le cristal (le patch arrive
+  // du MJ par le canal) et la désactivation depuis la modale.
+  const activeCrystalKey = (character?.activeCrystalIds ?? []).join('|');
+  const characterId = character?.id;
+  useEffect(() => {
+    if (!characterId) return;
+    syncCrystalAssignments(characterId, activeCrystalKey === '' ? [] : activeCrystalKey.split('|'));
+  }, [characterId, activeCrystalKey, syncCrystalAssignments]);
   if (!character) return null;
   // Copie `const` : conserve le narrowing de `character` dans les fermetures ci-dessous.
   const target: Character = character;
@@ -203,7 +249,17 @@ export function useCharacterGameState(
   // éteint l'interrupteur de fiche qui porte le même bonus, pour ne le compter qu'une fois. Copie
   // locale et jamais persistée — `target` reste la cible de toutes les écritures ci-dessous, si bien
   // que l'interrupteur du joueur reprend la main dès la fin de la séance.
-  const derivedTarget = withSupersededBuffTogglesOff(target, options.sessionStatusIds ?? []);
+  //
+  // S'y ajoutent les deux faces de l'attribution d'un cristal (PER-360, p. 156) : le mage perd de son
+  // calcul les cristaux qu'il a CONFIÉS, et tout personnage gagne ceux qu'on lui a confiés — lus sur
+  // les états de combat posés sur lui, l'état partagé faisant foi pour tout ce qui vient d'autrui.
+  const derivedTarget = withReceivedCrystals(
+    withAssignedCrystalsOff(
+      withSupersededBuffTogglesOff(target, options.sessionStatusIds ?? []),
+      crystalsHeldByOthers(campaignStatuses, target.id, crystalAssignments),
+    ),
+    options.sessionStatusIds ?? [],
+  );
   const derived = buildCharacterDerivedView(derivedTarget);
   // Stats finales du maître : surcharges manuelles pour les stats recopiées par les profils de
   // créature (Init., attaque magique), comme les mini-fiches de compagnons les attendent.
@@ -239,7 +295,27 @@ export function useCharacterGameState(
     setEffectInputValue: bind(actions.setEffectInput),
     setUsageCounterValue: bind(actions.setUsageCounter),
     liftShortRestLock: bind(actions.liftShortRestLock),
-    setActiveCrystal: bind(toggleCrystalActive),
+    // Désactiver un cristal le reprend à son porteur (PER-360) : « activer ou désactiver un cristal »
+    // éteint son effet où qu'il tourne (p. 156). L'annonce part AVANT l'écriture, pour que le MJ lève
+    // la puce même si la persistance du personnage échoue.
+    setActiveCrystal: (crystalId, active) => {
+      if (!active && !readOnly) {
+        useCrystalAssignmentStore
+          .getState()
+          .assign(target.campaignId, target.id, crystalId, null, !isPlayer);
+      }
+      update(toggleCrystalActive(target, crystalId, active));
+    },
+    // Le PORTEUR rend un cristal qu'on lui avait confié (PER-360) : il ne lui appartient pas, il
+    // repart chez son propriétaire — éteint, la remise en service coûtant une action limitée (p. 156).
+    // Rien à écrire ici : le cristal ne figure pas sur la fiche du porteur, seulement dans l'état de
+    // combat, dont le MJ est l'auteur unique.
+    releaseCrystal: (crystalId) => {
+      if (readOnly) return;
+      useCrystalAssignmentStore
+        .getState()
+        .release(target.campaignId, crystalId, target.id, !isPlayer);
+    },
     createElixir: (counterKey, cost, max, elixirName) =>
       update(actions.createElixir(target, { counterKey, cost, max, elixirName })),
 

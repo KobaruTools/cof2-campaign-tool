@@ -45,7 +45,15 @@ import {
   useBuffRequestStore,
 } from '@/stores/buffRequest';
 import { BUFF_WAIVER_EVENT } from '@/stores/buffOptOut';
+import {
+  CRYSTAL_ASSIGNMENT_EVENT,
+  CRYSTAL_RELEASE_EVENT,
+  executeCrystalAssignment,
+  executeCrystalRelease,
+  extinguishReleasedCrystal,
+} from '@/stores/crystalAssignment';
 import { reviveBuffWaiver } from './buffWaiver';
+import { reviveCrystalAssignment, reviveCrystalRelease } from './crystalAssignment';
 import { removeStatusFrom } from './combatState';
 import { EMPTY_PRESENCE, useSessionPresenceStore } from '@/stores/sessionPresence';
 import { registerSessionChannel } from './sessionBridge';
@@ -264,6 +272,31 @@ export function useSessionChannel(
       useCampaignCombatStore
         .getState()
         .applyLocalCombat(campaignId, (prev) => removeStatusFrom(prev, waiver.characterId, waiver.buffId));
+    });
+
+    // ATTRIBUTION D'UN CRISTAL par un joueur (PER-360, voie des cristaux p. 156) : même motif que le
+    // renoncement — rien à arbitrer (la règle autorise l'attribution « à n'importe quelle distance »),
+    // mais le joueur ne peut pas écrire l'état de combat. Le client du MJ pose le cristal sur le
+    // porteur désigné (et le retire de son porteur précédent), ce qui redescend à toute la table par
+    // `COMBAT_STATE_EVENT` — fiche du porteur comprise.
+    channel.on('broadcast', { event: CRYSTAL_ASSIGNMENT_EVENT }, ({ payload }) => {
+      if (!active || kind !== 'gm') return;
+      const assignment = reviveCrystalAssignment(payload);
+      if (assignment) executeCrystalAssignment(campaignId, assignment);
+    });
+
+    // ABANDON D'UN CRISTAL par son PORTEUR (PER-360) : il rend ce qu'on lui avait confié. Le client du
+    // MJ lève la puce ET éteint le cristal chez son propriétaire, qui le récupère donc inactif — la
+    // remise en service coûte une action limitée (p. 156) que le mage n'a pas dépensée.
+    channel.on('broadcast', { event: CRYSTAL_RELEASE_EVENT }, ({ payload }) => {
+      if (!active || kind === 'projection') return;
+      const release = reviveCrystalRelease(payload);
+      if (!release) return;
+      if (kind === 'gm') executeCrystalRelease(campaignId, release);
+      // Le mage à qui le cristal revient l'éteint LUI-MÊME (il n'écrit que sa fiche) : sa case se
+      // décoche même si le MJ est sur un écran qui ne tient pas l'état de combat (projection,
+      // seconde fenêtre). Le MJ, lui, lève la puce en plus.
+      else extinguishReleasedCrystal(release);
     });
 
     // `setAuth()` (sans argument → token courant) avant l'abonnement : supabase-js le

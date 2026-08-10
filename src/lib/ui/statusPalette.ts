@@ -21,6 +21,7 @@ import {
   type SituationalEffectId,
   type StatusEffectId,
 } from '@/data/schema';
+import { CRYSTAL_STATUS_IDS, CRYSTAL_STATUSES } from '@/data/crystalStatuses';
 import type { AnyStatusEffectId, StatusOrigin } from '@/lib/character/statusEffects';
 
 /** Un groupe de la palette (titre + ids d'états). */
@@ -65,15 +66,25 @@ export function buildStatusGroups(
 /** Ensemble des ids d'états d'environnement (teinte bleue + narrowing d'icône). */
 const ENVIRONMENTAL_EFFECT_ID_SET: ReadonlySet<string> = new Set(ENVIRONMENTAL_EFFECT_IDS);
 
-/** Ensemble des ids de buffs de groupe (teinte verte, PER-104). */
-const BENEFICIAL_EFFECT_ID_SET: ReadonlySet<string> = new Set(BENEFICIAL_EFFECT_IDS);
+/**
+ * Ensemble des ids BÉNÉFIQUES (teinte verte) : buffs de groupe posés par le MJ (PER-104) et cristaux
+ * confiés par un joueur (PER-360). Les cristaux ne figurent dans AUCUN groupe de la palette — ils ne
+ * se posent pas depuis l'écran de MJ, ils arrivent de la fiche de leur propriétaire — mais une fois
+ * posés, ils s'affichent partout comme les autres bienfaits.
+ */
+const BENEFICIAL_EFFECT_ID_SET: ReadonlySet<string> = new Set<string>([
+  ...BENEFICIAL_EFFECT_IDS,
+  ...CRYSTAL_STATUS_IDS,
+]);
 
 /** Ensemble des ids d'états du glossaire (pour narrower l'id vers une icône). */
 const STATUS_EFFECT_ID_SET: ReadonlySet<string> = new Set(STATUS_EFFECT_IDS);
 
 /**
- * Libellé français d'un état, qu'il soit du glossaire, situationnel ou d'environnement (les trois
- * espaces d'ids sont disjoints).
+ * Libellé français d'un état, qu'il soit du glossaire, situationnel, d'environnement, bénéfique ou
+ * cristal confié (les cinq espaces d'ids sont disjoints). Un cristal garde sa couleur ET sa forme
+ * (« Cristal Bleu nuit (Rhombe) ») : c'est ce qui le désigne à la table, où deux cristaux peuvent
+ * partager une couleur proche.
  */
 export function statusLabel(id: AnyStatusEffectId): string {
   return (
@@ -81,6 +92,7 @@ export function statusLabel(id: AnyStatusEffectId): string {
     (SITUATIONAL_EFFECT_LABELS as Record<string, string>)[id] ??
     (ENVIRONMENTAL_EFFECT_LABELS as Record<string, string>)[id] ??
     (BENEFICIAL_EFFECT_LABELS as Record<string, string>)[id] ??
+    (CRYSTAL_STATUSES as Record<string, { label: string }>)[id]?.label ??
     id
   );
 }

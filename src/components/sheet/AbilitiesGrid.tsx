@@ -13,6 +13,7 @@ import type {
   BonusDieSource,
 } from '@/lib/character/effects';
 import type { AbilityBonusItemSource } from '@/lib/character/equipment';
+import type { CrystalAbilityBonus } from '@/components/sheet/sheetDisplayView';
 import { abilityTotalColor, abilityTotalFontSize } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
@@ -78,6 +79,12 @@ export interface AbilitiesGridProps {
    * valeur saisie, et un objet équipé reste équipé pendant qu'on la corrige.
    */
   abilityEquipmentBonuses?: Partial<Record<AbilityId, AbilityBonusItemSource[]>>;
+  /**
+   * Bonus de caractéristique apportés par les CRISTAUX actifs ou confiés (PER-360, p. 156). Comptés
+   * comme ceux des objets portés — édition comprise (un cristal tourne autour de la tête pendant
+   * qu'on corrige une valeur saisie) — et détaillés en puce de cristal, jamais en puce de voie.
+   */
+  abilityCrystalBonuses?: Partial<Record<AbilityId, CrystalAbilityBonus[]>>;
 }
 
 /**
@@ -98,6 +105,7 @@ export function AbilitiesGrid({
   bonusDieSources,
   abilityFormBonuses,
   abilityEquipmentBonuses,
+  abilityCrystalBonuses,
 }: AbilitiesGridProps) {
   const canExplain = baseAbilities != null && ancestry != null && ancestryChoices != null;
   return (
@@ -134,12 +142,18 @@ export function AbilitiesGrid({
         // bonus de forme. Cohérent avec `effectiveAbilities`, qui l'applique en dernier.
         const equipmentSources = abilityEquipmentBonuses?.[id] ?? [];
         const equipmentSum = equipmentSources.reduce((sum, s) => sum + s.value, 0);
-        // Modificateur affiché à côté du champ en ÉDITION : capacités + objets portés (tout ce qui
-        // s'ajoute à la valeur saisie).
-        const mod = featureMod + equipmentSum;
+        // Cristaux actifs ou confiés (PER-360) : comptés comme les objets portés — le moteur les
+        // compte déjà (`effectiveAbilities`), la grille les ignorait, si bien qu'un « +1 en CHA »
+        // n'apparaissait nulle part alors qu'il jouait sur les stats dérivées.
+        const crystalSources = abilityCrystalBonuses?.[id] ?? [];
+        const crystalSum = crystalSources.reduce((sum, s) => sum + s.value, 0);
+        // Modificateur affiché à côté du champ en ÉDITION : capacités + objets portés + cristaux
+        // (tout ce qui s'ajoute à la valeur saisie).
+        const mod = featureMod + equipmentSum + crystalSum;
         // Lecture : on montre le total effectif (saisie + capacités + objets + forme), ou la valeur IMPOSÉE
         // par une transformation active (+ deltas). Édition : on édite la valeur SAISIE (chip « +N » par-dessus).
-        const effective = (override ? override.value : entered + featureMod) + formSum + equipmentSum;
+        const effective =
+          (override ? override.value : entered + featureMod) + formSum + equipmentSum + crystalSum;
         const dieSources = bonusDieSources?.[id];
         const dieSourceNames = dieSources?.map((s) => s.name);
         // Tout le bloc porte l'infobulle de détail ; l'icône de dé bonus reste À CÔTÉ
@@ -188,6 +202,12 @@ export function AbilitiesGrid({
           // Objets portés (PER-272) : sans `featureId` → rendus en libellé texte (nom de l'objet),
           // là où une capacité s'affiche en puce de voie.
           ...equipmentSources.map((s) => ({ name: s.name, value: s.value })),
+          // Cristaux (PER-360) : puce de cristal dédiée, l'info-bulle disant qui l'a confié.
+          ...crystalSources.map((s) => ({
+            name: s.label,
+            value: s.value,
+            crystal: { id: s.crystalId, ...(s.castBy ? { castBy: s.castBy } : {}) },
+          })),
         ];
         // Chiffre (ou champ) + dé bonus inline, sur la même rangée, l'ensemble centré
         // dans le bloc. Le badge est posé en `noTooltip` : c'est le bloc entier qui

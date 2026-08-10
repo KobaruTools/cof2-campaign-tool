@@ -23,6 +23,8 @@
 import { useCallback, useEffect } from 'react';
 
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
+import { executeCrystalRelease } from '@/stores/crystalAssignment';
+import { isCrystalStatus } from '@/lib/character/statusEffects';
 import {
   EMPTY_COMBAT_STATE,
   addCreatures,
@@ -238,8 +240,17 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
   );
 
   const removeStatus = useCallback(
-    (combatantKey: string, id: AnyStatusEffectId) =>
-      applyLocalCombat(cid, (prev) => removeStatusFrom(prev, combatantKey, id)),
+    (combatantKey: string, id: AnyStatusEffectId) => {
+      // Un CRISTAL (PER-360) n'est pas un état comme un autre : il appartient au mage qui l'a
+      // fabriqué. Le retirer de son porteur, c'est le lui RENDRE — et le lui rendre éteint, la
+      // remise en service coûtant une action limitée (p. 156). Le MJ dispose donc du même geste que
+      // le porteur sur sa fiche, où qu'il clique.
+      if (isCrystalStatus(id)) {
+        executeCrystalRelease(cid, { crystalId: id, holderKey: combatantKey });
+        return;
+      }
+      applyLocalCombat(cid, (prev) => removeStatusFrom(prev, combatantKey, id));
+    },
     [applyLocalCombat, cid],
   );
 

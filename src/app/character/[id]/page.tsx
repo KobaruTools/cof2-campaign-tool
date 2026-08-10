@@ -753,6 +753,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         onWaiveBuff={
           isPlayer && !readOnly ? (buffId) => waiveBuff(characterCampaignId, id, buffId) : undefined
         }
+        // Rendre un cristal confié (PER-360) n'est pas réservé au joueur : le MJ, qui consulte la
+        // fiche du porteur, peut le lui reprendre. Le cristal repart ÉTEINT chez son propriétaire.
+        onReleaseCrystal={readOnly ? undefined : (crystalId) => game.releaseCrystal(crystalId)}
       />
     );
 
@@ -1138,6 +1141,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               abilityOverrides={display.abilityOverrides}
               abilityFormBonuses={display.abilityFormBonuses}
               abilityEquipmentBonuses={display.abilityEquipmentBonuses}
+              abilityCrystalBonuses={display.abilityCrystalBonuses}
               bonusDieSources={display.bonusDieSourcesDetailed}
             />
           </SheetSection>

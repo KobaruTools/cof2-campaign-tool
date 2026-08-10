@@ -23,20 +23,26 @@ import {
   type StatusEffectEntry,
   type StatusEffectId,
 } from '@/data/schema';
+import {
+  CRYSTAL_STATUS_IDS,
+  CRYSTAL_STATUSES,
+  type CrystalStatusId,
+} from '@/data/crystalStatuses';
 import { hpHealthState } from './gauges';
 import type { Depletion } from './types';
 
 /**
  * Identifiant d'état, indifféremment du glossaire (`StatusEffectId`), situationnel
- * (`SituationalEffectId`), d'environnement (`EnvironmentalEffectId`) ou bénéfique
- * (`BeneficialEffectId`, buffs de groupe PER-104). Les quatre espaces d'ids sont disjoints : un id
- * suffit à retrouver son catalogue (cf. `statusEntry`).
+ * (`SituationalEffectId`), d'environnement (`EnvironmentalEffectId`), bénéfique
+ * (`BeneficialEffectId`, buffs de groupe PER-104) ou cristal confié (`CrystalStatusId`, PER-360).
+ * Les cinq espaces d'ids sont disjoints : un id suffit à retrouver son catalogue (cf. `statusEntry`).
  */
 export type AnyStatusEffectId =
   | StatusEffectId
   | SituationalEffectId
   | EnvironmentalEffectId
-  | BeneficialEffectId;
+  | BeneficialEffectId
+  | CrystalStatusId;
 
 /**
  * Un état APPLIQUÉ à un combattant : son id + (pour les états cumulatifs) son intensité courante.
@@ -199,15 +205,16 @@ const ATTACK_KEYS: DerivedStatId[] = ['meleeAttack', 'rangedAttack', 'magicAttac
 
 /**
  * Retourne l'entrée de catalogue d'un id d'état, qu'il soit du glossaire, situationnel,
- * d'environnement ou bénéfique (les quatre espaces d'ids sont disjoints). `undefined` si l'id est
- * inconnu (défensif).
+ * d'environnement, bénéfique ou cristal confié (les cinq espaces d'ids sont disjoints).
+ * `undefined` si l'id est inconnu (défensif).
  */
 export function statusEntry(id: AnyStatusEffectId): StatusEffectEntry | undefined {
   return (
     (STATUS_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
     (SITUATIONAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
     (ENVIRONMENTAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
-    (BENEFICIAL_EFFECTS as Record<string, StatusEffectEntry>)[id]
+    (BENEFICIAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
+    (CRYSTAL_STATUSES as Record<string, StatusEffectEntry>)[id]
   );
 }
 
@@ -246,12 +253,25 @@ export function statusExcludesCarrier(id: AnyStatusEffectId): boolean {
   return statusEntry(id)?.excludesCarrier === true;
 }
 
-/** Ensemble des ids du catalogue BÉNÉFIQUE — pour distinguer un buff d'un état subi (PER-104). */
-const BENEFICIAL_ID_SET: ReadonlySet<string> = new Set(BENEFICIAL_EFFECT_IDS);
+/**
+ * Ensemble des ids d'états BÉNÉFIQUES — pour distinguer un bienfait d'un état subi (PER-104). Deux
+ * catalogues y concourent : les buffs de groupe posés par le MJ, et les cristaux confiés par un
+ * joueur (PER-360). Ils partagent tout ce qui découle du fait d'être un bienfait : la teinte de la
+ * puce, la croix de levée du MJ, et le droit du porteur de s'en écarter.
+ */
+const BENEFICIAL_ID_SET: ReadonlySet<string> = new Set<string>([
+  ...BENEFICIAL_EFFECT_IDS,
+  ...CRYSTAL_STATUS_IDS,
+]);
 
-/** Vrai si l'id appartient au catalogue BÉNÉFIQUE (`BENEFICIAL_EFFECTS`), et non à un état subi. */
+/** Vrai si l'id désigne un état BÉNÉFIQUE (buff de groupe ou cristal confié), et non un état subi. */
 export function isBeneficialStatus(id: AnyStatusEffectId): boolean {
   return BENEFICIAL_ID_SET.has(id);
+}
+
+/** Vrai si l'état est un CRISTAL CONFIÉ par un autre personnage (PER-360, voie des cristaux p. 156). */
+export function isCrystalStatus(id: AnyStatusEffectId): id is CrystalStatusId {
+  return (CRYSTAL_STATUSES as Record<string, StatusEffectEntry>)[id] !== undefined;
 }
 
 /** Vrai si l'état est CUMULATIF (compteur d'intensité) ; faux s'il est binaire. */
