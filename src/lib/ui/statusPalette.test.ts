@@ -80,10 +80,11 @@ describe('statusLabel / statusIconId / statusTone', () => {
     expect(statusIconId('heroes-song')).toBeNull();
   });
 
-  it('teinte : bleu (info) pour l’environnement, vert (success) pour un buff, rouge sinon', () => {
+  it('teinte : bleu (info) pour l’environnement, vert (success) pour un buff, rouge pour le glossaire, orange pour un effet situationnel', () => {
     expect(statusTone('aquatic-combat')).toBe('info');
     for (const id of STATUS_EFFECT_IDS) expect(statusTone(id), id).toBe('error');
-    expect(statusTone('invalidating-attack')).toBe('error');
+    expect(statusTone('invalidating-attack')).toBe('situational');
+    expect(statusTone('cursed')).toBe('situational');
     for (const id of BENEFICIAL_EFFECT_IDS) expect(statusTone(id), id).toBe('success');
   });
 

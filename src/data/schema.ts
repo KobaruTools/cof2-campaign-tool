@@ -1470,6 +1470,8 @@ export const SITUATIONAL_EFFECT_IDS = [
   'frightened',
   'polymorphed',
   'unconscious',
+  'cursed',
+  'burning',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1569,6 +1571,29 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     label: 'Inconscient',
     effect: "Rendue inconsciente par le rayon (ou l'explosion) arc-en-ciel, pour la durée indiquée par le sort.",
     sourcePage: 155,
+  },
+  // « Malédiction » (sorcier, voie du démon, r1, p. 108). Dé malus (comme Affaibli), mais NON réductible
+  // à cet état de base : la durée se compte en NOMBRE DE TESTS (1 ou 3 selon l'action d'incantation),
+  // pas en rounds, et s'arrête d'elle-même une fois ces tests faits — Affaibli, lui, dure tant que les PV
+  // ne remontent pas au-dessus de 1. Mécanique PROPRE, admissible (PER-288). Le nombre de tests couverts
+  // et le plafond « 1×/combat par cible » restent COMPORTEMENTAUX (verbatim seul, décompte à l'oral par
+  // le MJ) : aucun champ de `StatusModifiers` ne borne un dé malus à un nombre de tests.
+  cursed: {
+    label: 'Maudit',
+    effect:
+      "Le sorcier effectue un test opposé d'attaque magique contre une cible à moins de 20 m. En cas de succès, si l'incantation était une action de mouvement (M), la victime subit un dé malus à son prochain test. Si l'incantation était une action limitée (L), le dé malus s'applique à ses 3 prochains tests. Dans tous les cas, la cible ne peut subir les effets de ce sort qu'une fois par combat.",
+    sourcePage: 108,
+    modifiers: { allTestsMalusDie: true },
+  },
+  // « Flèche de feu » (magicien, voie de la magie destructrice, r3, p. 104). DoT PUR déclenché par le
+  // sort (aucun malus de test) : rien à chiffrer (cf. « DoT = comportemental », PER-288). Le décompte
+  // (1d6/round), la condition d'arrêt (résultat 1 ou 2) et le non-cumul si relancé restent COMPORTEMENTAUX
+  // (verbatim seul, décompte à l'oral par le MJ) — même traitement que `bleeding` / `internal-hemorrhage`.
+  burning: {
+    label: 'En flammes',
+    effect:
+      "Chaque round de combat suivant, le feu inflige 1d6 DM supplémentaires à la cible. Sur un résultat de 1 ou 2, le sort prend fin. Les DM sur la durée ne sont pas cumulables si le sort est lancé plusieurs fois.",
+    sourcePage: 104,
   },
 };
 
@@ -2710,6 +2735,16 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * comportement par défaut (exclusion). Résolu par `featuresInChoiceDomain`.
    */
   includeOwned?: boolean;
+  /**
+   * Rang MINIMUM à atteindre dans la voie HÔTE (celle qui porte ce choix) pour que le choix soit
+   * PROPOSÉ du tout (PER-74, archimage r5 « Bâton magique », p. 154 : « à partir du rang 7, il peut
+   * AJOUTER » un 2e sort). Retour proprio 2026-08-10 : masquer le contrôle tant que le palier n'est
+   * pas atteint plutôt que le laisser sélectionnable sans effet (la fiche est permissive PAR DÉFAUT,
+   * mais un choix qu'on peut faire sans qu'il se passe quoi que ce soit se lit comme un bug). Même
+   * traitement que `option.repeat` avant son premier palier (cf. `isChoiceActionable`, choices.ts).
+   * Absent = toujours proposé (comportement historique).
+   */
+  unlockedAtHostPathRank?: number;
 }
 
 /**

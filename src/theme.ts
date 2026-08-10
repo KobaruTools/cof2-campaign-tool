@@ -1,6 +1,23 @@
 'use client';
 
 import { createTheme, responsiveFontSizes } from '@mui/material/styles';
+import { deepOrange } from '@mui/material/colors';
+
+/**
+ * CINQUIÈME teinte de palette (PER-74, voie du démon) — les états de combat de l'écran de MJ
+ * (`StatusTone`, `src/lib/ui/statusPalette.ts`) distinguent un EFFET SITUATIONNEL nommé (conféré par
+ * une capacité de voie précise, ex. Maudit) d'un état SUBI générique du glossaire (rouge, `error`,
+ * commun à tout personnage/créature). `deepOrange` plutôt que `warning` (déjà pris par l'ambre des
+ * états auto-DÉDUITS, `originStatusTone`) : les deux ne doivent pas se confondre au premier coup d'œil.
+ */
+declare module '@mui/material/styles' {
+  interface Palette {
+    situational: Palette['warning'];
+  }
+  interface PaletteOptions {
+    situational?: PaletteOptions['warning'];
+  }
+}
 
 /**
  * Thème MUI par défaut (PRD décision #11 : ambiance médiéval-fantasy plus tard,
@@ -11,6 +28,12 @@ const baseTheme = createTheme({
   cssVariables: true,
   palette: {
     mode: 'dark',
+    situational: {
+      main: deepOrange[500],
+      light: deepOrange[300],
+      dark: deepOrange[700],
+      contrastText: '#fff',
+    },
   },
   typography: {
     fontFamily: 'var(--font-roboto), Roboto, Helvetica, Arial, sans-serif',

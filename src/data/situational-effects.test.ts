@@ -109,6 +109,27 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     expect(r6?.situationalEffectIds).toEqual(['grievous-wounds']);
   });
 
+  it('« Maudit » est catalogué (sorcier, voie du démon r1, p. 108) : dé malus, référencé', () => {
+    const entry = SITUATIONAL_EFFECTS['cursed'];
+    expect(entry.label).toBe('Maudit');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(108);
+    expect(entry.modifiers?.allTestsMalusDie).toBe(true);
+    expect(entry.stacking).toBeUndefined();
+    const r1 = featureById.get('demon-r1');
+    expect(r1?.situationalEffectIds).toEqual(['cursed']);
+  });
+
+  it('« En flammes » est catalogué (magicien, magie destructrice r3, p. 104) : DoT pur, référencé', () => {
+    const entry = SITUATIONAL_EFFECTS['burning'];
+    expect(entry.label).toBe('En flammes');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(104);
+    expect(entry.modifiers).toBeUndefined();
+    const r3 = featureById.get('magie-destructrice-r3');
+    expect(r3?.situationalEffectIds).toEqual(['burning']);
+  });
+
   it('tout situationalEffectIds posé sur une capacité pointe une entrée connue du catalogue', () => {
     const known = new Set<string>(SITUATIONAL_EFFECT_IDS);
     for (const f of featureById.values()) {

@@ -64,6 +64,7 @@ import {
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
 import { unlockedGroupBuffIds } from '@/lib/character/groupBuffs';
+import { effectiveFeatureIdsForMods } from '@/lib/character/choices';
 import { withReceivedCrystals } from '@/lib/character/crystals';
 import {
   companionMountEnSelle,
@@ -259,6 +260,13 @@ export interface GmScreenCombat {
    * du catalogue. Vide = aucun ; la palette masque alors le groupe « Effets situationnels ».
    */
   situationalEffectIds: SituationalEffectId[];
+  /**
+   * Effets situationnels actuellement POSÉS sur au moins un combattant (PER-74), dans l'ordre du
+   * catalogue — pendant de `posedGroupBuffIds` côté orange. C'est ce que la croix de la palette
+   * propose de lever : vide = rien à lever, la croix disparaît. Se déduit des états posés,
+   * indépendamment du gating de `situationalEffectIds`.
+   */
+  posedSituationalIds: SituationalEffectId[];
   /**
    * Buffs de GROUPE débloqués par la table (PER-104), pendant de `situationalEffectIds` : ceux qu'au
    * moins un personnage réclamé confère (`character.featureIds` → `groupBuffIds`). Dans l'ordre du
@@ -495,10 +503,14 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
   // Effets situationnels débloqués par la table (PER-279) : on balaie les capacités acquises de
   // chaque personnage réclamé et on collecte les `situationalEffectIds` qu'elles confèrent. Restreint
   // aux ids connus du catalogue, dédupliqué, rendu dans l'ordre du catalogue (affichage stable).
+  // Retour proprio 2026-08-10 : `effectiveFeatureIdsForMods` (pas le seul `featureIds`) — une capacité
+  // EMPRUNTÉE (feature-from-path, ex. Malédiction liée au Bâton magique de l'archimage r5, PER-74) est
+  // réellement utilisable par le personnage et doit débloquer sa puce au même titre qu'une capacité
+  // native ; sans ça, un sort obtenu SEULEMENT par emprunt n'apparaissait jamais dans la palette MJ.
   const situationalEffectIds = useMemo<SituationalEffectId[]>(() => {
     const unlocked = new Set<SituationalEffectId>();
     for (const character of claimed) {
-      for (const featureId of character.featureIds) {
+      for (const featureId of effectiveFeatureIdsForMods(character)) {
         for (const id of featureById.get(featureId)?.situationalEffectIds ?? []) unlocked.add(id);
       }
     }
@@ -516,6 +528,15 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     const posed = new Set<string>();
     for (const applied of Object.values(statuses)) for (const s of applied) posed.add(s.id);
     return BENEFICIAL_EFFECT_IDS.filter((id) => posed.has(id));
+  }, [statuses]);
+
+  // Effets situationnels RÉELLEMENT POSÉS sur au moins un combattant (PER-74) : symétrique de
+  // `posedGroupBuffIds`, côté orange — une malédiction ou une nuée peut courir sur plusieurs cartes,
+  // la croix de la palette les lève toutes d'un coup, id par id.
+  const posedSituationalIds = useMemo(() => {
+    const posed = new Set<string>();
+    for (const applied of Object.values(statuses)) for (const s of applied) posed.add(s.id);
+    return SITUATIONAL_EFFECT_IDS.filter((id) => posed.has(id));
   }, [statuses]);
 
   // Lignes des personnages réclamés : Initiative + PV max = stats dérivées (surcharge
@@ -824,6 +845,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     setCreatureVisibility,
     statuses,
     situationalEffectIds,
+    posedSituationalIds,
     groupBuffIds,
     posedGroupBuffIds,
     applyStatus,

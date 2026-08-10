@@ -296,6 +296,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     setCreatureVisibility,
     statuses,
     situationalEffectIds,
+    posedSituationalIds,
     groupBuffIds,
     posedGroupBuffIds,
     applyStatus,
@@ -848,6 +849,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             statusPalette={
               <CombatStatusPalette
                 situationalIds={situationalEffectIds}
+                posedSituationalIds={posedSituationalIds}
+                onClearSituational={(id) => removeStatusesEverywhere([id])}
                 groupBuffIds={groupBuffIds}
                 posedGroupBuffIds={posedGroupBuffIds}
                 onClearGroupBuff={(id) => removeStatusesEverywhere([id])}

@@ -13,6 +13,7 @@ import {
   BENEFICIAL_EFFECT_LABELS,
   ENVIRONMENTAL_EFFECT_IDS,
   ENVIRONMENTAL_EFFECT_LABELS,
+  SITUATIONAL_EFFECT_IDS,
   SITUATIONAL_EFFECT_LABELS,
   STATUS_EFFECT_IDS,
   STATUS_EFFECT_LABELS,
@@ -81,6 +82,14 @@ const BENEFICIAL_EFFECT_ID_SET: ReadonlySet<string> = new Set<string>([
 const STATUS_EFFECT_ID_SET: ReadonlySet<string> = new Set(STATUS_EFFECT_IDS);
 
 /**
+ * Ensemble des ids d'effets SITUATIONNELS (teinte orange) : contrairement aux dix états du glossaire
+ * (rouge, règle commune à tout personnage/créature), un effet situationnel est TOUJOURS conféré par
+ * une capacité de voie nommée d'un combattant précis (ex. Maudit, sorcier voie du démon r1, p. 108) —
+ * la teinte le signale d'un coup d'œil sur les cartes du tracker et la palette.
+ */
+const SITUATIONAL_EFFECT_ID_SET: ReadonlySet<string> = new Set(SITUATIONAL_EFFECT_IDS);
+
+/**
  * Libellé français d'un état, qu'il soit du glossaire, situationnel, d'environnement, bénéfique ou
  * cristal confié (les cinq espaces d'ids sont disjoints). Un cristal garde sa couleur ET sa forme
  * (« Cristal Bleu nuit (Rhombe) ») : c'est ce qui le désigne à la table, où deux cristaux peuvent
@@ -99,18 +108,23 @@ export function statusLabel(id: AnyStatusEffectId): string {
 
 /**
  * TEINTE d'un état : la clé de palette MUI qui porte son rendu partout (puce de palette, carré-icône
- * du tracker et de la projection, rappel sur la fiche). `'error'` (rouge) par défaut — un état SUBI ;
- * `'info'` (bleu) pour un état d'ENVIRONNEMENT, qui n'est pas infligé mais imposé par la scène et se
- * pose indistinctement sur les alliés comme sur les adversaires ; `'success'` (vert) pour un BUFF DE
- * GROUPE (PER-104), seule famille bénéfique — le bleu étant déjà pris par l'environnement ;
- * `'warning'` (jaune) pour un état DÉDUIT automatiquement de l'état du combattant (cf.
- * `originStatusTone`).
+ * du tracker et de la projection, rappel sur la fiche). `'error'` (rouge) par défaut — un état SUBI
+ * GÉNÉRIQUE du glossaire, règle commune à tout personnage/créature ; `'situational'` (orange, PER-74)
+ * pour un EFFET SITUATIONNEL nommé, conféré par la capacité de voie d'un combattant précis (ex.
+ * Maudit) — jamais une règle universelle, d'où une teinte distincte de l'état subi générique ; `'info'`
+ * (bleu) pour un état d'ENVIRONNEMENT, qui n'est pas infligé mais imposé par la scène et se pose
+ * indistinctement sur les alliés comme sur les adversaires ; `'success'` (vert) pour un BUFF DE GROUPE
+ * (PER-104), seule famille bénéfique — le bleu étant déjà pris par l'environnement ; `'warning'`
+ * (ambre) pour un état DÉDUIT automatiquement de l'état du combattant (cf. `originStatusTone`) —
+ * distincte de l'orange situationnel pour ne pas confondre un état qui se pose tout seul avec un
+ * effet posé par le MJ.
  */
-export type StatusTone = 'error' | 'info' | 'success' | 'warning';
+export type StatusTone = 'error' | 'info' | 'success' | 'warning' | 'situational';
 
 export function statusTone(id: AnyStatusEffectId): StatusTone {
   if (BENEFICIAL_EFFECT_ID_SET.has(id)) return 'success';
-  return ENVIRONMENTAL_EFFECT_ID_SET.has(id) ? 'info' : 'error';
+  if (ENVIRONMENTAL_EFFECT_ID_SET.has(id)) return 'info';
+  return SITUATIONAL_EFFECT_ID_SET.has(id) ? 'situational' : 'error';
 }
 
 /**

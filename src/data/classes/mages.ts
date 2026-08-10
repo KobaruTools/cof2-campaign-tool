@@ -1560,6 +1560,9 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM initiaux [3d4° + INT] ; DM sur la durée {1d6} par round.
     richText:
       "Le magicien choisit une cible située à moins de 30 m. Si son attaque magique réussit (contre DEF), la cible subit [3d4° + INT] DM. Chaque round de combat suivant, le feu inflige {1d6} DM supplémentaires. Sur un résultat de 1 ou 2, le sort prend fin. Les DM sur la durée ne sont pas cumulables si le sort est lancé plusieurs fois.",
+    // DoT PUR (aucun malus de test) → catalogué `burning` (PER-288), même traitement que
+    // bleeding/internal-hemorrhage : jamais chiffré, verbatim seul, suivi au Combat Tracker.
+    situationalEffectIds: ['burning'],
     sourcePage: 104,
   },
   {
@@ -1962,6 +1965,7 @@ export const mageFeatures: Feature[] = [
     text:
       "Le sorcier effectue un test opposé d’attaque magique contre une cible à moins de 20 m. En cas de succès, si l’incantation était une action de mouvement (M), la victime subit un dé malus à son prochain test. Si l’incantation était une action limitée (L), le dé malus s’applique à ses 3 prochains tests. Dans tous les cas, la cible ne peut subir les effets de ce sort qu’une fois par combat.",
     sourcePage: 108,
+    situationalEffectIds: ['cursed'],
   },
   {
     id: 'demon-r2',

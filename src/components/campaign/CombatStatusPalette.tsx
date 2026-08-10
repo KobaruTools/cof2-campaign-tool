@@ -11,12 +11,14 @@
  * groupe** (`BENEFICIAL_EFFECT_IDS`, PER-104 : Chant des héros, Bénédiction). Chaque puce est un
  * BADGE custom (jamais un `Chip` MUI, cf. préférence UI) : icône game-icons quand elle existe +
  * libellé FR, avec l'effet VERBATIM du catalogue en infobulle (renvoi de page cliquable). La TEINTE
- * distingue les familles (rouge = état subi, bleu = condition d'environnement, vert = buff de groupe,
- * cf. `statusTone`).
+ * distingue les familles (rouge = état subi générique du glossaire, ORANGE = effet situationnel
+ * nommé d'une capacité de voie précise (PER-74) — jamais une règle commune à tout le monde —, bleu =
+ * condition d'environnement, vert = buff de groupe, cf. `statusTone`).
  *
- * Sur la ligne verte, chaque buff RÉELLEMENT POSÉ porte en plus, collée à sa droite, une CROIX de
- * levée (`onClearGroupBuff`) qui le retire d'un clic de tous les combattants : la pose s'adresse à un
- * camp entier, la levée doit pouvoir en faire autant — mais buff par buff.
+ * Sur les lignes ORANGE et VERTE, chaque effet RÉELLEMENT POSÉ porte en plus, collée à sa droite, une
+ * CROIX de levée (`onClearSituational` / `onClearGroupBuff`) qui le retire d'un clic de TOUS les
+ * combattants : pratique dès qu'au moins un porteur l'affiche, pas besoin de rouvrir chaque carte pour
+ * nettoyer une malédiction ou un buff qui a couru sur plusieurs combattants.
  *
  * Le drop applique l'état via les mutations de la tranche 2 (`applyStatus`) — le câblage
  * `@dnd-kit` (DndContext, capteurs, `onDragEnd`) vit dans la page MJ, qui enveloppe cette palette
@@ -272,23 +274,33 @@ function DraggableStatusChip({
 }
 
 /**
- * Croix de LEVÉE d'un buff, soudée à la droite de SA puce. Elle ne lève que l'effet auquel elle est
+ * Croix de LEVÉE d'un effet, soudée à la droite de SA puce. Elle ne lève que l'effet auquel elle est
  * accolée — une croix unique en bout de ligne se lisait comme appartenant à la dernière puce (celle
- * qui la précède), et emportait pourtant tous les buffs posés : deux mensonges d'un coup.
+ * qui la précède), et emportait pourtant tous les effets posés : deux mensonges d'un coup.
  *
  * Partagée avec la fiche du joueur (`ActiveStatusPanel`), d'où le libellé confié à l'appelant : le MJ
- * lève sur tous les combattants, le joueur seulement sur lui-même.
+ * lève sur tous les combattants, le joueur seulement sur lui-même. `tone` reprend la teinte de la
+ * puce qu'elle prolonge (vert pour un buff de groupe, orange pour un effet situationnel, PER-74) —
+ * elle reste `'success'` par défaut pour les appels existants côté fiche joueur (buff/cristal/monture,
+ * tous bénéfiques).
  *
- * Pas de confirmation : reposer un buff coûte un glisser (la fenêtre garde palier et camp
+ * Pas de confirmation : reposer un effet coûte un glisser (la fenêtre garde palier et camp
  * pré-remplis), alors qu'une modale à chaque fin de combat coûte un clic à chaque fois. L'infobulle
  * nomme ce qui va être levé, pour que le geste ne soit jamais une surprise.
  */
-export function ClearStatusButton({ label, onClear }: { label: string; onClear: () => void }) {
+export function ClearStatusButton({
+  label,
+  onClear,
+  tone = 'success',
+}: {
+  label: string;
+  onClear: () => void;
+  tone?: StatusTone;
+}) {
   return (
     <AppTooltip title={label}>
       <IconButton
         size="small"
-        color="success"
         aria-label={label}
         onClick={onClear}
         sx={(theme) => ({
@@ -299,11 +311,12 @@ export function ClearStatusButton({ label, onClear }: { label: string; onClear: 
           height: CHIP_HEIGHT,
           ml: '-1px',
           borderRadius: `0 ${CHIP_RADIUS}px ${CHIP_RADIUS}px 0`,
-          border: `1px solid ${alpha(theme.palette.success.main, 0.45)}`,
-          bgcolor: alpha(theme.palette.success.main, 0.14),
+          color: theme.palette[tone].light,
+          border: `1px solid ${alpha(theme.palette[tone].main, 0.45)}`,
+          bgcolor: alpha(theme.palette[tone].main, 0.14),
           backdropFilter: 'blur(6px)',
           WebkitBackdropFilter: 'blur(6px)',
-          '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.28) },
+          '&:hover': { bgcolor: alpha(theme.palette[tone].main, 0.28) },
         })}
       >
         <CloseIcon sx={{ fontSize: 16 }} />
@@ -313,17 +326,20 @@ export function ClearStatusButton({ label, onClear }: { label: string; onClear: 
 }
 
 /**
- * UNE ligne de la palette : ses puces glissables et, sur la ligne bénéfique, la croix de levée de
- * CHAQUE buff effectivement posé. Puce et croix sont rendues dans un conteneur sans gouttière : elles
- * ne forment plus qu'un bloc (coins carrés à la jonction, bordures superposées).
+ * UNE ligne de la palette : ses puces glissables et, sur les lignes ORANGE et VERTE, la croix de
+ * levée de CHAQUE effet effectivement posé. Puce et croix sont rendues dans un conteneur sans
+ * gouttière : elles ne forment plus qu'un bloc (coins carrés à la jonction, bordures superposées).
  */
 function PaletteRow({
   group,
   clear,
 }: {
   group: StatusGroup;
-  /** Buffs posés levables, et le geste de levée — par id : une croix ne lève QUE son propre effet. */
-  clear?: { ids: readonly BeneficialEffectId[]; onClear: (id: BeneficialEffectId) => void };
+  /**
+   * Effets posés levables, le geste de levée — par id, une croix ne lève QUE son propre effet — et la
+   * teinte de la croix (celle de la ligne : orange situationnel ou vert buff de groupe).
+   */
+  clear?: { ids: readonly AnyStatusEffectId[]; onClear: (id: AnyStatusEffectId) => void; tone: StatusTone };
 }) {
   const clearable = new Set<string>(clear?.ids ?? []);
   return (
@@ -334,7 +350,8 @@ function PaletteRow({
             <DraggableStatusChip id={id} squareRight />
             <ClearStatusButton
               label={`Lever ${statusLabel(id)} sur tous les combattants`}
-              onClear={() => clear.onClear(id as BeneficialEffectId)}
+              onClear={() => clear.onClear(id)}
+              tone={clear.tone}
             />
           </Box>
         ) : (
@@ -353,11 +370,23 @@ function PaletteRow({
  */
 export function CombatStatusPalette({
   situationalIds,
+  posedSituationalIds = [],
+  onClearSituational,
   groupBuffIds = [],
   posedGroupBuffIds = [],
   onClearGroupBuff,
 }: {
   situationalIds: readonly SituationalEffectId[];
+  /**
+   * Effets situationnels actuellement POSÉS sur au moins un combattant (PER-74) : chacun reçoit sa
+   * croix de levée orange, sur SA puce. Vide = rien à lever, aucune croix.
+   */
+  posedSituationalIds?: readonly SituationalEffectId[];
+  /**
+   * Lève CET effet situationnel (et lui seul) sur tous les combattants, en une écriture. Absent = pas
+   * de croix (palette en lecture, ou écran qui ne sait pas écrire l'état de combat).
+   */
+  onClearSituational?: (id: SituationalEffectId) => void;
   /** Buffs de groupe débloqués par la table (PER-104). Vide/absent = ligne verte masquée. */
   groupBuffIds?: readonly BeneficialEffectId[];
   /**
@@ -373,23 +402,27 @@ export function CombatStatusPalette({
 }) {
   return (
     // Aucun sous-titre de groupe, et les lignes COLLÉES (même gouttière verticale qu'entre deux puces
-    // d'une même ligne) : la TEINTE porte déjà la famille (rouge = état subi, bleu = environnement),
-    // les libellés « Effets situationnels » / « Environnement » ne faisaient que voler de la hauteur à
-    // une palette logée dans le tracker, juste au-dessus de la bande d'initiative. Chaque groupe garde
-    // en revanche sa propre ligne : c'est ce qui rend les familles lisibles sans les nommer.
+    // d'une même ligne) : la TEINTE porte déjà la famille (rouge = état subi, orange = effet
+    // situationnel, bleu = environnement), les libellés « Effets situationnels » / « Environnement »
+    // ne faisaient que voler de la hauteur à une palette logée dans le tracker, juste au-dessus de la
+    // bande d'initiative. Chaque groupe garde en revanche sa propre ligne : c'est ce qui rend les
+    // familles lisibles sans les nommer.
     <Stack spacing={1}>
       {buildStatusGroups(situationalIds, groupBuffIds).map((group) => (
         <PaletteRow
           key={group.title}
           group={group}
-          // Levée collective sur la seule ligne bénéfique : un buff de groupe est posé sur tout un
-          // camp, le lever carte par carte est une corvée — et repasser par la fenêtre de pose
-          // suppose de se souvenir de quelle carte portait le sort. Une croix PAR buff posé : deux
-          // effets peuvent courir en même temps, lever l'un ne doit pas emporter l'autre.
+          // Levée collective sur les lignes ORANGE et VERTE : un effet situationnel (malédiction,
+          // nuée…) ou un buff de groupe peut courir sur plusieurs cartes, le lever une par une est une
+          // corvée — et repasser par la fenêtre de pose suppose de se souvenir de qui le portait. Une
+          // croix PAR effet posé : deux effets peuvent courir en même temps, lever l'un ne doit pas
+          // emporter l'autre.
           clear={
-            group.family === 'group-buff' && onClearGroupBuff && posedGroupBuffIds.length > 0
-              ? { ids: posedGroupBuffIds, onClear: onClearGroupBuff }
-              : undefined
+            group.family === 'situational' && onClearSituational && posedSituationalIds.length > 0
+              ? { ids: posedSituationalIds, onClear: onClearSituational as (id: AnyStatusEffectId) => void, tone: 'situational' }
+              : group.family === 'group-buff' && onClearGroupBuff && posedGroupBuffIds.length > 0
+                ? { ids: posedGroupBuffIds, onClear: onClearGroupBuff as (id: AnyStatusEffectId) => void, tone: 'success' }
+                : undefined
           }
         />
       ))}
