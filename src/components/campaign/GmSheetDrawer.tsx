@@ -678,6 +678,7 @@ function GmSheetDrawerContent({
               onLiftShortRestLock={game.liftShortRestLock}
               onCreateElixir={game.createElixir}
               onSummonCompanionInstance={game.summonCompanionInstance}
+              onInvokeHawkHunter={game.invokeHawkHunter}
               onPoisonUpdate={game.update}
               // PER-284 : armes bricolées (chargeur / second canon) désignées par le joueur.
               onWeaponModificationUpdate={game.update}

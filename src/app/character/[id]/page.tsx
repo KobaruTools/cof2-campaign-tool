@@ -1474,6 +1474,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Invoquer un zombie (badge bleu « Invoquer ») : crée une instance à PV propres, dans
               // la limite du profil — état de jeu, comme les interrupteurs/compteurs (PER-235).
               onSummonCompanionInstance={summonCompanionInstance}
+              onInvokeHawkHunter={game.invokeHawkHunter}
               // Poison appliqué aux armes (maître des poisons, PER-74) : état de jeu, patch appliqué via update.
               onPoisonUpdate={update}
               // PER-284 : armes bricolées (chargeur / second canon) désignées par le joueur.

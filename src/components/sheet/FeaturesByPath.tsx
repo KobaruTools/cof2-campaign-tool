@@ -1354,6 +1354,12 @@ export interface FeaturesByPathProps {
    * de création). État de jeu, modifiable hors édition.
    */
   onSummonCompanionInstance?: (featureId: string) => void;
+  /**
+   * Le MJ invoque le Chasseur ailé au combat (PER-363, r7, p. 160) : bouton dédié de la modale de
+   * détail, MJ SEULEMENT (masqué/désactivé pour un joueur — `useIsPlayerSession`). N'a aucun lien
+   * avec l'interrupteur de la carte, purement indicatif. Absent → bouton non rendu.
+   */
+  onInvokeHawkHunter?: () => void;
   /** Applique un patch d'état de jeu « poison appliqué aux armes » (maître des poisons, PER-74). */
   onPoisonUpdate?: (patch: Partial<Character>) => void;
   /** Applique un patch « armes bricolées » (chargeur / second canon, PER-284). */
@@ -2606,6 +2612,7 @@ function PathBlock({
   onCreateElixir,
   onToggleCrystalActive,
   onSummonCompanionInstance,
+  onInvokeHawkHunter,
   onPoisonUpdate,
   onWeaponModificationUpdate,
   disabledIds,
@@ -2657,6 +2664,8 @@ function PathBlock({
   onCreateElixir?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /** Invoque un exemplaire d'un compagnon multi-instances (zombie, PER-235) — badge bleu « Invoquer ». */
   onSummonCompanionInstance?: (featureId: string) => void;
+  /** Le MJ invoque le Chasseur ailé au combat (PER-363, r7) — bouton dédié, MJ seulement. */
+  onInvokeHawkHunter?: () => void;
   /** Applique un patch d'état de jeu « poison appliqué aux armes » (maître des poisons, PER-74). */
   onPoisonUpdate?: (patch: Partial<Character>) => void;
   /** Applique un patch « armes bricolées » (chargeur / second canon, PER-284). */
@@ -3013,18 +3022,17 @@ function PathBlock({
    */
   const renderEffectToggles = (feature: Feature, opts: { compact?: boolean } = {}) => {
     if (!character || conditionalEffectsOf(feature.id).length === 0) return null;
-    // Chasseur ailé (PER-363, r7) : interrupteur MJ-only (il ajoute un ADVERSAIRE au combat, pas un
-    // compagnon) — non-interactif pour un joueur qui consulte sa propre fiche. `isPlayer` reflète la
-    // session courante (magic link joueur), pas le personnage affiché : la même fiche reste
-    // actionnable pour le MJ (via `GmSheetDrawer`, qui réutilise ce même composant).
-    const hawkHunterLockedForPlayer = feature.id === HAWK_HUNTER_FEATURE_ID && isPlayer;
+    // Chasseur ailé (PER-363, r7) : ce toggle reste PUREMENT INDICATIF (retour propriétaire) — un
+    // pense-bête togglable par le joueur comme n'importe quel autre effet temporaire. C'est le
+    // bouton « Invoquer » dédié (MJ seulement, cf. la modale de détail) qui ajoute réellement la
+    // créature au combat.
     return (
       <FeatureEffectToggles
         character={character}
         featureId={feature.id}
         compact={opts.compact}
         onToggle={onToggleEffect}
-        disabled={isDisabled(feature) || hawkHunterLockedForPlayer}
+        disabled={isDisabled(feature)}
         sessionStatusIds={sessionStatusIds}
       />
     );
@@ -4065,18 +4073,38 @@ function PathBlock({
                 {hasEffectToggles(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
-                    {/* PER-363 — Chasseur ailé (r7) : avertissement AU-DESSUS de l'interrupteur, sur
-                        TOUTE fiche (joueur ou MJ) — le joueur doit comprendre pourquoi il ne peut pas
-                        cliquer, le MJ pourquoi cocher n'ajoute rien à ses Compagnons. */}
-                    {openFeature.id === HAWK_HUNTER_FEATURE_ID && (
-                      <AppAlert severity="warning" sx={{ mb: 1 }}>
-                        Cette invocation devient un ADVERSAIRE si elle échoue sa mission : « il
-                        l'attaque jusqu'à ce qu'il soit vaincu » (p. 160). Elle n'apparaît donc jamais
-                        dans tes Compagnons — seul le MJ peut l'invoquer, ce qui l'ajoute comme ennemi
-                        dans l'écran de combat.
-                      </AppAlert>
-                    )}
                     {renderEffectToggles(openFeature)}
+                    {/* PER-363 — Chasseur ailé (r7) : le toggle ci-dessus reste un simple pense-bête
+                        (togglable par le joueur, sans effet). Ce bouton, lui, ajoute RÉELLEMENT
+                        l'adversaire au combat — MJ seulement (retour propriétaire, gestion plus
+                        simple qu'un toggle qui agirait de lui-même). */}
+                    {openFeature.id === HAWK_HUNTER_FEATURE_ID && (
+                      <Stack spacing={0.75} sx={{ mt: 1 }}>
+                        <AppAlert severity="info" sx={{ mb: 0 }}>
+                          Adversaire, pas allié : s'il échoue sa mission, il attaque son invocateur
+                          (<SourceRef page={160} />). Seul le MJ peut l'invoquer au combat.
+                        </AppAlert>
+                        <AppTooltip
+                          title={
+                            isPlayer
+                              ? 'Réservé au MJ — ajoute le chasseur ailé comme adversaire dans l’écran de combat.'
+                              : 'Ajoute le chasseur ailé comme adversaire dans l’écran de combat.'
+                          }
+                        >
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<AddIcon fontSize="small" />}
+                              disabled={isPlayer || !onInvokeHawkHunter}
+                              onClick={() => onInvokeHawkHunter?.()}
+                            >
+                              Invoquer (MJ)
+                            </Button>
+                          </span>
+                        </AppTooltip>
+                      </Stack>
+                    )}
                     {openFeature.id === 'animaux-r5' && character && (
                       <AnimalFormSelector character={character} onSetInput={onSetEffectInput} />
                     )}
@@ -4707,6 +4735,7 @@ export function FeaturesByPath({
   onCreateElixir,
   onToggleCrystalActive,
   onSummonCompanionInstance,
+  onInvokeHawkHunter,
   onPoisonUpdate,
   onWeaponModificationUpdate,
   concentration = false,
@@ -4906,6 +4935,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onInvokeHawkHunter={onInvokeHawkHunter}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}
               disabledIds={disabled}
@@ -4947,6 +4977,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onInvokeHawkHunter={onInvokeHawkHunter}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}
               disabledIds={disabled}
@@ -4985,6 +5016,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onInvokeHawkHunter={onInvokeHawkHunter}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}
               disabledIds={disabled}

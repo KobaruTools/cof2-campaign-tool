@@ -26,7 +26,6 @@ import type { UseItemIntent } from '@/lib/character/sheetActions';
 import { containsGameStateKey } from '@/lib/character/gameState';
 import {
   capacityResourceGauges,
-  isEffectActive,
   restRecoveryDieHealBonuses,
   type CapacityResourceGauge,
   type RestRecoveryHealBonus,
@@ -38,11 +37,7 @@ import {
   withAssignedCrystalsOff,
   withReceivedCrystals,
 } from '@/lib/character/crystals';
-import {
-  HAWK_HUNTER_CUSTOM_CREATURE,
-  HAWK_HUNTER_FEATURE_ID,
-  HAWK_HUNTER_TOGGLE_INDEX,
-} from '@/lib/character/majorSummoningPath';
+import { hawkHunterCustomCreature } from '@/lib/character/majorSummoningPath';
 import type { Character, LoadedAmmunitionKind, Purse, WornState } from '@/lib/character/types';
 import { loadingContext, type LoadingContext } from '@/lib/character/weaponLoading';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
@@ -110,6 +105,12 @@ export interface CharacterGameState {
    * combat, dont le MJ est l'auteur unique. Sans effet en lecture seule.
    */
   releaseMountPassenger: () => void;
+  /**
+   * Le MJ invoque le Chasseur ailé (PER-363, r7, p. 160) au combat : ajoute la créature comme
+   * ENNEMIE dans l'écran de MJ. Sans effet côté joueur (session `isPlayer`) ni sans campagne — le
+   * bouton dédié de la fiche est de toute façon masqué pour un joueur (`FeaturesByPath.tsx`).
+   */
+  invokeHawkHunter: () => void;
 
   // --- Objets & équipement porté -----------------------------------------------------------
   /**
@@ -305,34 +306,26 @@ export function useCharacterGameState(
     capacityGauges: capacityResourceGauges(target),
     elixirDosesToLose: actions.elixirDosesToLose(target),
 
-    // Chasseur ailé (PER-363, r7, p. 160) : cet interrupteur n'est PAS un toggle de compagnon (le
-    // chasseur est un ADVERSAIRE, jamais affiché sur la fiche — `CreatureProfile.summonedEnemy`) :
-    // l'activer AJOUTE la créature comme ENNEMIE dans l'écran de combat, réservé au MJ (la fiche
-    // désactive déjà le contrôle pour un joueur, `FeaturesByPath.tsx` — `!isPlayer` ici n'est qu'une
-    // garde de second rang, la RLS `campaign_combat` refuserait l'écriture de toute façon). Seule la
-    // transition INACTIF → ACTIF déclenche l'ajout (réactiver un interrupteur déjà actif ne duplique
-    // pas la créature) ; désactiver ne retire rien du combat — une fois engagée, la créature est gérée
-    // comme n'importe quel adversaire depuis le tracker, plus depuis cet interrupteur.
-    setEffectToggleValue: (featureId, index, active) => {
-      if (
-        featureId === HAWK_HUNTER_FEATURE_ID &&
-        index === HAWK_HUNTER_TOGGLE_INDEX &&
-        active &&
-        !isPlayer &&
-        target.campaignId &&
-        !isEffectActive(target, featureId, index)
-      ) {
-        useCampaignCombatStore
-          .getState()
-          .applyLocalCombat(target.campaignId, (prev) =>
-            addCustomCreatures(prev, HAWK_HUNTER_CUSTOM_CREATURE, { side: 'enemy', name: 'Chasseur ailé' }),
-          );
-      }
-      update(actions.toggleEffect(target, featureId, index, active));
-    },
+    setEffectToggleValue: bind(actions.toggleEffect),
     setEffectInputValue: bind(actions.setEffectInput),
     setUsageCounterValue: bind(actions.setUsageCounter),
     liftShortRestLock: bind(actions.liftShortRestLock),
+    // Chasseur ailé (PER-363, r7, p. 160) : bouton « Invoquer » dédié, MJ SEULEMENT — l'interrupteur
+    // de la carte (`setEffectToggleValue`, index `HAWK_HUNTER_TOGGLE_INDEX`) reste un simple
+    // pense-bête togglable par le joueur, il ne déclenche RIEN (retour propriétaire : plus simple à
+    // gérer que de faire porter l'action par le toggle lui-même). Ce bouton, lui, AJOUTE la créature
+    // comme ENNEMIE dans l'écran de combat à chaque clic (aucune notion d'exemplaire unique — le MJ
+    // peut en réinvoquer un second si le premier tombe). `!isPlayer` n'est qu'une garde de second
+    // rang (la fiche désactive déjà le bouton pour un joueur, `FeaturesByPath.tsx`) — la RLS
+    // `campaign_combat` refuserait l'écriture de toute façon.
+    invokeHawkHunter: () => {
+      if (isPlayer || !target.campaignId) return;
+      useCampaignCombatStore
+        .getState()
+        .applyLocalCombat(target.campaignId, (prev) =>
+          addCustomCreatures(prev, hawkHunterCustomCreature(target.name), { side: 'enemy', name: 'Chasseur ailé' }),
+        );
+    },
     // Désactiver un cristal le reprend à son porteur (PER-360) : « activer ou désactiver un cristal »
     // éteint son effet où qu'il tourne (p. 156). L'annonce part AVANT l'écriture, pour que le MJ lève
     // la puce même si la persistance du personnage échoue.
