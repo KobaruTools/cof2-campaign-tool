@@ -2036,21 +2036,32 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage choisit un sort de rang 1 de la famille des mages. Il est lié à son bâton et il peut l'utiliser au prix d'une action de mouvement sans dépense de mana. À partir du rang 7, il peut ajouter un sort de rang 2 qui ne coûte pas non plus de point de mana.",
-    // PER-74 : sort GRANTED (pas déjà connu) → `feature-from-path` (comme l'Apprentissage de sort du
-    // familier, per74-familier-state.md), `familyScope:'mages'` (FamilyId LITTÉRAL, PER-74 touche à
-    // tout). DEUX choix empilés sur CETTE capacité (retour proprio sur la recette visuelle : les 2
-    // sorts se rendent en cartes d'emprunt EMPILÉES sous « Bâton magique », pas dispersés sur R7) —
+    // PER-74 : `feature-from-path` (comme l'Apprentissage de sort du familier,
+    // per74-familier-state.md), `familyScope:'mages'` (FamilyId LITTÉRAL, PER-74 touche à tout). DEUX
+    // choix empilés sur CETTE capacité (retour proprio sur la recette visuelle : les 2 sorts se
+    // rendent en cartes d'emprunt EMPILÉES sous « Bâton magique », pas dispersés sur R7) —
     // `archmageStaffSpellGranted` (archmagePath.ts) décide, PAR CHOIX, si le sort désigné est castable
     // en action de MOUVEMENT et sans mana : le 1er slot (rang 1) l'est dès ce rang 5, le 2e (rang 2)
     // seulement à partir du rang 7 réellement atteint (« il peut AJOUTER... »). Rendu (carte + action
     // de mouvement + sans mana) câblé dans `FeaturesByPath.tsx` (`BorrowedFeatureBlock.actionTypesOverride`
     // + `noMana`, `borrowedFeaturesOf` désormais PLURIEL).
+    // Retours proprio (2026-08-10) :
+    //  - `spellsOnly: true` manquant sur les deux choix — « un sort » du verbatim laissait passer les
+    //    capacités non-sort de la famille des mages (ex. Bâton de mage, Fortifiant).
+    //  - `includeOwned: true` — le choix n'exige PAS un sort NON connu (relu le verbatim : « il choisit
+    //    un sort... il est lié à son bâton », pas de « apprend » ni de restriction à un sort qu'il ne
+    //    connaît pas encore). Lier un sort DÉJÀ connu au bâton reste utile (action de mouvement et sans
+    //    mana en plus), donc l'exclusion par défaut des capacités possédées (poupées russes, p. 41 —
+    //    pertinente quand l'emprunt n'ajoute RIEN de plus que ce que le personnage a déjà) ne s'applique
+    //    pas ici. Cf. `includeOwned` (schema.ts) et `featuresInChoiceDomain` (choices.ts).
     choices: [
       {
         kind: 'feature-from-path',
         prompt: 'Sort de rang 1 (famille des mages) lié au bâton',
         familyScope: 'mages',
         allowedRanks: [1],
+        spellsOnly: true,
+        includeOwned: true,
       },
       {
         kind: 'feature-from-path',
@@ -2058,6 +2069,8 @@ export const prestigeFeatures2: Feature[] = [
         note: 'Actif seulement une fois le rang 7 atteint.',
         familyScope: 'mages',
         allowedRanks: [2],
+        spellsOnly: true,
+        includeOwned: true,
       },
     ],
     sourcePage: 154,
@@ -2813,8 +2826,12 @@ export const prestigeFeatures2: Feature[] = [
     // du richText, porté par `creatureProfile` en mini-fiche).
     richText:
       "Le personnage invoque à son service une créature ailée de grande taille pendant 24 h. À son arrivée, il doit lui donner la mission de trouver et de lui rapporter une personne ou un objet. Le chasseur se met immédiatement en chasse avec un instinct infaillible et la trouve à moins que la cible ne soit dissimulée par magie (sort de non-détection, par exemple). Le chasseur utilise au mieux ses capacités et son intelligence pour réussir sa mission, mais il ne combat pas, sauf pour se défendre. Il parcourt jusqu'à 25 km/h. En cas de réussite, le chasseur rapporte l'objet ou la créature et le dépose devant l'invocateur. À la fin de la durée du sort, si le chasseur ailé n'a pas pu remplir sa mission, il entre dans une rage destructrice, il retrouve alors le personnage qui l'a invoqué et l'attaque jusqu'à ce qu'il soit vaincu (il n'utilise pas sa capacité d'Enlèvement pour ce combat).",
-    // Marqueur d'INVOCATION (patron Invocation d'un démon, demon-r5) : durée fixe 24 h → effet
-    // TEMPORAIRE sans bonus, bouton « Invoquer » sur la carte du rang.
+    // Marqueur d'invocation (patron Invocation d'un démon, demon-r5), mais PAS un compagnon — retour
+    // propriétaire (PER-363) : le chasseur ailé est un ADVERSAIRE, pas un allié affiché sur la fiche
+    // (« il l'attaque jusqu'à ce qu'il soit vaincu »). Cet interrupteur ajoute plutôt le chasseur
+    // comme ENNEMI dans l'écran de combat (`useCharacterGameState.ts`, MJ uniquement — la fiche
+    // n'affiche à la place qu'un avertissement, `FeaturesByPath.tsx`). Bouton « Invoquer » masqué
+    // côté joueur (interrupteur non-interactif) mais actionnable par le MJ depuis la même fiche.
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -2822,14 +2839,12 @@ export const prestigeFeatures2: Feature[] = [
         activation: { kind: 'temporary', label: 'Chasseur ailé invoqué', activeByDefault: false },
       },
     ],
-    // Profil structuré (NC5, p. 160) : attaque PROPRE (pas celle du maître — le chasseur combat pour
-    // sa propre mission, pas au service direct de l'invocateur), deux particularités spéciales.
+    // Profil structuré (NC5, p. 160) — affiché EN LIGNE sur la carte de la capacité (attaque PROPRE,
+    // deux particularités spéciales), mais `summonedEnemy` l'exclut de la section « Compagnons » (ni
+    // côté joueur, ni côté roster MJ) : voir le commentaire ci-dessus.
     creatureProfile: {
       name: 'Chasseur ailé',
-      companionType: 'summon',
-      // `companionSlot` PROPRE (PER-363) : voir Monture fantôme (r4) — les deux invocations de
-      // cette voie sont INDÉPENDANTES et peuvent être actives en même temps.
-      companionSlot: 'prestige-invocation-majeure-r7',
+      summonedEnemy: true,
       type: 'Créature non vivante',
       size: 'grande',
       abilities: { AGI: 1, CON: 6, FOR: 6, PER: 0, CHA: 0, INT: 2, VOL: 6 },

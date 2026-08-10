@@ -654,9 +654,24 @@ function ChoiceControl({
   const blocked = ineligibleBorrowersForChoice(character, featureId, choice);
   const blockedIds = new Set(blocked.map((f) => f.id));
   const options = [...eligible, ...blocked].map((f) => f.id);
+  // `choice.includeOwned` (archimage r5) : les capacités DÉJÀ possédées entrent aussi dans le domaine —
+  // suffixe pour ne pas laisser croire à un doublon (on retrouve le sort d'une voie déjà acquise).
+  const ownedIds = choice.includeOwned ? new Set(character.featureIds) : null;
   // Avertissement NON BLOQUANT de la voie de l'expert (p. 129) : la capacité retenue vient d'une
   // voie déjà utilisée par un autre rang expert (règle « une voie différente par capacité »).
   const reusedPathName = expertPathReuseWarning(character, featureId, single);
+  // Domaine étendu à plusieurs profils (`familyScope`/plusieurs `classIds`, ex. archimage r5 « famille
+  // des mages ») : retour proprio (2026-08-10) — un groupement PAR VOIE mélange alphabétiquement les
+  // voies de profils différents (ex. Voie de l'air d'ensorceleur puis Voie des artefacts de forgesort),
+  // illisible sur une liste aussi longue. Méta-groupement PAR PROFIL (replié par défaut, même patron
+  // que `AddFeatureField`, catalogue gigantesque) dès que le domaine touche ≥ 2 profils.
+  const spansMultipleProfiles =
+    new Set(
+      [...eligible, ...blocked].map((f) => {
+        const path = pathById.get(f.pathId);
+        return path?.type === 'class' ? path.classIds[0] : f.pathId;
+      }),
+    ).size > 1;
   return (
     <Box>
       <FeaturePathAutocomplete
@@ -664,9 +679,14 @@ function ChoiceControl({
         options={options}
         value={single}
         onChange={(id) => onChange(index, id)}
+        groupMode={spansMultipleProfiles ? 'profile' : 'path'}
         disabledIds={blockedIds}
         optionSuffix={(id) =>
-          blockedIds.has(id) ? ' — emprunte déjà une capacité (non cumulable)' : undefined
+          blockedIds.has(id)
+            ? ' — emprunte déjà une capacité (non cumulable)'
+            : ownedIds?.has(id)
+              ? ' — déjà connu'
+              : undefined
         }
         error={blocking && missing}
         helperText={

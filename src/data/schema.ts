@@ -2700,6 +2700,16 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * et `classIds: ['ensorceleur', 'druide']` (repli). Absent = pas de restriction par ascendance.
    */
   restrictByDemiElfeAncestry?: boolean;
+  /**
+   * Ne PAS exclure du domaine les capacités déjà possédées (PER-74, archimage r5 « Bâton magique »,
+   * p. 154 : retour proprio 2026-08-10). Par défaut, `featuresInChoiceDomain` exclut les capacités déjà
+   * possédées — un emprunt redondant serait sans effet PUISQUE la capacité empruntée n'apporte alors
+   * rien de plus que ce que le personnage a déjà. Ce n'est PAS le cas ici : lier un sort DÉJÀ connu au
+   * bâton magique lui ajoute quand même l'action de mouvement sans dépense de mana
+   * (`archmageStaffSpellGranted`), donc le choix reste PERTINENT même sur un sort possédé. Absent =
+   * comportement par défaut (exclusion). Résolu par `featuresInChoiceDomain`.
+   */
+  includeOwned?: boolean;
 }
 
 /**
@@ -3118,11 +3128,12 @@ export interface CreatureProfile {
   /**
    * Clé de DÉDOUBLONNAGE du compagnon (PER-363), pour les rares voies qui octroient PLUSIEURS
    * compagnons INDÉPENDANTS pouvant être actifs SIMULTANÉMENT (voie de l'invocation majeure, p. 158 :
-   * Monture fantôme r4 ET Chasseur ailé r7 — deux invocations distinctes, pas une créature qui
-   * « monte en gamme »). `listCompanions` ne garde normalement qu'UN compagnon par VOIE (le rang le
-   * plus élevé actif) ; poser ici un identifiant DISTINCT par rang (ex. l'id de la capacité elle-même)
-   * fait sortir ce rang du dédoublonnage partagé de sa voie. Absent = `feature.pathId` (comportement
-   * historique, un seul compagnon par voie) — à laisser absent dans l'immense majorité des cas.
+   * Monture fantôme r4, seule OU en même temps qu'un futur second compagnon de la même voie) — deux
+   * invocations distinctes, pas une créature qui « monte en gamme ». `listCompanions` ne garde
+   * normalement qu'UN compagnon par VOIE (le rang le plus élevé actif) ; poser ici un identifiant
+   * DISTINCT par rang (ex. l'id de la capacité elle-même) fait sortir ce rang du dédoublonnage
+   * partagé de sa voie. Absent = `feature.pathId` (comportement historique, un seul compagnon par
+   * voie) — à laisser absent dans l'immense majorité des cas.
    */
   companionSlot?: string;
   /**
@@ -3135,6 +3146,18 @@ export interface CreatureProfile {
    * Absent = créature normale (compagnon si un `companionType` est posé).
    */
   transformation?: boolean;
+  /**
+   * Cette « invocation » est en réalité un ADVERSAIRE de combat, pas un allié (PER-363, Chasseur
+   * ailé, voie de l'invocation majeure r7, p. 160 : le livre le décrit au service du personnage
+   * tant que sa mission n'est pas jouée, mais dès qu'il entre en scène « il l'attaque jusqu'à ce
+   * qu'il soit vaincu »). `listCompanions` saute TOUJOURS un profil `summonedEnemy` (jamais affiché
+   * dans la section « Compagnons », ni côté joueur ni côté roster MJ) : son interrupteur d'invocation
+   * (`Feature.effects`, `activation.kind: 'temporary'`) sert plutôt à l'AJOUTER comme ennemi dans
+   * l'écran de combat (MJ uniquement, cf. `HAWK_HUNTER_CUSTOM_CREATURE` dans `majorSummoningPath.ts`)
+   * — jamais sur la fiche du personnage. Mutuellement exclusif de `companionType` (mêmes raisons que
+   * `transformation`, mais pour un adversaire plutôt qu'une forme). Absent = compagnon ordinaire.
+   */
+  summonedEnemy?: boolean;
   /**
    * Ce profil REMPLACE le compagnon déjà octroyé par ces VOIES (PER-74, chevalier dragon r7, p. 148 :
    * « Le drake atteint sa pleine maturité » — le stat-block adulte se substitue à celui du drake

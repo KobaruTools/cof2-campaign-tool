@@ -376,7 +376,8 @@ export function featureGrantsDefBonus(featureId: string): boolean {
  * (`type: 'class'`) — les emprunts du livre se font toujours « dans une voie de
  * tel profil ». La capacité hôte (celle qui porte le choix) et les capacités
  * déjà acquises par le personnage sont exclues (un emprunt redondant n'aurait
- * pas de sens).
+ * pas de sens) — sauf `choice.includeOwned` (archimage r5), où l'emprunt d'une
+ * capacité déjà connue reste pertinent (bénéfice additionnel, cf. le champ).
  */
 function featuresInChoiceDomain(
   character: Character,
@@ -443,7 +444,7 @@ function featuresInChoiceDomain(
       (f) =>
         f.id !== hostFeatureId &&
         f.pathId !== hostPathId &&
-        !owned.has(f.id) &&
+        (choice.includeOwned || !owned.has(f.id)) &&
         allowedRanks.has(f.rank) &&
         classPathIds.has(f.pathId) &&
         // Scope familier (r5) : « un SORT » → on ne retient que les sorts.
