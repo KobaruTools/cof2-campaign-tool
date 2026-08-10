@@ -11,6 +11,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -77,17 +78,23 @@ import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PortraitVariantMenu } from '@/components/PortraitVariantMenu';
-import { useCharacterPortraitSrc, invalidateCharacterPortraitCache } from '@/lib/storage/useCharacterPortraitSrc';
+import {
+  useCharacterPortraitSrc,
+  useCharacterPortraitCropRect,
+  invalidateCharacterPortraitCache,
+} from '@/lib/storage/useCharacterPortraitSrc';
+import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
 import {
   uploadCharacterPortrait,
   removeCharacterPortrait,
   PortraitValidationError,
+  type PortraitCropRect,
 } from '@/lib/storage/characterPortrait';
 import { useToast } from '@/components/toast/ToastProvider';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
 import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
-import { HeaderIllustrations } from '@/components/HeaderIllustrations';
+import { HeaderIllustrations, FALLBACK_FRAME_WIDTH } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
 import { CharacterSheetSkeleton } from '@/components/sheet/CharacterSheetSkeleton';
 import { FirearmsAllowedProvider } from '@/components/ClassIcon';
@@ -409,6 +416,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     character?.portraitVariant ?? 'default',
     character?.classId ?? '',
   );
+  // Zone de recadrage carrée du portrait personnalisé (PER-394) — `null` sans
+  // portrait personnalisé, ou pour un portrait envoyé avant PER-394 (l'image
+  // entière fait alors déjà foi, cf. `useCroppedImageSrc`).
+  const portraitCropRect = useCharacterPortraitCropRect(
+    character?.id ?? '',
+    character?.portraitVariant ?? 'default',
+  );
+  // Recadrage appliqué aux vignettes carrées/rectangulaires (section Identité,
+  // cadre d'en-tête à fond plein) — `undefined` sans `portraitCropRect` (illustration
+  // standard, ou portrait personnalisé envoyé avant PER-394), on retombe alors sur
+  // `classPortraitSrc` tel quel (déjà pertinent en `object-fit: cover`).
+  const croppedClassPortraitSrc = useCroppedImageSrc(classPortraitSrc, portraitCropRect);
   const portraitCloudBacked = useCharactersStore((s) =>
     character ? character.id in s.cloudVersions : false,
   );
@@ -457,11 +476,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     update({ portraitVariant: v });
   };
 
-  const handleSelectPortraitFile = async (file: File) => {
+  const handleSelectPortraitFile = async (file: File, cropRect: PortraitCropRect) => {
     setPortraitError(null);
     setPortraitBusy(true);
     try {
-      await uploadCharacterPortrait(character.id, file);
+      await uploadCharacterPortrait(character.id, file, cropRect);
       invalidateCharacterPortraitCache(character.id);
       update({ portraitVariant: 'custom' });
     } catch (e) {
@@ -867,6 +886,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               ancestryId={ancestry?.id}
               classId={characterClass?.id}
               classPortraitSrc={classPortraitSrc}
+              portraitCropRect={portraitCropRect}
             />
             {/* Attribution de campagne (PER-180), placée au-dessus du nom comme un fil
                 de contexte : hors édition, badge (cliquable vers la vue campagne) ; en
@@ -979,6 +999,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   variant="standard"
                   fullWidth
                   sx={{
+                    // Le cadre/filigrane du portrait de profil occupe le coin haut-droit
+                    // du bloc titre (`HeaderIllustrations`) — sans cette limite, le
+                    // soulignement plein-largeur du champ passait dessous (PER-394 retours).
+                    maxWidth: { md: `calc(100% - ${FALLBACK_FRAME_WIDTH + 16}px)` },
                     '& .MuiInputBase-input': {
                       fontSize: (theme) => theme.typography.h4.fontSize,
                       fontWeight: 'bold',
@@ -989,10 +1013,16 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 <Typography
                   variant="h4"
                   component="h2"
-                  // `overflowWrap: anywhere` (PER-228) : un nom d'un seul mot très long
-                  // (sans espace où couper) ne déborde plus horizontalement sur mobile ;
-                  // la taille du h4 est déjà réduite sur petit écran par responsiveFontSizes.
-                  sx={{ fontWeight: 'bold', overflowWrap: 'anywhere' }}
+                  sx={{
+                    fontWeight: 'bold',
+                    // `overflowWrap: anywhere` (PER-228) : un nom d'un seul mot très long
+                    // (sans espace où couper) ne déborde plus horizontalement sur mobile ;
+                    // la taille du h4 est déjà réduite sur petit écran par responsiveFontSizes.
+                    overflowWrap: 'anywhere',
+                    // Un nom assez long pour passer à la ligne ne doit pas se faufiler
+                    // sous le cadre/filigrane du portrait de profil (PER-394 retours).
+                    maxWidth: { md: `calc(100% - ${FALLBACK_FRAME_WIDTH + 16}px)` },
+                  }}
                 >
                   {character.name || 'Sans nom'}
                 </Typography>
@@ -1074,7 +1104,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                     variant={character.portraitVariant}
                     busy={portraitBusy}
                     onSelectStatic={handleSelectStaticPortrait}
-                    onSelectFile={(file) => void handleSelectPortraitFile(file)}
+                    onSelectFile={(file, cropRect) => void handleSelectPortraitFile(file, cropRect)}
                     onValidationError={setPortraitError}
                     disabledCustom={!portraitCloudBacked}
                     disabledCustomReason="Disponible une fois le personnage synchronisé avec le cloud."
@@ -1644,44 +1674,68 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               )
             }
           >
-            {/* Vocation RP du prêtre spécialiste (PER-218) : descriptif, au-dessus des champs libres. */}
-            <PriestVocationIdentityLine vocation={character.priestVocation} />
-            {editingBlocks.identity ? (
-              <>
-                <IdentityEditor
-                  name={character.name}
-                  identity={character.identity}
-                  ancestry={ancestry}
-                  onName={(name) => update({ name })}
-                  onIdentity={setIdentity}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'flex-start' }}>
+              {/* Vignette portrait (PER-394) : même recadrage carré que la carte/l'initiative,
+                  affiché ici au format « identité » 200×300, à gauche du reste du bloc. */}
+              <Paper
+                variant="outlined"
+                sx={{
+                  width: 200,
+                  height: 300,
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                  alignSelf: { xs: 'center', sm: 'flex-start' },
+                }}
+              >
+                <Box
+                  component="img"
+                  src={croppedClassPortraitSrc ?? classPortraitSrc}
+                  alt=""
+                  aria-hidden
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
                 />
-                {/* Édition rétroactive de la voie de peuple du demi-elfe (PER-324) : l'assistant fige ce
-                    choix, cette modale permet de basculer vers/depuis la « Voie du demi-elfe » (Le Compagnon)
-                    et de fixer l'ascendance elfe. Réservée au peuple demi-elfe, contenu Compagnon chargé. */}
-                {character.ancestryId === 'demi-elfe' && pathById.has('demi-elfe') && (
+              </Paper>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                {/* Vocation RP du prêtre spécialiste (PER-218) : descriptif, au-dessus des champs libres. */}
+                <PriestVocationIdentityLine vocation={character.priestVocation} />
+                {editingBlocks.identity ? (
                   <>
-                    <Button size="small" variant="outlined" sx={{ mt: 1.5 }} onClick={() => setDemiElfeDialogOpen(true)}>
-                      Voie de peuple du demi-elfe…
-                    </Button>
-                    <DemiElfeAncestryDialog
-                      open={demiElfeDialogOpen}
-                      onClose={() => setDemiElfeDialogOpen(false)}
-                      currentPathId={character.ancestryPathId}
-                      currentElfAncestry={character.demiElfeElfAncestry}
-                      onApply={(newPathId, elfAncestry) =>
-                        update(setDemiElfeAncestryPath(character, newPathId, elfAncestry))
-                      }
+                    <IdentityEditor
+                      name={character.name}
+                      identity={character.identity}
+                      ancestry={ancestry}
+                      onName={(name) => update({ name })}
+                      onIdentity={setIdentity}
                     />
+                    {/* Édition rétroactive de la voie de peuple du demi-elfe (PER-324) : l'assistant fige ce
+                        choix, cette modale permet de basculer vers/depuis la « Voie du demi-elfe » (Le Compagnon)
+                        et de fixer l'ascendance elfe. Réservée au peuple demi-elfe, contenu Compagnon chargé. */}
+                    {character.ancestryId === 'demi-elfe' && pathById.has('demi-elfe') && (
+                      <>
+                        <Button size="small" variant="outlined" sx={{ mt: 1.5 }} onClick={() => setDemiElfeDialogOpen(true)}>
+                          Voie de peuple du demi-elfe…
+                        </Button>
+                        <DemiElfeAncestryDialog
+                          open={demiElfeDialogOpen}
+                          onClose={() => setDemiElfeDialogOpen(false)}
+                          currentPathId={character.ancestryPathId}
+                          currentElfAncestry={character.demiElfeElfAncestry}
+                          onApply={(newPathId, elfAncestry) =>
+                            update(setDemiElfeAncestryPath(character, newPathId, elfAncestry))
+                          }
+                        />
+                      </>
+                    )}
                   </>
+                ) : (
+                  <IdentityFields
+                    identity={character.identity}
+                    ancestryId={character.ancestryId}
+                    featureIds={character.featureIds}
+                  />
                 )}
-              </>
-            ) : (
-              <IdentityFields
-                identity={character.identity}
-                ancestryId={character.ancestryId}
-                featureIds={character.featureIds}
-              />
-            )}
+              </Box>
+            </Stack>
           </SheetSection>
 
           <SheetSection

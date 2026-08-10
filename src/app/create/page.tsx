@@ -27,7 +27,7 @@ import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
 import { firearmsEffective } from '@/lib/character/firearms';
-import { uploadCharacterPortrait } from '@/lib/storage/characterPortrait';
+import { uploadCharacterPortrait, type PortraitCropRect } from '@/lib/storage/characterPortrait';
 import { AppAlert } from '@/components/AppAlert';
 import { AppHeader } from '@/components/AppHeader';
 import { ClassStep, PathsStep, IdentityStep } from '@/components/wizard/steps';
@@ -164,6 +164,7 @@ export default function CreatePage() {
   // Portrait personnalisé (PER-383) : envoi différé après le commit — la RLS du
   // bucket exige que la ligne `characters` existe déjà en DB (cf. IdentityStep).
   const [portraitFile, setPortraitFile] = useState<File | null>(null);
+  const [portraitCropRect, setPortraitCropRect] = useState<PortraitCropRect | null>(null);
   // Redirection vers la fiche après création réussie : le brouillon vient d'être
   // vidé (clear) mais la navigation n'est pas encore effective. Sans ce verrou,
   // l'effet de démarrage ci-dessous recréerait aussitôt un brouillon vierge et
@@ -304,7 +305,11 @@ export default function CreatePage() {
       // standard (cf. useCharacterPortraitSrc) ; le joueur peut réessayer depuis le
       // même menu sur la fiche.
       try {
-        await uploadCharacterPortrait(character.id, portraitFile);
+        await uploadCharacterPortrait(
+          character.id,
+          portraitFile,
+          portraitCropRect ?? { x: 0, y: 0, width: 1, height: 1 },
+        );
       } catch (e) {
         console.error("Échec de l'envoi du portrait personnalisé après création :", e);
       }
@@ -393,7 +398,11 @@ export default function CreatePage() {
             patch={patch}
             campaignAllowsFirearms={campaignAllowsFirearms}
             portraitFile={portraitFile}
-            onPortraitFile={setPortraitFile}
+            portraitCropRect={portraitCropRect}
+            onPortraitFile={(file, cropRect) => {
+              setPortraitFile(file);
+              setPortraitCropRect(cropRect ?? null);
+            }}
           />
         </Paper>
 

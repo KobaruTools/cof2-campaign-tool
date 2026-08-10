@@ -35,8 +35,29 @@ const WEBP_QUALITY = 0.82;
 /** Erreur de VALIDATION (format/taille) — message déjà présentable au joueur, pas une erreur technique. */
 export class PortraitValidationError extends Error {}
 
+/**
+ * Zone carrée choisie par le joueur (PER-394) dans l'image ORIGINALE, en fractions
+ * 0-1 — `x`/`width` relatifs à la largeur, `y`/`height` à la hauteur (même
+ * convention que `croppedArea` de react-easy-crop, sans le passage en %).
+ * Indépendant de la résolution : le fichier stocké (`portraitPath`) n'est JAMAIS
+ * recadré à l'envoi (contrairement à l'ancien comportement PER-392) — il reste
+ * l'illustration complète, seule cette zone dit où recadrer à l'affichage pour
+ * les vignettes carrées (carte, initiative, cadre d'en-tête, section Identité).
+ * Le filigrane d'en-tête l'ignore volontairement quand le fond est transparent.
+ */
+export interface PortraitCropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 function portraitPath(characterId: string): string {
   return `${characterId}/portrait`;
+}
+
+function portraitCropPath(characterId: string): string {
+  return `${characterId}/portrait-crop.json`;
 }
 
 /** Valide le fichier choisi par l'utilisateur avant toute tentative de décodage. */
@@ -77,14 +98,19 @@ async function compressPortraitImage(file: Blob): Promise<Blob> {
 
 /**
  * Dépose ou remplace le portrait d'un personnage. Valide le fichier, le
- * redimensionne/compresse, puis l'envoie (écrase l'éventuel portrait existant).
- * La RLS (migration 0020) refuse l'envoi si l'appelant n'est ni le joueur
+ * redimensionne/compresse (SANS le recadrer — cf. `PortraitCropRect`), puis
+ * l'envoie avec sa zone de recadrage (écrase l'éventuel portrait existant). La
+ * RLS (migration 0020) refuse l'envoi si l'appelant n'est ni le joueur
  * propriétaire du personnage ni le MJ de sa campagne.
  *
  * @throws {PortraitValidationError} format ou taille d'origine refusés
  * @throws {Error} échec technique (réseau, refus RLS, encodage…)
  */
-export async function uploadCharacterPortrait(characterId: string, file: File): Promise<void> {
+export async function uploadCharacterPortrait(
+  characterId: string,
+  file: File,
+  cropRect: PortraitCropRect,
+): Promise<void> {
   validatePortraitFile(file);
   const compressed = await compressPortraitImage(file);
 
@@ -96,12 +122,23 @@ export async function uploadCharacterPortrait(characterId: string, file: File): 
       upsert: true,
     });
   if (error) throw error;
+
+  const cropBlob = new Blob([JSON.stringify(cropRect)], { type: 'application/json' });
+  const { error: cropError } = await supabase.storage
+    .from(BUCKET)
+    .upload(portraitCropPath(characterId), cropBlob, {
+      contentType: 'application/json',
+      upsert: true,
+    });
+  if (cropError) throw cropError;
 }
 
 /** Retire le portrait personnalisé d'un personnage (redevient l'illustration standard). */
 export async function removeCharacterPortrait(characterId: string): Promise<void> {
   const supabase = createBrowserSupabaseClient();
-  const { error } = await supabase.storage.from(BUCKET).remove([portraitPath(characterId)]);
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .remove([portraitPath(characterId), portraitCropPath(characterId)]);
   if (error) throw error;
 }
 
@@ -120,4 +157,24 @@ export async function downloadCharacterPortrait(characterId: string): Promise<Bl
     return null;
   }
   return data;
+}
+
+/**
+ * Télécharge la zone de recadrage carrée choisie par le joueur pour son portrait
+ * personnalisé, ou `null` si absente (portrait envoyé avant PER-394, ou pas de
+ * portrait personnalisé) — l'appelant doit alors se replier sur l'image entière.
+ */
+export async function downloadCharacterPortraitCropRect(
+  characterId: string,
+): Promise<PortraitCropRect | null> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .download(portraitCropPath(characterId));
+  if (error) return null;
+  try {
+    return JSON.parse(await data.text()) as PortraitCropRect;
+  } catch {
+    return null;
+  }
 }

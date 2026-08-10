@@ -44,6 +44,7 @@ import { AppAlert } from '@/components/AppAlert';
 import { IdentityForm } from '@/components/IdentityForm';
 import { PortraitVariantMenu } from '@/components/PortraitVariantMenu';
 import { classPortraitPath } from '@/lib/storage/useCharacterPortraitSrc';
+import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
 import {
   divineFeatureOfVocation,
   involvedClassIds,
@@ -1226,7 +1227,13 @@ const PORTRAIT_UPLOAD_AVAILABLE = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 );
 
-export function IdentityStep({ draft, patch, portraitFile, onPortraitFile }: StepProps) {
+export function IdentityStep({
+  draft,
+  patch,
+  portraitFile,
+  portraitCropRect,
+  onPortraitFile,
+}: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
   const [portraitError, setPortraitError] = useState<string | null>(null);
@@ -1244,9 +1251,13 @@ export function IdentityStep({ draft, patch, portraitFile, onPortraitFile }: Ste
     return () => URL.revokeObjectURL(url);
   }, [portraitFile]);
 
+  // Recadrage carré choisi par le joueur (PER-394) — le fichier mis en attente
+  // reste l'originale, cf. `PortraitImportDialog`.
+  const croppedPreviewUrl = useCroppedImageSrc(previewUrl ?? undefined, portraitCropRect);
+
   const previewSrc =
     draft.portraitVariant === 'custom' && previewUrl
-      ? previewUrl
+      ? croppedPreviewUrl ?? previewUrl
       : classPortraitPath(draft.classId, draft.portraitVariant === 'alt' ? 'alt' : 'default');
 
   return (
@@ -1275,9 +1286,9 @@ export function IdentityStep({ draft, patch, portraitFile, onPortraitFile }: Ste
                 setPortraitError(null);
                 patch({ portraitVariant: v });
               }}
-              onSelectFile={(file) => {
+              onSelectFile={(file, cropRect) => {
                 setPortraitError(null);
-                onPortraitFile?.(file);
+                onPortraitFile?.(file, cropRect);
                 patch({ portraitVariant: 'custom' });
               }}
               onValidationError={setPortraitError}

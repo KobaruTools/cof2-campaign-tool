@@ -9,14 +9,22 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import type { PortraitVariant } from '@/lib/character/types';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PortraitImportDialog } from '@/components/PortraitImportDialog';
-import { PortraitValidationError, validatePortraitFile } from '@/lib/storage/characterPortrait';
+import {
+  PortraitValidationError,
+  validatePortraitFile,
+  type PortraitCropRect,
+} from '@/lib/storage/characterPortrait';
 
 export interface PortraitVariantMenuProps {
   /** Variante actuelle, pour cocher (`selected`) le choix courant dans le menu. */
   variant: PortraitVariant;
   onSelectStatic: (variant: 'default' | 'alt') => void;
-  /** Fichier CONFIRMÉ par l'utilisateur (après aperçu) — envoi/mise en attente restent à l'appelant. */
-  onSelectFile: (file: File) => void;
+  /**
+   * Fichier CONFIRMÉ par l'utilisateur (après aperçu) — envoi/mise en attente restent à
+   * l'appelant. `file` est TOUJOURS l'image d'origine (PER-394) ; `cropRect` porte le
+   * choix de recadrage carré du joueur.
+   */
+  onSelectFile: (file: File, cropRect: PortraitCropRect) => void;
   /** Grise « Image personnalisée… » (ex. personnage pas encore synchronisé avec le cloud). */
   disabledCustom?: boolean;
   /** Motif affiché en infobulle quand `disabledCustom`. */
@@ -121,9 +129,9 @@ export function PortraitVariantMenu({
       <PortraitImportDialog
         file={pendingFile}
         onCancel={() => setPendingFile(null)}
-        onConfirm={(file) => {
+        onConfirm={(file, cropRect) => {
           setPendingFile(null);
-          onSelectFile(file);
+          onSelectFile(file, cropRect);
         }}
       />
     </>

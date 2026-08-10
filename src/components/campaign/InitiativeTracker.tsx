@@ -141,7 +141,11 @@ import { useDroppable } from '@dnd-kit/core';
 import { ClassIcon } from '@/components/ClassIcon';
 import type { BeneficialEffectId, SituationalEffectId } from '@/data/schema';
 import type { Depletion, PortraitVariant } from '@/lib/character/types';
-import { useCharacterPortraitSrc } from '@/lib/storage/useCharacterPortraitSrc';
+import {
+  useCharacterPortraitSrc,
+  useCharacterPortraitCropRect,
+} from '@/lib/storage/useCharacterPortraitSrc';
+import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
 import {
   clampIntensity,
   isStackingStatus,
@@ -937,8 +941,9 @@ const STATUS_BADGE_GAP = 1.25;
 /**
  * Style de base du carré-icône d'un état : carré translucide aux bords arrondis, avec flou
  * d'arrière-plan pour rester lisible quel que soit ce qu'il recouvre (illustration de fond, portrait
- * voisin). La `tone` porte la famille de l'état (rouge = subi, bleu = environnement, vert = buff de
- * groupe, jaune = déduit — cf. `statusTone` / `originStatusTone`).
+ * voisin). La `tone` porte la famille de l'état (rouge = subi générique du glossaire, orange = effet
+ * situationnel nommé d'une capacité de voie, bleu = environnement, vert = buff de groupe, jaune =
+ * déduit — cf. `statusTone` / `originStatusTone`).
  * Partagé À L'IDENTIQUE par la projection (lecture seule) et l'écran de MJ (interactif) — la seule
  * différence entre les deux tient au curseur et aux commandes ajoutées, pas au visuel.
  */
@@ -2197,7 +2202,13 @@ function CombatantColumn({
   // vers l'affichage QUE pour un vrai personnage (seul à porter un `classId`) — une créature garde
   // son illustration de bestiaire (`portraitSrc`, cf. plus bas) et un compagnon son avatar de repli.
   const resolvedPortraitSrc = useCharacterPortraitSrc(row.key, row.portraitVariant ?? 'default', row.classId ?? '');
-  const portraitSrc = row.classId ? resolvedPortraitSrc : row.portraitSrc;
+  // Recadrage carré du portrait personnalisé (PER-394) — sans effet hors personnage
+  // réel (`variant` reste 'default' pour une créature/un compagnon → `null`).
+  const portraitCropRect = useCharacterPortraitCropRect(row.key, row.portraitVariant ?? 'default');
+  const croppedResolvedPortraitSrc = useCroppedImageSrc(resolvedPortraitSrc, portraitCropRect);
+  const portraitSrc = row.classId
+    ? croppedResolvedPortraitSrc ?? resolvedPortraitSrc
+    : row.portraitSrc;
   // États affichés en projection (lecture seule) : bande d'icônes en overlay absolu ancré en bas à
   // gauche. AUCUNE place réservée (pas de padding) → le bloc garde EXACTEMENT la même taille qu'il
   // porte des états ou non, donc tous les blocs restent alignés quel que soit leur nombre d'états.

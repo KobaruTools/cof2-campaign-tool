@@ -2,15 +2,19 @@
 
 import { useRef } from 'react';
 import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
 import { useMouseParallax } from '@/lib/ui/useMouseParallax';
 import { useHasTransparentBackground } from '@/lib/image/useHasTransparentBackground';
+import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
+import type { PortraitCropRect } from '@/lib/storage/characterPortrait';
 
-// Taille du cadre de repli (PER-384) quand le portrait de profil n'est pas détouré
-// (photo personnalisée à fond plein) : troisième format, distinct des vignettes
-// carrées 72px (`CharacterPreviewCard`) et 44px (tracker d'initiative) — le filigrane
-// qu'il remplace occupe tout le haut de l'écran, ce cadre doit rester visible à cette
-// échelle sans reproduire la taille du filigrane.
-const FALLBACK_FRAME_SIZE = 120;
+// Largeur du cadre de repli (PER-384) quand le portrait de profil n'est pas
+// détouré (photo personnalisée à fond plein). Exportée : la fiche s'en sert pour
+// réserver la même largeur au champ de nom en mode édition (PER-394 retours),
+// sans quoi son soulignement plein-largeur passe SOUS le cadre. Sa hauteur, elle,
+// n'est PAS fixe : elle s'étire (`top`/`bottom: 0`) sur toute la hauteur du bloc
+// titre, quelle que soit sa taille réelle (nom sur 1 ou 2 lignes…).
+export const FALLBACK_FRAME_WIDTH = 130;
 
 // Fraction du défilement répercutée sur l'image (parallaxe vertical). Volontairement
 // faible : l'effet doit rester à peine perceptible.
@@ -28,6 +32,13 @@ interface HeaderIllustrationsProps {
    * l'image reçue. Défaut : illustration standard du profil (`classId`).
    */
   classPortraitSrc?: string;
+  /**
+   * Zone de recadrage carrée (PER-394) du portrait personnalisé — appliquée
+   * UNIQUEMENT au cadre de repli (fond plein) ci-dessous, jamais au filigrane
+   * (fond transparent), qui ignore volontairement le recadrage : il affiche
+   * toujours l'illustration complète.
+   */
+  portraitCropRect?: PortraitCropRect | null;
   /**
    * Position verticale de la vitruve. Relative au parent (`position: relative`) si
    * exprimée en % — défaut `'75%'`, calibré pour l'en-tête compact de la fiche ; on
@@ -54,6 +65,7 @@ export function HeaderIllustrations({
   ancestryId,
   classId,
   classPortraitSrc,
+  portraitCropRect,
   ancestryTop = '75%',
   ancestryHeight = '300%',
 }: HeaderIllustrationsProps) {
@@ -64,8 +76,12 @@ export function HeaderIllustrations({
   const classImgRef = useRef<HTMLImageElement>(null);
   const classSrc = classId ? classPortraitSrc ?? `/classes/${classId}.webp` : undefined;
   // PER-384 : une photo personnalisée à fond plein casserait le filigrane (rectangle
-  // disgracieux) — on bascule alors sur un petit cadre carré bordé, cf. plus bas.
+  // disgracieux) — on bascule alors sur un petit cadre bordé, cf. plus bas.
   const classHasTransparentBackground = useHasTransparentBackground(classSrc);
+  // PER-394 : le cadre de repli reproduit le recadrage carré choisi par le joueur
+  // (la même vignette que la carte/l'initiative/la section Identité) — le
+  // filigrane, lui, ignore `portraitCropRect` et garde l'illustration complète.
+  const croppedClassSrc = useCroppedImageSrc(classSrc, portraitCropRect);
   useMouseParallax(
     ({ x, y, scrollY }) => {
       const mx = x.toFixed(2);
@@ -141,29 +157,32 @@ export function HeaderIllustrations({
       )}
       {classId && !classHasTransparentBackground && (
         // PER-384 : portrait personnalisé à fond plein — le filigrane bord-à-bord
-        // ferait apparaître son rectangle de fond, donc repli en petit cadre bordé,
-        // ancré dans le coin haut-droit du bloc d'en-tête (pas de la vitruve, pas de
-        // suivi souris/scroll : ce n'est plus un filigrane d'arrière-plan).
-        <Box
-          component="img"
-          src={classSrc}
-          alt=""
-          aria-hidden
+        // ferait apparaître son rectangle de fond, donc repli en petit cadre bordé
+        // « même style que les sections » (Paper outlined), ancré dans le coin
+        // haut-droit du bloc d'en-tête (pas de la vitruve, pas de suivi souris/scroll :
+        // ce n'est plus un filigrane d'arrière-plan). Recadré au carré choisi par le
+        // joueur (PER-394, cf. `croppedClassSrc`).
+        <Paper
+          variant="outlined"
           sx={{
             display: { xs: 'none', md: 'block' },
             position: 'absolute',
             top: 0,
+            bottom: 0,
             right: 0,
-            width: FALLBACK_FRAME_SIZE,
-            height: FALLBACK_FRAME_SIZE,
-            borderRadius: 2,
-            objectFit: 'cover',
-            objectPosition: 'top',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            bgcolor: 'rgba(255, 255, 255, 0.04)',
+            width: FALLBACK_FRAME_WIDTH,
+            overflow: 'hidden',
             zIndex: 1,
           }}
-        />
+        >
+          <Box
+            component="img"
+            src={croppedClassSrc ?? classSrc}
+            alt=""
+            aria-hidden
+            sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+          />
+        </Paper>
       )}
     </>
   );

@@ -12,7 +12,11 @@
  */
 import { useEffect, useState } from 'react';
 import type { PortraitVariant } from '@/lib/character/types';
-import { downloadCharacterPortrait } from '@/lib/storage/characterPortrait';
+import {
+  downloadCharacterPortrait,
+  downloadCharacterPortraitCropRect,
+  type PortraitCropRect,
+} from '@/lib/storage/characterPortrait';
 
 /** Chemin de l'illustration STATIQUE de profil (standard ou alternative « -2 »). */
 export function classPortraitPath(classId: string, variant: 'default' | 'alt' = 'default'): string {
@@ -25,8 +29,18 @@ const cache = new Map<string, string | null>();
 const inflight = new Map<string, Promise<void>>();
 const listeners = new Map<string, Set<() => void>>();
 
+// Cache jumeau (PER-394) pour la zone de recadrage — même personnage, même cycle
+// de vie, mais objet distinct (JSON, pas de blob) donc pas d'URL à révoquer.
+const cropRectCache = new Map<string, PortraitCropRect | null>();
+const cropRectInflight = new Map<string, Promise<void>>();
+const cropRectListeners = new Map<string, Set<() => void>>();
+
 function notify(characterId: string): void {
   listeners.get(characterId)?.forEach((l) => l());
+}
+
+function notifyCropRect(characterId: string): void {
+  cropRectListeners.get(characterId)?.forEach((l) => l());
 }
 
 function ensureLoading(characterId: string): void {
@@ -39,11 +53,21 @@ function ensureLoading(characterId: string): void {
   inflight.set(characterId, promise);
 }
 
+function ensureCropRectLoading(characterId: string): void {
+  if (cropRectCache.has(characterId) || cropRectInflight.has(characterId)) return;
+  const promise = downloadCharacterPortraitCropRect(characterId).then((rect) => {
+    cropRectCache.set(characterId, rect);
+    cropRectInflight.delete(characterId);
+    notifyCropRect(characterId);
+  });
+  cropRectInflight.set(characterId, promise);
+}
+
 /**
- * Révoque le portrait personnalisé en cache d'un personnage et relance
- * immédiatement un téléchargement frais — à appeler après tout envoi/retrait
- * réussi (`uploadCharacterPortrait`/`removeCharacterPortrait`) pour que les
- * instances montées du hook réabsorbent le fichier courant du bucket.
+ * Révoque le portrait personnalisé en cache d'un personnage (image ET zone de
+ * recadrage) et relance immédiatement un téléchargement frais — à appeler après
+ * tout envoi/retrait réussi (`uploadCharacterPortrait`/`removeCharacterPortrait`)
+ * pour que les instances montées des hooks réabsorbent le contenu courant du bucket.
  */
 export function invalidateCharacterPortraitCache(characterId: string): void {
   const existing = cache.get(characterId);
@@ -52,6 +76,11 @@ export function invalidateCharacterPortraitCache(characterId: string): void {
   inflight.delete(characterId);
   notify(characterId);
   ensureLoading(characterId);
+
+  cropRectCache.delete(characterId);
+  cropRectInflight.delete(characterId);
+  notifyCropRect(characterId);
+  ensureCropRectLoading(characterId);
 }
 
 export function useCharacterPortraitSrc(
@@ -84,4 +113,40 @@ export function useCharacterPortraitSrc(
   }, [characterId, variant]);
 
   return variant === 'custom' && resolved ? resolved : fallback;
+}
+
+/**
+ * Zone de recadrage carrée du portrait personnalisé (PER-394), ou `null` sans
+ * portrait personnalisé / sans zone enregistrée (portrait envoyé avant PER-394 —
+ * l'appelant doit alors traiter l'image entière comme déjà cadrée, cf. les
+ * anciens envois qui recadraient avant l'upload).
+ */
+export function useCharacterPortraitCropRect(
+  characterId: string,
+  variant: PortraitVariant,
+): PortraitCropRect | null {
+  const [resolved, setResolved] = useState<PortraitCropRect | null>(() =>
+    variant === 'custom' ? cropRectCache.get(characterId) ?? null : null,
+  );
+
+  useEffect(() => {
+    if (variant !== 'custom') return;
+
+    const sync = () => setResolved(cropRectCache.get(characterId) ?? null);
+    sync();
+
+    let set = cropRectListeners.get(characterId);
+    if (!set) {
+      set = new Set();
+      cropRectListeners.set(characterId, set);
+    }
+    set.add(sync);
+    ensureCropRectLoading(characterId);
+
+    return () => {
+      set?.delete(sync);
+    };
+  }, [characterId, variant]);
+
+  return variant === 'custom' ? resolved : null;
 }

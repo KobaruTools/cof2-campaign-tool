@@ -1,4 +1,5 @@
 import type { WizardDraft } from '@/lib/character/wizard';
+import type { PortraitCropRect } from '@/lib/storage/characterPortrait';
 
 /** Contrat commun à toutes les étapes du wizard de création : le brouillon en
  * cours et la fonction de mise à jour partielle (store zustand). */
@@ -21,5 +22,7 @@ export interface StepProps {
    * wizard). Seule `IdentityStep` s'en sert.
    */
   portraitFile?: File | null;
-  onPortraitFile?: (file: File | null) => void;
+  /** Zone de recadrage carrée (PER-394) choisie pour `portraitFile`, mise en attente au même titre. */
+  portraitCropRect?: PortraitCropRect | null;
+  onPortraitFile?: (file: File | null, cropRect?: PortraitCropRect | null) => void;
 }

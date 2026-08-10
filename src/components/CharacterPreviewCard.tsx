@@ -16,7 +16,11 @@ import { featureById, pathById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { summarize } from '@/lib/character/summary';
-import { useCharacterPortraitSrc } from '@/lib/storage/useCharacterPortraitSrc';
+import {
+  useCharacterPortraitSrc,
+  useCharacterPortraitCropRect,
+} from '@/lib/storage/useCharacterPortraitSrc';
+import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
 import {
   ANCESTRY_COLOR,
   MAGE_PATH_COLOR,
@@ -197,6 +201,10 @@ function pathColumns(character: Character): (PathColumn | undefined)[] {
 export function CharacterPreviewCard({ character, tinted = true }: CharacterPreviewCardProps) {
   const summary = summarize(character);
   const portraitSrc = useCharacterPortraitSrc(character.id, character.portraitVariant, summary.classId);
+  // Recadrage carré du portrait personnalisé (PER-394) — l'image stockée est
+  // désormais toujours l'originale complète, cf. `characterPortrait.ts`.
+  const portraitCropRect = useCharacterPortraitCropRect(character.id, character.portraitVariant);
+  const croppedPortraitSrc = useCroppedImageSrc(portraitSrc, portraitCropRect);
   return (
     // `minWidth` : dans une infobulle qui se dimensionne au contenu (survol desktop),
     // un plancher garde les 7 badges de carac d'égale largeur. Mais réutilisée dans une
@@ -218,7 +226,7 @@ export function CharacterPreviewCard({ character, tinted = true }: CharacterPrev
       <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
         <Box
           component="img"
-          src={portraitSrc}
+          src={croppedPortraitSrc ?? portraitSrc}
           alt=""
           aria-hidden
           sx={{
