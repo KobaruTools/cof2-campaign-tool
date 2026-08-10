@@ -55,6 +55,7 @@ import {
   suppressedTestBonusFeatureIds,
   weaponFamiliesMatchChoice,
 } from './choices';
+import { archmageStaffGrantedSpellIds } from './archmagePath';
 import { crystalAbilityBonuses } from './crystals';
 import { declineForFeature, resolveFeatureElement } from './dragonElement';
 import {
@@ -123,6 +124,13 @@ export interface EffectContext {
    * `suppressedTestBonusFeatureIds`).
    */
   suppressedTestBonusFeatureIds?: Set<string>;
+  /**
+   * Ids de sorts GRANTÉS par le Bâton magique de l'archimage (`archmageStaffGrantedSpellIds`, R5, p. 154)
+   * dont le bonus permanent INCONDITIONNEL (`stat-bonus`) est IGNORÉ par `effectContributions` : le sort
+   * est bien lié au bâton, mais pas l'à-côté permanent de sa voie d'origine (« en plus de ce sort, gagne
+   * un bonus permanent... », ex. Murmures dans le vent). Absent → aucune suppression.
+   */
+  suppressedStatBonusFeatureIds?: Set<string>;
   /**
    * Nombre de rangs ACQUIS dans chaque voie (pathId → compte) — pour les valeurs scalantes
    * `scale: 'path-rank-count'` (« RD de 1 par rang de la voie »). Distinct de `pathRanks` (NUMÉRO
@@ -618,6 +626,7 @@ export function effectContext(character: Character): EffectContext {
     featureChoices: character.featureChoices,
     borrowedHostPaths: borrowedHostPathByFeatureId(character),
     suppressedTestBonusFeatureIds: suppressedTestBonusFeatureIds(character),
+    suppressedStatBonusFeatureIds: archmageStaffGrantedSpellIds(character),
     pathRankCounts: pathRankCountsFromFeatures(character.featureIds),
     armorWorn: isArmorWorn(character.equipment),
     heavyArmorWorn: isHeavyArmorWorn(character.equipment),
@@ -898,6 +907,9 @@ function effectContributions(
   // Les genres ciblant une CARACTÉRISTIQUE (`ability-bonus`, `ability-bonus-die`) ne
   // contribuent pas au sac de stats DÉRIVÉES — ils sont agrégés à part (cf. plus bas).
   if (effect.kind !== 'stat-bonus') return [];
+  // Bâton magique de l'archimage (PER-74, R5, p. 154) : le bonus permanent d'un sort emprunté au
+  // bâton (« en plus de ce sort, gagne... ») ne se mécanise pas — seul le sort lui-même est lié.
+  if (ctx?.suppressedStatBonusFeatureIds?.has(featureId)) return [];
   const value = resolveValue(effect.value, pathId, pathRanks, ctx);
   return value === null ? [] : [{ stat: effect.stat, value }];
 }

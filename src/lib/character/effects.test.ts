@@ -552,6 +552,8 @@ describe('effectContext', () => {
       borrowedHostPaths: new Map(),
       // Cibles d'octroi dont le bonus de compétence est supprimé (PER-323) : aucune ici.
       suppressedTestBonusFeatureIds: new Set(),
+      // Sorts liés au Bâton magique de l'archimage (PER-74, R5) dont le bonus permanent est supprimé : aucune ici.
+      suppressedStatBonusFeatureIds: new Set(),
       // Armure réellement portée (PER-132) : aucune ici (personnage minimal sans équipement).
       armorWorn: false,
       // Armure lourde portée (PER-236) : aucune non plus.

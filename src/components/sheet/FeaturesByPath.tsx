@@ -50,6 +50,7 @@ import {
   getSelection,
   hasActionableChoice,
   hasIncompleteCustomSkill,
+  hasUnmadeChoice,
   borrowedNoManaFeatureIds,
 } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
@@ -103,7 +104,7 @@ import {
   majorSummoningManaDiscount,
 } from '@/lib/character/majorSummoningPath';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
-import { archmageStaffSpellGranted } from '@/lib/character/archmagePath';
+import { archmageStaffActionTypesOverride, archmageStaffSpellGranted } from '@/lib/character/archmagePath';
 import { useContentVersion } from '@/lib/content/useContentVersion';
 // Restriction FINE d'usage d'armure par capacité d'origine (PER-86) : rendu VISUEL (rang
 // désaturé + infobulle/notice), pas un avertissement de conformité.
@@ -2867,7 +2868,7 @@ function PathBlock({
   // modale crayon en vue colonne), jamais inline dans le petit bloc.
   const renderChoiceDisplay = (
     feature: Feature,
-    opts: { compact?: boolean; onEdit?: () => void } = {},
+    opts: { compact?: boolean; onEdit?: () => void; onlyUnmade?: boolean } = {},
   ) => {
     if (!character || featureChoiceDefs(feature.id).length === 0) return null;
     return (
@@ -2880,6 +2881,7 @@ function PathBlock({
         // La valeur DÉJÀ retenue n'est cliquable qu'en mode édition (`onChoiceChange`) ; la
         // puce « Choisir », elle, reste joignable hors édition (cf. `opts.onEdit`).
         editing={!!onChoiceChange}
+        onlyUnmade={opts.onlyUnmade}
       />
     );
   };
@@ -3196,8 +3198,14 @@ function PathBlock({
           // un simple badge bleu redondant) n'a plus rien à apporter à cet endroit et fait double emploi
           // (retour recette proprio). On ne la masque QUE quand PLUS RIEN n'est actionnable ; tant qu'un
           // slot reste à choisir, elle reste affichée pour que ce 2e choix reste joignable (cf. ci-dessus).
+          // Retour proprio 2026-08-10 : `borrowedFeaturesOf(...).length >= borrowSlotCount` comparait au
+          // nombre STATIQUE de slots définis sur la capacité — mais le 2e slot du Bâton magique peut être
+          // MASQUÉ (`unlockedAtHostPathRank`, pas encore rang 7) sans jamais être « résolu », faisant
+          // réapparaître le doublon en permanence en dessous du rang 7. `hasUnmadeChoice` respecte
+          // `isChoiceActionable` (un slot masqué n'est pas « à faire ») — le bon critère est « plus rien
+          // d'ACTIONNABLE à choisir », pas « tous les slots STATIQUEMENT définis ont une valeur ».
           const allBorrowSlotsResolved =
-            hasMultipleBorrowSlots && (!repl ? borrowedFeaturesOf(character, feature).length : 0) >= borrowSlotCount;
+            hasMultipleBorrowSlots && !repl && !!character && !hasUnmadeChoice(character, feature.id);
           const borrowedPath = borrowed ? pathById.get(borrowed.pathId) : undefined;
           const borrowedClassId = borrowedPath?.type === 'class' ? borrowedPath.classIds[0] : undefined;
           const borrowedColor = borrowedClassId ? classColor(borrowedClassId) : undefined;
@@ -3337,7 +3345,10 @@ function PathBlock({
             <FeatureMarkerHexes
               feature={
                 staffGrantedPrimary && borrowed
-                  ? { ...borrowed, actionTypes: ['M'] as ActionType[] }
+                  ? (() => {
+                      const ov = archmageStaffActionTypesOverride(character!, borrowed);
+                      return ov ? { ...borrowed, actionTypes: ov } : borrowed;
+                    })()
                   : ((): Feature => {
                       const base = borrowed ?? feature;
                       const ov = nativeFreeActionOverride(character, base);
@@ -3487,12 +3498,12 @@ function PathBlock({
                 (« Choisir » orange qui pulse tant que rien n'est retenu, sinon la valeur)
                 est elle-même CLIQUABLE et ouvre la modale d'édition (PER-68) — plus de
                 crayon accolé qui déformait la carte. Masqué pour un emprunt (PER-120) :
-                la carte de la capacité empruntée affiche déjà le choix retenu. Pour un hôte à
-                PLUSIEURS emprunts (PER-74, Bâton magique), affiché tant qu'un slot reste à
-                choisir (2e « Choisir » joignable), puis masqué une fois TOUT résolu — les
-                cartes de sorts empilées ci-dessous le disent déjà, la puce bleue ferait
-                doublon (retour recette proprio). */}
-            {hasChoices(feature) && (!borrowed || (hasMultipleBorrowSlots && !allBorrowSlotsResolved)) && (
+                la carte de la capacité empruntée affiche déjà le choix retenu — pour un hôte à
+                PLUSIEURS emprunts (PER-74, Bâton magique) dont un slot reste à choisir, la puce
+                est rendue plus bas dans la « bande de l'hôte » (retour proprio 2026-08-10 : elle
+                doit apparaître sous le nom de l'HÔTE, pas dans la carte de devant qui montre déjà
+                la capacité EMPRUNTÉE — cf. plus bas). */}
+            {hasChoices(feature) && !borrowed && (
               <Box
                 sx={{
                   mt: 'auto',
@@ -3635,7 +3646,10 @@ function PathBlock({
                       <FeatureMarkerHexes
                         feature={
                           itemStaffGranted
-                            ? { ...item, actionTypes: ['M'] as ActionType[] }
+                            ? (() => {
+                                const ov = archmageStaffActionTypesOverride(character!, item);
+                                return ov ? { ...item, actionTypes: ov } : item;
+                              })()
                             : ((): Feature => {
                                 const ov = nativeFreeActionOverride(character, item);
                                 return ov ? { ...item, actionTypes: ov } : item;
@@ -3710,6 +3724,16 @@ function PathBlock({
                 {abilityCode && (
                   <ChoiceValueBadge label={abilityCode} compact title={ABILITY_NAMES[abilityCode]} />
                 )}
+                {/* Hôte à PLUSIEURS emprunts (PER-74, Bâton magique) : puce « Choisir » d'un slot pas
+                    encore fait, sous le nom de l'HÔTE plutôt que dans la carte de devant qui montre
+                    déjà la capacité empruntée résolue (`onlyUnmade`, retour proprio 2026-08-10). Pas de
+                    `stopPropagation` ici : la puce l'arrête déjà elle-même (cf. `ChoiceTodoBadge`). */}
+                {hasMultipleBorrowSlots && !allBorrowSlotsResolved &&
+                  renderChoiceDisplay(feature, {
+                    compact: true,
+                    onEdit: canEditChoices ? () => requestChoiceEdit(feature) : undefined,
+                    onlyUnmade: true,
+                  })}
               </Box>
             </Box>
           ) : (
@@ -3976,7 +4000,7 @@ function PathBlock({
                               ) : undefined
                             }
                             spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
-                            actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
+                            actionTypesOverride={staffGranted ? archmageStaffActionTypesOverride(character!, borrowed) : undefined}
                             suppressTextMarker={
                               grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
                             }
@@ -4487,7 +4511,7 @@ function PathBlock({
                             ) : undefined
                           }
                           spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
-                          actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
+                          actionTypesOverride={staffGranted ? archmageStaffActionTypesOverride(character!, borrowed) : undefined}
                           suppressTextMarker={
                             grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
                           }

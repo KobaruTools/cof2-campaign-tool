@@ -665,6 +665,39 @@ describe('humain-r1 « Libre » — choix custom-skill conditionnel (PER-73)', (
   });
 });
 
+// `unlockedAtHostPathRank` (PER-74, archimage r5 « Bâton magique », retour proprio 2026-08-10) : le
+// 2e choix (sort de rang 2) n'est PROPOSÉ qu'à partir du rang 7 réellement atteint dans la voie hôte
+// (prestige-archimage) — masqué avant, pas juste inactif.
+describe('unlockedAtHostPathRank — 2e choix du Bâton magique masqué avant le rang 7', () => {
+  const R4 = 'prestige-archimage-r4';
+  const R5 = 'prestige-archimage-r5';
+  const R6 = 'prestige-archimage-r6';
+  const R7 = 'prestige-archimage-r7';
+  const secondChoice = featureChoiceDefs(R5)[1] as PathFeatureChoice;
+
+  it('le champ est bien posé sur le 2e choix (pas le 1er)', () => {
+    expect(secondChoice.unlockedAtHostPathRank).toBe(7);
+    expect((featureChoiceDefs(R5)[0] as PathFeatureChoice).unlockedAtHostPathRank).toBeUndefined();
+  });
+
+  it('rang 6 (pas encore 7) → 2e choix NI proposé NI « à faire » (seul le 1er reste dû)', () => {
+    const d = makeCharacter({ featureIds: [R4, R5, R6] });
+    expect(isChoiceActionable(d, R5, secondChoice)).toBe(false);
+    expect(unmadeChoiceIndexes(d, R5)).toEqual([0]);
+  });
+
+  it('rang 7 atteint → 2e choix proposé et dû EN PLUS du 1er', () => {
+    const d = makeCharacter({ featureIds: [R4, R5, R6, R7] });
+    expect(isChoiceActionable(d, R5, secondChoice)).toBe(true);
+    expect(unmadeChoiceIndexes(d, R5)).toEqual([0, 1]);
+  });
+
+  it('1er choix (rang 1) toujours proposé, même sans le rang 7', () => {
+    const d = makeCharacter({ featureIds: [R4, R5] });
+    expect(isChoiceActionable(d, R5, featureChoiceDefs(R5)[0])).toBe(true);
+  });
+});
+
 // Choix PROPRE d'une capacité EMPRUNTÉE : un elfe sylvain hybride druide/rôdeur emprunte
 // « Langage des animaux » (animaux-r1) via Enfant de la forêt (elfe-sylvain-r2). Le choix
 // répétable « catégorie d'animaux » de la capacité empruntée doit se débloquer et devenir dû

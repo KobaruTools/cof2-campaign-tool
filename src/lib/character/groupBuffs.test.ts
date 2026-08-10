@@ -9,7 +9,16 @@ import {
   withSupersededBuffTogglesOff,
 } from './groupBuffs';
 import { isEffectActive } from './effects';
+import { createBlankCharacter } from './factory';
 import type { Character } from './types';
+
+// `unlockedGroupBuffIds` prend désormais des `Character` complets (PER-74, retour proprio
+// 2026-08-10 : `effectiveFeatureIdsForMods` compte aussi les capacités EMPRUNTÉES) — plus de simples
+// `{ featureIds }`. Petit personnage vierge, seul `featureIds` varie par cas.
+const makeChar = (featureIds: string[]): Character => ({
+  ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+  featureIds,
+});
 
 // Voie du musicien (barde, p. 67) : `musicien-r1` = Chant des héros, `musicien-r5` = rang 5 atteint.
 const BARD_R1 = ['musicien-r1'];
@@ -51,17 +60,24 @@ describe('groupBuffsOf', () => {
 describe('unlockedGroupBuffIds (gating de la palette)', () => {
   it('collecte les buffs de toute la table, dédupliqués, dans l’ordre du catalogue', () => {
     expect(
-      unlockedGroupBuffIds([
-        { featureIds: PRIEST_R1 },
-        { featureIds: BARD_R5 },
-        { featureIds: BARD_R1 },
-      ]),
+      unlockedGroupBuffIds([makeChar(PRIEST_R1), makeChar(BARD_R5), makeChar(BARD_R1)]),
     ).toEqual(['heroes-song', 'blessing']);
   });
 
   it('table sans barde ni prêtre : aucune puce à proposer', () => {
-    expect(unlockedGroupBuffIds([{ featureIds: ['guerrier-r1'] }])).toEqual([]);
+    expect(unlockedGroupBuffIds([makeChar(['guerrier-r1'])])).toEqual([]);
     expect(unlockedGroupBuffIds([])).toEqual([]);
+  });
+
+  // Retour proprio 2026-08-10 : un buff conféré par une capacité EMPRUNTÉE (`feature-from-path`, pas
+  // dans `featureIds`) doit débloquer la ligne, même famille de bug que `situationalEffectIds`
+  // (Bâton magique de l'archimage). Hôte réel porteur d'un choix `feature-from-path` — le domaine du
+  // choix n'est pas revalidé ici, seule la structure (id de capacité connu) compte.
+  it('un buff EMPRUNTÉ (feature-from-path), sans le porter nativement, débloque quand même la ligne', () => {
+    const host = 'prestige-archimage-r5';
+    const c = makeChar([host]);
+    c.featureChoices = { [host]: ['musicien-r1'] };
+    expect(unlockedGroupBuffIds([c])).toEqual(['heroes-song']);
   });
 });
 
@@ -237,14 +253,10 @@ describe('PER-359 — capacités qui posent un effet sur les autres', () => {
   });
 
   it('chaque buff ajouté est débloqué par sa seule capacité porteuse', () => {
-    expect(unlockedGroupBuffIds([{ featureIds: ['meneur-d-hommes-r1'] }])).toEqual([
-      'fearless-rally',
-    ]);
-    expect(unlockedGroupBuffIds([{ featureIds: ['brute-r1'] }])).toEqual(['towering-argument']);
-    expect(unlockedGroupBuffIds([{ featureIds: ['bouclier-r1'] }])).toEqual(['shield-ally']);
-    expect(unlockedGroupBuffIds([{ featureIds: ['prestige-mage-de-guerre-r6'] }])).toEqual([
-      'warlord-aura',
-    ]);
+    expect(unlockedGroupBuffIds([makeChar(['meneur-d-hommes-r1'])])).toEqual(['fearless-rally']);
+    expect(unlockedGroupBuffIds([makeChar(['brute-r1'])])).toEqual(['towering-argument']);
+    expect(unlockedGroupBuffIds([makeChar(['bouclier-r1'])])).toEqual(['shield-ally']);
+    expect(unlockedGroupBuffIds([makeChar(['prestige-mage-de-guerre-r6'])])).toEqual(['warlord-aura']);
   });
 
   it('la fiche du buffé retrouve la capacité source, qu’elle ne possède pas', () => {

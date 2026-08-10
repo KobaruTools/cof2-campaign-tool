@@ -2054,6 +2054,13 @@ export const prestigeFeatures2: Feature[] = [
     //    mana en plus), donc l'exclusion par défaut des capacités possédées (poupées russes, p. 41 —
     //    pertinente quand l'emprunt n'ajoute RIEN de plus que ce que le personnage a déjà) ne s'applique
     //    pas ici. Cf. `includeOwned` (schema.ts) et `featuresInChoiceDomain` (choices.ts).
+    // Retours proprio (session ultérieure, 2026-08-10) :
+    //  - le sort désigné ne perd plus son (G) natif s'il est déjà connu par une AUTRE voie (nerfer un
+    //    sort déjà possédé n'était pas voulu) — `archmageStaffActionTypesOverride` (archmagePath.ts).
+    //  - le 2e choix (rang 2) était sélectionnable AVANT le rang 7 (« choix permissif, comme le reste
+    //    de la fiche ») : perçu comme un bug par le joueur (rien ne distinguait un choix fait d'un
+    //    choix inerte). Changé pour un MASQUAGE du contrôle tant que le rang 7 n'est pas atteint —
+    //    `unlockedAtHostPathRank: 7` ci-dessous, résolu par `isChoiceActionable` (choices.ts).
     choices: [
       {
         kind: 'feature-from-path',
@@ -2066,11 +2073,12 @@ export const prestigeFeatures2: Feature[] = [
       {
         kind: 'feature-from-path',
         prompt: 'Sort de rang 2 (famille des mages) ajouté au bâton, à partir du rang 7',
-        note: 'Actif seulement une fois le rang 7 atteint.',
         familyScope: 'mages',
         allowedRanks: [2],
         spellsOnly: true,
         includeOwned: true,
+        // Retour proprio 2026-08-10 : masqué (pas juste inactif) tant que le rang 7 n'est pas atteint.
+        unlockedAtHostPathRank: 7,
       },
     ],
     sourcePage: 154,
@@ -2904,6 +2912,13 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['G', 'M'],
     text:
       "Le personnage ou la cible (portée 10 m) bénéficie d'un bonus de +10 sur son prochain test d'attaque contre DEF (au contact, à distance ou magique au choix) qui doit être exécuté avant la fin du round. Si ce sort est lancé en action de mouvement, il coûte seulement 2 PM.",
+    // Rendu enrichi : les 3 jets d'attaque explicités (gabarit Vision, mages.ts) pour la puce ambre
+    // dédiée de chacun. Pas d'`effects` : le bonus est consommé par LE PROCHAIN jet seul (avant la fin
+    // du round) — aucun canal du moteur ne modélise « une seule prochaine attaque » (même écart assumé
+    // que le tir de réglage du pistolero, adventurers.ts, et Protéger un allié, schema.ts) : verbatim,
+    // au joueur de gérer le round.
+    richText:
+      "Le personnage ou la cible (portée 10 m) bénéficie d'un bonus de +10 sur sa prochaine attaque au contact, attaque à distance ou attaque magique (au choix) contre DEF, qui doit être exécutée avant la fin du round. Si ce sort est lancé en action de mouvement, il coûte seulement 2 PM.",
     sourcePage: 161,
   },
   {
@@ -2914,6 +2929,12 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: true,
     actionTypes: ['A'],
     text:
+      "Le personnage invoque une bille de feu qui se positionne là où le mage lui en donne l'ordre. La trajectoire peut comporter jusqu'à deux coudes à 90° et la distance totale parcourue ne doit pas dépasser 50 m. Le magicien n'a pas besoin de voir le lieu. La bille explose immédiatement si une des conditions suivantes est remplie.\n- Quelque chose ou quelqu'un touche la bille.\n- Le magicien prononce un mot de commande (action gratuite).\n- Le délai fixé par le magicien est terminé.\n- Au bout d'un nombre de minutes égal à l'INT du personnage.\nLa bille de feu explose dans un rayon de 5 m et inflige [4d4° + INT] DM. Les créatures qui réussissent un test d'AGI difficulté [10 + INT] ne subissent que la moitié des dégâts. Avant son explosion, la bille de feu produit une lumière équivalant celle d'une torche.",
+    // Formule déjà entre crochets dans le livre (convention CO2 native) : `richText` reprend le texte
+    // à l'identique, la grammaire du mini-langage l'interprète directement (dé + AGI/INT auto-tagués
+    // par le glossaire). Pas d'`effects` : les DM d'un sort ne sont pas modélisés comme un bonus
+    // chiffré du moteur (aucun sort de dégâts direct ne l'est ailleurs dans le jeu de données).
+    richText:
       "Le personnage invoque une bille de feu qui se positionne là où le mage lui en donne l'ordre. La trajectoire peut comporter jusqu'à deux coudes à 90° et la distance totale parcourue ne doit pas dépasser 50 m. Le magicien n'a pas besoin de voir le lieu. La bille explose immédiatement si une des conditions suivantes est remplie.\n- Quelque chose ou quelqu'un touche la bille.\n- Le magicien prononce un mot de commande (action gratuite).\n- Le délai fixé par le magicien est terminé.\n- Au bout d'un nombre de minutes égal à l'INT du personnage.\nLa bille de feu explose dans un rayon de 5 m et inflige [4d4° + INT] DM. Les créatures qui réussissent un test d'AGI difficulté [10 + INT] ne subissent que la moitié des dégâts. Avant son explosion, la bille de feu produit une lumière équivalant celle d'une torche.",
     sourcePage: 161,
   },
@@ -2929,6 +2950,8 @@ export const prestigeFeatures2: Feature[] = [
     // PER-359 : buff de groupe posable par le MJ (`warlord-aura`). Aucun effet sur la fiche du mage
     // de guerre lui-même — la règle ne vise QUE ses alliés (« Tous vos alliés… »), pas son porteur.
     // Le palier suit le NIVEAU du personnage (+2 au niveau 16) et non le rang de la voie.
+    richText:
+      "Tous vos alliés dans un rayon de 20 m autour de vous bénéficient d'un bonus de +1 en DEF et aux DM pendant INT minutes. À partir du niveau 16, ce bonus passe à +2.",
     groupBuffIds: ['warlord-aura'],
     sourcePage: 161,
   },
@@ -2941,6 +2964,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Vous êtes capable de sculpter et de contrôler la puissance de vos sorts de zone de façon à épargner vos alliés. Lorsque vous lancez un sort de zone, vous pouvez dépenser 1 PM par allié présent dans la zone que vous souhaitez épargner.",
+    // Règle procédurale (dépense de PM à la discrétion du joueur, par allié épargné) : aucun bonus
+    // chiffré fixe à mécaniser, richText sert seulement à faire ressortir PM (glossaire).
+    richText:
+      "Vous êtes capable de sculpter et de contrôler la puissance de vos sorts de zone de façon à épargner vos alliés. Lorsque vous lancez un sort de zone, vous pouvez dépenser 1 PM par allié présent dans la zone que vous souhaitez épargner.",
     sourcePage: 161,
   },
   {
@@ -2951,6 +2978,8 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: true,
     actionTypes: ['L'],
     text:
+      "Le personnage dresse un mur de feu de 3 m de hauteur et de 20 de large à une portée initiale de 10 m. La vague de feu s'éloigne de lui et parcourt 50 m en infligeant [5d4° + INT] DM sur son passage. Les créatures qui réussissent un test d'AGI difficulté 15 ne subissent que la moitié des DM.",
+    richText:
       "Le personnage dresse un mur de feu de 3 m de hauteur et de 20 de large à une portée initiale de 10 m. La vague de feu s'éloigne de lui et parcourt 50 m en infligeant [5d4° + INT] DM sur son passage. Les créatures qui réussissent un test d'AGI difficulté 15 ne subissent que la moitié des DM.",
     sourcePage: 161,
   },

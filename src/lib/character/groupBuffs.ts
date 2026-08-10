@@ -22,6 +22,7 @@ import {
 } from '@/data/schema';
 import { featureById } from '@/data/index';
 import { clampIntensity } from './statusEffects';
+import { effectiveFeatureIdsForMods } from './choices';
 import { isEffectActive, pathRanksFromFeatures } from './effects';
 import type { Character } from './types';
 
@@ -123,13 +124,16 @@ export function groupBuffsOf(
  * Buffs de groupe DÉBLOQUÉS par la table (pendant de `situationalEffectIds`, PER-279) : ceux qu'au
  * moins un personnage réclamé confère. Dédupliqué, dans l'ordre du catalogue (affichage stable).
  * Vide = la palette masque la ligne des buffs de groupe.
+ *
+ * Retour proprio 2026-08-10 : `effectiveFeatureIdsForMods` (pas le seul `character.featureIds`) — un
+ * buff conféré par une capacité EMPRUNTÉE (feature-from-path, même famille de bug que
+ * `situationalEffectIds` sur le Bâton magique de l'archimage, PER-74) doit débloquer la ligne au même
+ * titre qu'une capacité native.
  */
-export function unlockedGroupBuffIds(
-  characters: readonly { featureIds: readonly string[] }[],
-): BeneficialEffectId[] {
+export function unlockedGroupBuffIds(characters: readonly Character[]): BeneficialEffectId[] {
   const unlocked = new Set<BeneficialEffectId>();
   for (const character of characters) {
-    for (const carrier of groupBuffsOf(character.featureIds)) unlocked.add(carrier.buffId);
+    for (const carrier of groupBuffsOf(effectiveFeatureIdsForMods(character))) unlocked.add(carrier.buffId);
   }
   return BENEFICIAL_EFFECT_IDS.filter((id) => unlocked.has(id));
 }

@@ -45,6 +45,7 @@ import {
   knownFeaturesForChoice,
   repeatableChoiceCount,
   splitRepeatableSelections,
+  unmadeChoiceIndexes,
 } from '@/lib/character/choices';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
@@ -985,6 +986,15 @@ export interface FeatureChoiceFieldProps {
    * `onEditRequest`). Défaut : faux — seule la puce « Choisir » réagit.
    */
   editing?: boolean;
+  /**
+   * Mode `display` uniquement : ne rend QUE les choix encore « à faire » (`unmadeChoiceIndexes`),
+   * masque les choix déjà résolus (PER-74, Bâton magique, retour proprio 2026-08-10). Sert la
+   * « bande de l'hôte » d'une carte d'emprunt à PLUSIEURS choix : le 1er choix résolu (« Malédiction »)
+   * est déjà affiché par la carte de devant empruntée — inutile de le répéter ici, seule la puce
+   * « Choisir » d'un 2e slot pas encore fait doit apparaître, sous le nom de l'HÔTE. Défaut : faux
+   * (tous les choix actionnables sont rendus, comportement historique).
+   */
+  onlyUnmade?: boolean;
 }
 
 /**
@@ -1000,6 +1010,7 @@ export function FeatureChoiceField({
   onChange,
   onEditRequest,
   editing = false,
+  onlyUnmade = false,
 }: FeatureChoiceFieldProps) {
   const defs = featureChoiceDefs(featureId);
   if (defs.length === 0) return null;
@@ -1010,9 +1021,10 @@ export function FeatureChoiceField({
   // `isChoiceActionable`) : avant cela il n'y a rien à retenir, on masque le contrôle
   // (et sa puce « Choix à faire ») pour ne pas embrouiller l'utilisateur. On conserve
   // l'index d'origine, clé de `featureChoices` pour lire/écrire la sélection.
+  const unmade = onlyUnmade ? new Set(unmadeChoiceIndexes(character, featureId)) : null;
   const visible = defs
     .map((choice, index) => ({ choice, index }))
-    .filter(({ choice }) => isChoiceActionable(character, featureId, choice));
+    .filter(({ choice, index }) => isChoiceActionable(character, featureId, choice) && (!unmade || unmade.has(index)));
   if (visible.length === 0) return null;
 
   if (mode === 'display') {
