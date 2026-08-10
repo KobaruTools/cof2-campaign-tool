@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per362-gel",
+  "name": "Recette PER-362 — Voie du gel",
+  "identity": {
+    "description": "ATTENDU (PER-362, voie du gel p. 158) — Verglas (r4) : interrupteur INDICATIF « Verglas posé » (aucun bonus chiffré, juste un suivi). Cœur de glace (r5) : RD ÷2 froid PERMANENTE + immunité peur. Présence glaciale (r7) : interrupteur « Présence glaciale active » → +4 DEF + immunité froid + RD ÷2 feu + badge riposte {1d4°} sous la carte Défense, TOUT éteint par défaut. Cryogénisation (r8) : bouton « Ajouter une gangue » (illimité, aucune cible suivie) dans la section Compagnons — une gangue déjà posée ici avec 20/50 DM encaissés pour montrer la barre ; se brise automatiquement à 50 DM."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "prestige-gel-r4",
+    "prestige-gel-r5",
+    "prestige-gel-r6",
+    "prestige-gel-r7",
+    "prestige-gel-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {
+    "prestige-gel-r8#gangue-demo-1": {
+      "hp": {
+        "lethal": 20,
+        "temp": 0
+      }
+    }
+  },
+  "companionInstances": {
+    "prestige-gel-r8": [
+      "gangue-demo-1"
+    ]
+  },
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-362 — recette voie du gel (RD permanente r5 + toggles r4/r7 + gangues illimitées r8).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

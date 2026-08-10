@@ -3277,8 +3277,17 @@ export interface CreatureProfile {
      * le rang `rank` est atteint (même comptage cross-voie que `MilestoneCountScalingValue` /
      * `UsageCounter.maxByRankCount`). Ex. zombie : `{ base: 1, rank: 5, classIds: ['sorcier'] }`
      * → 1 + une par voie de sorcier au rang 5. Résolu par `resolveCompanionInstanceLimit`.
+     * ABSENT = ILLIMITÉ (PER-74, Gangue de glace, voie du gel r8, p. 158 : le sort ne pose
+     * aucune limite de cibles simultanées et l'app ne suit pas de cible à cible, le joueur en
+     * ajoute autant qu'il veut) — `resolveCompanionInstanceLimit` renvoie alors `Infinity`.
      */
-    limit: { base: number; rank: number; classIds: string[] };
+    limit?: { base: number; rank: number; classIds: string[] };
+    /**
+     * Verbe du bouton d'ajout affiché sur la carte du rang (PER-74). Défaut « Invoquer »
+     * (zombie, familier…) ; à surcharger pour un compagnon qui n'est pas VRAIMENT invoqué
+     * (ex. « Ajouter une gangue », Gangue de glace — l'objet est posé, pas conjuré).
+     */
+    addLabel?: string;
   };
 }
 

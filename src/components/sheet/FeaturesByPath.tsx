@@ -2471,11 +2471,14 @@ function countClassPathsAtRank(
 }
 
 /**
- * Contrôle d'invocation d'un compagnon MULTI-INSTANCES (zombie, PER-235), rendu sous la mini-fiche
- * de créature de la carte du rang. Badge CUSTOM bleu « Invoquer » (convention projet : pas de `Chip`
- * MUI) + compteur « instances / limite ». Le badge est désactivé quand la limite est atteinte (ou en
- * lecture seule, sans `onSummon`). Chaque clic crée un exemplaire (un bloc de compagnon apparaît dans
- * la section « Compagnons » avec sa propre barre de vie). `null` si le profil n'est pas multi-instances.
+ * Contrôle d'ajout d'un compagnon MULTI-INSTANCES (zombie, PER-235 ; Gangue de glace, PER-74),
+ * rendu sous la mini-fiche de créature de la carte du rang. Badge CUSTOM bleu (convention projet :
+ * pas de `Chip` MUI), verbe `profile.instances.addLabel` (défaut « Invoquer ») + compteur
+ * « instances / limite » (ou juste le compte si `instances.limit` est absent → illimité, ex. Gangue
+ * de glace). Le badge est désactivé quand la limite est atteinte (ou en lecture seule, sans
+ * `onSummon`) — jamais pour un profil illimité. Chaque clic crée un exemplaire (un bloc de compagnon
+ * apparaît dans la section « Compagnons » avec sa propre barre de vie). `null` si le profil n'est pas
+ * multi-instances.
  */
 function SummonInstanceBadge({
   feature,
@@ -2491,15 +2494,17 @@ function SummonInstanceBadge({
   if (!profile.instances) return null;
   const count = character.companionInstances?.[feature.id]?.length ?? 0;
   const limit = resolveCompanionInstanceLimit(profile, character);
-  const atLimit = count >= limit;
+  const unlimited = !Number.isFinite(limit);
+  const atLimit = !unlimited && count >= limit;
   const disabled = !onSummon || atLimit;
+  const label = profile.instances.addLabel ?? 'Invoquer';
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 1, flexWrap: 'wrap', rowGap: 0.5 }}>
       <AppTooltip
         title={
           atLimit
             ? `Limite atteinte (${limit}) — un zombie doit tomber avant d'en invoquer un autre`
-            : 'Invoquer un nouvel exemplaire (PV suivis à part)'
+            : 'Nouvel exemplaire (PV suivis à part)'
         }
       >
         <Box
@@ -2531,11 +2536,11 @@ function SummonInstanceBadge({
           }}
         >
           <AddIcon sx={{ fontSize: 16 }} />
-          Invoquer
+          {label}
         </Box>
       </AppTooltip>
       <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-        {count} / {limit}
+        {unlimited ? count : `${count} / ${limit}`}
       </Typography>
     </Stack>
   );

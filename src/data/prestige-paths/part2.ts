@@ -2584,7 +2584,7 @@ export const prestigeFeatures2: Feature[] = [
     sourcePage: 157,
   },
 
-  // ----- Voie du gel (p. 157) -----
+  // ----- Voie du gel (p. 158) -----
   {
     id: 'prestige-gel-r4',
     name: 'Verglas',
@@ -2594,6 +2594,19 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Un verglas glissant recouvre le sol sur une surface de 10 m de diamètre pendant INT minutes (vous pouvez stopper le sort plus tôt). Dans cette zone, pour rester debout il faut réussir un test d'AGI de difficulté 10 à son tour, s'y déplacer ou combattre demande un test de difficulté 15. Un échec signifie que la créature est renversée se relever nécessite de réussir un nouveau test d'AGI difficulté 15 et prend un round. Ramper en dehors de la zone demande un round complet.",
+    // Effet de TERRAIN (zone, pas le personnage) : aucune stat dérivée du lanceur à câbler,
+    // comme les autres sorts de zone du chantier (Onde de choc, Toile…). Rendu enrichi seul.
+    richText:
+      "Un verglas glissant recouvre le sol sur une surface de 10 m de diamètre pendant [=INT] minutes (vous pouvez stopper le sort plus tôt). Dans cette zone, pour rester debout il faut réussir un test d'@AGI de difficulté 10 à son tour, s'y déplacer ou combattre demande un test de difficulté 15. Un échec signifie que la créature est renversée se relever nécessite de réussir un nouveau test d'@AGI difficulté 15 et prend un round. Ramper en dehors de la zone demande un round complet.",
+    // Interrupteur INDICATIF (demande propriétaire) : marqueur pur, aucun bonus chiffré (motif
+    // Invocation d'un démon, demon-r5) — sert juste à suivre si la plaque de verglas est posée.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Verglas posé', activeByDefault: false },
+      },
+    ],
     sourcePage: 158,
   },
   {
@@ -2605,6 +2618,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Vous divisez par deux tous les DM de froid que vous subissez et vous êtes désormais immunisé à la peur.",
+    // Passif permanent, sans interrupteur : RD ÷2 froid + immunité peur directement câblées.
+    effects: [{ kind: 'immunity', immunities: ['fear'] }],
+    damageReduction: { kind: 'divide', value: 2, scopes: ['cold'] },
     sourcePage: 158,
   },
   {
@@ -2616,6 +2632,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le mage ouvre la bouche et souffle un blizzard glacial et des éclats de glace tranchants. Le sort affecte toutes les créatures dans un cône approximatif de 20 m de long sur 20 m de large à son extrémité. Les victimes subissent [4d4° + INT] DM et sont ralenties pour 1 round si elles ratent un test de CON difficulté [10 + INT]. Sinon, elles subissent seulement la moitié des DM et ne sont pas ralenties.",
+    // Sort de DM de zone (cible des ennemis, pas le personnage) : DM/difficulté déjà en formules
+    // dans le livre, aucune stat dérivée propre du lanceur à câbler (comme les autres sorts de zone).
+    richText:
+      "Le mage ouvre la bouche et souffle un blizzard glacial et des éclats de glace tranchants. Le sort affecte toutes les créatures dans un cône approximatif de 20 m de long sur 20 m de large à son extrémité. Les victimes subissent [4d4° + INT] DM et sont ralenties pour 1 round si elles ratent un test de @CON difficulté [10 + INT]. Sinon, elles subissent seulement la moitié des DM et ne sont pas ralenties.",
     sourcePage: 158,
   },
   {
@@ -2627,6 +2647,24 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "L'ensorceleur transforme son corps en glace vivante, il gagne +4 en DEF, est immunisé au froid et divise les DM de feu par deux. Les créatures qui le touchent ou l'attaquent avec des armes naturelles subissent 1d4° DM. Lorsqu'il marche, il gèle le sol et peut se déplacer sur l'eau en la transformant en glace. Le sort a une durée de [1d6 + INT] minutes.",
+    richText:
+      "L'ensorceleur transforme son corps en glace vivante, il gagne +4 en DEF, est immunisé au froid et divise les DM de feu par deux. Les créatures qui le touchent ou l'attaquent avec des armes naturelles subissent {1d4°} DM. Lorsqu'il marche, il gèle le sol et peut se déplacer sur l'eau en la transformant en glace. Le sort a une durée de [1d6 + INT] minutes.",
+    // Sort à durée, interrupteur manuel (PER-67) : +4 DEF + immunité froid + ÷2 feu, tous pilotés par
+    // le MÊME interrupteur (motif Armure de mana). Les DM aux attaquants au contact (1d4°) sont EN
+    // PLUS rendus en badge « riposte » situationnel sous la carte Défense (patron Armure à pointes/
+    // Métamorphose élémentaire Feu, cf. `frostRetaliationBadge`) ; le déplacement sur l'eau reste en
+    // prose (aucun suivi de déplacement par le moteur).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: 4 }],
+        activation: { kind: 'temporary', label: 'Présence glaciale active', activeByDefault: false },
+      },
+    ],
+    damageReduction: [
+      { kind: 'immunity', scopes: ['cold'] },
+      { kind: 'divide', value: 2, scopes: ['fire'] },
+    ],
     sourcePage: 158,
   },
   {
@@ -2638,6 +2676,23 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le mage projette un rayon de froid absolu sur sa cible. S'il réussit un test opposé d'attaque magique ou si la cible est volontaire, elle est congelée dans une gangue de glace de la forme d'un énorme cristal. La gangue peut être détruite en lui infligeant 50 DM ; sinon, elle se brise d'elle-même après une durée qui dépend du NC de la créature.\n- NC 1 ou moins : valeur d'INT en siècles\n- NC 2 : valeur d'INT en années\n- NC 3 : valeur d'INT en jours\n- NC 4 : valeur d'INT en heures\n- NC 5 : valeur d'INT en minutes\n- NC 6 et + : valeur d'INT en rounds\nSi la cible est volontaire, la durée du sort est la même que si elle était de NC 1.",
+    // Durée dépendant du NC de la CIBLE (attribut du bestiaire, pas du personnage) : aucune stat
+    // dérivée du lanceur à câbler, Cryogénisation reste narrativement arbitrée par le MJ.
+    richText:
+      "Le mage projette un rayon de froid absolu sur sa cible. S'il réussit un test opposé d'attaque magique ou si la cible est volontaire, elle est congelée dans une gangue de glace de la forme d'un énorme cristal. La gangue peut être détruite en lui infligeant 50 DM ; sinon, elle se brise d'elle-même après une durée qui dépend du NC de la créature.\n- NC 1 ou moins : valeur d'[#INT] en siècles\n- NC 2 : valeur d'[#INT] en années\n- NC 3 : valeur d'[#INT] en jours\n- NC 4 : valeur d'[#INT] en heures\n- NC 5 : valeur d'[#INT] en minutes\n- NC 6 et + : valeur d'[#INT] en rounds\nSi la cible est volontaire, la durée du sort est la même que si elle était de NC 1.",
+    // Suivi des DM encaissés par une gangue posée (demande propriétaire) : compagnon MULTI-INSTANCES
+    // (PER-235) SANS limite (`instances.limit` absent → illimité, PER-74) ni cible suivie — on ne sait
+    // pas QUI est enfermé dedans, juste combien de gangues sont posées et leurs PV (= DM avant qu'elle
+    // ne se brise à 50, p. 158). Bouton « Ajouter une gangue » (verbe `addLabel`, pas « Invoquer » : la
+    // gangue est posée sur une cible, pas conjurée comme un familier/zombie). Aucune stat de créature
+    // (pas d'attaque, pas de DEF, pas de caractéristiques) : ce n'est pas un allié, juste un compteur.
+    creatureProfile: {
+      name: 'Gangue de glace',
+      companionType: 'summon',
+      hitPoints: '[=50]',
+      note: 'Se brise au bout de 50 DM encaissés — la durée avant rupture spontanée dépend du NC de la créature enfermée (voir le texte du sort).',
+      instances: { addLabel: 'Ajouter une gangue' },
+    },
     sourcePage: 158,
   },
 

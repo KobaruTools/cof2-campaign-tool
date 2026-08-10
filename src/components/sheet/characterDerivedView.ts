@@ -77,6 +77,7 @@ import {
   elementalistMeleeAttackNotes,
   elementalistRangedAttackNotes,
 } from '@/lib/character/elementalistPath';
+import { frostRetaliationBadge } from '@/lib/character/frostPath';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -493,6 +494,24 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         },
       ]
     : [];
+  // PER-74 — Présence glaciale (gel r7, p. 158) : même patron « Riposte » SITUATIONNEL que la forme
+  // Feu de l'élémentaliste (`elemental-retaliation`, ambre), mais sans type de DM précisé par le
+  // livre (« subissent 1d4° DM », pas « DM de froid ») → PAS de `scope` (aucune icône élémentaire).
+  const frostRetaliation = frostRetaliationBadge(character);
+  const frostRetaliationBadges: DefenseBadgeData[] = frostRetaliation
+    ? [
+        {
+          key: 'retaliation-frost-r7',
+          variant: 'elemental-retaliation' as const,
+          text: frostRetaliation.die,
+          dice: `{${frostRetaliation.die}}`,
+          diceTierBonus: scalingDieTierBonus(character),
+          title: 'Présence glaciale — riposte',
+          note: "Tant que Présence glaciale est active, une créature qui vous touche au contact ou avec des armes naturelles subit ces DM.",
+          sources: [{ name: 'Présence glaciale', featureId: 'prestige-gel-r7' }],
+        },
+      ]
+    : [];
   // PER-74 — Déflexion arcanique (guerrier-mage r6, p. 151) : badge de rappel AMBRE (réaction
   // ponctuelle payée en PM, à la discrétion du joueur) — aucune valeur numérique fixe (le combattant
   // choisit +2 DEF pour 1 PM par attaque, +5 pour 3 PM à partir du rang 9).
@@ -515,6 +534,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ...rangedMalusBadges,
     ...retaliationBadges,
     ...elementalRetaliationBadges,
+    ...frostRetaliationBadges,
     ...deflectionBadges,
   ];
 

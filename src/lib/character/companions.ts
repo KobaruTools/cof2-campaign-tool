@@ -569,8 +569,10 @@ export function listCompanions(character: Character): CompanionEntry[] {
  * atteint le rang 5 dans une voie de sorcier »). `0` si le profil n'est pas multi-instances.
  */
 export function resolveCompanionInstanceLimit(profile: CreatureProfile, character: Character): number {
-  const spec = profile.instances?.limit;
-  if (!spec) return 0;
+  if (!profile.instances) return 0;
+  const spec = profile.instances.limit;
+  // Absent = ILLIMITÉ (Gangue de glace, voie du gel r8) : le joueur en ajoute autant qu'il veut.
+  if (!spec) return Infinity;
   const maxRankByPath = new Map<string, number>();
   for (const id of character.featureIds) {
     const f = featureById.get(id);
