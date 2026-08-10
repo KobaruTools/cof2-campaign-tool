@@ -1901,6 +1901,12 @@ export interface CapacityResourceGauge {
    * profil. `undefined` si la voie n'est pas une voie de profil.
    */
   classId?: string;
+  /**
+   * Réserve ACCUMULATEUR (PER-325, points de violence) : démarre à 0 et monte sans plafond ; `current`
+   * n'est PAS borné par `max` (qui n'a pas de sens ici). Rendu par une barre segmentée dédiée. Défaut
+   * `false` (réserve classique restant/max).
+   */
+  accumulator?: boolean;
 }
 
 /**
@@ -1916,7 +1922,7 @@ export interface CapacityResourceGauge {
  * partout). Ordre d'apparition = ordre des capacités acquises.
  */
 export function capacityResourceGauges(character: Character): CapacityResourceGauge[] {
-  const byKey = new Map<string, { label: string; max: number; classId?: string }>();
+  const byKey = new Map<string, { label: string; max: number; classId?: string; accumulator?: boolean }>();
   const order: string[] = [];
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
@@ -1929,7 +1935,8 @@ export function capacityResourceGauges(character: Character): CapacityResourceGa
     // seulement tant que l'interrupteur de la capacité est actif (PER-150).
     if (counter.visibleWhenEffectActive && !hasActiveConditionalEffect(character, feature.id)) continue;
     const key = counter.sharedKey ?? feature.id;
-    const max = usageCounterMaximum(counter, character, feature);
+    const accumulator = counter.accumulator === true;
+    const max = accumulator ? 0 : usageCounterMaximum(counter, character, feature);
     // Libellé identifiant : le label du compteur sauf s'il est générique, auquel cas le nom
     // de la capacité (plus parlant qu'« Usages restants » pour une jauge).
     const label =
@@ -1939,18 +1946,23 @@ export function capacityResourceGauges(character: Character): CapacityResourceGa
     const classId = path?.type === 'class' ? path.classIds[0] : undefined;
     const existing = byKey.get(key);
     if (!existing) {
-      byKey.set(key, { label, max, classId });
+      byKey.set(key, { label, max, classId, accumulator });
       order.push(key);
     } else {
       existing.max = Math.max(existing.max, max);
       if (counter.label && counter.label !== GENERIC_USAGE_LABEL) existing.label = counter.label;
       if (!existing.classId && classId) existing.classId = classId;
+      if (accumulator) existing.accumulator = true;
     }
   }
   return order.map((key) => {
-    const { label, max, classId } = byKey.get(key)!;
-    const current = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
-    return { key, label, current, max, classId };
+    const { label, max, classId, accumulator } = byKey.get(key)!;
+    // Accumulateur (points de violence) : démarre à 0, jamais borné par `max`. Réserve classique :
+    // démarre plein (`?? max`) et reste dans [0, max].
+    const current = accumulator
+      ? Math.max(0, character.usageCounters?.[key] ?? 0)
+      : Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+    return { key, label, current, max, classId, accumulator };
   });
 }
 
