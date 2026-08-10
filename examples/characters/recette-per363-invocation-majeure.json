@@ -3,7 +3,7 @@
   "id": "recette-per363-invocation-majeure",
   "name": "Recette PER-363 — Voie de l’invocation majeure",
   "identity": {
-    "description": "ATTENDU (PER-363, voie de l'invocation majeure p. 158) — coût en PM de chaque sort de la voie = rang - 2 (Concentration automatique, badge « Voie de l'invocation majeure » dans l'info-bulle). Monture fantôme (r4) ET Chasseur ailé (r7) invoquées EN MÊME TEMPS ici (deux interrupteurs actifs) : les DEUX doivent apparaître dans Compagnons (companionSlot dédié, PER-363) — profil léger pour la monture SANS verbatim (specialAbilities « Insensible aux terrains difficiles »/« Court sur l'eau »/« Vol », les deux dernières gagnées par les rangs 6/8 déjà acquis), profil complet NC5 pour le chasseur (DEF 18/PV 50/Serres +10 2d6+6, Vol rapide + Enlèvement). Toggle « En selle » actif sur la monture (mountedKey) — patron Cavalier émérite généralisé. Navire fantôme (r6) : interrupteur « Nef fantôme » ACTIF ici → nom affiché « Nef fantôme » + coût 8-2=6 PM au lieu de 6-2=4 PM (désactive le toggle pour vérifier le retour à 4 PM). Manoir d'outre-monde (r5) et Portail magique (r8) : formules résolues (niveau, INT) dans le richText. Portail magique : compteur 1/jour. Passager de monture (sélecteur « En selle avec » sous la carte Compagnon) : nécessite une VRAIE campagne + session pour être recetté (état de combat partagé) — non démontrable dans ce JSON statique."
+    "description": "ATTENDU (PER-363, voie de l'invocation majeure p. 158) — coût en PM de chaque sort de la voie = rang - 2 (Concentration automatique, badge « Voie de l'invocation majeure » dans l'info-bulle). Monture fantôme (r4) invoquée ici (interrupteur actif) : DOIT apparaître dans Compagnons — profil léger SANS verbatim (specialAbilities « Insensible aux terrains difficiles »/« Court sur l'eau »/« Vol », les deux dernières gagnées par les rangs 6/8 déjà acquis) — + toggle « En selle » actif (mountedKey, patron Cavalier émérite généralisé). Chasseur ailé (r7) : NE DOIT JAMAIS apparaître dans Compagnons (summonedEnemy) — son interrupteur, dans la modale de détail, doit être GRISÉ pour un joueur avec un avertissement au-dessus (« adversaire, pas allié, seul le MJ peut l'invoquer ») ; côté MJ (GmSheetDrawer) il reste actionnable et ajoute la créature dans l'écran de combat — comportement non démontrable dans ce JSON statique (nécessite une VRAIE campagne + rôle MJ), vérifié séparément via `scratchpad/check-r7-encounter.ts`. Navire fantôme (r6) : interrupteur « Nef fantôme » ACTIF ici → nom affiché « Nef fantôme » + coût 8-2=6 PM au lieu de 6-2=4 PM (désactive le toggle pour vérifier le retour à 4 PM). Manoir d'outre-monde (r5) et Portail magique (r8) : formules résolues (niveau, INT) dans le richText. Portail magique : compteur 1/jour. Passager de monture (sélecteur « En selle avec » sous la carte Compagnon de Monture fantôme) : nécessite une VRAIE campagne + session — non démontrable dans ce JSON statique."
   },
   "campaignId": null,
   "playerId": null,
@@ -49,9 +49,6 @@
     ],
     "prestige-invocation-majeure-r6": [
       true
-    ],
-    "prestige-invocation-majeure-r7": [
-      true
     ]
   },
   "effectInputs": {},
@@ -70,7 +67,7 @@
   "mounts": [],
   "poisonedWeapons": [],
   "overrides": {},
-  "notes": "PER-363 — recette voie de l'invocation majeure (coût PM = rang-2 sur les 5 rangs, Monture fantôme + Chasseur ailé invoqués + en selle + Nef fantôme active pour la démo Compagnons).",
+  "notes": "PER-363 — recette voie de l'invocation majeure (coût PM = rang-2 sur les 5 rangs, Monture fantôme invoquée + en selle, Nef fantôme active pour la démo Compagnons). Chasseur ailé (r7) volontairement PAS invoqué ici : c'est un adversaire MJ-only, non démontrable hors campagne réelle.",
   "createdAt": "2026-01-01T00:00:00.000Z",
   "updatedAt": "2026-01-01T00:00:00.000Z",
   "mountedKey": "prestige-invocation-majeure-r4"
