@@ -1969,8 +1969,13 @@ function UsageCounterRow({
   const key = usageCounterKey(counter, feature);
   // Compteur d'ACCUMULATION (PER-74, Botte mortelle) : « absence = 0 », part de 0 et monte ; sinon
   // DÉCOMPTE classique « absence = plein » (= max).
-  const countUp = !!counter.countUp;
-  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? (countUp ? 0 : max)));
+  // Accumulateur SANS plafond (PER-325, points de violence) : count-up jamais borné par `max` (bouton
+  // +1 illimité). `countUp` PLAFONNÉ (Botte mortelle) reste borné à `max`.
+  const accumulator = !!counter.accumulator;
+  const countUp = accumulator || !!counter.countUp;
+  const remaining = accumulator
+    ? Math.max(0, character.usageCounters?.[key] ?? 0)
+    : Math.max(0, Math.min(max, character.usageCounters?.[key] ?? (countUp ? 0 : max)));
   // Coût d'un usage de CETTE capacité (PER-130) : le pas de décrément/incrément. La Furie du berserk
   // consomme 2 points de rage et n'est utilisable que s'il en reste au moins 2.
   const cost = counter.cost ?? 1;
@@ -1979,6 +1984,26 @@ function UsageCounterRow({
   // Verrou « une dépense par récupération rapide » (PER-160) : une fois un point dépensé, le décrément
   // est bloqué (avec une note) jusqu'au prochain repos court — indépendamment du total restant.
   const locked = !!counter.oncePerShortRest && (character.usageCounters?.[shortRestLockKey(key)] ?? 0) > 0;
+
+  // ACCUMULATEUR (PER-325, points de violence) : sur la carte/modale, pas de compteur détaillé — la
+  // barre d'« État du personnage » (`ViolencePointsBar`) porte l'affichage et le −/reset. Ici, juste
+  // un bouton d'AJOUT (« la barre s'occupe du reste », retour propriétaire). En lecture seule, rien.
+  if (accumulator) {
+    if (!onSet) return null;
+    return (
+      <Stack direction="row" sx={{ mt: 1 }}>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<AddIcon fontSize="small" />}
+          onClick={() => onSet(key, remaining + cost, remaining + cost)}
+        >
+          {counter.addLabel ?? 'Ajouter un point'}
+        </Button>
+      </Stack>
+    );
+  }
+
   return (
     <Stack sx={{ mt: 1 }}>
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2012,8 +2037,8 @@ function UsageCounterRow({
           <IconButton
             size="small"
             aria-label="Incrémenter"
-            disabled={remaining >= max}
-            onClick={() => onSet(key, Math.min(max, remaining + cost), max)}
+            disabled={!accumulator && remaining >= max}
+            onClick={() => onSet(key, accumulator ? remaining + cost : Math.min(max, remaining + cost), accumulator ? remaining + cost : max)}
           >
             <AddIcon fontSize="small" />
           </IconButton>
@@ -2197,6 +2222,10 @@ function CompactUsageIndicator({
 }) {
   const counter = counterOverride ?? feature.usageCounter;
   if (!counter) return null;
+  // Réserve ACCUMULATEUR (points de violence, PER-325) : l'affichage est porté par la barre dédiée
+  // d'« État du personnage » (`ViolencePointsBar`) ; aucun indicateur « N/max » sur la carte (le max
+  // vaut 0 → un « 0/0 » inutile). La modale garde son bouton d'ajout.
+  if (counter.accumulator) return null;
   const max = usageCounterMaximum(counter, character, feature);
   const key = usageCounterKey(counter, feature);
   // Compteur d'ACCUMULATION (PER-74, Botte mortelle) : « absence = 0 », on affiche le NOMBRE nu (pas de

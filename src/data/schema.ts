@@ -3518,6 +3518,21 @@ export interface UsageCounter {
     excludeHostPath?: boolean;
   };
   /**
+   * Compteur ACCUMULATEUR (PER-325, demi-ogre « points de violence », p. 12) : à l'INVERSE d'une réserve
+   * « usages restants » (démarre plein, se dépense), il démarre à ZÉRO et s'ACCUMULE, SANS plafond
+   * (`max`/`maxBy*` ignorés). Rendu dans « État du personnage » par une barre dédiée (`ViolencePointsBar`)
+   * calquée sur les `GaugeRow` (cap d'icône + barre pleine + −/+/reset, un seul chiffre, sans chevron),
+   * toujours visible tant que la capacité est acquise (afin de pouvoir AJOUTER des points). Sur la CARTE
+   * de la capacité, le compteur détaillé cède la place à un simple bouton d'ajout (cf. `addLabel`), la
+   * barre s'occupant du reste. Défaut `false` (réserve classique « restant/max »).
+   */
+  accumulator?: boolean;
+  /**
+   * Libellé du bouton d'ajout d'un point sur la carte de la capacité, pour un compteur `accumulator`
+   * (ex. « Ajouter un point de violence »). Défaut « Ajouter un point ». Ignoré hors accumulateur.
+   */
+  addLabel?: string;
+  /**
    * Coût en points décrémentés à CHAQUE usage de CETTE capacité (PER-130). Défaut 1. Sert aux
    * réserves PARTAGÉES (`sharedKey`) où certaines capacités consomment plus : ex. Furie du berserk
    * consomme 2 points de rage et n'est utilisable que s'il en reste au moins 2. Le décrément et
@@ -4044,8 +4059,16 @@ export interface Feature {
    * pas. Voir `oneHandableWeaponFamilies` (`equipment.ts`), qui agrège ce champ sur les capacités
    * acquises et se propage au comptage des mains, aux conflits de port et au combat à deux armes.
    * Absent = la capacité ne change aucune prise.
+   *
+   * `oneHandDamage` — SURCHARGE du dé de DM quand l'arme est tenue À UNE MAIN sous cette capacité
+   * (PER-325, trait « Taille grande » du demi-ogre, p. 11) : « Il peut manier d'une seule main les
+   * épées bâtardes et les épées à deux mains, et inflige alors 1d12 DM. » Le maniement à une main
+   * RÉDUIT alors le dé natif (2d6 → 1d12). Une capacité de rang SUPÉRIEUR qui lève cette réduction
+   * (demi-ogre r4 « Toujours plus lourd », p. 13 : plein dé natif à une main) déclare `weaponFamilies`
+   * SANS `oneHandDamage` : la résolution (`oneHandDamageOverride`, equipment.ts) rend alors le dé natif
+   * dès qu'UNE capacité couvrante n'impose pas de réduction. Absent = aucune surcharge (dé natif).
    */
-  twoHandedInOneHand?: { weaponFamilies: WeaponFamily[] };
+  twoHandedInOneHand?: { weaponFamilies: WeaponFamily[]; oneHandDamage?: WeaponDamage };
   /**
    * MODIFICATION PHYSIQUE D'ARMES octroyée par cette capacité (PER-284) : débloque, sous elle, une
    * section où le joueur DÉSIGNE les armes de son inventaire à bricoler (chargeur de l'Arme à

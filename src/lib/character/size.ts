@@ -11,9 +11,22 @@ import type { CreatureSize } from '@/data/schema';
 
 const SMALL_ANCESTRY_IDS = new Set(['halfelin']);
 
-/** Taille de base du peuple, avant capacités : « petite » pour le halfelin, « moyenne » sinon. */
+/**
+ * Peuples de taille « grande » d'office (PER-325, demi-ogre : « considéré comme de taille grande » —
+ * Le Compagnon, p. 12). Le trait est HORS voie, toujours actif dès la création. Comme pour le
+ * halfelin, la taille d'un peuple n'a pas de champ structuré sur `Ancestry` (prose libre) : cette
+ * table fixe la référence unique de la fiche. Slug d'`id` de contenu payant conservé (chaîne).
+ */
+const LARGE_ANCESTRY_IDS = new Set(['demi-ogre']);
+
+/**
+ * Taille de base du peuple, avant capacités : « petite » pour le halfelin, « grande » pour le
+ * demi-ogre (trait de peuple), « moyenne » sinon.
+ */
 export function baseAncestrySize(ancestryId: string | undefined): CreatureSize {
-  return ancestryId && SMALL_ANCESTRY_IDS.has(ancestryId) ? 'petite' : 'moyenne';
+  if (ancestryId && SMALL_ANCESTRY_IDS.has(ancestryId)) return 'petite';
+  if (ancestryId && LARGE_ANCESTRY_IDS.has(ancestryId)) return 'grande';
+  return 'moyenne';
 }
 
 /** Taille effective du personnage, Stature de géant comprise (une catégorie de plus si acquise). */

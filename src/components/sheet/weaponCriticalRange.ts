@@ -14,7 +14,11 @@
  */
 import { criticalRangeSources } from '@/lib/character/effects';
 import { wornMeleeWeaponLine, wornRangedWeaponLine } from '@/lib/character/equipment';
+import { effectiveItem } from '@/lib/character/items';
+import { magicWeaponCriticalRanges } from '@/lib/character/magicItemEffects';
+import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import type { Character, EquipmentLine } from '@/lib/character/types';
+import { isCustomItem } from '@/lib/character/types';
 import { combineCriticalRanges } from '@/lib/ui/criticalRange';
 
 /** Plage de critique effective d'une ligne d'arme portée, avec ses contributeurs (info-bulle). */
@@ -27,12 +31,28 @@ export interface WeaponLineCriticalRange {
   sources: Array<{ name: string; value: number; featureId?: string }>;
 }
 
+/** Assemble un `WeaponLineCriticalRange` à partir de sources déjà collectées, ou `null` si rien. */
+function build(
+  scope: 'melee' | 'ranged',
+  sources: Parameters<typeof combineCriticalRanges>[0],
+): WeaponLineCriticalRange | null {
+  const combined = combineCriticalRanges(sources, scope);
+  if (!combined) return null;
+  return {
+    scope,
+    total: combined.total,
+    sources: combined.sources.map((s) => ({ name: s.name, value: s.value, featureId: s.featureId })),
+  };
+}
+
 /**
  * Plage de critique à afficher sur une LIGNE d'inventaire, ou `null` : arme rangée (la plage ne
- * concerne que l'arme réellement en main), ligne qui n'est pas l'arme retenue pour sa portée par les
- * résolveurs canoniques (`wornMeleeWeaponLine` / `wornRangedWeaponLine`, PER-76/77 — avec deux armes
- * en main la puce ne se duplique donc pas sur celle dont la carte d'attaque ne parle pas), ou aucune
- * source de critique élargi. Fonction PURE.
+ * concerne que l'arme réellement en main) ou aucune source de critique élargi. La ligne est reconnue
+ * par IDENTITÉ contre les résolveurs canoniques (`wornMeleeWeaponLine` / `wornRangedWeaponLine`,
+ * PER-76/77). En COMBAT À DEUX ARMES (PER-116), la MAIN SECONDAIRE affiche SA propre plage : son arme
+ * est imposée au résolveur (`criticalRangeSources({ meleeWeapon })`), comme la 2ᵉ ligne de la carte
+ * d'attaque — sinon la puce manquait sur la 2ᵉ arme (ex. variante « taille grande ») alors que la
+ * carte l'affiche. Les plages magiques (Affûtée) sont cumulées comme sous les cartes. Fonction PURE.
  */
 export function weaponLineCriticalRange(
   character: Character,
@@ -40,20 +60,37 @@ export function weaponLineCriticalRange(
 ): WeaponLineCriticalRange | null {
   if (!line.worn) return null;
   const equipment = character.equipment ?? [];
-  // Portée dont relève CETTE ligne, par identité de ligne. Le contact est prioritaire (même règle
-  // que la carte d'attaque) : une arme lançable tenue en main affiche sa plage de contact.
-  const scope: 'melee' | 'ranged' | null =
-    wornMeleeWeaponLine(equipment) === line
-      ? 'melee'
-      : wornRangedWeaponLine(equipment) === line
-        ? 'ranged'
-        : null;
-  if (!scope) return null;
-  const combined = combineCriticalRanges(criticalRangeSources(character), scope);
-  if (!combined) return null;
-  return {
-    scope,
-    total: combined.total,
-    sources: combined.sources.map((s) => ({ name: s.name, value: s.value, featureId: s.featureId })),
-  };
+
+  // Arme de CONTACT canonique en main (main principale prioritaire) : arme par défaut du résolveur.
+  if (wornMeleeWeaponLine(equipment) === line) {
+    return build('melee', [
+      ...criticalRangeSources(character),
+      ...magicWeaponCriticalRanges(line, 'melee'),
+    ]);
+  }
+
+  // MAIN SECONDAIRE en combat à deux armes : impose SON arme au résolveur (plage propre, PER-116).
+  if (
+    twoWeaponCombatStatus(character).dualWielding &&
+    line.worn.slot === 'offHand' &&
+    !isCustomItem(line)
+  ) {
+    const item = effectiveItem(line);
+    if (item?.category === 'weapon' && item.melee) {
+      return build('melee', [
+        ...criticalRangeSources(character, { meleeWeapon: item }),
+        ...magicWeaponCriticalRanges(line, 'melee'),
+      ]);
+    }
+  }
+
+  // Arme à DISTANCE en main.
+  if (wornRangedWeaponLine(equipment) === line) {
+    return build('ranged', [
+      ...criticalRangeSources(character),
+      ...magicWeaponCriticalRanges(line, 'ranged'),
+    ]);
+  }
+
+  return null;
 }

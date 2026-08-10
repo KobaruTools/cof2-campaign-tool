@@ -59,9 +59,23 @@ describe('weaponLineCriticalRange (PER-74) — plage de critique sur la ligne d�
     expect(weaponLineCriticalRange(char([line], []), line)).toBeNull();
   });
 
-  it('la puce ne se duplique pas : avec deux armes en main, seule celle retenue au contact la porte', () => {
-    // Rapière (plage intrinsèque 19-20) en main principale, épée courte en main secondaire : la
-    // ligne de contact retenue est la main principale → l'autre ligne n'affiche rien.
+  it('combat à deux armes : CHAQUE ligne porte SA propre plage (PER-116)', () => {
+    // Deux épées courtes (famille swords), Maître d'armes « épées » + Science du critique : les DEUX
+    // mains bénéficient du 19-20, donc les DEUX lignes d'inventaire l'affichent (avant : seule la
+    // principale — la 2ᵉ arme, ex. variante « taille grande », restait sans puce).
+    const main: EquipmentLine = { itemId: 'epee-courte', quantity: 1, worn: { slot: 'mainHand' } };
+    const off: EquipmentLine = { itemId: 'epee-courte', quantity: 1, worn: { slot: 'offHand' } };
+    const c: Character = {
+      ...char([main, off], ['maitre-d-armes-r1', 'maitre-d-armes-r2']),
+      featureChoices: { 'maitre-d-armes-r1': [['swords']] },
+    };
+    expect(weaponLineCriticalRange(c, main)?.sources.map((s) => s.name)).toContain('Science du critique');
+    expect(weaponLineCriticalRange(c, off)?.sources.map((s) => s.name)).toContain('Science du critique');
+  });
+
+  it('combat à deux armes : la main secondaire SANS source de critique reste sans puce', () => {
+    // Rapière (19-20 intrinsèque) en main principale, épée courte nue en main secondaire (aucune
+    // capacité) : la principale affiche « Rapière », la secondaire n'a AUCUNE source → pas de puce.
     const main: EquipmentLine = { itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } };
     const off: EquipmentLine = { itemId: 'epee-courte', quantity: 1, worn: { slot: 'offHand' } };
     const c = char([main, off], []);

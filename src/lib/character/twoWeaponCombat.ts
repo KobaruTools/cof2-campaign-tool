@@ -23,7 +23,7 @@
  * modèle structuré de dégâts (PER-217), encore en cours de migration.
  */
 import { equipmentById } from '@/data';
-import { oneHandableWeaponFamilies, wornWeaponIsTwoHanded } from './equipment';
+import { oneHandableWeaponFamiliesForCharacter, wornWeaponIsTwoHanded } from './equipment';
 import { getSelection } from './choices';
 import { isCustomItem } from './types';
 import type { Character } from './types';
@@ -67,7 +67,7 @@ export function twoWeaponCombatStatus(character: Character): TwoWeaponCombatStat
   let offHandWeaponId: string | null = null;
   // PER-74 — un colosse (Poigne de fer) tenant son épée à deux mains d'UNE main garde l'autre libre :
   // le combat à deux armes lui redevient accessible.
-  const oneHandable = oneHandableWeaponFamilies(character.featureIds);
+  const oneHandable = oneHandableWeaponFamiliesForCharacter(character);
 
   for (const line of character.equipment ?? []) {
     if (isCustomItem(line) || !line.worn) continue;

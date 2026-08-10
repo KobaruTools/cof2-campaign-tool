@@ -39,6 +39,8 @@ import { crystalStatBonuses } from '@/lib/character/crystals';
 import {
   derivedBonusSourcesFromEquipment,
   derivedBonusesFromEquipment,
+  oneHandDamageOverride,
+  oneHandingFeatureIds,
 } from '@/lib/character/equipment';
 import { mountedInitiativePenalty } from '@/lib/character/mounts';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
@@ -187,8 +189,15 @@ function wornWeaponDamage(
   // PER-324 — décalage de cran du dé évolutif porté par le personnage, appliqué à la résolution
   // des dés de DM d'arme au niveau (défaut 0 = aucun décalage).
   const tierBonus = scalingDieTierBonus(character);
-  const baseDamage =
+  const grippedDamage =
     mode === 'melee' && line.worn?.grip === 'twoHands' && item.twoHandedDamage ? item.twoHandedDamage : item.damage;
+  // PER-325 — une arme à deux mains tenue À UNE MAIN par un demi-ogre voit son dé RÉDUIT (trait « Taille
+  // grande » : épées → 1d12), tant que la voie r4 (« Toujours plus lourd ») ne lève pas la réduction. Ne
+  // remplace que le DÉ (count/die) ; on garde `modifier`/`nonLethal`/`evolving` de l'arme. Contact seul.
+  const oneHandOverride = mode === 'melee' ? oneHandDamageOverride(line, oneHandingFeatureIds(character)) : null;
+  const baseDamage = oneHandOverride
+    ? { ...grippedDamage, count: oneHandOverride.count, die: oneHandOverride.die }
+    : grippedDamage;
   // CANON DOUBLE (artilleur-r4, p. 63, PER-284) : « Il double le dé de DM de l'arme (mais pas les dés
   // bonus ni les bonus) » → on double le NOMBRE de dés (1d10 → 2d10), jamais le modificateur.
   // Le doublement suppose de tirer les DEUX canons : avec un seul coup chargé (`underfed`), le livre

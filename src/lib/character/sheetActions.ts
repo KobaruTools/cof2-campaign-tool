@@ -64,7 +64,7 @@ import {
   spendMana,
 } from './gauges';
 import { longRest, shortRest } from './rest';
-import { oneHandableWeaponFamilies, setWornAt } from './equipment';
+import { oneHandableWeaponFamiliesForCharacter, setWornAt } from './equipment';
 import {
   hasItemCharges,
   refillItemCharges as refillCharges,
@@ -217,6 +217,19 @@ export function setUsageCounter(
     if (raised <= 0) delete nextEsc[counterKey];
     else nextEsc[counterKey] = raised;
     return { usageCounters: nextEsc };
+  }
+  // PER-325 : compteur ACCUMULATEUR (points de violence du demi-ogre) — même sémantique que l'escalade :
+  // AUCUN plafond, baseline 0 (clé absente = 0), aucun verrou. Le `max` passé par l'appelant est ignoré.
+  // `counterKey` peut être une `sharedKey`, d'où le rapprochement sur `(sharedKey ?? id)`.
+  const isAccumulator = [...featureById.values()].some(
+    (f) => f.usageCounter?.accumulator === true && (f.usageCounter.sharedKey ?? f.id) === counterKey,
+  );
+  if (isAccumulator) {
+    const raised = Math.max(0, value);
+    const nextAcc = { ...character.usageCounters };
+    if (raised <= 0) delete nextAcc[counterKey];
+    else nextAcc[counterKey] = raised;
+    return { usageCounters: nextAcc };
   }
   const clamped = Math.max(0, Math.min(max, value));
   const next = { ...character.usageCounters };
@@ -414,7 +427,7 @@ export function setEquipmentWorn(
       character.equipment,
       index,
       worn,
-      oneHandableWeaponFamilies(character.featureIds),
+      oneHandableWeaponFamiliesForCharacter(character),
     ),
   };
 }

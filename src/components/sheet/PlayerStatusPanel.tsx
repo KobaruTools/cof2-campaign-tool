@@ -22,6 +22,10 @@ import { HpGauge, type DamageKind } from './HpGauge';
 import { LongRestDialog } from './LongRestDialog';
 import { RecoveryDicePips } from './RecoveryDicePips';
 import { ShortRestDialog } from './ShortRestDialog';
+import { ViolencePointsBar } from './ViolencePointsBar';
+
+/** Teinte des réserves ACCUMULATEUR (points de violence, PER-325) : orange proche du rouge berserker. */
+const ACCUMULATOR_COLOR = '#e2571e';
 
 /**
  * Icône de profil dans un cercle blanc (même présentation cerclée que les icônes de
@@ -198,6 +202,19 @@ export function PlayerStatusPanel({
           Couleur du profil porteur (barbare rouge, arquebusier orange…) + icône du profil cerclée ;
           repli sur l'ambre + libellé dans la barre si le profil n'est pas identifiable. */}
       {capacityGauges.map((g) => {
+        // Réserve ACCUMULATEUR (points de violence du demi-ogre, PER-325) : barre segmentée dédiée
+        // (démarre vide, +1/−1, sans plafond), toujours visible pour pouvoir ajouter des points.
+        if (g.accumulator) {
+          return (
+            <ViolencePointsBar
+              key={g.key}
+              label={g.label}
+              value={g.current}
+              color={ACCUMULATOR_COLOR}
+              onChange={(n) => onSetUsageCounter(g.key, Math.max(0, n), Math.max(0, n))}
+            />
+          );
+        }
         const color = g.classId ? classColor(g.classId) : theme.palette.warning.main;
         return (
           <GaugeRow

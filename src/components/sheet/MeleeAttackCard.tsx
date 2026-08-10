@@ -251,7 +251,10 @@ function Face({
           weaponName: offHandMeleeWeaponDamage.name ?? null,
           handLabel: 'main secondaire',
           damage: offHandMeleeWeaponDamage,
-          wrap: false,
+          // PER-116 — la main secondaire ouvre AUSSI le détail du calcul de touche (`wrapTouch`), comme
+          // la principale : la valeur est la MÊME sur les deux mains (aucune pénalité chiffrée, p. 215).
+          // Un `touchNote` (finesse réservée à la main principale) reste prioritaire quand il existe.
+          wrap: true,
           touchDelta: offHandTouchDelta,
           touchNote:
             offHandTouchDelta !== 0
@@ -312,9 +315,9 @@ function Face({
     return (
       <>
         {/* La touche porte le détail du calcul au survol (curseur « ? »), via `wrapTouch`. En combat à
-            deux armes, seule la 1ʳᵉ ligne l'ouvre : la valeur est la MÊME sur les deux mains (le livre
-            n'impose aucune pénalité chiffrée, seulement un dé malus) — SAUF si l'attaque en finesse
-            substitue la caractéristique de TOUCHE, réservée à la main principale, d'où `touchDelta`. */}
+            deux armes, LES DEUX lignes l'ouvrent (même valeur sur les deux mains : le livre n'impose
+            aucune pénalité chiffrée, seulement un dé malus) — SAUF si l'attaque en finesse substitue la
+            caractéristique de TOUCHE, réservée à la main principale, d'où le `touchNote` prioritaire. */}
         {row.touchNote ? <AppTooltip title={row.touchNote}>{value}</AppTooltip> : row.wrap ? wrapTouch(value) : value}
         {/* Dé bonus à toutes les attaques (flibustier r8 « Pas de quartier », PV bas) — badge double-d20. */}
         {attackBonusDie.length > 0 && (
@@ -356,7 +359,12 @@ function Face({
           <NoWeaponHint />
         )
       ) : (
-        <WeaponDamageExpr dice={unarmedDice} abilities={unarmed.damageAbilities} charAbilities={abilities} />
+        <WeaponDamageExpr
+          dice={unarmedDice}
+          abilities={unarmed.damageAbilities}
+          flatBonuses={unarmed.flatBonuses}
+          charAbilities={abilities}
+        />
       )}
     </Box>
   );

@@ -19,7 +19,8 @@
 import { classById, equipmentById, featureById } from '@/data';
 import type { AbilityId, WeaponDamage } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
-import { activeFeatureIdsForMods, pathRanksFromFeatures } from '@/lib/character/effects';
+import { activeFeatureIdsForMods, isEffectActive, pathRanksFromFeatures } from '@/lib/character/effects';
+import type { PermanentFlatBonus } from '@/lib/character/weaponDamageBonus';
 
 /** Capacité contribuant au combat à mains nues (tooltip verbatim + source). */
 export interface UnarmedStrikeSource {
@@ -70,6 +71,13 @@ export interface UnarmedStrikeView {
   criticalRangeBonus: number;
   /** DM bonus situationnels à mains nues, octroyés par des capacités (voir `UnarmedBonusDamage`). */
   bonusDamage: UnarmedBonusDamage[];
+  /**
+   * Bonus PLATS permanents (entiers) à AJOUTER à l'expression de DM à mains nues (ex. demi-ogre
+   * « Réaction violente » +2, PER-325). Rendus comme pour l'arme portée — un « +2 » blanc dans la
+   * formule via `WeaponDamageExpr.flatBonuses` — et non plus en badge distinct (aucune raison de
+   * traiter mains nues et arme différemment). Les bonus en DÉ restent, eux, des badges situationnels.
+   */
+  flatBonuses: PermanentFlatBonus[];
   /** Capacités modifiant le combat à mains nues (pour le rendu verbatim + source). */
   sources: UnarmedStrikeSource[];
 }
@@ -209,12 +217,30 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
   // condition cible la famille d'arme `unarmed`. Générique — la capacité les déclare en données,
   // ce module ne code aucun id en dur (contenu payant compris).
   const bonusDamage: UnarmedBonusDamage[] = [];
+  const flatBonuses: PermanentFlatBonus[] = [];
   for (const id of acquired) {
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     for (const effect of feature.effects) {
       if (effect.kind !== 'weapon-damage-bonus') continue;
       if (!effect.condition.weaponFamilies?.includes('unarmed')) continue;
+      // Bonus piloté par un INTERRUPTEUR (PER-325, demi-ogre « Réaction violente ») : n'apparaît que
+      // tant que l'effet conditionnel référencé est ACTIF (comme pour l'arme portée, cf.
+      // `weaponDamageBonuses`). Absent = bonus non conditionné (cas historique, âme forgée « Choc
+      // électrique »). `requiresActiveEffectIndex` cible l'effet conditionnel de la MÊME capacité.
+      if (
+        effect.requiresActiveEffectIndex != null &&
+        !isEffectActive(character, id, effect.requiresActiveEffectIndex)
+      )
+        continue;
+      // Bonus PLAT permanent (entier) → agrégé à la formule de DM (« +2 » blanc), comme l'arme portée
+      // (`weaponDamageBonuses.addedFlat`). Les bonus en dé, ou situationnels, restent des badges.
+      if (typeof effect.flat === 'number' && !effect.situational) {
+        if (effect.flat > 0) {
+          flatBonuses.push({ featureId: id, name: feature.name, sourcePage: feature.sourcePage, value: effect.flat });
+        }
+        continue;
+      }
       const amount = formatBonusAmount(effect);
       if (!amount) continue;
       bonusDamage.push({ featureId: id, name: feature.name, amount, label: effect.condition.label });
@@ -233,6 +259,7 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
     damageTypeChoice,
     criticalRangeBonus,
     bonusDamage,
+    flatBonuses,
     sources,
   };
 }

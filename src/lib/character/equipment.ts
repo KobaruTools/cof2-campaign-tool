@@ -11,7 +11,7 @@
  * équiper d'office »). L'UI d'équipement/déséquipement manuel relève de PER-77.
  */
 import { equipmentById, featureById, testDomains } from '@/data';
-import type { AbilityId, Weapon, WeaponFamily } from '@/data/schema';
+import type { AbilityId, Weapon, WeaponDamage, WeaponFamily } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type {
   EquipmentLine,
@@ -103,6 +103,71 @@ export function oneHandableWeaponFamilies(featureIds: readonly string[] = []): W
     }
   }
   return families;
+}
+
+/**
+ * PER-325 — TRAITS DE PEUPLE innés (niveau 1), mécanisés HORS des rangs de voie. Keyé sur l'`ancestryId`
+ * (même patron que `LARGE_ANCESTRY_IDS`, `size.ts`) : le trait est actif du simple fait d'appartenir au
+ * peuple, sans figurer dans `Character.featureIds` ni dans un choix de voie. Version MINIMALE (arbitrage
+ * propriétaire 2026-08-10) : une table de données + union ici — PAS de champ sur `Ancestry`, PAS
+ * d'injection wizard (la machinerie lourde d'origine avait été revertée). Le demi-ogre « Taille grande »
+ * (`demi-ogre-taille-grande`, contenu payant du Compagnon) y porte le maniement des armes à deux mains
+ * à une main (épées → 1d12) dès le niveau 1 ; la voie r4 lève ensuite la réduction de dé.
+ */
+const ANCESTRY_TRAIT_FEATURE_IDS: Record<string, readonly string[]> = {
+  'demi-ogre': ['demi-ogre-taille-grande'],
+};
+
+/** Ids des capacités de trait de peuple INNÉES du personnage (0..n), selon son `ancestryId`. */
+export function ancestryTraitFeatureIds(ancestryId: string | undefined): string[] {
+  return ancestryId ? [...(ANCESTRY_TRAIT_FEATURE_IDS[ancestryId] ?? [])] : [];
+}
+
+/**
+ * Ids pilotant le MANIEMENT à une main : capacités acquises (`featureIds`) + traits de peuple innés
+ * (`ancestryTraitFeatureIds`). Point d'entrée unique pour `oneHandableWeaponFamilies` et
+ * `oneHandDamageOverride` afin que le trait inné (dispo niveau 1) compte partout comme une capacité.
+ */
+export function oneHandingFeatureIds(character: {
+  featureIds: readonly string[];
+  ancestryId?: string;
+}): string[] {
+  return [...character.featureIds, ...ancestryTraitFeatureIds(character.ancestryId)];
+}
+
+/** Familles d'armes à deux mains maniables à une main par le personnage (capacités + traits innés). */
+export function oneHandableWeaponFamiliesForCharacter(character: {
+  featureIds: readonly string[];
+  ancestryId?: string;
+}): WeaponFamily[] {
+  return oneHandableWeaponFamilies(oneHandingFeatureIds(character));
+}
+
+/**
+ * PER-325 — dé de DM SURCHARGÉ quand `line` est une arme de contact à deux mains TENUE À UNE MAIN sous
+ * une capacité de maniement (`twoHandedInOneHand`). Une capacité couvrante SANS `oneHandDamage` (rang
+ * supérieur qui rend le plein dé natif, ex. demi-ogre r4) l'emporte et rend `null` (= dé natif) ; sinon
+ * on applique la réduction déclarée (demi-ogre « Taille grande » : épées à une main → 1d12). `null` =
+ * aucune surcharge (dé natif). Ne concerne que les armes de contact intrinsèquement à deux mains
+ * (`weaponCategory: 'twoHands'`) tenues `grip: 'oneHand'` ; sinon `null`.
+ */
+export function oneHandDamageOverride(
+  line: EquipmentLine,
+  featureIds: readonly string[] = [],
+): WeaponDamage | null {
+  if (isCustomItem(line) || line.worn?.grip !== 'oneHand') return null;
+  const item = effectiveItem(line);
+  if (item?.category !== 'weapon' || !item.melee || item.weaponCategory !== 'twoHands') return null;
+  const families = item.weaponFamilies ?? [];
+  let override: WeaponDamage | null = null;
+  for (const id of featureIds) {
+    const cap = featureById.get(id)?.twoHandedInOneHand;
+    if (!cap || !cap.weaponFamilies.some((family) => families.includes(family))) continue;
+    // Capacité couvrante qui ne réduit pas le dé (r4) → dé natif, sans discussion.
+    if (!cap.oneHandDamage) return null;
+    override = cap.oneHandDamage;
+  }
+  return override;
 }
 
 /**

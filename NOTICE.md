@@ -81,6 +81,19 @@ est conservée dans `DERIVED_STAT_ICON_SOURCES` (même fichier) et dans
 | Attaque distance | `lorc/pocket-bow.svg` | Lorc |
 | Attaque magique | `delapouite/falling-star.svg` | Delapouite |
 
+## Icône « Points de violence »
+
+L'icône de la barre « Points de violence » (demi-ogre, PER-325) provient également de
+[game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Le SVG a été nettoyé (fond retiré, couleur neutralisée) et intégré en dur dans
+`src/lib/ui/violenceIcon.ts` (`OGRE_ICON_PATH`, source dans `OGRE_ICON_SOURCE`).
+
+| Usage | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Points de violence | `delapouite/ogre.svg` | Delapouite |
+
 ## Icônes des dés
 
 Les icônes des dés polyédriques (d4, d6, d8, d10, d12, d20) proviennent également
