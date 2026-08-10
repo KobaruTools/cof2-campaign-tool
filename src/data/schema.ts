@@ -2769,6 +2769,15 @@ export interface CreatureUpgrade {
    * Présent = ciblage CROSS-VOIE explicite — ex. Runes de défense (voie `runes`) → `['golem']`.
    */
   targetPaths?: string[];
+  /**
+   * Restriction FINE au SLOT de compagnon ciblé (`CreatureProfile.companionSlot`, PER-363), en plus
+   * de `targetPaths` : nécessaire quand une voie octroie PLUSIEURS compagnons INDÉPENDANTS partageant
+   * le même `pathId` (voie de l'invocation majeure : Monture fantôme r4 ET Chasseur ailé r7) — sans
+   * cette restriction, `targetPaths` seul ne peut pas distinguer les deux compagnons d'une même voie,
+   * et l'amélioration s'appliquerait aux DEUX. Absent = aucune restriction fine (comportement
+   * historique : une seule créature par voie ciblée, cas de toutes les autres voies à ce jour).
+   */
+  targetSlot?: string;
   /** Deltas de caractéristiques de la créature (ex. Forme de félin → AGI +3). */
   abilities?: Partial<Record<AbilityId, number>>;
   /**
@@ -3106,6 +3115,16 @@ export interface CreatureProfile {
    * passe d'annotation). Consommé par `listCompanions` (`CompanionEntry.companionType`).
    */
   companionType?: CompanionType;
+  /**
+   * Clé de DÉDOUBLONNAGE du compagnon (PER-363), pour les rares voies qui octroient PLUSIEURS
+   * compagnons INDÉPENDANTS pouvant être actifs SIMULTANÉMENT (voie de l'invocation majeure, p. 158 :
+   * Monture fantôme r4 ET Chasseur ailé r7 — deux invocations distinctes, pas une créature qui
+   * « monte en gamme »). `listCompanions` ne garde normalement qu'UN compagnon par VOIE (le rang le
+   * plus élevé actif) ; poser ici un identifiant DISTINCT par rang (ex. l'id de la capacité elle-même)
+   * fait sortir ce rang du dédoublonnage partagé de sa voie. Absent = `feature.pathId` (comportement
+   * historique, un seul compagnon par voie) — à laisser absent dans l'immense majorité des cas.
+   */
+  companionSlot?: string;
   /**
    * La créature EST une FORME que le PERSONNAGE prend lui-même (PER-74) — ce n'est pas un
    * compagnon distinct, mais une transformation (ex. Transformation en loup, voie du lycanthrope
