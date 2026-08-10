@@ -810,18 +810,41 @@ const COMPACT_HEALTH_COLOR: Record<HealthState, string> = {
  * Seuls les PV sont montrés (`manaMax: null`) : une seconde piste sur les seuls personnages
  * rouvrirait le désalignement créatures / personnages que le plancher d'en-tête existe pour éviter.
  * Le mana de la table se lit sur les cartes de joueurs de l'écran de MJ.
+ *
+ * EXPORTÉE (nouvelle demande, écran de MJ) : paramétrée sur les seuls champs dont elle a besoin
+ * (pas tout un `InitiativeRow`) pour être réutilisable ailleurs qu'ici — `GmScreenCompanionCard`
+ * (roster « Compagnons ») en fait la barre de vie « en haut du bloc », condensée comme sur une
+ * carte de joueur, à la place de l'ancienne `HpGauge` complète qui prenait la moitié de la carte.
  */
-function CompactHpControl({ row }: { row: InitiativeRow }) {
+export function CompactHpControl({
+  name,
+  maxHp,
+  depletion,
+  onDamage,
+  onHeal,
+  onReset,
+  persistKey,
+}: {
+  /** Nom du combattant (info-bulle + libellé d'accessibilité, et titre du popover). */
+  name: string;
+  maxHp: number;
+  depletion: Depletion;
+  onDamage: (amount: number, kind: DamageKind) => void;
+  onHeal: (amount: number) => void;
+  onReset: () => void;
+  /** Clé `localStorage` de l'état déplié de la `HpGauge` DANS le popover. */
+  persistKey: string;
+}) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const current = currentHp(row.maxHp, row.depletion);
-  const state = hpHealthState(row.maxHp, row.depletion);
+  const current = currentHp(maxHp, depletion);
+  const state = hpHealthState(maxHp, depletion);
   const healthNote = state === 'normal' ? null : COMPACT_HEALTH_LABEL[state];
   return (
     <>
       <AppTooltip
         title={
           <>
-            {`PV ${current} / ${row.maxHp} — cliquer pour infliger des dégâts ou soigner`}
+            {`PV ${current} / ${maxHp} — cliquer pour infliger des dégâts ou soigner`}
             {healthNote && (
               <Box component="span" sx={{ display: 'block', mt: 0.5, fontWeight: 700 }}>
                 {healthNote}
@@ -833,7 +856,7 @@ function CompactHpControl({ row }: { row: InitiativeRow }) {
         <Box
           role="button"
           tabIndex={0}
-          aria-label={`Points de vie de ${row.name} : ${current} sur ${row.maxHp} — infliger des dégâts ou soigner`}
+          aria-label={`Points de vie de ${name} : ${current} sur ${maxHp} — infliger des dégâts ou soigner`}
           onClick={(e) => setAnchorEl(e.currentTarget)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -855,7 +878,7 @@ function CompactHpControl({ row }: { row: InitiativeRow }) {
           }}
         >
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <CompactGauges depletion={row.depletion} maxHp={row.maxHp} manaMax={null} luckMax={0} />
+            <CompactGauges depletion={depletion} maxHp={maxHp} manaMax={null} luckMax={0} />
           </Box>
           <Box
             component="span"
@@ -869,7 +892,7 @@ function CompactHpControl({ row }: { row: InitiativeRow }) {
             }}
           >
             {current}
-            <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{`/${row.maxHp}`}</Box>
+            <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{`/${maxHp}`}</Box>
           </Box>
         </Box>
       </AppTooltip>
@@ -884,15 +907,15 @@ function CompactHpControl({ row }: { row: InitiativeRow }) {
             de la bande, c'est justement ce qui permet de garder la carte étroite. */}
         <Box sx={{ p: 1.5, width: 320 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }} noWrap>
-            {row.name}
+            {name}
           </Typography>
           <HpGauge
-            depletion={row.depletion}
-            maxHp={row.maxHp}
-            onDamage={row.onDamage}
-            onHeal={row.onHeal}
-            onReset={row.onReset}
-            persistKey={`${row.persistKey}:compact`}
+            depletion={depletion}
+            maxHp={maxHp}
+            onDamage={onDamage}
+            onHeal={onHeal}
+            onReset={onReset}
+            persistKey={`${persistKey}:compact`}
             defaultExpanded
           />
         </Box>
@@ -2352,7 +2375,15 @@ function CombatantColumn({
             En COMPACT (PER-300), elle cède la place à la barre fine + popover de dégâts. */}
         {!projection &&
           (compact ? (
-            <CompactHpControl row={row} />
+            <CompactHpControl
+              name={row.name}
+              maxHp={row.maxHp}
+              depletion={row.depletion}
+              onDamage={row.onDamage}
+              onHeal={row.onHeal}
+              onReset={row.onReset}
+              persistKey={row.persistKey}
+            />
           ) : (
             <HpGauge
               depletion={row.depletion}

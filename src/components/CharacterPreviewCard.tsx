@@ -11,14 +11,12 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { ClassIcon } from '@/components/ClassIcon';
-import { AbilityValueBadge } from '@/components/AbilityValueBadge';
+import { AbilityCompactGrid } from '@/components/AbilityCompactGrid';
 import { featureById, pathById } from '@/data';
-import { ABILITY_IDS } from '@/data/schema';
 import type { Feature, Path } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { summarize } from '@/lib/character/summary';
 import { useCharacterPortraitSrc } from '@/lib/storage/useCharacterPortraitSrc';
-import { ABILITY_NAMES } from '@/lib/ui/ability';
 import {
   ANCESTRY_COLOR,
   MAGE_PATH_COLOR,
@@ -259,46 +257,12 @@ export function CharacterPreviewCard({ character, tinted = true }: CharacterPrev
         <PathsMiniGrid character={character} />
       </Stack>
 
-      {/* Les 7 caractéristiques, en badges compacts (pas de Chip MUI). Résumé simple :
-          le modèle de carac UNIQUE (icône + code + chiffre teinté), ici en petite taille.
-          Le détail au survol et l'agrandissement du chiffre restent réservés à la fiche. */}
-      <Box
-        sx={{
-          display: 'grid',
-          width: '100%',
-          // `minmax(0, 1fr)` × 7 (PER-232) : 7 colonnes égales qui rétrécissent SANS
-          // jamais déborder leur conteneur, même très étroit (colonne d'écran MJ mobile).
-          // Le badge (icône / code / chiffre, empilés) reste lisible sous ~30px ; l'ancien
-          // plancher de 40px forçait ~316px et débordait la colonne.
-          gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-          gap: 0.75,
-        }}
-      >
-        {ABILITY_IDS.map((id) => (
-          <Box
-            key={id}
-            title={ABILITY_NAMES[id]}
-            sx={{
-              borderRadius: 1,
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              bgcolor: 'rgba(255, 255, 255, 0.04)',
-              py: 0.5,
-              // Grille + `place-items: center` : centrage garanti (deux axes) de l'unique
-              // enfant ; la cellule prend la hauteur de son contenu (icône + code + chiffre).
-              display: 'grid',
-              placeItems: 'center',
-            }}
-          >
-            {/* Icône (teinte propre) + code + chiffre teinté fort/faible — modèle partagé partout. */}
-            <AbilityValueBadge
-              ability={id}
-              value={character.abilities[id] ?? 0}
-              showCode
-              codeVariant="caption"
-            />
-          </Box>
-        ))}
-      </Box>
+      {/* Les 7 caractéristiques, dans le style COMPACT partagé par tout le roster de l'écran de
+          MJ (Joueurs/Compagnons/Alliés/Adversaires) — `minmax(0, 1fr)` × 7 (PER-232) : colonnes
+          égales qui rétrécissent SANS jamais déborder leur conteneur, même très étroit (colonne
+          d'écran MJ mobile). Le détail au survol et l'agrandissement du chiffre restent réservés
+          à la fiche (`AbilitiesGrid`). */}
+      <AbilityCompactGrid abilities={character.abilities} />
     </Stack>
   );
 }

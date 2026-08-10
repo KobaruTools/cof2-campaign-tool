@@ -58,6 +58,7 @@ import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardS
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
 import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
+import { GmScreenCompanionCard } from '@/components/campaign/GmScreenCompanionCard';
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
@@ -277,6 +278,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     campaignsLoading,
     campaign,
     claimed,
+    companionRoster,
     playerById,
     labeledCreatures,
     allies,
@@ -720,6 +722,29 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                     player={character.playerId ? playerById.get(character.playerId) ?? null : null}
                     href={`/character/${character.id}`}
                     panelHref={`/campaign/${cid}/gm-screen?sheet=${character.id}`}
+                  />
+                ))}
+              </CollapsibleSection>
+            )}
+            {companionRoster.length > 0 && (
+              <CollapsibleSection
+                label="Compagnons"
+                storageKey="gm-screen-companions-open"
+                count={companionRoster.length}
+              >
+                {companionRoster.map((roster) => (
+                  <GmScreenCompanionCard
+                    key={roster.key}
+                    ownerName={roster.character.name}
+                    accentColor={roster.accentColor}
+                    entry={roster.entry}
+                    abilities={roster.abilities}
+                    level={roster.character.level}
+                    masterDerived={roster.masterDerived}
+                    depletion={roster.depletion}
+                    onDelete={roster.onDelete}
+                    mounted={roster.mounted}
+                    onSetMounted={roster.onSetMounted}
                   />
                 ))}
               </CollapsibleSection>

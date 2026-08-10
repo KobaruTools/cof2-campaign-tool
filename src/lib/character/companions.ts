@@ -19,10 +19,11 @@ import type {
   CreatureSpecialAbility,
   CreatureUpgrade,
   DamageReduction,
+  DerivedStatId,
   Feature,
   FeatureChoiceOption,
 } from '@/data/schema';
-import type { Abilities } from '@/lib/engine';
+import type { Abilities, DerivedStats } from '@/lib/engine';
 import { borrowedFeatureIds, getSelection } from './choices';
 import {
   creatureBonusDiceForPath,
@@ -33,7 +34,6 @@ import {
   resolveValue,
 } from './effects';
 import { declineText, resolveFeatureElement } from './dragonElement';
-import { enSelleLink } from './mounts';
 import { pruneDepletion } from './gauges';
 import { parseRichText, resolveExpr } from '@/lib/ui/featureRichText';
 import { buildDefenseBreakdown, type CreatureDefenseUpgrade, type StatBreakdown } from './statBreakdown';
@@ -163,16 +163,25 @@ function declineUpgradeForElement(
  * capacités acquises — améliorations portées directement par une capacité (`Feature.creatureUpgrade`,
  * ex. Runes de défense → golem, cross-voie) ET par les options retenues d'un choix `option`
  * (`FeatureChoiceOption.creatureUpgrade`, ex. Golem supérieur, golem-r5) — et retient celles dont la
- * cible (`targetPaths ?? [voie source]`) inclut `creaturePathId`. Le `def` scalant est résolu ici même
- * contre la voie SOURCE (rang du maître), pour que Runes de défense donne +2/+3/+4 selon le rang runes.
+ * cible (`targetPaths ?? [voie source]`) inclut `creaturePathId`. Quand l'amélioration porte en plus
+ * un `targetSlot` (PER-363 : plusieurs compagnons INDÉPENDANTS d'une même voie, ex. Monture fantôme
+ * ET Chasseur ailé), elle ne s'applique QU'au compagnon dont le slot (`creatureSlot`) correspond —
+ * sans quoi elle s'appliquerait à tort à tous les compagnons de la voie ciblée. Le `def` scalant est
+ * résolu ici même contre la voie SOURCE (rang du maître), pour que Runes de défense donne +2/+3/+4
+ * selon le rang runes.
  */
-function gatherCreatureUpgrades(character: Character, creaturePathId: string): ResolvedCreatureUpgrade[] {
+function gatherCreatureUpgrades(
+  character: Character,
+  creaturePathId: string,
+  creatureSlot: string,
+): ResolvedCreatureUpgrade[] {
   const out: ResolvedCreatureUpgrade[] = [];
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
   const consider = (upgrade: CreatureUpgrade, sourcePathId: string, sourceFeatureId: string, sourceName: string) => {
     const targets = upgrade.targetPaths ?? [sourcePathId];
     if (!targets.includes(creaturePathId)) return;
+    if (upgrade.targetSlot !== undefined && upgrade.targetSlot !== creatureSlot) return;
     const def = upgrade.def == null ? undefined : resolveValue(upgrade.def, sourcePathId, pathRanks, ctx) ?? undefined;
     // PER-74 — DÉCLINAISON PAR ÉLÉMENT de l'amélioration, résolue ICI : c'est le seul point où une
     // donnée destinée à une créature voit encore le PERSONNAGE (et donc son choix de couleur). En aval,
@@ -239,7 +248,7 @@ export function applyCreatureUpgrades(
   character: Character,
   pathId: string,
 ): CreatureProfile {
-  const upgrades = gatherCreatureUpgrades(character, pathId);
+  const upgrades = gatherCreatureUpgrades(character, pathId, base.companionSlot ?? pathId);
   if (upgrades.length === 0) return base;
   const abilityDelta: Partial<Record<AbilityId, number>> = {};
   let defBonus = 0;
@@ -354,20 +363,35 @@ export function creatureDefenseAltActive(
 }
 
 /**
- * État « en selle » d'un compagnon MONTURE de voie (PER-216) : si le personnage possède une capacité
- * « en selle » (`enSelleLink`, ex. Cavalier émérite `cavalier-r2`) ET que ce compagnon est une monture
- * de la MÊME voie (Fidèle monture `cavalier-r1`, Monture fantastique `cavalier-r5`), renvoie l'état
- * courant de cet interrupteur (partagé avec la carte de voie et les montures possédées) → la carte
- * compagnon affiche alors un toggle « En selle ». Renvoie `null` si le compagnon n'est pas une monture
- * dotée d'un tel état (aucun toggle). Le malus d'Init. d'une barde ne concerne PAS ces montures : leur
- * DEF tient déjà compte d'une barde (livre p. 267), elles ne portent donc pas d'équipement de barde.
+ * État « en selle » d'un compagnon MONTURE de voie (PER-216) : si une capacité de la MÊME voie que ce
+ * compagnon (Fidèle monture `cavalier-r1`, Monture fantastique `cavalier-r5`, Monture fantôme
+ * `prestige-invocation-majeure-r4`…) porte un effet « en selle » (`conditional-stat-bonus`,
+ * `activation.kind === 'condition'`, `label === 'en selle'`), renvoie l'état courant de ce marqueur
+ * (partagé avec la carte de voie et les montures possédées) → la carte compagnon affiche alors un
+ * toggle « En selle ». Renvoie `null` si le compagnon n'est pas une monture dotée d'un tel état
+ * (aucun toggle). Le malus d'Init. d'une barde ne concerne PAS ces montures : leur DEF tient déjà
+ * compte d'une barde (livre p. 267), elles ne portent donc pas d'équipement de barde.
+ *
+ * Recherche SCOPÉE À LA VOIE du compagnon (pas `enSelleLink`, qui renvoie le PREMIER marqueur
+ * « en selle » trouvé toutes voies confondues) : depuis PER-363, deux voies distinctes (cavalier ET
+ * l'invocation majeure) peuvent chacune porter leur propre marqueur — un personnage qui aurait les
+ * deux ne doit jamais voir le marqueur de l'une masquer celui de l'autre.
  */
 export function companionMountEnSelle(character: Character, entry: CompanionEntry): boolean | null {
-  const link = enSelleLink(character);
-  if (!link || entry.companionType !== 'mount') return null;
-  if (featureById.get(link.featureId)?.pathId !== entry.feature.pathId) return null;
-  // « En selle » = cette monture de voie est CELLE actuellement chevauchée (`mountedKey`), exclusif.
-  return character.mountedKey === entry.key;
+  if (entry.companionType !== 'mount') return null;
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (feature?.pathId !== entry.feature.pathId) continue;
+    const effects = feature.effects ?? [];
+    for (let i = 0; i < effects.length; i += 1) {
+      const effect = effects[i];
+      if (effect.kind === 'conditional-stat-bonus' && effect.activation?.kind === 'condition' && effect.activation.label === 'en selle') {
+        // « En selle » = cette monture de voie est CELLE actuellement chevauchée (`mountedKey`), exclusif.
+        return character.mountedKey === entry.key;
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -455,15 +479,18 @@ export interface CompanionEntry {
  *  - candidats = rangs ACQUIS, non désactivés (`disabledFeatureIds` couvre les
  *    remplacements `replacesFeatures` comme loup → Mâle alpha, et les exclusions par
  *    interrupteur), porteurs d'un `CreatureProfile` effectif ;
- *  - UN SEUL compagnon par VOIE : on retient le rang le plus élevé porteur d'un profil.
- *    Une voie de compagnon décrit une seule créature qui « monte en gamme » avec les
- *    rangs — ex. chevalier : Monture fantastique (cavalier-r5) supplante la Fidèle
- *    monture (cavalier-r1) ; forgesort : Golem (golem-r2), amélioré par golem-r5 qui ne
- *    porte pas de profil séparé. (Aucune voie du livre n'octroie deux créatures
- *    simultanées ; ce repli d'affichage évite d'empiler la version de base et sa
- *    version améliorée sans toucher aux données ni au rendu de « Voies & capacités ».)
+ *  - UN SEUL compagnon par SLOT (`CreatureProfile.companionSlot`, défaut `feature.pathId`) :
+ *    on retient le rang le plus élevé porteur d'un profil pour ce slot. Une voie de compagnon
+ *    décrit HABITUELLEMENT une seule créature qui « monte en gamme » avec les rangs — ex.
+ *    chevalier : Monture fantastique (cavalier-r5) supplante la Fidèle monture (cavalier-r1) ;
+ *    forgesort : Golem (golem-r2), amélioré par golem-r5 qui ne porte pas de profil séparé — d'où
+ *    le repli par défaut sur `pathId` (évite d'empiler la version de base et sa version améliorée
+ *    sans toucher aux données ni au rendu de « Voies & capacités »). EXCEPTION (PER-363, voie de
+ *    l'invocation majeure, p. 158) : Monture fantôme (r4) et Chasseur ailé (r7) sont deux
+ *    invocations INDÉPENDANTES de la MÊME voie, pouvant être actives simultanément — chacune pose
+ *    son propre `companionSlot` pour sortir du dédoublonnage partagé.
  *
- * Ordre = ordre d'acquisition (premier rang porteur rencontré par voie).
+ * Ordre = ordre d'acquisition (premier rang porteur rencontré par slot).
  */
 export function listCompanions(character: Character): CompanionEntry[] {
   const disabled = disabledFeatureIds(character);
@@ -478,9 +505,9 @@ export function listCompanions(character: Character): CompanionEntry[] {
     if (!f) continue;
     maxRankByPath.set(f.pathId, Math.max(maxRankByPath.get(f.pathId) ?? 0, f.rank));
   }
-  // Un compagnon par voie : on garde le rang porteur de profil le plus élevé, dans
-  // l'ordre d'acquisition (Map = ordre de première insertion par voie).
-  const byPath = new Map<string, { feature: Feature; profile: CreatureProfile }>();
+  // Un compagnon par SLOT (PER-363) : on garde le rang porteur de profil le plus élevé PAR SLOT
+  // (`companionSlot` ?? `pathId`), dans l'ordre d'acquisition (Map = ordre de première insertion).
+  const bySlot = new Map<string, { feature: Feature; profile: CreatureProfile }>();
   for (const id of allIds) {
     if (disabled.has(id)) continue;
     const feature = featureById.get(id);
@@ -495,9 +522,10 @@ export function listCompanions(character: Character): CompanionEntry[] {
     // ont leur propre gating (présence = au moins une instance créée) — le marqueur ne s'applique
     // pas. Les compagnons permanents (loup, golem, monture, écuyer) passent toujours.
     if (!profile.instances && !companionPresent(feature, character)) continue;
-    const prev = byPath.get(feature.pathId);
+    const slotKey = profile.companionSlot ?? feature.pathId;
+    const prev = bySlot.get(slotKey);
     if (prev && prev.feature.rank >= feature.rank) continue;
-    byPath.set(feature.pathId, { feature, profile });
+    bySlot.set(slotKey, { feature, profile });
   }
   // PER-74 — REMPLACEMENT cross-voie d'un compagnon (chevalier dragon r7 : le drake « atteint sa
   // pleine maturité », son bloc adulte se substitue à celui du drake juvénile de Monture fantastique).
@@ -505,25 +533,27 @@ export function listCompanions(character: Character): CompanionEntry[] {
   // « en selle » survivent au franchissement du rang — puis on retire l'entrée du rang remplaçant,
   // sans quoi la même créature figurerait deux fois dans la section « Compagnons ». Le remplacement
   // n'a lieu que si la voie ciblée octroie effectivement un compagnon (sinon le rang reste tel quel,
-  // et son profil s'affiche comme un compagnon ordinaire).
-  for (const [pathId, entry] of [...byPath]) {
+  // et son profil s'affiche comme un compagnon ordinaire). `target` référence une VOIE (`pathId`),
+  // donc son slot par défaut : les voies cibles connues (cavalier, etc.) n'ont pas de `companionSlot`
+  // propre, elles restent adressables par leur `pathId`.
+  for (const [slotKey, entry] of [...bySlot]) {
     const targets = entry.profile.replacesCreatureFromPaths;
     if (!targets?.length) continue;
     for (const target of targets) {
-      const victim = byPath.get(target);
-      if (!victim || target === pathId) continue;
-      byPath.set(target, { feature: victim.feature, profile: entry.profile });
+      const victim = bySlot.get(target);
+      if (!victim || target === slotKey) continue;
+      bySlot.set(target, { feature: victim.feature, profile: entry.profile });
     }
     // Le rang remplaçant ne produit JAMAIS de compagnon à lui : c'est une AMÉLIORATION de la créature
     // existante, pas un ajout. On retire donc son entrée même quand aucune voie cible n'a de compagnon
     // à améliorer (données incomplètes — ex. Monture fantastique acquise sans monture choisie) : mieux
     // vaut aucune carte qu'une seconde créature surgie de nulle part à côté de la monture du joueur.
-    byPath.delete(pathId);
+    bySlot.delete(slotKey);
   }
-  // Développe chaque voie retenue en entrées d'affichage : une seule pour un compagnon classique,
+  // Développe chaque slot retenu en entrées d'affichage : une seule pour un compagnon classique,
   // N pour un compagnon multi-instances (une par instance vivante de `companionInstances`).
   const out: CompanionEntry[] = [];
-  for (const { feature, profile: baseProfile } of byPath.values()) {
+  for (const { feature, profile: baseProfile } of bySlot.values()) {
     // Profil AFFICHÉ = base + améliorations de la voie (PER-94, ex. options de Golem supérieur).
     const profile = applyCreatureUpgrades(baseProfile, character, feature.pathId);
     const pathRank = maxRankByPath.get(feature.pathId) ?? feature.rank;
@@ -589,12 +619,38 @@ export function resolveCompanionInstanceLimit(profile: CreatureProfile, characte
 }
 
 /**
+ * Somme les segments DÉTERMINISTES (formule/quantité) d'une chaîne `richText` à un seul bloc
+ * `[...]` (DEF, PV, DEF alternative…) contre les caractéristiques du maître, son niveau et le rang
+ * de voie atteint. `null` si non résoluble en nombre (segment contenant un dé, ou aucune
+ * expression) — factorisé entre `resolveCreatureMaxHp` et les résolveurs DEF/attaque de l'écran
+ * de MJ (PER-280, mêmes contraintes : un dé n'a pas de valeur affichable en pastille ajustable).
+ */
+function resolveRichExprNumber(
+  rich: string,
+  abilities: Abilities,
+  level: number,
+  rank: number,
+): number | null {
+  const segments = parseRichText(rich);
+  let total = 0;
+  let found = false;
+  for (const segment of segments) {
+    if (segment.kind === 'quantity' || segment.kind === 'expr' || segment.kind === 'term') {
+      const resolved = resolveExpr(segment.terms, abilities, level, progression, rank);
+      if (resolved.total == null) return null; // dé présent → pas de valeur numérique
+      total += resolved.total;
+      found = true;
+    }
+  }
+  return found ? total : null;
+}
+
+/**
  * Résout les PV MAXIMUM d'une créature depuis la chaîne richText `CreatureProfile.hitPoints`
  * (ex. `[=niveau × 5]`, `[=10 + niveau × 4]`) contre les caractéristiques du maître, son
  * niveau et le rang de voie atteint — comme `CreatureStatBlock` le fait pour l'affichage.
- * Somme les segments déterministes (formule/quantité). `null` si non résoluble en nombre
- * (segment contenant un dé, ou aucune expression) → la barre retombe alors sur l'affichage
- * textuel du profil.
+ * `null` si non résoluble en nombre (segment contenant un dé, ou aucune expression) → la barre
+ * retombe alors sur l'affichage textuel du profil.
  */
 export function resolveCreatureMaxHp(
   profile: CreatureProfile,
@@ -604,18 +660,53 @@ export function resolveCreatureMaxHp(
 ): number | null {
   // Créature SANS PV (Serviteur invisible, p. 96 — « ne peut pas être combattu ») : aucune barre.
   if (profile.hitPoints == null) return null;
-  const segments = parseRichText(profile.hitPoints);
-  let total = 0;
-  let found = false;
-  for (const segment of segments) {
-    if (segment.kind === 'quantity' || segment.kind === 'expr' || segment.kind === 'term') {
-      const resolved = resolveExpr(segment.terms, abilities, level, progression, rank);
-      if (resolved.total == null) return null; // dé présent → pas de max numérique
-      total += resolved.total;
-      found = true;
-    }
+  const total = resolveRichExprNumber(profile.hitPoints, abilities, level, rank);
+  return total == null ? null : Math.max(0, total);
+}
+
+/** Valeur d'une stat dérivée du maître, gérant l'écart de nom `def` (`DerivedStatId`) ↔ `defense` (`DerivedStats`). */
+function masterStatValue(derived: DerivedStats, stat: DerivedStatId): number {
+  return stat === 'def' ? derived.defense : (derived[stat] as number);
+}
+
+/**
+ * Résout la valeur NUMÉRIQUE de DÉFENSE affichée d'une créature/compagnon (écran de MJ, PER-280),
+ * DEF alternative (« en selle ») comprise si active — même résolution que la mini-fiche
+ * (`CreatureStatsLine`), mais un nombre nu au lieu d'un nœud enrichi. `undefined` si non résoluble
+ * (dé dans l'expression, profil sans DEF, ou stat du maître indisponible) : la pastille DEF de
+ * l'écran de MJ retombe alors sur 0 (comme un blob de créature non chargé).
+ */
+export function resolveCreatureDefenseNumber(
+  profile: CreatureProfile,
+  abilities: Abilities,
+  level: number,
+  rank: number,
+  masterDerived: DerivedStats | undefined,
+  defenseAltActive: boolean,
+): number | undefined {
+  const alt = profile.defenseAlt;
+  if (alt && defenseAltActive) {
+    if (typeof alt.value !== 'string') return masterDerived ? masterStatValue(masterDerived, alt.value.fromMaster) : undefined;
+    return resolveRichExprNumber(alt.value, abilities, level, rank) ?? undefined;
   }
-  return found ? Math.max(0, total) : null;
+  if (!profile.defense) return undefined;
+  return resolveRichExprNumber(profile.defense, abilities, level, rank) ?? undefined;
+}
+
+/**
+ * Résout le bonus NUMÉRIQUE de l'attaque PRINCIPALE d'une créature/compagnon (écran de MJ,
+ * PER-280) : stat du MAÎTRE recopiée (`fromMaster`), ou bonus PROPRE parsé depuis le verbatim
+ * affiché (`value`, ex. « +5 »). `undefined` si non résoluble (stat du maître indisponible, ou
+ * verbatim sans nombre chiffré).
+ */
+export function resolveCreatureAttackBonus(
+  attack: NonNullable<CreatureProfile['attack']>,
+  masterDerived: DerivedStats | undefined,
+): number | undefined {
+  if (attack.fromMaster) return masterDerived ? masterStatValue(masterDerived, attack.fromMaster) : undefined;
+  if (!attack.value) return undefined;
+  const match = attack.value.match(/-?\d+/);
+  return match ? parseInt(match[0], 10) : undefined;
 }
 
 /**

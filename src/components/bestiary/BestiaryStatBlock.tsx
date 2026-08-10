@@ -36,6 +36,7 @@ import type { DerivedStatId } from '@/lib/ui/derivedStats';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { AbilityValueBadge } from '@/components/AbilityValueBadge';
+import { AbilityCompactGrid } from '@/components/AbilityCompactGrid';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DamageValue } from '@/components/DamageValue';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
@@ -774,47 +775,49 @@ export function BestiaryStatBlock({
         ))}
       </Stack>
 
-      {/* Grille des 7 caractéristiques (valeurs fixes) + dé bonus inné (double-d20).
-          Style proche de la fiche de perso : grande icône, code, chiffre coloré qui
-          grandit avec la valeur (`scaleBase`). */}
-      {creature.abilities && (
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-            gap: dense ? 0.75 : BLOCK_GAP,
-            mb: BLOCK_GAP,
-          }}
-        >
-          {ABILITY_IDS.map((id) => (
-            <AppTooltip key={id} title={ABILITY_NAMES[id]}>
-              {/* En mode dense, mêmes réglages que la carte de personnage joueur
-                  (`CharacterPreviewCard`) : icône/chiffre à la taille par défaut,
-                  code en `caption` — pour une parité visuelle sur l'écran de MJ. */}
-              <AbilityValueBadge
-                ability={id}
-                value={creature.abilities![id]}
-                iconSize={dense ? undefined : 32}
-                showCode
-                codeVariant={dense ? 'caption' : 'subtitle2'}
-                valueVariant={dense ? undefined : 'h6'}
-                scaleBase={dense ? undefined : '1.25rem'}
-                adornment={
-                  bonusDice.has(id) ? <BonusDieBadge ability={id} size={dense ? 12 : 16} /> : undefined
-                }
-                sx={{
-                  borderRadius: dense ? 1 : 2,
-                  border: 1,
-                  borderColor: 'divider',
-                  py: dense ? 0.5 : { xs: 0.5, sm: 0.75 },
-                  cursor: 'help',
-                  bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
-                }}
-              />
-            </AppTooltip>
-          ))}
-        </Box>
-      )}
+      {/* Grille des 7 caractéristiques (valeurs fixes) + dé bonus inné (double-d20). En mode
+          `dense` (écran de MJ), style COMPACT PARTAGÉ avec le reste du roster — extrait dans
+          `AbilityCompactGrid` (Joueurs/Compagnons/Alliés/Adversaires, PARITÉ VISUELLE garantie
+          par un composant unique plutôt que des réglages dupliqués). Hors `dense` (page bestiaire
+          autonome) : grande icône, code, chiffre coloré qui grandit avec la valeur (`scaleBase`). */}
+      {creature.abilities &&
+        (dense ? (
+          <Box sx={{ mb: BLOCK_GAP }}>
+            <AbilityCompactGrid abilities={creature.abilities} bonusDieAbilities={bonusDice} />
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+              gap: BLOCK_GAP,
+              mb: BLOCK_GAP,
+            }}
+          >
+            {ABILITY_IDS.map((id) => (
+              <AppTooltip key={id} title={ABILITY_NAMES[id]}>
+                <AbilityValueBadge
+                  ability={id}
+                  value={creature.abilities![id]}
+                  iconSize={32}
+                  showCode
+                  codeVariant="subtitle2"
+                  valueVariant="h6"
+                  scaleBase="1.25rem"
+                  adornment={bonusDice.has(id) ? <BonusDieBadge ability={id} size={16} /> : undefined}
+                  sx={{
+                    borderRadius: 2,
+                    border: 1,
+                    borderColor: 'divider',
+                    py: { xs: 0.5, sm: 0.75 },
+                    cursor: 'help',
+                    bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+                  }}
+                />
+              </AppTooltip>
+            ))}
+          </Box>
+        ))}
 
       {/* DEF / PV / Init. : grille pleine largeur, une colonne par stat, sans retour à la ligne. */}
       {derivedStats.length > 0 && (

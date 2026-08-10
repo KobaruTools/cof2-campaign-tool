@@ -19,11 +19,12 @@
  * masqués), ce qui évite toute écriture concurrente sur les fiches (verrou optimiste).
  */
 import { useCallback, useEffect, useMemo } from 'react';
+import { darken } from '@mui/material/styles';
 import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
-import { deriveStats } from '@/lib/engine';
+import { deriveStats, type Abilities, type DerivedStats } from '@/lib/engine';
 import { applyDamage, healHp, resetHp } from '@/lib/character/gauges';
 import { summarize } from '@/lib/character/summary';
-import { classColor } from '@/lib/ui/classColors';
+import { classColor, prestigeCategoryColor, ANCESTRY_COLOR, MAGE_PATH_COLOR } from '@/lib/ui/classColors';
 import { creatureNcLabel, SIDE_ACCENT, SIDE_LABELS } from '@/lib/ui/creature';
 import type { DamageKind } from '@/components/sheet/HpGauge';
 import type {
@@ -31,7 +32,7 @@ import type {
   CombatStats,
   InitiativeRow,
 } from '@/components/campaign/InitiativeTracker';
-import type { Character } from '@/lib/character/types';
+import type { Character, Depletion } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
 import type { Player } from '@/lib/player/types';
 import type { CreatureAttack } from '@/data/schema';
@@ -64,7 +65,24 @@ import {
 } from '@/lib/character/statusEffects';
 import { unlockedGroupBuffIds } from '@/lib/character/groupBuffs';
 import { withReceivedCrystals } from '@/lib/character/crystals';
-import { featureById } from '@/data';
+import {
+  companionMountEnSelle,
+  listCompanions,
+  resolveCreatureAttackBonus,
+  resolveCreatureDefenseNumber,
+  resolveCreatureMaxHp,
+  type CompanionEntry,
+} from '@/lib/character/companions';
+import {
+  damageCompanion,
+  healCompanion,
+  removeCompanionInstance,
+  resetCompanionHp,
+  setMountedTarget,
+} from '@/lib/character/sheetActions';
+import { effectContext } from '@/lib/character/effects';
+import { resolveCreatureAbilities } from '@/lib/ui/creature';
+import { featureById, pathById } from '@/data';
 import {
   BENEFICIAL_EFFECT_IDS,
   SITUATIONAL_EFFECT_IDS,
@@ -80,6 +98,35 @@ import { useBestiaryStore } from '@/stores/bestiary';
 export const CREATURE_ACCENT = SIDE_ACCENT.enemy;
 /** Couleur d'accent des lignes de créatures alliées (PER-249). */
 export const ALLY_ACCENT = SIDE_ACCENT.ally;
+/**
+ * Gris neutre de repli pour un COMPAGNON dont la voie source est introuvable (ne devrait pas
+ * arriver en pratique — un compagnon vient toujours d'un rang de voie acquis). Un peu plus clair
+ * que la bordure neutre des personnages (`rgba(255, 255, 255, 0.08)`) : la catégorie « Compagnon »
+ * doit se distinguer d'un coup d'œil même sans thème de voie à reprendre.
+ */
+export const COMPANION_DEFAULT_ACCENT = '#90a4ae';
+
+/**
+ * Couleur d'accent d'un COMPAGNON (bordure de colonne + libellé « Compagnon », retour propriétaire
+ * 2026-08-10) : reprend la teinte de la VOIE qui l'octroie plutôt qu'une couleur violette arbitraire
+ * — le vert du rôdeur pour Le loup, la teinte de famille (émeraude/grenat/saphir/améthyste, cf.
+ * `PRESTIGE_CATEGORY_COLORS`) pour une voie de prestige comme le familier fantastique — RASSOMBRIE
+ * (`darken`) pour rester discrète et ne pas jurer avec les couleurs de profil déjà utilisées sur
+ * l'écran de MJ. Repli gris neutre (`COMPANION_DEFAULT_ACCENT`) si la voie est introuvable.
+ */
+function companionPathAccent(pathId: string): string {
+  const path = pathById.get(pathId);
+  if (!path) return COMPANION_DEFAULT_ACCENT;
+  const base =
+    path.type === 'class'
+      ? classColor(path.classIds[0])
+      : path.type === 'prestige'
+        ? prestigeCategoryColor(path.category)
+        : path.type === 'mage'
+          ? MAGE_PATH_COLOR
+          : ANCESTRY_COLOR;
+  return darken(base, 0.16);
+}
 
 /**
  * Parse le bonus d'attaque VERBATIM d'une créature (« +7 », « -2 », « +12 ») en nombre (PER-280),
@@ -109,6 +156,42 @@ function creatureAttackKind(attack: CreatureAttack): CombatAttackKind {
  */
 export type LabeledCreature = CreatureInstance & { label: string };
 
+/**
+ * Un compagnon débloqué d'un personnage réclamé, prêt pour la carte du roster de l'écran de MJ
+ * (nouvelle section « Compagnons », retour propriétaire 2026-08-10) — même donnée que la mini-fiche
+ * de la fiche personnelle (`CompanionsPanel`/`CompanionCard`), à laquelle cette carte s'ajoute une
+ * coque + l'identité du propriétaire. `masterDerived` est le derived stats PLAIN du personnage (SANS
+ * les cristaux confiés ni les états de combat) — la carte reflète la fiche telle quelle, pas la
+ * cascade de combat réservée au tracker d'initiative (`companionRows` ci-dessous).
+ */
+export interface CompanionRosterEntry {
+  /** Clé stable, namespacée par personnage (miroir de la ligne du tracker). */
+  key: string;
+  /** Personnage propriétaire du compagnon. */
+  character: Character;
+  /** Compagnon débloqué (profil déjà augmenté des améliorations de voie). */
+  entry: CompanionEntry;
+  /** Caractéristiques effectives du maître (`effectContext`, comme la fiche). */
+  abilities: Abilities;
+  /** Stats dérivées PLAIN du maître (comme la fiche — sans cristaux/états de combat). */
+  masterDerived: DerivedStats | undefined;
+  /** Dépletion de PV de CE compagnon. */
+  depletion: Depletion;
+  /** Couleur de thème (voie source), pour teinter la carte. */
+  accentColor: string;
+  /**
+   * Suppression manuelle (zombie uniquement, PER-235). Absent = compagnon classique. La carte du
+   * roster reste LECTURE SEULE côté PV (pas d'`onDamage`/`onHeal`/`onReset` — comme les cartes
+   * joueurs/créatures de cette section) : la gestion des PV en combat vit dans le tracker
+   * d'initiative, qui affiche déjà ce même compagnon (`companionRows` ci-dessus).
+   */
+  onDelete?: () => void;
+  /** État « en selle » (PER-216) — `null` = pas une monture de voie chevauchable. */
+  mounted: boolean | null;
+  /** Bascule l'état « en selle » (fourni seulement avec `mounted` non nul). */
+  onSetMounted?: (on: boolean) => void;
+}
+
 export interface GmScreenCombat {
   /** Le staging des personnages a-t-il fini de s'hydrater (gate l'UI de chargement) ? */
   charactersHydrated: boolean;
@@ -118,6 +201,11 @@ export interface GmScreenCombat {
   campaign: Campaign | undefined;
   /** Personnages de la campagne réclamés par un joueur (triés par nom). */
   claimed: Character[];
+  /**
+   * Compagnons débloqués de TOUS les personnages réclamés (section « Compagnons » du roster de
+   * l'écran de MJ, entre « Joueurs » et « Alliés »), dans l'ordre des personnages puis d'acquisition.
+   */
+  companionRoster: CompanionRosterEntry[];
   /** Nom du joueur par id (pour l'étiquette « (Joueur) »). */
   playerNameById: Map<string, string>;
   /** Joueur (entité complète : présence, lien magique) par id, pour le badge enrichi du MJ. */
@@ -367,6 +455,43 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     [characters, cid],
   );
 
+  // Compagnons de TOUS les personnages réclamés (nouvelle section « Compagnons » du roster, retour
+  // propriétaire 2026-08-10) : `masterDerived` et `abilities` sont PLAIN (comme la fiche — repris de
+  // `buildCharacterDerivedView(character)` SANS `withReceivedCrystals`), pour que la carte corresponde
+  // EXACTEMENT à la mini-fiche de la fiche personnelle. Le tracker d'initiative (`companionRows`
+  // ci-dessus), lui, profite de la cascade de combat (cristaux confiés) — les deux vues divergent
+  // volontairement, comme `characterRows` diverge déjà de la fiche statique pour la même raison.
+  const companionRoster = useMemo<CompanionRosterEntry[]>(() => {
+    const out: CompanionRosterEntry[] = [];
+    for (const character of claimed) {
+      const abilities = effectContext(character).abilities;
+      const view = buildCharacterDerivedView(character);
+      const masterDerived = view.derivedInput ? deriveStats(view.derivedInput) : undefined;
+      for (const entry of listCompanions(character)) {
+        const mounted = companionMountEnSelle(character, entry);
+        out.push({
+          key: `companion:${character.id}:${entry.key}`,
+          character,
+          entry,
+          abilities,
+          masterDerived,
+          depletion: character.companionDepletion[entry.key] ?? {},
+          accentColor: companionPathAccent(entry.feature.pathId),
+          onDelete:
+            entry.instanceId !== undefined
+              ? () => upsert({ ...character, ...removeCompanionInstance(character, entry.key) })
+              : undefined,
+          mounted,
+          onSetMounted:
+            mounted != null
+              ? (on: boolean) => upsert({ ...character, ...setMountedTarget(character, on ? entry.key : null) })
+              : undefined,
+        });
+      }
+    }
+    return out;
+  }, [claimed, upsert]);
+
   // Effets situationnels débloqués par la table (PER-279) : on balaie les capacités acquises de
   // chaque personnage réclamé et on collecte les `situationalEffectIds` qu'elles confèrent. Restreint
   // aux ids connus du catalogue, dédupliqué, rendu dans l'ordre du catalogue (affichage stable).
@@ -398,7 +523,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
   // `upsert` (même état de PV que la fiche, propagé au cloud).
   const characterRows = useMemo<InitiativeRow[]>(
     () =>
-      claimed.map((character) => {
+      claimed.flatMap((character): InitiativeRow[] => {
         // Cristaux CONFIÉS à ce personnage (PER-360, p. 156) : ils sont posés sur lui comme des états
         // de combat, mais leurs chiffres passent par le canal des cristaux (l'état, lui, ne porte
         // aucun `modifiers`). D'où la copie de calcul, qui fait profiter le tracker de la même
@@ -432,7 +557,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
               ],
             }
           : undefined;
-        return {
+        const characterRow: InitiativeRow = {
           key: character.id,
           name: summary.name,
           isCreature: false,
@@ -464,6 +589,84 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           onReset: () => upsert({ ...character, depletion: resetHp(character.depletion) }),
           persistKey: `gm-init:${character.id}`,
         };
+        // Lignes des COMPAGNONS (monture, familier, golem, loup…) de la section « Compagnons » de la
+        // fiche : jamais wired jusqu'ici sur l'écran de MJ. Catégorie propre (`profileLabel`
+        // « Compagnon »), toujours visible (appartient au camp des joueurs, rien de secret) et
+        // Initiative RECOPIÉE du maître (`initiative`/`initiativeDelta` déjà calculés ci-dessus) —
+        // ajustée d'un éventuel état posé directement sur le compagnon lui-même. Clé namespacée par
+        // personnage (`companion:<characterId>:<companionKey>`) : deux personnages sur la même voie
+        // partagent le même `entry.key` (id du rang de voie), qui doit rester distinct comme
+        // combattant. DEF/attaque (PER-280, retour propriétaire 2026-08-10) : même niveau
+        // d'information que les persos/créatures, résolues contre le maître (`resolveCreatureDefenseNumber`/
+        // `resolveCreatureAttackBonus`), absentes quand le profil n'a ni DEF ni attaque (« force, pas
+        // une créature », ex. Serviteur invisible) plutôt qu'un faux 0.
+        const abilities = effectContext(character).abilities;
+        const companionRows: InitiativeRow[] = listCompanions(character).map((entry) => {
+          const rowKey = `companion:${character.id}:${entry.key}`;
+          const companionMaxHp = resolveCreatureMaxHp(entry.profile, abilities, character.level, entry.pathRank) ?? 0;
+          const companionDepletion = character.companionDepletion[entry.key] ?? {};
+          const companionAppliedStatuses = effectiveStatuses(
+            statuses[rowKey] ?? [],
+            hpAutoStatuses(companionMaxHp, companionDepletion),
+          );
+          const companionOwnDelta = resolveStatusModifiers(companionAppliedStatuses).derived.initiative ?? 0;
+          const displayName =
+            entry.instanceId !== undefined ? `${entry.profile.name} ${(entry.instanceIndex ?? 0) + 1}` : entry.profile.name;
+          const accent = companionPathAccent(entry.feature.pathId);
+          const companionAttack = entry.profile.attack;
+          const combatStats: CombatStats | undefined =
+            entry.profile.defense || companionAttack
+              ? {
+                  def:
+                    resolveCreatureDefenseNumber(
+                      entry.profile,
+                      abilities,
+                      character.level,
+                      entry.pathRank,
+                      derived ?? undefined,
+                      entry.defenseAltActive,
+                    ) ?? 0,
+                  attacks: [
+                    ...(companionAttack
+                      ? (() => {
+                          const base = resolveCreatureAttackBonus(companionAttack, derived ?? undefined);
+                          if (base == null) return [];
+                          const kind: CombatAttackKind = companionAttack.fromMaster === 'rangedAttack' ? 'ranged' : 'melee';
+                          return [{ key: 'atk', label: companionAttack.label ?? 'Attaque', base, kind }];
+                        })()
+                      : []),
+                    ...(entry.profile.extraAttacks ?? []).flatMap((extra, i) => {
+                      const base = derived ? derived.magicAttack : undefined;
+                      if (base == null) return [];
+                      const kind: CombatAttackKind = extra.ranged ? 'ranged' : 'melee';
+                      return [{ key: `xa-${i}`, label: extra.label, base, kind }];
+                    }),
+                  ],
+                }
+              : undefined;
+          return {
+            key: rowKey,
+            name: displayName,
+            isCreature: false,
+            playerName: character.name,
+            profileLabel: 'Compagnon',
+            profileColor: accent,
+            accentColor: accent,
+            initiative: initiative + companionOwnDelta,
+            initiativeDelta: initiativeDelta + companionOwnDelta,
+            agility: resolveCreatureAbilities(entry.profile, abilities)?.AGI,
+            maxHp: companionMaxHp,
+            combatStats,
+            appliedStatuses: companionAppliedStatuses,
+            depletion: companionDepletion,
+            onDamage: (amount: number, kind: DamageKind) =>
+              upsert({ ...character, ...damageCompanion(character, entry.key, amount, kind) }),
+            onHeal: (amount: number) => upsert({ ...character, ...healCompanion(character, entry.key, amount) }),
+            onReset: () => upsert({ ...character, ...resetCompanionHp(character, entry.key) }),
+            persistKey: `gm-init:${rowKey}`,
+          };
+        });
+        return [characterRow, ...companionRows];
       }),
     [claimed, upsert, playerNameById, statuses],
   );
@@ -602,6 +805,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     campaignsLoading,
     campaign,
     claimed,
+    companionRoster,
     playerNameById,
     playerById,
     labeledCreatures,
