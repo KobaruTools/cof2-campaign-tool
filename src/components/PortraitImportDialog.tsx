@@ -36,6 +36,7 @@ export function PortraitImportDialog({ file, onCancel, onConfirm }: PortraitImpo
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!file) {
@@ -49,6 +50,27 @@ export function PortraitImportDialog({ file, onCancel, onConfirm }: PortraitImpo
     setCroppedAreaPixels(null);
     return () => URL.revokeObjectURL(url);
   }, [file]);
+
+  // Aperçus contextuels (PER-393) : reflète le résultat du recadrage au format carte
+  // d'aperçu perso et au format bandeau d'initiative, mis à jour à chaque geste de
+  // recadrage/zoom terminé (même granularité que `croppedAreaPixels`, cf. `onCropComplete`).
+  useEffect(() => {
+    if (!file || !croppedAreaPixels) {
+      setCroppedPreviewUrl(null);
+      return;
+    }
+    let url: string | null = null;
+    let cancelled = false;
+    cropImageToFile(file, croppedAreaPixels).then((cropped) => {
+      if (cancelled) return;
+      url = URL.createObjectURL(cropped);
+      setCroppedPreviewUrl(url);
+    });
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [file, croppedAreaPixels]);
 
   const handleConfirm = async () => {
     if (!file) return;
@@ -103,6 +125,51 @@ export function PortraitImportDialog({ file, onCancel, onConfirm }: PortraitImpo
               aria-label="Zoom du recadrage"
             />
           </Stack>
+          {previewUrl && (
+            <Stack direction="row" spacing={3}>
+              <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
+                <Box
+                  component="img"
+                  src={croppedPreviewUrl ?? previewUrl}
+                  alt=""
+                  aria-hidden
+                  sx={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 2,
+                    objectFit: 'cover',
+                    objectPosition: 'top',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    bgcolor: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Carte
+                </Typography>
+              </Stack>
+              <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
+                <Box
+                  component="img"
+                  src={croppedPreviewUrl ?? previewUrl}
+                  alt=""
+                  aria-hidden
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderTopLeftRadius: 6,
+                    borderTopRightRadius: 6,
+                    objectFit: 'cover',
+                    objectPosition: 'top',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    bgcolor: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Ordre d&apos;initiative
+                </Typography>
+              </Stack>
+            </Stack>
+          )}
           <Typography variant="body2" color="text.secondary">
             Déplacez et zoomez pour cadrer l'image sur la zone carrée — elle sera ensuite
             automatiquement redimensionnée et compressée avant l'envoi.
