@@ -60,6 +60,7 @@ import {
   maxActiveCrystals,
 } from '@/lib/character/crystals';
 import { crystalLabel, type Crystal } from '@/data/crystals';
+import { CrystalAssignmentSelect } from './CrystalAssignmentSelect';
 import {
   creatureDefenseAltActive,
   displayCreatureProfile,
@@ -1765,6 +1766,7 @@ function CrystalActivationPanel({
             {known.map((crystal) => (
               <CrystalCard
                 key={crystal.id}
+                character={character}
                 crystal={crystal}
                 checked={active.has(crystal.id)}
                 disabled={!onToggle}
@@ -1792,13 +1794,19 @@ function CrystalActivationPanel({
  * teinté quand cochée, sinon contour neutre — plutôt que d'en importer une copie couplée aux
  * profils/capacités, on réplique ici le même habillage pour un contenu propre au cristal
  * (couleur/forme + bonus, `effectText` du catalogue).
+ *
+ * Un cristal ACTIF porte en plus son sélecteur de porteur (PER-360, p. 156 : « il peut le porter ou
+ * le confier à la personne de son choix ») — inutile tant que le cristal est éteint, puisque rien
+ * ne tourne alors autour d'aucune tête.
  */
 function CrystalCard({
+  character,
   crystal,
   checked,
   disabled,
   onToggle,
 }: {
+  character: Character;
   crystal: Crystal;
   checked: boolean;
   disabled?: boolean;
@@ -1848,6 +1856,9 @@ function CrystalCard({
         <Typography variant="caption" color="text.secondary">
           {crystal.effectText}
         </Typography>
+        {checked && (
+          <CrystalAssignmentSelect character={character} crystalId={crystal.id} disabled={disabled} />
+        )}
       </Box>
     </Box>
   );
@@ -3084,6 +3095,19 @@ function PathBlock({
   // automatiquement, même si un titre tient sur trois lignes ou plus.
   if (compact) {
     const ghostCount = total != null ? Math.max(0, total - features.length) : 0;
+    // EXCEPTION voie de l'enchanteur (PER-361, retour propriétaire) : le livre ne décrit qu'UNE
+    // capacité évolutive (« Enchantement »), pas 5 rangs distincts — au lieu de 5 cartes identiques
+    // empilées, une SEULE carte grandit (span autant de lignes du subgrid que de rangs possédés) et
+    // son nom affiche « Enchantement » + le niveau courant sur 2 lignes. On ne garde donc que le rang
+    // le PLUS HAUT possédé pour porter la carte (même `richText`/formule `[=rang - 3]` à chaque rang,
+    // cf. `part2.ts` — peu importe lequel des 5 est choisi, seul le rang de la carte sert au clic
+    // détail). `ghostCount` (calculé ci-dessus sur le VRAI compte de `features`) continue de remplir
+    // les rangs pas encore atteints en dessous, inchangé.
+    const isEnchanterPath = path?.id === 'prestige-enchanteur';
+    const compactFeatures =
+      isEnchanterPath && features.length > 0
+        ? [features.reduce((best, f) => (f.rank > best.rank ? f : best))]
+        : features;
     return (
       <Box
         sx={{
@@ -3094,7 +3118,7 @@ function PathBlock({
         }}
       >
         {header}
-        {features.map((feature) => {
+        {compactFeatures.map((feature) => {
           // Capacité divine occupant ce slot par remplacement (prêtre spécialiste, p. 122).
           const repl = replacements?.get(feature.id);
           // Capacité EMPRUNTÉE par un choix `feature-from-path` (Combattant aguerri, PER-120) :
@@ -3148,6 +3172,19 @@ function PathBlock({
           // actifs. Le style « désaturé + barré » ne frappe donc que la carte de devant (`cardInner`),
           // laissant la bande de l'hôte intacte. Pour une carte non-emprunt, on retombe sur `feature`.
           const armorRestrictedFeature = borrowed ?? feature;
+          // Nom affiché : « Enchantement » + niveau courant sur 2 lignes pour la carte fusionnée de
+          // la voie de l'enchanteur (cf. commentaire `isEnchanterPath` ci-dessus) ; sinon inchangé.
+          const displayName = isEnchanterPath ? (
+            <>
+              Enchantement
+              <br />
+              {`Niveau ${pathRank - 3}`}
+            </>
+          ) : borrowed ? (
+            declinedName(borrowed)
+          ) : (
+            declinedName(feature)
+          );
           const cardInner = (
           // Ligne cliquable : le détail s'ouvre dans une modale.
           <Box
@@ -3159,6 +3196,10 @@ function PathBlock({
               flexDirection: 'column',
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
+              // Carte fusionnée de la voie de l'enchanteur (PER-361) : occupe autant de lignes du
+              // subgrid que de rangs possédés — elle « grandit » au lieu de s'empiler en 5 cartes
+              // identiques (retour propriétaire).
+              ...(isEnchanterPath ? { gridRow: `span ${features.length}` } : {}),
               // Emprunt (carte de devant) : remplit toute la hauteur du conteneur (flex column)
               // pour que la zone cliquable soit aussi grande que possible. Ignoré en grille (carte
               // directe), où la carte s'étire déjà sur la hauteur de ligne du subgrid.
@@ -3295,8 +3336,9 @@ function PathBlock({
                 </AppTooltip>
               )}
               {/* Emprunt (PER-120) : la carte de devant porte le VRAI nom de la capacité empruntée
-                  (« Vivacité »), écrit normalement ; le nom de l'hôte est dans la case décalée derrière. */}
-              {borrowed ? declinedName(borrowed) : declinedName(feature)}
+                  (« Vivacité »), écrit normalement ; le nom de l'hôte est dans la case décalée derrière.
+                  Voie de l'enchanteur (PER-361) : nom fusionné « Enchantement / Niveau N » (`displayName`). */}
+              {displayName}
             </Typography>
             {/* Badge WIP (PER-72) : capacité dont une partie de l'effet dépend d'un ticket extérieur
                 non terminé (ex. pagne-r2 → PER-131). Suivi de relecture, pas une règle. */}

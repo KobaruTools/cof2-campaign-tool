@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per361-enchanteur",
+  "name": "Recette PER-361 — Voie de l'enchanteur",
+  "identity": {
+    "description": "ATTENDU (PER-361, voie de l'enchanteur p. 157) — une SEULE capacité « Enchantement », répétée à l'identique aux rangs 4 à 8 (le livre ne décrit pas 5 pouvoirs distincts) : le niveau de magie maximal enchantable est [=rang - 3], rang = le PLUS HAUT rang atteint dans la voie. Avec les 5 rangs possédés ici (r4 à r8), les 5 cartes affichent TOUTES le même niveau courant (5), par construction du moteur (`pathRank` = max des rangs possédés, partagé par toutes les capacités du bloc) — volontaire : ça évite qu'un lecteur additionne à tort les 5 valeurs historiques (1+2+3+4+5) au lieu de ne retenir que la plus haute. La double parenthèse « (voir le chapitre « Objets magiques » (p. 242)) » doit rendre une puce de source sur la page 242 uniquement. Le module optionnel « high fantasy » (doublement) reste verbatim, non mécanisé."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "prestige-enchanteur-r4",
+    "prestige-enchanteur-r5",
+    "prestige-enchanteur-r6",
+    "prestige-enchanteur-r7",
+    "prestige-enchanteur-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-361 — recette voie de l'enchanteur (formule [=rang - 3] partagée par les 5 rangs).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

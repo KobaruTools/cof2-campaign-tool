@@ -2499,7 +2499,25 @@ export const prestigeFeatures2: Feature[] = [
 
   // ----- Voie de l'enchanteur (p. 157) -----
   // La même capacité « Enchantement » à chaque rang ; seul le niveau de magie
-  // maximal des objets enchantables augmente (niveau = rang atteint – 3).
+  // maximal des objets enchantables augmente (niveau = rang atteint – 3). Le livre
+  // n'écrit PAS 5 capacités distinctes : c'est une seule règle « Rangs 4 à 8 », dont
+  // seule la valeur numérique varie — modélisée ici par la même formule `[=rang - 3]`
+  // sur les 5 rangs plutôt que 5 littéraux figés (1/2/3/4/5). `rang` résout au PLUS
+  // HAUT rang possédé dans la voie (`FeaturesByPath.pathRank`, partagé par toutes les
+  // capacités du bloc) : les 5 cartes affichent donc TOUTES le même niveau courant une
+  // fois plusieurs rangs acquis — voulu, ça évite qu'un lecteur additionne à tort les
+  // valeurs des 5 cartes (1+2+3+4+5) au lieu de ne retenir que la plus haute, seule
+  // pertinente pour une capacité qui ne fait qu'évoluer (pas s'accumuler). Pas d'effet
+  // de stat dérivée à câbler par ailleurs : la capacité octroie une PERMISSION
+  // (fabriquer des objets magiques), pas un bonus chiffré — l'app n'a pas de flux
+  // d'artisanat/atelier à gater dessus (les objets magiques du personnage restent
+  // saisis manuellement dans l'inventaire, PER-306/307). La double parenthèse
+  // `(voir le chapitre « Objets magiques » (p. 242))` isole `(p. 242)` pour
+  // `splitPageRefs` (patron Réflexes de guerrier, combat-r3-fighter, fighters.ts:1691),
+  // les parenthèses extérieures restant du texte littéral autour. Module optionnel
+  // « high fantasy » (doublement du niveau) : verbatim, jamais mécanisé — variante
+  // FACULTATIVE laissée à l'appréciation de la table ("si vous le souhaitez"), aucun
+  // module de jeu n'est câblé dans le moteur.
   {
     id: 'prestige-enchanteur-r4',
     name: 'Enchantement',
@@ -2509,6 +2527,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 1 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    richText:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à [=rang - 3] (voir le chapitre « Objets magiques » (p. 242)). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
     sourcePage: 157,
   },
   {
@@ -2520,6 +2540,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 2 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    richText:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à [=rang - 3] (voir le chapitre « Objets magiques » (p. 242)). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
     sourcePage: 157,
   },
   {
@@ -2531,6 +2553,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 3 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    richText:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à [=rang - 3] (voir le chapitre « Objets magiques » (p. 242)). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
     sourcePage: 157,
   },
   {
@@ -2542,6 +2566,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 4 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    richText:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à [=rang - 3] (voir le chapitre « Objets magiques » (p. 242)). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
     sourcePage: 157,
   },
   {
@@ -2553,6 +2579,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 5 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    richText:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à [=rang - 3] (voir le chapitre « Objets magiques » (p. 242)). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
     sourcePage: 157,
   },
 
