@@ -140,7 +140,8 @@ import { alpha, type Theme } from '@mui/material/styles';
 import { useDroppable } from '@dnd-kit/core';
 import { ClassIcon } from '@/components/ClassIcon';
 import type { BeneficialEffectId, SituationalEffectId } from '@/data/schema';
-import type { Depletion } from '@/lib/character/types';
+import type { Depletion, PortraitVariant } from '@/lib/character/types';
+import { useCharacterPortraitSrc } from '@/lib/storage/useCharacterPortraitSrc';
 import {
   clampIntensity,
   isStackingStatus,
@@ -238,6 +239,13 @@ export interface InitiativeRow {
    * la fiche. Absent pour les créatures, qui n'ont pas de profil.
    */
   classId?: string;
+  /**
+   * Variante de portrait du personnage (PER-391) — `'custom'` déclenche la résolution du
+   * portrait personnalisé via `useCharacterPortraitSrc` dans `CombatantColumn` ; absente (ou
+   * `'default'`/`'alt'`) → `portraitSrc` (illustration statique) reste tel quel. Absente pour
+   * les créatures, qui n'ont pas de portrait personnalisable.
+   */
+  portraitVariant?: PortraitVariant;
   /**
    * Couleur d'accent de la COLONNE (PER-249) : teinte la bordure du bloc selon le camp de
    * la créature (rouge = adversaire, vert = allié). Absente pour les personnages joueurs
@@ -2160,6 +2168,13 @@ function CombatantColumn({
 }) {
   const identityClickable = !!interactive;
   const isOver = interactive?.isOver ?? false;
+  // Résolution du portrait personnalisé (PER-391) : appelé INCONDITIONNELLEMENT (règle des
+  // hooks — jamais dans un `if`), même pour une créature ou un compagnon. Sans effet dans ce cas
+  // (variant absent → repli statique immédiat, aucun téléchargement) ; le résultat n'est routé
+  // vers l'affichage QUE pour un vrai personnage (seul à porter un `classId`) — une créature garde
+  // son illustration de bestiaire (`portraitSrc`, cf. plus bas) et un compagnon son avatar de repli.
+  const resolvedPortraitSrc = useCharacterPortraitSrc(row.key, row.portraitVariant ?? 'default', row.classId ?? '');
+  const portraitSrc = row.classId ? resolvedPortraitSrc : row.portraitSrc;
   // États affichés en projection (lecture seule) : bande d'icônes en overlay absolu ancré en bas à
   // gauche. AUCUNE place réservée (pas de padding) → le bloc garde EXACTEMENT la même taille qu'il
   // porte des états ou non, donc tous les blocs restent alignés quel que soit leur nombre d'états.
@@ -2271,7 +2286,7 @@ function CombatantColumn({
           aria-label={identityClickable ? `Appliquer un état à ${row.name}` : undefined}
         >
           <CombatantIdentityBlock
-            src={row.portraitSrc}
+            src={portraitSrc}
             name={row.name}
             initiative={row.initiative}
             initiativeDelta={row.initiativeDelta}

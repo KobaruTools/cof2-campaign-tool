@@ -442,6 +442,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           profileColor: classColor(summary.classId),
           classId: summary.classId,
           portraitSrc: `/classes/${summary.classId}${character.portraitVariant === 'alt' ? '-2' : ''}.webp`,
+          portraitVariant: character.portraitVariant,
           initiative,
           initiativeDelta,
           // AGI EFFECTIVE (celle qui alimente déjà les dérivées : peuple, capacités, équipement) —
