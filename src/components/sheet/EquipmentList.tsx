@@ -107,6 +107,7 @@ import {
   itemTypeSectionGradient,
 } from '@/lib/ui/itemTypeColors';
 import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
+import { GiveItemButton } from '@/components/sheet/GiveItemButton';
 import { WeaponCriticalRangeBadge } from '@/components/sheet/WeaponCriticalRangeBadge';
 import { BoundWeaponBadge } from '@/components/sheet/BoundWeaponBadge';
 import type { WeaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
@@ -935,6 +936,18 @@ export interface EquipmentListProps {
   /** Ajoute à l'inventaire un objet octroyé (bouton du rappel ci-dessus). Absent → pas de bouton. */
   onAddGranted?: (itemId: string) => void;
   /**
+   * Don d'un objet à un AUTRE joueur de la campagne, sans validation du MJ (PER-388). `campaignId`
+   * + `characterId` (le DONNEUR, pour l'exclure du choix de destinataire) + `onGiveItem` doivent
+   * être fournis ENSEMBLE pour que le bouton « Donner » apparaisse — UNIQUEMENT en mode ÉDITION
+   * (`onChange` présent, comme « Supprimer »), pour ne pas encombrer l'inventaire le reste du temps
+   * (retour propriétaire). Absent (hors campagne, wizard, lecture seule) → aucun bouton.
+   */
+  giveContext?: {
+    campaignId: string;
+    characterId: string;
+    onGiveItem: (index: number, quantity: number, receiverId: string) => Promise<void>;
+  };
+  /**
    * Niveau du personnage (PER-286) : RÉSOUT les dés évolutifs des armes à l'affichage (« 5d4° » →
    * « 5d8° » au niveau 9, table p. 43). Absent (catalogue hors personnage, wizard) → dé de base.
    */
@@ -1147,6 +1160,7 @@ export function EquipmentList({
   weaponLoading,
   grantedMissing,
   onAddGranted,
+  giveContext,
   level,
   abilities,
   onFireShot,
@@ -1780,6 +1794,18 @@ export function EquipmentList({
         <DeleteOutlineIcon fontSize="small" />
       </IconButton>
     ) : null;
+    // Don à un autre joueur (PER-388) : réservé au mode ÉDITION (`onChange`, comme « Supprimer »)
+    // pour ne pas encombrer l'inventaire d'un bouton de plus le reste du temps (retour propriétaire) ;
+    // masqué aussi hors campagne / en lecture seule (câblage `giveContext`).
+    const giveButton = giveContext && onChange ? (
+      <GiveItemButton
+        campaignId={giveContext.campaignId}
+        ownCharacterId={giveContext.characterId}
+        line={line}
+        index={i}
+        onGive={giveContext.onGiveItem}
+      />
+    ) : null;
 
     // === Carte verticale compacte (PER-223, mode colonnes) ===
     if (asCard) {
@@ -1792,6 +1818,7 @@ export function EquipmentList({
         loadingButtons ||
         chargeButtons ||
         useButton ||
+        giveButton ||
         deleteButton
       );
       return (
@@ -1843,6 +1870,7 @@ export function EquipmentList({
                   {loadingButtons}
                   {chargeButtons}
                   {useButton}
+                  {giveButton}
                   {deleteButton}
                 </Box>
               </Stack>
@@ -1881,6 +1909,7 @@ export function EquipmentList({
         {loadingButtons}
         {chargeButtons}
         {useButton}
+        {giveButton}
         {deleteButton}
       </Stack>
     );

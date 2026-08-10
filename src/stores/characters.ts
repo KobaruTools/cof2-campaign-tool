@@ -41,6 +41,7 @@ import {
   bindForUpload,
   deleteCharacter,
   fetchCharacters,
+  giveItemToCharacter,
   insertCharacter,
   isUniqueViolation,
   isUuid,
@@ -50,6 +51,7 @@ import {
 } from '@/lib/character/repo';
 import { hasSupabaseSession } from '@/lib/supabase/session';
 import type { Character } from '@/lib/character/types';
+import { planItemTransfer } from '@/lib/character/itemTransfer';
 import {
   applyRemoteGameStatePatch,
   gameStateSlice,
@@ -134,6 +136,16 @@ interface CharactersState {
    * pour que la base porte nos valeurs quand le rechargement les relit. No-op hors session.
    */
   resyncGameState: (campaignId: string) => Promise<void>;
+  /**
+   * Don d'un objet à un AUTRE personnage de la MÊME campagne, sans validation du MJ (PER-388) :
+   * `index`/`quantity` désignent la ligne du DONNEUR (cf. `planItemTransfer`), `receiverId` le
+   * personnage destinataire. Écrit chez le receveur via la RPC `give_item_to_character` (seul
+   * chemin autorisé sur la fiche d'un AUTRE joueur), PUIS retire l'objet chez le donneur par le
+   * chemin d'état de jeu ordinaire (`applyGameState`) — jamais l'inverse, pour ne jamais perdre
+   * l'objet si le don échoue. Lève si le don est invalide (objet introuvable/porté, quantité hors
+   * bornes) ou si la RPC est refusée (receveur hors campagne, don à soi-même, réseau…).
+   */
+  giveItem: (character: Character, index: number, quantity: number, receiverId: string) => Promise<void>;
   /**
    * Commit d'un personnage neuf en fin de wizard : insertion cloud (si configuré)
    * puis ajout au cache. Sans Supabase, retombe sur un ajout local (staging). Lève
@@ -440,6 +452,37 @@ export const useCharactersStore = create<CharactersState>()(
               }
             }),
           );
+        },
+
+        giveItem: async (character, index, quantity, receiverId) => {
+          const plan = planItemTransfer(character.equipment, index, quantity);
+          if (!plan) {
+            throw new Error('Don invalide : objet introuvable, porté, ou quantité hors bornes.');
+          }
+          if (!isSupabaseConfigured()) {
+            throw new Error('Don indisponible hors connexion cloud.');
+          }
+
+          const receiverEquipment = await giveItemToCharacter(receiverId, plan.itemForReceiver);
+
+          // Copie locale du receveur (roster de campagne, RLS lecture PER-191) : à jour tout de
+          // suite, sans attendre un rechargement de page. No-op si non chargée ici.
+          get().applyRemoteGameState(receiverId, { equipment: receiverEquipment });
+
+          // Diffusion live (canal de session, PER-259) : même forme de message qu'une modification
+          // d'équipement ordinaire — si le receveur est CONNECTÉ, son client l'adopte sans délai.
+          const send = sessionSendFor(character.campaignId);
+          if (send) {
+            send('game-state', {
+              characterId: receiverId,
+              patch: toWireGameStatePatch({ equipment: receiverEquipment }),
+            });
+          }
+
+          // Retrait chez le DONNEUR : APRÈS le succès du don (jamais avant, sous peine de perdre
+          // l'objet si la RPC échoue) — chemin d'état de jeu ordinaire, comme toute autre écriture
+          // d'inventaire (diffusion + persistance, cf. `applyGameState`).
+          get().applyGameState(character, { equipment: plan.giverEquipment });
         },
 
         commitNewCharacter: async (character) => {

@@ -530,6 +530,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     refillItemCharges,
     weaponLoading,
     addGrantedEquipment,
+    giveItem,
     setHpDamage,
     setHpHeal,
     setHpReset,
@@ -1558,6 +1559,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // PER-286 : rappel « objet octroyé par une capacité » (couleuvrine du rang 5), avec
               // son bouton d'ajout — masqué en lecture seule.
               grantedMissing={missingGrantedItems(character, firearmsAllowed)}
+              // Don d'un objet à un autre joueur de la campagne (PER-388), sans validation du MJ.
+              // Absent hors campagne / en lecture seule : rien à quoi donner, ou pas la main.
+              giveContext={
+                readOnly || !characterCampaignId
+                  ? undefined
+                  : {
+                      campaignId: characterCampaignId,
+                      characterId: character.id,
+                      onGiveItem: giveItem,
+                    }
+              }
               // PER-286 : dés évolutifs résolus au niveau + carac ajoutée par l'arme (couleuvrine).
               level={character.level}
               abilities={effectCtx.abilities}

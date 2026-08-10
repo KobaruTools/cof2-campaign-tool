@@ -21,7 +21,7 @@
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { Database, Json } from '@/lib/supabase/types';
 import { migrateCharacter } from '@/lib/engine';
-import type { Character, CharacterStatus } from './types';
+import type { Character, CharacterStatus, EquipmentLine } from './types';
 
 type CharacterRow = Database['public']['Tables']['characters']['Row'];
 
@@ -178,6 +178,28 @@ export async function mergeGameState(
     patch: patch as Json,
   });
   if (error) throw error;
+}
+
+/**
+ * Don d'un objet à un AUTRE personnage de la campagne (PER-388), via la RPC
+ * `give_item_to_character` (migration 0021, `security definer`) — seul chemin qui puisse écrire
+ * sur la fiche d'un joueur DIFFÉRENT de l'appelant (la RLS `characters_player_update_own`,
+ * migration 0002, ne l'autorise jamais). Le retrait chez le DONNEUR reste une écriture ORDINAIRE
+ * de sa propre fiche (voir `stores/characters.ts`), pas de ce ressort. Renvoie le nouvel
+ * inventaire ABSOLU du receveur. Lève en cas d'erreur Supabase (personnage introuvable, receveur
+ * hors campagne, don à soi-même…).
+ */
+export async function giveItemToCharacter(
+  receiverId: string,
+  item: EquipmentLine,
+): Promise<EquipmentLine[]> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase.rpc('give_item_to_character', {
+    receiver_id: receiverId,
+    item: item as unknown as Json,
+  });
+  if (error) throw error;
+  return (data ?? []) as unknown as EquipmentLine[];
 }
 
 /** Supprime un personnage cloud (RLS propriétaire). */

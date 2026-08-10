@@ -498,6 +498,10 @@ export type Database = {
         Args: { p_source_id: string }
         Returns: boolean
       }
+      give_item_to_character: {
+        Args: { item: Json; receiver_id: string }
+        Returns: Json
+      }
       is_anonymous: { Args: never; Returns: boolean }
       merge_game_state: {
         Args: { character_id: string; patch: Json }

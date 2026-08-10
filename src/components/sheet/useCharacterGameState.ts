@@ -112,6 +112,13 @@ export interface CharacterGameState {
   refillItemCharges: (index: number) => void;
   /** Ajoute un objet OCTROYÉ par une capacité et absent de l'inventaire (PER-286). */
   addGrantedEquipment: (itemId: string) => void;
+  /**
+   * Don d'un objet à un AUTRE personnage de la campagne, sans validation du MJ (PER-388).
+   * `index`/`quantity` désignent la ligne du DONNEUR ; `receiverId` le destinataire. Async : lève
+   * en cas d'échec (objet porté, quantité invalide, RPC refusée) — l'appelant affiche l'erreur.
+   * No-op en lecture seule.
+   */
+  giveItem: (index: number, quantity: number, receiverId: string) => Promise<void>;
 
   // --- Jauges du personnage & repos --------------------------------------------------------
   setHpDamage: (amount: number, kind: 'lethal' | 'temp') => void;
@@ -168,6 +175,7 @@ export function useCharacterGameState(
 ): CharacterGameState | null {
   const upsert = useCharactersStore((s) => s.upsert);
   const applyGameState = useCharactersStore((s) => s.applyGameState);
+  const giveItemAction = useCharactersStore((s) => s.giveItem);
   if (!character) return null;
   // Copie `const` : conserve le narrowing de `character` dans les fermetures ci-dessous.
   const target: Character = character;
@@ -252,6 +260,10 @@ export function useCharacterGameState(
     restoreItemCharge: bind(actions.restoreItemChargeAction),
     refillItemCharges: bind(actions.refillItemChargesAction),
     addGrantedEquipment: bind(actions.addGrantedEquipment),
+    giveItem: (index, quantity, receiverId) => {
+      if (readOnly) return Promise.resolve();
+      return giveItemAction(target, index, quantity, receiverId);
+    },
 
     setHpDamage: (amount, kind) => update(actions.damageCharacterHp(target, amount, kind, maxHp)),
     setHpHeal: bind(actions.healCharacterHp),
