@@ -75,6 +75,47 @@ describe('magicWeaponSituationalDamage — Fléau / Élément / Affûtée (p. 25
     expect(rider.dice).toEqual({ count: 2, die: 'd4', evolving: true });
   });
 
+  it('dé personnalisé fixe (RÈGLE MAISON) — « arc +2d6 de feu » : ne change pas avec le niveau', () => {
+    const at1 = magicWeaponSituationalDamage(
+      line({ magicProperties: [{ kind: 'elemental', substance: 'fire', customDice: { count: 2, die: 'd6' } }] }),
+      'Arc de feu',
+      1,
+    )[0];
+    expect(at1.dice).toEqual({ count: 2, die: 'd6' });
+    const at9 = magicWeaponSituationalDamage(
+      line({ magicProperties: [{ kind: 'elemental', substance: 'fire', customDice: { count: 2, die: 'd6' } }] }),
+      'Arc de feu',
+      9,
+    )[0];
+    expect(at9.dice).toEqual({ count: 2, die: 'd6' });
+  });
+
+  it('dé personnalisé ÉVOLUTIF — « +3d4° de froid » : le nombre est fixe, la face évolue (table p. 43)', () => {
+    const rider = magicWeaponSituationalDamage(
+      line({
+        magicProperties: [
+          { kind: 'bane', creatureCategory: 'morts-vivants', customDice: { count: 3, die: 'd4', evolving: true } },
+        ],
+      }),
+      'Masse',
+      9,
+    )[0];
+    expect(rider.dice).toEqual({ count: 3, die: 'd8', evolving: true }); // 9-11 → d8 (table p. 43)
+  });
+
+  it('dé personnalisé + doublée : le NOMBRE de dés double, jamais la face', () => {
+    const rider = magicWeaponSituationalDamage(
+      line({
+        magicProperties: [
+          { kind: 'elemental', substance: 'cold', customDice: { count: 2, die: 'd6' }, doubled: true },
+        ],
+      }),
+      'Épée de froid',
+      1,
+    )[0];
+    expect(rider.dice).toEqual({ count: 4, die: 'd6' });
+  });
+
   it('ignore les propriétés défensives et l’absence d’enchantement', () => {
     expect(magicWeaponSituationalDamage(line({ magicProperties: [{ kind: 'mobile' }] }), 'x', 1)).toEqual(
       [],

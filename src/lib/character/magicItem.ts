@@ -15,6 +15,7 @@
  * Ce ticket (306) ne pose QUE ce calcul + le socle de données (voir `types.ts`) ; les
  * EFFETS mécaniques (attaque, DM, RD, résistances…) sont câblés au ticket suivant (PER-307).
  */
+import type { DamageDie, WeaponDamage } from '@/data/schema';
 import { DAMAGE_TYPE_LABEL } from '@/lib/ui/damageTypeLabels';
 import type {
   MagicDefensePropertyKind,
@@ -93,7 +94,7 @@ export const MAGIC_PROPERTY_RULES: Record<MagicPropertyKind, MagicPropertyRule> 
   },
   elemental: {
     family: 'weapon',
-    name: 'Élément/substance',
+    name: 'Élément',
     verbatim:
       '[Élément/substance] : l’arme inflige +1d4° DM d’un élément ou d’une substance spécifique (par exemple, le feu, le froid, l’acide, l’électricité, le poison, etc.).',
     sourcePage: 251,
@@ -161,6 +162,17 @@ export const MAGIC_PROPERTY_RULES: Record<MagicPropertyKind, MagicPropertyRule> 
 };
 
 /**
+ * NORMALISE un dé personnalisé (RÈGLE MAISON, Fléau/Élément) : nombre plancher à 1, dé toujours
+ * renseigné (repli `d4`, purement indicatif pour un dé évolutif — voir `customDiceLevelRatio`),
+ * `evolving` absent si faux (même convention que `WeaponDamage`, p. 43).
+ */
+function normalizeCustomDice(dice: WeaponDamage): WeaponDamage {
+  const out: WeaponDamage = { count: Math.max(1, Math.floor(dice.count) || 1), die: dice.die || 'd4' };
+  if (dice.evolving) out.evolving = true;
+  return out;
+}
+
+/**
  * NORMALISE une propriété saisie : ne conserve que les paramètres pertinents pour son
  * `kind` (une Résistance garde substance+amount, une Défense garde tier…), plus `doubled`.
  * Évite de persister des paramètres orphelins laissés par un changement de type de propriété
@@ -172,10 +184,12 @@ export function normalizeMagicProperty(prop: MagicProperty): MagicProperty {
     case 'bane': {
       const category = prop.creatureCategory?.trim();
       if (category) out.creatureCategory = category;
+      if (prop.customDice) out.customDice = normalizeCustomDice(prop.customDice);
       break;
     }
     case 'elemental':
       if (prop.substance) out.substance = prop.substance;
+      if (prop.customDice) out.customDice = normalizeCustomDice(prop.customDice);
       break;
     case 'parry':
       if (prop.defBonus) out.defBonus = prop.defBonus;
@@ -195,14 +209,41 @@ export function normalizeMagicProperty(prop: MagicProperty): MagicProperty {
 }
 
 /** Libellé FR d'une substance (élément), avec repli sur la clé si non répertoriée. */
-function substanceLabel(prop: MagicProperty): string {
+export function substanceLabel(prop: MagicProperty): string {
   if (!prop.substance) return '';
   return DAMAGE_TYPE_LABEL[prop.substance] ?? prop.substance;
 }
 
+/** DM moyen d'un dé (pour `customDiceLevelRatio`) — `d3` inclus bien qu'absent des propriétés magiques. */
+const DIE_AVERAGE: Record<DamageDie, number> = {
+  d3: 2,
+  d4: 2.5,
+  d6: 3.5,
+  d8: 4.5,
+  d10: 5.5,
+  d12: 6.5,
+  d20: 10.5,
+};
+
+/**
+ * Facteur d'échelle d'un dé personnalisé (RÈGLE MAISON) par rapport au +1d4° fixe du livre : le
+ * DM moyen attendu du dé choisi, divisé par celui d'1d4 (2,5). Un dé évolutif ignore le `die`
+ * saisi (purement indicatif — la face réelle vient de la table p. 43, résolue ailleurs) et compte
+ * pour la moyenne d'1d4, comme le +1d4° évolutif du livre : seul le NOMBRE de dés le fait varier,
+ * exactement comme `doubled` (p. 251) double déjà le nombre de dés sans changer de face.
+ */
+function customDiceLevelRatio(dice: WeaponDamage): number {
+  const avg = dice.evolving ? DIE_AVERAGE.d4 : DIE_AVERAGE[dice.die] ?? DIE_AVERAGE.d4;
+  return (dice.count * avg) / DIE_AVERAGE.d4;
+}
+
 /**
  * NIVEAU DE MAGIE d'une seule propriété, doublage NON appliqué (contribution de base).
- *  - Affûtée / Fléau : +1 · Élément : +2 (p. 251).
+ *  - Affûtée : +1.
+ *  - Fléau / Élément SANS dé personnalisé : +1 / +2, comme le livre (p. 251).
+ *  - Fléau / Élément AVEC dé personnalisé (RÈGLE MAISON) : le niveau livre est mis à l'échelle du
+ *    DM moyen attendu du dé choisi par rapport au +1d4° fixe (`customDiceLevelRatio`), arrondi au
+ *    supérieur pour ne jamais sous-facturer l'objet — voir `MagicProperty.customDice`.
  *  - Parade : bonus de DEF offert (p. 251).
  *  - Défense : +1 (RD 2) ou +2 si Défense supérieure (RD 4) (p. 253).
  *  - Toutes les autres propriétés défensives : +1 (« chaque propriété vaut 1 niveau », p. 253).
@@ -210,7 +251,10 @@ function substanceLabel(prop: MagicProperty): string {
 function basePropertyMagicLevel(prop: MagicProperty): number {
   switch (prop.kind) {
     case 'elemental':
-      return 2;
+    case 'bane': {
+      const bookBase = prop.kind === 'elemental' ? 2 : 1;
+      return prop.customDice ? Math.ceil(bookBase * customDiceLevelRatio(prop.customDice)) : bookBase;
+    }
     case 'parry':
       return prop.defBonus ?? 0;
     case 'defense':
@@ -284,5 +328,17 @@ export function magicPropertyLabel(prop: MagicProperty): string {
     default:
       label = rule.name;
   }
+  // Fléau/Élément à dé personnalisé : le nombre de dés affiché inclut déjà le doublage (comme le
+  // dé réellement appliqué, cf. `magicItemEffects.ts`) — pas de suffixe « (doublée) » redondant.
+  if ((prop.kind === 'bane' || prop.kind === 'elemental') && prop.customDice) {
+    return `${label} (+${customDiceNotation(prop)})`;
+  }
   return prop.doubled ? `${label} (doublée)` : label;
+}
+
+/** Notation du dé personnalisé d'une propriété, doublage inclus (ex. « 4d6 », « 3d4° »). */
+function customDiceNotation(prop: MagicProperty): string {
+  const dice = prop.customDice!;
+  const count = dice.count * (prop.doubled ? 2 : 1);
+  return `${count}${dice.die}${dice.evolving ? '°' : ''}`;
 }

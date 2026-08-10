@@ -39,6 +39,37 @@ describe('propertyMagicLevel', () => {
     expect(propertyMagicLevel({ kind: 'sharp', doubled: true })).toBe(2);
     expect(propertyMagicLevel({ kind: 'defense', tier: 2, doubled: true })).toBe(4);
   });
+
+  it('dé personnalisé (RÈGLE MAISON) : le niveau suit le DM moyen relatif à 1d4 (arrondi au supérieur)', () => {
+    // +2d6 feu : (2×3,5) / 2,5 = 2,8 → niveau livre 2 × 2,8 = 5,6 → 6.
+    expect(
+      propertyMagicLevel({ kind: 'elemental', substance: 'fire', customDice: { count: 2, die: 'd6' } }),
+    ).toBe(6);
+    // Fléau +3d4° : dé évolutif → moyenne identique à 1d4, seul le nombre compte → niveau 1×3 = 3.
+    expect(
+      propertyMagicLevel({
+        kind: 'bane',
+        creatureCategory: 'morts-vivants',
+        customDice: { count: 3, die: 'd4', evolving: true },
+      }),
+    ).toBe(3);
+    // Sans dé personnalisé, le comportement livre (fixe) ne change pas.
+    expect(
+      propertyMagicLevel({ kind: 'bane', creatureCategory: 'démons', customDice: undefined }),
+    ).toBe(1);
+  });
+
+  it('dé personnalisé + doublée : le doublage se cumule au-dessus de la mise à l’échelle', () => {
+    // +1d6 feu doublé : niveau de base ceil(2×(3,5/2,5))=ceil(2,8)=3, doublé → 6.
+    expect(
+      propertyMagicLevel({
+        kind: 'elemental',
+        substance: 'fire',
+        customDice: { count: 1, die: 'd6' },
+        doubled: true,
+      }),
+    ).toBe(6);
+  });
 });
 
 describe('magicLevel', () => {
@@ -115,6 +146,27 @@ describe('magicPropertyLabel', () => {
       'Froid (doublée)',
     );
   });
+
+  it('dé personnalisé : notation en suffixe, doublage inclus dans le nombre (pas de « (doublée) »)', () => {
+    expect(
+      magicPropertyLabel({ kind: 'elemental', substance: 'fire', customDice: { count: 2, die: 'd6' } }),
+    ).toBe('Feu (+2d6)');
+    expect(
+      magicPropertyLabel({
+        kind: 'bane',
+        creatureCategory: 'morts-vivants',
+        customDice: { count: 3, die: 'd4', evolving: true },
+      }),
+    ).toBe('Fléau des morts-vivants (+3d4°)');
+    expect(
+      magicPropertyLabel({
+        kind: 'elemental',
+        substance: 'cold',
+        customDice: { count: 1, die: 'd6' },
+        doubled: true,
+      }),
+    ).toBe('Froid (+2d6)');
+  });
 });
 
 describe('normalizeMagicProperty', () => {
@@ -147,6 +199,27 @@ describe('normalizeMagicProperty', () => {
     expect(
       normalizeMagicProperty({ kind: 'sharp', doubled: true }),
     ).toEqual({ kind: 'sharp', doubled: true });
+  });
+
+  it('normalise le dé personnalisé (nombre plancher à 1, evolving absent si faux)', () => {
+    expect(
+      normalizeMagicProperty({
+        kind: 'elemental',
+        substance: 'fire',
+        customDice: { count: 0, die: 'd6', evolving: false },
+      }),
+    ).toEqual({ kind: 'elemental', substance: 'fire', customDice: { count: 1, die: 'd6' } });
+    expect(
+      normalizeMagicProperty({
+        kind: 'bane',
+        creatureCategory: 'démons',
+        customDice: { count: 3, die: 'd4', evolving: true },
+      }),
+    ).toEqual({
+      kind: 'bane',
+      creatureCategory: 'démons',
+      customDice: { count: 3, die: 'd4', evolving: true },
+    });
   });
 });
 

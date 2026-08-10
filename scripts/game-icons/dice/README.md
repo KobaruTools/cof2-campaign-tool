@@ -33,3 +33,7 @@ cp diceIcons.ts ../../../src/lib/ui/diceIcons.ts
 
 Toute nouvelle icône doit venir de game-icons.net (source unique, licence unique)
 et être ajoutée à `map.tsv` puis reportée dans `NOTICE.md`.
+
+**Exception — d3** : absent du catalogue game-icons.net, c'est un dessin maison (constante
+`CUSTOM_ICONS` de `gen.mjs`, marqué `custom:` dans `map.tsv` au lieu d'un chemin game-icons.net).
+Documenté comme exception dans `NOTICE.md`, pas comme un oubli.

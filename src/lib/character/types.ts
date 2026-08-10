@@ -550,6 +550,14 @@ export interface MagicProperty {
   defBonus?: number;
   /** Propriété DOUBLÉE (p. 251/254) : effet ET niveau de magie doublés. Absent = simple. */
   doubled?: true;
+  /**
+   * Fléau / Élément : dé(s) personnalisés (RÈGLE MAISON) remplaçant le +1d4° fixe du livre — ex.
+   * « 2d6 » ou « 3d4° » (`evolving`, dé de la table p. 43, `die` alors purement indicatif). Absent
+   * = comportement livre (+1d4°, voir `magicItemEffects.ts`). Le niveau de magie de la propriété
+   * (donc son coût) suit alors le total attendu de ces dés plutôt que la valeur fixe du livre (voir
+   * `basePropertyMagicLevel` dans `magicItem.ts`).
+   */
+  customDice?: WeaponDamage;
 }
 
 export interface EquipmentOverrides {

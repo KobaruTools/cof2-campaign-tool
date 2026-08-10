@@ -1,12 +1,12 @@
 import Box from '@mui/material/Box';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
-import type { Die } from '@/data/schema';
+import type { DamageDie } from '@/data/schema';
 import { DIE_ICON_PATHS } from '@/lib/ui/diceIcons';
 
 export interface DieIconProps {
-  /** Type de dé (`'d4'`…`'d20'`) — clé dans `DIE_ICON_PATHS`. */
-  die: Die;
+  /** Type de dé (`'d3'`…`'d20'`) — clé dans `DIE_ICON_PATHS`. */
+  die: DamageDie;
   /** Taille en pixels (carré). Défaut 24. */
   size?: number;
   /**

@@ -27,7 +27,7 @@ import { progression } from '@/data';
 import type { DamageReduction, ImmunityId } from '@/data/schema';
 import { scalingDie } from '@/lib/engine';
 import type { CriticalRangeSource } from './effects';
-import { magicPropertyLabel } from './magicItem';
+import { magicPropertyLabel, substanceLabel } from './magicItem';
 import type { EquipmentLine, MagicProperty } from './types';
 import type { AttackMode, PermanentFlatBonus, SituationalDamageBonus } from './weaponDamageBonus';
 
@@ -90,11 +90,30 @@ function evolvingD4(count: number, level: number, tierBonus = 0): NonNullable<Si
 }
 
 /**
+ * Dé(s) d'un rider Fléau/Élément : le dé PERSONNALISÉ (RÈGLE MAISON, `MagicProperty.customDice`)
+ * s'il est saisi, sinon le +1d4° fixe du livre. Le doublage (`factor`) multiplie le NOMBRE de dés
+ * dans les deux cas, jamais la face. Un dé personnalisé ÉVOLUTIF réutilise la même table p. 43 que
+ * le +1d4° du livre (son `die` saisi n'est qu'indicatif, cf. `magicItem.ts`) ; un dé personnalisé
+ * FIXE garde la face choisie (ex. « 2d6 »), sans jamais évoluer avec le niveau.
+ */
+function propertyDice(
+  prop: MagicProperty,
+  level: number,
+  tierBonus: number,
+): NonNullable<SituationalDamageBonus['dice']> {
+  const count = (prop.customDice?.count ?? 1) * factor(prop);
+  if (!prop.customDice) return evolvingD4(count, level, tierBonus);
+  if (prop.customDice.evolving) return { count, die: scalingDie(level, progression, tierBonus), evolving: true };
+  return { count, die: prop.customDice.die };
+}
+
+/**
  * Riders de DM SITUATIONNELS d'une arme magique portée, au niveau `level` du personnage :
- *  - Fléau des [catégorie] → +1d4° « contre les [catégorie] » ;
- *  - [Élément/substance] → +1d4° de la substance (libellé = son nom) ;
+ *  - Fléau des [catégorie] → +1d4° (ou dé personnalisé, RÈGLE MAISON) « contre les [catégorie] » ;
+ *  - [Élément/substance] → +1d4° (ou dé personnalisé) de la substance (libellé = son nom) ;
  *  - Affûtée → +1d4° « aux attaques critiques » (le +1 de plage critique passe par `magicWeaponCriticalRanges`).
- * Une propriété doublée porte 2d4° (le NOMBRE de dés double). `name` = libellé de l'objet source.
+ * Une propriété doublée porte le double de dés (livre ou personnalisé, voir `propertyDice`). `name`
+ * = libellé de l'objet source.
  */
 export function magicWeaponSituationalDamage(
   line: EquipmentLine | null | undefined,
@@ -109,14 +128,14 @@ export function magicWeaponSituationalDamage(
       const category = prop.creatureCategory?.trim();
       out.push({
         ...base,
-        dice: evolvingD4(factor(prop), level, tierBonus),
+        dice: propertyDice(prop, level, tierBonus),
         conditionLabel: category ? `contre les ${category}` : 'contre une catégorie de créature',
       });
     } else if (prop.kind === 'elemental') {
       out.push({
         ...base,
-        dice: evolvingD4(factor(prop), level, tierBonus),
-        conditionLabel: magicPropertyLabel(prop).toLowerCase(),
+        dice: propertyDice(prop, level, tierBonus),
+        conditionLabel: (substanceLabel(prop) || 'Élément').toLowerCase(),
       });
     } else if (prop.kind === 'sharp') {
       out.push({

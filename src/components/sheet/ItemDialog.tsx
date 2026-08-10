@@ -18,9 +18,12 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import { alpha } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { equipment as equipmentCatalog, equipmentById, testDomainById } from '@/data';
 import {
@@ -68,11 +71,15 @@ import { AbilityIcon } from '@/components/AbilityIcon';
 import { AbilityCodeChip } from '@/components/sheet/FeatureRichText';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { ItemIcon } from '@/components/ItemIcon';
 import { ItemIconPicker } from '@/components/sheet/ItemIconPicker';
-import { defaultItemIconId } from '@/lib/ui/itemIcon';
+import { defaultItemIconId, itemIconId } from '@/lib/ui/itemIcon';
+import { itemTypeColor } from '@/lib/ui/itemTypeColors';
 import type { ItemIconId } from '@/data/item-icons';
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
+import SportsMartialArtsIcon from '@mui/icons-material/SportsMartialArts';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 
 /** Libellés FR des 7 types d'objet (le CODE reste en anglais, cf. CLAUDE.md). */
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
@@ -99,13 +106,48 @@ const WEAPON_CATEGORY_LABELS: Record<WeaponCategory, string> = {
   twoHands: 'À deux mains',
 };
 
+/**
+ * Regroupement affiché de la base ARME du livre : contact vs distance (p. 183/185). Une arme
+ * lançable (dague, épieu, lance…) est mécaniquement les deux (`melee` ET `ranged`) ; le catalogue
+ * la classe côté contact (voir `data/equipment.ts`, armes de contact déclarées avant les armes à
+ * distance), donc ce regroupement suit `melee` en priorité — les groupes restent CONTIGUS dans
+ * `baseOptions`, exigence de `groupBy` côté MUI (pas de tri supplémentaire nécessaire).
+ */
+type WeaponBaseGroup = 'melee' | 'ranged';
+const WEAPON_BASE_GROUP_LABEL: Record<WeaponBaseGroup, string> = {
+  melee: 'Armes de contact',
+  ranged: 'Armes à distance',
+};
+function weaponBaseGroup(item: EquipmentItem): WeaponBaseGroup {
+  return item.category === 'weapon' && item.melee ? 'melee' : 'ranged';
+}
+
 /** `weapon`/`armor`/`shield` sont mécaniques (variante d'une base du livre). */
 function isMechanicalType(type: ItemType): type is MechanicalCategory {
   return type === 'weapon' || type === 'armor' || type === 'shield';
 }
 
-/** Dés de DM proposés à la saisie (PER-217) — `d3` inclus (rendu en texte, sans icône). */
+/** Dés de DM proposés à la saisie (PER-217) — `d3` inclus, icône dédiée (dessin maison). */
 const DAMAGE_DICE: DamageDie[] = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+
+/**
+ * Dés FIXES proposés au dé personnalisé Fléau/Élément (RÈGLE MAISON), `d3` compris — le dé
+ * ÉVOLUTIF (p. 43) n'y figure pas : c'est une entrée à part du même sélecteur (`EVOLVING_DIE_OPTION`),
+ * en tête de liste plutôt qu'une case séparée.
+ */
+const MAGIC_CUSTOM_DICE: DamageDie[] = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+
+/** Valeur sentinelle du sélecteur de dé Custom pour le dé évolutif — distincte de tout `DamageDie`. */
+const EVOLVING_DIE_OPTION = 'evolving';
+
+/** Mode d'effet Fléau/Élément : Simple (livre, +1d4°) · Double (+2d4°) · Custom (dé(s) au choix). */
+type MagicDiceMode = 'simple' | 'double' | 'custom';
+
+/** Mode actuel d'une ligne Fléau/Élément, dérivé de ses champs (`customDice` prime sur `doubled`). */
+function magicDiceMode(prop: MagicProperty): MagicDiceMode {
+  if (prop.customDice) return 'custom';
+  return prop.doubled ? 'double' : 'simple';
+}
 
 /**
  * Brouillon de saisie d'un `WeaponDamage` (PER-217) : nombre et modificateur sont
@@ -144,8 +186,8 @@ function draftToDamage(draft: DamageDraft): WeaponDamage {
 
 /**
  * Saisie guidée d'un `WeaponDamage` (PER-217) : nombre de dés + sélecteur de dé (icône
- * `<DieIcon>`, `d3` en texte) + modificateur plat + case « DM temporaires » (non létal).
- * Remplace l'ancienne formule tapée à la main.
+ * `<DieIcon>`) + modificateur plat + case « DM temporaires » (non létal). Remplace
+ * l'ancienne formule tapée à la main.
  */
 function WeaponDamageFields({
   label,
@@ -187,7 +229,7 @@ function WeaponDamageFields({
           {DAMAGE_DICE.map((d) => (
             <MenuItem key={d} value={d}>
               <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                {d === 'd3' ? null : <DieIcon die={d} size={18} noTooltip />}
+                <DieIcon die={d} size={18} noTooltip />
                 {d}
               </Box>
             </MenuItem>
@@ -486,12 +528,12 @@ function MagicPropertyRows({
                 />
               )}
 
-              {/* Élément / Résistance : substance concernée. */}
+              {/* Élément / Résistance : substance (élément) concernée. */}
               {(row.kind === 'elemental' || row.kind === 'resistance') && (
                 <TextField
                   select
                   size="small"
-                  label="Substance"
+                  label="Élément"
                   value={row.substance ?? ''}
                   onChange={(e) =>
                     setRow(i, {
@@ -506,6 +548,61 @@ function MagicPropertyRows({
                     </MenuItem>
                   ))}
                 </TextField>
+              )}
+
+              {/* Fléau / Élément, mode Custom (RÈGLE MAISON) : nombre de dés + dé — le dé
+                  évolutif (p. 43) est une entrée de la MÊME liste (« d4° », en tête), pas une
+                  case séparée : un seul contrôle pilote la face. */}
+              {(row.kind === 'bane' || row.kind === 'elemental') && row.customDice && (
+                <>
+                  <TextField
+                    type="number"
+                    size="small"
+                    label="Nombre de dés"
+                    value={String(row.customDice.count)}
+                    onChange={(e) =>
+                      setRow(i, {
+                        customDice: {
+                          ...row.customDice!,
+                          count: Math.max(1, Math.floor(Number(e.target.value) || 1)),
+                        },
+                      })
+                    }
+                    sx={{ flex: '1 1 110px', minWidth: 100 }}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                  />
+                  <TextField
+                    select
+                    size="small"
+                    label="Dé"
+                    value={row.customDice.evolving ? EVOLVING_DIE_OPTION : row.customDice.die}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setRow(i, {
+                        customDice:
+                          v === EVOLVING_DIE_OPTION
+                            ? { ...row.customDice!, die: 'd4', evolving: true }
+                            : { ...row.customDice!, die: v as DamageDie, evolving: undefined },
+                      });
+                    }}
+                    sx={{ flex: '1 1 110px', minWidth: 100 }}
+                  >
+                    <MenuItem value={EVOLVING_DIE_OPTION}>
+                      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                        <DieIcon die="d4" evolving size={18} noTooltip />
+                        d4°
+                      </Box>
+                    </MenuItem>
+                    {MAGIC_CUSTOM_DICE.map((d) => (
+                      <MenuItem key={d} value={d}>
+                        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                          <DieIcon die={d} size={18} noTooltip />
+                          {d}
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </>
               )}
 
               {/* Résistance : X points retranchés. */}
@@ -563,16 +660,47 @@ function MagicPropertyRows({
                 </TextField>
               )}
 
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={row.doubled === true}
-                    onChange={(e) => setRow(i, { doubled: e.target.checked ? true : undefined })}
-                  />
-                }
-                label="Doublée"
-              />
+              {/* Fléau / Élément : Simple (livre, +1d4°) · Double (+2d4°) · Custom (dé(s) au
+                  choix, RÈGLE MAISON) — un choix exclusif, pas deux cases indépendantes.
+                  Les autres propriétés gardent la simple case « Doublée ». */}
+              {row.kind === 'bane' || row.kind === 'elemental' ? (
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={magicDiceMode(row)}
+                  onChange={(_, mode: MagicDiceMode | null) => {
+                    if (!mode) return;
+                    if (mode === 'simple') setRow(i, { doubled: undefined, customDice: undefined });
+                    else if (mode === 'double') setRow(i, { doubled: true, customDice: undefined });
+                    else
+                      setRow(i, {
+                        doubled: undefined,
+                        customDice: row.customDice ?? { count: 1, die: 'd4', evolving: true },
+                      });
+                  }}
+                >
+                  <ToggleButton value="simple" sx={{ textTransform: 'none', px: 1.25 }}>
+                    Simple
+                  </ToggleButton>
+                  <ToggleButton value="double" sx={{ textTransform: 'none', px: 1.25 }}>
+                    Double
+                  </ToggleButton>
+                  <ToggleButton value="custom" sx={{ textTransform: 'none', px: 1.25 }}>
+                    Custom
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              ) : (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={row.doubled === true}
+                      onChange={(e) => setRow(i, { doubled: e.target.checked ? true : undefined })}
+                    />
+                  }
+                  label="Doublée"
+                />
+              )}
 
               {/* Rappel du niveau de magie apporté + texte de règle verbatim en infobulle. */}
               <Tooltip title={rule.verbatim} disableInteractive>
@@ -1030,6 +1158,58 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                 getOptionLabel={(o) => o.name}
                 value={selectedBase ?? null}
                 onChange={(_, v) => chooseBase(v ? v.id : null)}
+                // Contact / distance uniquement pour les armes (p. 183/185) : les autres types
+                // (armure, bouclier) n'ont qu'une seule base pertinente, pas de sous-groupe.
+                groupBy={type === 'weapon' ? (o) => weaponBaseGroup(o) : undefined}
+                renderGroup={(params) => {
+                  const group = params.group as WeaponBaseGroup;
+                  return (
+                    <li key={params.key}>
+                      <Box
+                        sx={(theme) => ({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.75,
+                          px: 1.25,
+                          py: 0.5,
+                          position: 'sticky',
+                          top: -8,
+                          zIndex: 1,
+                          backgroundColor: alpha(theme.palette.background.paper, 0.92),
+                          backdropFilter: 'blur(8px)',
+                          WebkitBackdropFilter: 'blur(8px)',
+                          borderLeft: `3px solid ${itemTypeColor('weapon')}`,
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                          color: itemTypeColor('weapon'),
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                        })}
+                      >
+                        {group === 'melee' ? (
+                          <SportsMartialArtsIcon sx={{ fontSize: 18 }} />
+                        ) : (
+                          <GpsFixedIcon sx={{ fontSize: 18 }} />
+                        )}
+                        <span>{WEAPON_BASE_GROUP_LABEL[group]}</span>
+                      </Box>
+                      <ul style={{ padding: 0, margin: 0 }}>{params.children}</ul>
+                    </li>
+                  );
+                }}
+                renderOption={(props, o) => {
+                  const { key, ...optionProps } = props as typeof props & { key?: string };
+                  return (
+                    <Box
+                      component="li"
+                      key={key}
+                      {...optionProps}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+                    >
+                      <ItemIcon id={itemIconId({ itemId: o.id, quantity: 1 })} sx={{ color: 'text.secondary' }} />
+                      <Typography variant="body2">{o.name}</Typography>
+                    </Box>
+                  );
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}

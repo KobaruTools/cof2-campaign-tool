@@ -1,16 +1,16 @@
 import { Fragment } from 'react';
 import Box from '@mui/material/Box';
 import type { SxProps, Theme } from '@mui/material/styles';
-import type { Die } from '@/data/schema';
+import type { DamageDie } from '@/data/schema';
 import { DIE_ICON_PATHS } from '@/lib/ui/diceIcons';
 import { DieIcon } from '@/components/DieIcon';
 
 export interface DamageValueProps {
   /**
    * Notation de DM du livre (ex. « 1d6 », « 2d6 », « 5d4° + INT », « 1d3 »).
-   * Les tokens de dé connus (`d4`…`d20`) sont rendus via <DieIcon> ; le marqueur
+   * Les tokens de dé connus (`d3`…`d20`) sont rendus via <DieIcon> ; le marqueur
    * « ° » signale un dé évolutif (p. 43) ; le reste (nombre de dés, modificateurs,
-   * dés inconnus comme « d3 », parenthèses) est laissé tel quel en texte.
+   * parenthèses…) est laissé tel quel en texte.
    */
   damage: string;
   /** Taille de l'icône de dé en pixels. Défaut 18 (accordé au texte `caption`). */
@@ -31,9 +31,9 @@ export function DamageValue({ damage, size = 18, sx }: DamageValueProps) {
   for (const match of damage.matchAll(/(\d*)d(\d+)(°?)/g)) {
     const [token, count, faces, marker] = match;
     const index = match.index;
-    const die = `d${faces}` as Die;
+    const die = `d${faces}` as DamageDie;
 
-    // Dé inconnu (ex. « d3 ») : on laisse le token brut dans le texte qui suit.
+    // Dé inconnu (aucun aujourd'hui, vocabulaire fermé) : on laisse le token brut.
     if (!DIE_ICON_PATHS[die]) continue;
 
     // Texte entre le dé précédent et celui-ci (nombre exclu, géré à part).
