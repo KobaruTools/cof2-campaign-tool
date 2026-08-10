@@ -61,6 +61,7 @@ import {
 } from '@/lib/character/gameState';
 import { sessionSendFor } from '@/lib/session/sessionBridge';
 import { migrateCharacter } from '@/lib/engine';
+import { removeCharacterPortrait } from '@/lib/storage/characterPortrait';
 
 /** Délai d'inactivité avant flush cloud d'un personnage modifié (ms). */
 const FLUSH_DELAY_MS = 900;
@@ -555,6 +556,11 @@ export const useCharactersStore = create<CharactersState>()(
             return { characters: state.characters.filter((c) => c.id !== id), cloudVersions };
           });
           if (wasCloud) void deleteCharacter(id).catch((e) => set({ error: messageOf(e) }));
+          if (isSupabaseConfigured()) {
+            void removeCharacterPortrait(id).catch((e) =>
+              console.error('Retrait du portrait personnalisé échoué :', e),
+            );
+          }
         },
 
         detachFromCampaign: (campaignId) =>
