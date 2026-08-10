@@ -44,7 +44,6 @@ import { AppAlert } from '@/components/AppAlert';
 import { IdentityForm } from '@/components/IdentityForm';
 import { PortraitVariantMenu } from '@/components/PortraitVariantMenu';
 import { classPortraitPath } from '@/lib/storage/useCharacterPortraitSrc';
-import { PortraitValidationError, validatePortraitFile } from '@/lib/storage/characterPortrait';
 import {
   divineFeatureOfVocation,
   involvedClassIds,
@@ -1277,18 +1276,11 @@ export function IdentityStep({ draft, patch, portraitFile, onPortraitFile }: Ste
                 patch({ portraitVariant: v });
               }}
               onSelectFile={(file) => {
-                try {
-                  validatePortraitFile(file);
-                } catch (e) {
-                  setPortraitError(
-                    e instanceof PortraitValidationError ? e.message : 'Fichier refusé.',
-                  );
-                  return;
-                }
                 setPortraitError(null);
                 onPortraitFile?.(file);
                 patch({ portraitVariant: 'custom' });
               }}
+              onValidationError={setPortraitError}
               disabledCustom={!PORTRAIT_UPLOAD_AVAILABLE}
               disabledCustomReason="Disponible une fois le personnage créé."
             />

@@ -1073,6 +1073,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                     busy={portraitBusy}
                     onSelectStatic={handleSelectStaticPortrait}
                     onSelectFile={(file) => void handleSelectPortraitFile(file)}
+                    onValidationError={setPortraitError}
                     disabledCustom={!portraitCloudBacked}
                     disabledCustomReason="Disponible une fois le personnage synchronisé avec le cloud."
                   />
