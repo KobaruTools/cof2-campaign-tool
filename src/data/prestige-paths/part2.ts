@@ -2706,6 +2706,49 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage conjure un cheval fantomatique qui peut le transporter (plus éventuellement un autre cavalier) pendant [1d4° + INT] heures. Cette monture est un peu plus rapide qu'un cheval ordinaire (10 km/période) sauf si elle transporte deux cavaliers (5 km/h). Elle n'est pas ralentie par les terrains difficiles ; à partir du rang 6, elle peut courir sur l'eau et à partir du rang 8, elle peut se déplacer dans les airs. Ce type de monture ne peut être guidée que par son invocateur.",
+    richText:
+      "Le personnage conjure un cheval fantomatique qui peut le transporter (plus éventuellement un autre cavalier) pendant [1d4° + INT] heures. Cette monture est un peu plus rapide qu'un cheval ordinaire (10 km/période) sauf si elle transporte deux cavaliers (5 km/h). Elle n'est pas ralentie par les terrains difficiles ; à partir du rang 6, elle peut courir sur l'eau et à partir du rang 8, elle peut se déplacer dans les airs. Ce type de monture ne peut être guidée que par son invocateur.",
+    // Marqueur d'INVOCATION (patron Serviteur invisible/Démon, PER-235) : la monture dure
+    // [1d4° + INT] heures → effet TEMPORAIRE sans bonus, bouton « Invoquer » sur la carte du rang.
+    // Marqueur « en selle » (index 1, PER-363, patron Cavalier émérite `cavalier-r2`) : AUCUN bonus
+    // chiffré (le livre n'en accorde aucun à cette monture) — sert seulement à afficher le toggle
+    // « En selle » sur la carte compagnon (`companionMountEnSelle`), pour suivre qui la chevauche.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Monture fantôme invoquée', activeByDefault: false },
+      },
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'en selle', activeByDefault: false },
+      },
+    ],
+    // Profil LÉGER (patron Serviteur invisible, p. 96) : le livre ne donne ni PV ni DEF ni attaque à
+    // cette monture (elle transporte, elle ne combat pas) — aucune donnée devinée. PAS de
+    // `descriptionRich` (demande propriétaire) : le verbatim/les formules de durée+vitesse restent
+    // sur la mini-fiche du RANG (« Voies & capacités »), la carte Compagnon ne montre que ce qui sert
+    // au jeu — ici les 3 particularités de déplacement, en `specialAbilities`. « Court sur l'eau »/
+    // « Vol » sont ajoutées par `creatureUpgrade` sur r6/r8 (mêmes capacités que celles qui les
+    // débloquent dans le texte), gatées par rang via le mécanisme EXISTANT (`gatherCreatureUpgrades` —
+    // ne s'applique que si le personnage a acquis ce rang, donc a atteint ce rang dans la voie).
+    // `companionSlot` PROPRE (PER-363) : cette voie octroie DEUX invocations INDÉPENDANTES (cette
+    // monture ET Chasseur ailé, r7) pouvant être actives simultanément — sans ce slot dédié, le
+    // dédoublonnage par défaut (une seule créature par VOIE) masquerait celle des deux dont le rang
+    // est le plus bas dès que l'autre est aussi invoquée.
+    creatureProfile: {
+      name: 'Monture fantôme',
+      companionType: 'mount',
+      companionSlot: 'prestige-invocation-majeure-r4',
+      type: 'cheval fantomatique',
+      specialAbilities: [
+        {
+          name: 'Insensible aux terrains difficiles',
+          text: "N'est pas ralentie par les terrains difficiles.",
+        },
+      ],
+    },
     sourcePage: 158,
   },
   {
@@ -2717,6 +2760,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "L'invocateur enchante une porte ordinaire existante (pas une porte artificielle) et, pour une durée allant jusqu'à 1 h/niveau, elle s'ouvre sur un manoir magique au lieu de l'endroit habituel. La porte garde ses caractéristiques originelles (solidité, serrure, etc.), mais ne peut pas être bloquée par magie. Le manoir possède jusqu'à une pièce par niveau, pour une surface totale jusqu'à 50 m2 par niveau de l'invocateur. Il est meublé selon le style choisi par l'invocateur, depuis un taudis lugubre jusqu'à un palais luxueux rempli de victuailles et de vaisselle d'or (aucun objet magique). Les pièces n'ont pas de fenêtre et les objets disparaissent s'ils sortent du manoir. La nourriture qui peut y être trouvée possède des qualités gustatives à la discrétion de l'invocateur. Tous ces aliments désaltèrent ou procurent un effet normal de satiété, mais ils ne nourrissent pas réellement. Si l'invocateur utilise à nouveau ce sort alors qu'un autre manoir était encore actif, le premier disparaît immédiatement. Toutes les créatures à l'intérieur du manoir au moment où il disparaît, sont éjectées devant la porte et subissent 1d6 DM.",
+    richText:
+      "L'invocateur enchante une porte ordinaire existante (pas une porte artificielle) et, pour une durée allant jusqu'à [=niveau] heure(s), elle s'ouvre sur un manoir magique au lieu de l'endroit habituel. La porte garde ses caractéristiques originelles (solidité, serrure, etc.), mais ne peut pas être bloquée par magie. Le manoir possède jusqu'à [=niveau] pièce(s), pour une surface totale jusqu'à [=niveau × 50] m2. Il est meublé selon le style choisi par l'invocateur, depuis un taudis lugubre jusqu'à un palais luxueux rempli de victuailles et de vaisselle d'or (aucun objet magique). Les pièces n'ont pas de fenêtre et les objets disparaissent s'ils sortent du manoir. La nourriture qui peut y être trouvée possède des qualités gustatives à la discrétion de l'invocateur. Tous ces aliments désaltèrent ou procurent un effet normal de satiété, mais ils ne nourrissent pas réellement. Si l'invocateur utilise à nouveau ce sort alors qu'un autre manoir était encore actif, le premier disparaît immédiatement. Toutes les créatures à l'intérieur du manoir au moment où il disparaît, sont éjectées devant la porte et subissent {1d6} DM.",
     sourcePage: 159,
   },
   {
@@ -2728,6 +2773,31 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Un navire fantôme surgit des profondeurs de la mer et se place sous les ordres du personnage. Il est recouvert d'algues et de coquillages, il n'a pas d'équipage et n'en a nul besoin. Il se déplace au bon vouloir du personnage à une vitesse de 20 km/h. Il peut abriter une vingtaine de personnes, mais peut en transporter jusqu'à cent. Il disparaît au prochain lever de soleil. Le navire fantôme ne peut naviguer à plus d'une journée de la côte la plus proche, les étendues lointaines lui sont interdites… À partir du rang 8, le personnage devient capable d'invoquer une nef fantôme qui navigue dans les airs (considéré comme un sort de rang 8 pour le coût en PM).",
+    richText:
+      "Un navire fantôme surgit des profondeurs de la mer et se place sous les ordres du personnage. Il est recouvert d'algues et de coquillages, il n'a pas d'équipage et n'en a nul besoin. Il se déplace au bon vouloir du personnage à une vitesse de 20 km/h. Il peut abriter une vingtaine de personnes, mais peut en transporter jusqu'à cent. Il disparaît au prochain lever de soleil. Le navire fantôme ne peut naviguer à plus d'une journée de la côte la plus proche, les étendues lointaines lui sont interdites… À partir du rang 8, le personnage devient capable d'invoquer une nef fantôme qui navigue dans les airs (considéré comme un sort de rang 8 pour le coût en PM).",
+    // Interrupteur « Nef fantôme » (variante aérienne, rang 8) : bascule le NOM affiché sur la carte
+    // (« Nef fantôme », cf. `useFeatureNameDecliner`/ternaire du titre dans `FeaturesByPath.tsx`) ET le
+    // coût en PM affiché (rang effectif 8 au lieu de 6, `ghostShipManaCostFeature`). Sans bonus chiffré
+    // propre : le reste de la description (capacité, disparition à l'aube…) ne change pas selon le
+    // livre, seul le milieu (mer/air) et le coût varient.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'Nef fantôme (variante aérienne, rang 8)', activeByDefault: false },
+      },
+    ],
+    // Amélioration de Monture fantôme (r4, cible implicite = voie SOURCE = `prestige-invocation-majeure`,
+    // `targetPaths` omis) : « à partir du rang 6, elle peut courir sur l'eau » (texte de r4). Portée par
+    // CE rang (r6) plutôt que par r4 lui-même car `gatherCreatureUpgrades` ne considère que les
+    // capacités RÉELLEMENT ACQUISES — atteindre le rang 6 de la voie EST précisément acquérir Navire
+    // fantôme, donc gate naturellement la mini-fiche de la monture sans primitive de rang à inventer.
+    // `targetSlot` OBLIGATOIRE : cette voie octroie DEUX compagnons (Monture fantôme ET Chasseur ailé,
+    // même `pathId`) — sans lui, l'amélioration s'appliquerait aussi (à tort) au chasseur.
+    creatureUpgrade: {
+      targetSlot: 'prestige-invocation-majeure-r4',
+      specialAbilities: [{ name: "Court sur l'eau", text: "Peut courir sur l'eau." }],
+    },
     sourcePage: 159,
   },
   {
@@ -2739,6 +2809,50 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage invoque à son service une créature ailée de grande taille pendant 24 h. À son arrivée, il doit lui donner la mission de trouver et de lui rapporter une personne ou un objet. Le chasseur se met immédiatement en chasse avec un instinct infaillible et la trouve à moins que la cible ne soit dissimulée par magie (sort de non-détection, par exemple). Le chasseur utilise au mieux ses capacités et son intelligence pour réussir sa mission, mais il ne combat pas, sauf pour se défendre. Il parcourt jusqu'à 25 km/h. En cas de réussite, le chasseur rapporte l'objet ou la créature et le dépose devant l'invocateur. À la fin de la durée du sort, si le chasseur ailé n'a pas pu remplir sa mission, il entre dans une rage destructrice, il retrouve alors le personnage qui l'a invoqué et l'attaque jusqu'à ce qu'il soit vaincu (il n'utilise pas sa capacité d'Enlèvement pour ce combat).\n\nCHASSEUR AILÉ — NC5\nLe chasseur ailé ressemble à un humain à la peau noire, doté d'une tête de faucon de la même couleur. Ses bras sont remplacés par des ailes et ses jambes par de puissantes serres.\nTAILLE GRANDE, CRÉATURE NON VIVANTE\nAGI +1 | CON +6 | FOR +6 | PER +0 | CHA +0 | INT +2 | VOL +6\nDéfense 18 · Points de vigueur 50 · Initiative 12\nSerres +10 · DM 2d6+6\nVOL RAPIDE : Le chasseur ailé obtient une action de mouvement supplémentaire par round lorsqu'il est en vol. Au premier round de combat, la créature obtient un bonus de +5 en attaque et +1d6 aux DM si elle est en vol et attaque une créature au sol, elle peut tenter un enlèvement.\nENLÈVEMENT : Le chasseur ailé peut tenter d'agripper une cible de taille moyenne ou inférieure en action d'attaque. La cible peut faire un test de FOR opposé pour échapper à son étreinte à sa première attaque, en cas d'échec, elle est immobilisée et elle ne peut pas se libérer avant que le serviteur ne décide de la relâcher ou qu'il soit vaincu.",
+    // Rendu enrichi (PER-74, patron Invocation d'un démon) : la prose SEULE (le bloc de stats sort
+    // du richText, porté par `creatureProfile` en mini-fiche).
+    richText:
+      "Le personnage invoque à son service une créature ailée de grande taille pendant 24 h. À son arrivée, il doit lui donner la mission de trouver et de lui rapporter une personne ou un objet. Le chasseur se met immédiatement en chasse avec un instinct infaillible et la trouve à moins que la cible ne soit dissimulée par magie (sort de non-détection, par exemple). Le chasseur utilise au mieux ses capacités et son intelligence pour réussir sa mission, mais il ne combat pas, sauf pour se défendre. Il parcourt jusqu'à 25 km/h. En cas de réussite, le chasseur rapporte l'objet ou la créature et le dépose devant l'invocateur. À la fin de la durée du sort, si le chasseur ailé n'a pas pu remplir sa mission, il entre dans une rage destructrice, il retrouve alors le personnage qui l'a invoqué et l'attaque jusqu'à ce qu'il soit vaincu (il n'utilise pas sa capacité d'Enlèvement pour ce combat).",
+    // Marqueur d'INVOCATION (patron Invocation d'un démon, demon-r5) : durée fixe 24 h → effet
+    // TEMPORAIRE sans bonus, bouton « Invoquer » sur la carte du rang.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Chasseur ailé invoqué', activeByDefault: false },
+      },
+    ],
+    // Profil structuré (NC5, p. 160) : attaque PROPRE (pas celle du maître — le chasseur combat pour
+    // sa propre mission, pas au service direct de l'invocateur), deux particularités spéciales.
+    creatureProfile: {
+      name: 'Chasseur ailé',
+      companionType: 'summon',
+      // `companionSlot` PROPRE (PER-363) : voir Monture fantôme (r4) — les deux invocations de
+      // cette voie sont INDÉPENDANTES et peuvent être actives en même temps.
+      companionSlot: 'prestige-invocation-majeure-r7',
+      type: 'Créature non vivante',
+      size: 'grande',
+      abilities: { AGI: 1, CON: 6, FOR: 6, PER: 0, CHA: 0, INT: 2, VOL: 6 },
+      defense: '18',
+      hitPoints: '[=50]',
+      initiative: '12',
+      attack: { label: 'Serres', value: '+10', damage: '[2d6 + 6]' },
+      note: 'Parcourt jusqu’à 25 km/h en chasse. Ne combat pas, sauf pour se défendre.',
+      specialAbilities: [
+        {
+          name: 'Vol rapide',
+          text: "Le chasseur ailé obtient une action de mouvement supplémentaire par round lorsqu'il est en vol. Au premier round de combat, la créature obtient un bonus de +5 en attaque et +1d6 aux DM si elle est en vol et attaque une créature au sol, elle peut tenter un enlèvement.",
+          richText:
+            "Le chasseur ailé obtient une action de mouvement supplémentaire par round lorsqu'il est en vol. Au premier round de combat, la créature obtient un bonus de +5 en attaque et +{1d6} aux DM si elle est en vol et attaque une créature au sol, elle peut tenter un enlèvement.",
+        },
+        {
+          name: 'Enlèvement',
+          text: "Le chasseur ailé peut tenter d'agripper une cible de taille moyenne ou inférieure en action d'attaque. La cible peut faire un test de FOR opposé pour échapper à son étreinte à sa première attaque, en cas d'échec, elle est immobilisée et elle ne peut pas se libérer avant que le serviteur ne décide de la relâcher ou qu'il soit vaincu.",
+          richText:
+            "Le chasseur ailé peut tenter d'agripper une cible de taille moyenne ou inférieure en action d'attaque. La cible peut faire un test de @FOR opposé pour échapper à son étreinte à sa première attaque, en cas d'échec, elle est immobilisée et elle ne peut pas se libérer avant que le serviteur ne décide de la relâcher ou qu'il soit vaincu.",
+        },
+      ],
+    },
     sourcePage: 160,
   },
   {
@@ -2750,6 +2864,18 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le personnage peut faire apparaître un portail lumineux pour une durée maximale de [5 + INT] minutes, bien qu'il puisse mettre fin au sort à tout moment. Cette porte apparaît simultanément dans un autre lieu choisi par le magicien, soit à portée de vue, soit à un endroit parfaitement connu du magicien à une portée maximale égale à son niveau × 10 km. Tant qu'il est actif, le portail magique peut être emprunté dans un sens ou dans un autre par toute créature de taille énorme ou inférieure.",
+    richText:
+      "Une fois par jour, le personnage peut faire apparaître un portail lumineux pour une durée maximale de [5 + INT] minutes, bien qu'il puisse mettre fin au sort à tout moment. Cette porte apparaît simultanément dans un autre lieu choisi par le magicien, soit à portée de vue, soit à un endroit parfaitement connu du magicien à une portée maximale égale à [=niveau × 10] km. Tant qu'il est actif, le portail magique peut être emprunté dans un sens ou dans un autre par toute créature de taille énorme ou inférieure.",
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long (patron Voyage par les arbres,
+    // druide r5).
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    // Amélioration de Monture fantôme (r4) : « à partir du rang 8, elle peut se déplacer dans les
+    // airs » (texte de r4) — même patron que « Court sur l'eau » sur r6 (rang réellement acquis = rang
+    // gagné, aucune primitive de seuil à inventer). `targetSlot` OBLIGATOIRE, même raison que r6.
+    creatureUpgrade: {
+      targetSlot: 'prestige-invocation-majeure-r4',
+      specialAbilities: [{ name: 'Vol', text: 'Peut se déplacer dans les airs.' }],
+    },
     sourcePage: 160,
   },
 

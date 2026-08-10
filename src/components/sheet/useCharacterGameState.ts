@@ -44,6 +44,7 @@ import { deriveStats, type DerivedStats } from '@/lib/engine';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import { useCharactersStore } from '@/stores/characters';
 import { useCrystalAssignmentStore } from '@/stores/crystalAssignment';
+import { useMountPassengerAssignmentStore } from '@/stores/mountPassengerAssignment';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { buildCharacterDerivedView, type CharacterDerivedView } from './characterDerivedView';
 
@@ -96,6 +97,12 @@ export interface CharacterGameState {
    * cristal retourne, éteint, chez le mage qui l'a fabriqué. Sans effet en lecture seule.
    */
   releaseCrystal: (crystalId: string) => void;
+  /**
+   * Le personnage DESCEND d'une monture invoquée où il montait en passager (PER-363, retour de
+   * recette). Rien à écrire sur sa propre fiche (aucun champ ne l'y liait) : tout passe par l'état de
+   * combat, dont le MJ est l'auteur unique. Sans effet en lecture seule.
+   */
+  releaseMountPassenger: () => void;
 
   // --- Objets & équipement porté -----------------------------------------------------------
   /**
@@ -315,6 +322,15 @@ export function useCharacterGameState(
       useCrystalAssignmentStore
         .getState()
         .release(target.campaignId, crystalId, target.id, !isPlayer);
+    },
+    // Le passager descend (PER-363) : rien à écrire sur sa fiche (aucun champ ne l'y liait), tout
+    // passe par l'état de combat — même patron que `releaseCrystal`, en plus simple (pas d'extinction
+    // à propager côté mage).
+    releaseMountPassenger: () => {
+      if (readOnly) return;
+      useMountPassengerAssignmentStore
+        .getState()
+        .release(target.campaignId, target.id, !isPlayer);
     },
     createElixir: (counterKey, cost, max, elixirName) =>
       update(actions.createElixir(target, { counterKey, cost, max, elixirName })),

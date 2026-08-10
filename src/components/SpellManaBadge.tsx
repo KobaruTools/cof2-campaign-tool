@@ -91,6 +91,13 @@ export interface SpellManaBadgeProps {
    * les surcoûts ci-dessus (plancher 0). Défaut 0 (aucune réduction).
    */
   discount?: number;
+  /**
+   * PER-74 — réduction PERMANENTE et INCONDITIONNELLE de coût (voie de l'invocation majeure, p. 158 :
+   * « ils bénéficient automatiquement de la Concentration ») : 2 PM de moins sur TOUT sort de la
+   * voie, calculée par l'appelant (`majorSummoningManaDiscount`). Distincte de `discount` (source
+   * différente, tooltip dédiée) mais soustraite au même titre, avant les surcoûts. Défaut 0.
+   */
+  majorSummoningDiscount?: number;
   /** Diamètre de la goutte en pixels. Défaut 30. */
   size?: number;
   /**
@@ -115,31 +122,34 @@ export interface SpellManaBadgeProps {
  * (cf. `spellManaCost`, PER-65). Ne rend rien pour une capacité qui n'est pas un
  * sort (pas de coût de mana).
  */
-export function SpellManaBadge({ feature, concentration = false, surcharge = 0, armorSurcharge, discount = 0, size = 30, color, tooltipEnterDelay, sx }: SpellManaBadgeProps) {
+export function SpellManaBadge({ feature, concentration = false, surcharge = 0, armorSurcharge, discount = 0, majorSummoningDiscount = 0, size = 30, color, tooltipEnterDelay, sx }: SpellManaBadgeProps) {
   const baseCost = spellManaCost(feature);
   if (baseCost === null) return null;
   // Concentration active ET sort éligible (lancé en (A)) : on affiche le coût
   // réduit. Sinon la pastille montre le coût de base inchangé.
   const concentrated = concentration && canConcentrate(feature);
   const preDiscountCost = concentrated ? (concentratedSpellManaCost(feature) ?? baseCost) : baseCost;
-  // Rituel de combat (PER-74) : réduction PERMANENTE soustraite avant les surcoûts, plancher 0.
-  const cost = Math.max(0, preDiscountCost - discount);
+  // Rituel de combat + invocation majeure (PER-74) : réductions PERMANENTES soustraites avant les
+  // surcoûts, plancher 0.
+  const totalDiscount = discount + majorSummoningDiscount;
+  const cost = Math.max(0, preDiscountCost - totalDiscount);
   // Deux surcoûts distincts s'ajoutent PAR-DESSUS le coût affiché : le surcoût CROISSANT
   // (PER-162, état de jeu) et le surcoût d'ARMURE (PER-82, équipement porté). Les deux
   // peuvent se cumuler avec la réduction de concentration.
   const escalating = Math.max(0, surcharge);
   const armorExtra = armorSurcharge && armorSurcharge.surcharge > 0 ? armorSurcharge.surcharge : 0;
   const reduced = discount > 0;
+  const majorSummoningReduced = majorSummoningDiscount > 0;
   const inflated = escalating > 0 || armorExtra > 0;
   // Détail affiché dès qu'un modificateur (hausse OU réduction permanente) s'écarte du coût de base.
-  const hasDetail = inflated || reduced;
+  const hasDetail = inflated || reduced || majorSummoningReduced;
   const displayCost = cost + escalating + armorExtra;
   const baseTooltip = concentrated
     ? concentrationCostExplanation(baseCost, cost)
     : manaCostExplanation(feature, cost);
   // Libellé accessible : liste tous les modificateurs qui écartent le coût affiché du coût de base.
   const extras: string[] = [];
-  if (reduced) extras.push(`-${discount} de réduction permanente`);
+  if (totalDiscount > 0) extras.push(`-${totalDiscount} de réduction permanente`);
   if (armorExtra > 0) extras.push(`+${armorExtra} de surcoût d’armure`);
   if (escalating > 0) extras.push(`+${escalating} de surcoût croissant`);
   const fullTooltip = hasDetail ? (
@@ -149,6 +159,13 @@ export function SpellManaBadge({ feature, concentration = false, surcharge = 0, 
         <Box sx={{ mt: 1 }}>
           <TooltipLine page={151}>
             Rituel de combat : -{discount} PM sur ce sort (guerrier-mage, rang 5)
+          </TooltipLine>
+        </Box>
+      )}
+      {majorSummoningReduced && (
+        <Box sx={{ mt: 1 }}>
+          <TooltipLine page={158}>
+            Voie de l’invocation majeure : -{majorSummoningDiscount} PM (Concentration automatique)
           </TooltipLine>
         </Box>
       )}

@@ -197,6 +197,55 @@ describe('listCompanions', () => {
     expect(resolveCreatureMaxHp(invoked[0].profile, char().abilities, 5, 2)).toBeNull();
   });
 
+  it('invocation majeure (PER-363) : Monture fantôme et Chasseur ailé coexistent (companionSlot)', () => {
+    const featureIds = ['prestige-invocation-majeure-r4', 'prestige-invocation-majeure-r7'];
+    // Aucune des deux invoquée → aucun compagnon.
+    expect(listCompanions(char({ classId: 'magicien', featureIds }))).toHaveLength(0);
+    // Seule la monture invoquée → une entrée, profil léger.
+    const mountOnly = listCompanions(
+      char({ classId: 'magicien', featureIds, effectToggles: { 'prestige-invocation-majeure-r4': [true] } }),
+    );
+    expect(mountOnly.map((e) => e.profile.name)).toEqual(['Monture fantôme']);
+    // Les DEUX invoquées EN MÊME TEMPS → deux entrées distinctes (même voie, slots différents) —
+    // sans `companionSlot`, le dédoublonnage par voie aurait masqué la monture (rang le plus bas).
+    const both = listCompanions(
+      char({
+        classId: 'magicien',
+        featureIds,
+        effectToggles: {
+          'prestige-invocation-majeure-r4': [true],
+          'prestige-invocation-majeure-r7': [true],
+        },
+      }),
+    );
+    expect(both.map((e) => e.profile.name).sort()).toEqual(['Chasseur ailé', 'Monture fantôme']);
+  });
+
+  it("invocation majeure (PER-363) : l'amélioration « Court sur l'eau »/« Vol » de r6/r8 ne cible QUE la monture, pas le chasseur (targetSlot)", () => {
+    const c = char({
+      classId: 'magicien',
+      featureIds: [
+        'prestige-invocation-majeure-r4',
+        'prestige-invocation-majeure-r6',
+        'prestige-invocation-majeure-r7',
+        'prestige-invocation-majeure-r8',
+      ],
+      effectToggles: {
+        'prestige-invocation-majeure-r4': [true],
+        'prestige-invocation-majeure-r7': [true],
+      },
+    });
+    const byName = new Map(listCompanions(c).map((e) => [e.profile.name, e.profile.specialAbilities ?? []]));
+    expect(byName.get('Monture fantôme')?.map((a) => a.name)).toEqual([
+      'Insensible aux terrains difficiles',
+      "Court sur l'eau",
+      'Vol',
+    ]);
+    // Le chasseur garde SES DEUX SEULES capacités — sans `targetSlot`, il hériterait à tort de
+    // « Court sur l'eau »/« Vol » (même `pathId` que la monture).
+    expect(byName.get('Chasseur ailé')?.map((a) => a.name)).toEqual(['Vol rapide', 'Enlèvement']);
+  });
+
   it('zombies (PER-235) : une entrée par instance, clé composite + numérotation, supprimable', () => {
     // Sans instance créée → aucun zombie affiché, même capacité acquise.
     expect(listCompanions(char({ classId: 'sorcier', featureIds: ['outre-tombe-r3'] }))).toHaveLength(0);

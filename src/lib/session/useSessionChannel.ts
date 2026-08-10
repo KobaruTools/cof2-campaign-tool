@@ -52,8 +52,15 @@ import {
   executeCrystalRelease,
   extinguishReleasedCrystal,
 } from '@/stores/crystalAssignment';
+import {
+  MOUNT_PASSENGER_ASSIGNMENT_EVENT,
+  MOUNT_PASSENGER_RELEASE_EVENT,
+  executeMountPassengerAssignment,
+  executeMountPassengerRelease,
+} from '@/stores/mountPassengerAssignment';
 import { reviveBuffWaiver } from './buffWaiver';
 import { reviveCrystalAssignment, reviveCrystalRelease } from './crystalAssignment';
+import { reviveMountPassengerAssignment, reviveMountPassengerRelease } from './mountPassengerAssignment';
 import { removeStatusFrom } from './combatState';
 import { EMPTY_PRESENCE, useSessionPresenceStore } from '@/stores/sessionPresence';
 import { registerSessionChannel } from './sessionBridge';
@@ -297,6 +304,23 @@ export function useSessionChannel(
       // décoche même si le MJ est sur un écran qui ne tient pas l'état de combat (projection,
       // seconde fenêtre). Le MJ, lui, lève la puce en plus.
       else extinguishReleasedCrystal(release);
+    });
+
+    // ASSIGNATION D'UN PASSAGER par un joueur (PER-363, Monture fantôme p. 158) : même motif que
+    // l'attribution d'un cristal — rien à arbitrer, mais le joueur ne peut pas écrire l'état de
+    // combat. Le client du MJ pose l'état sur le passager désigné (et le retire du précédent).
+    channel.on('broadcast', { event: MOUNT_PASSENGER_ASSIGNMENT_EVENT }, ({ payload }) => {
+      if (!active || kind !== 'gm') return;
+      const assignment = reviveMountPassengerAssignment(payload);
+      if (assignment) executeMountPassengerAssignment(campaignId, assignment);
+    });
+
+    // « JE DESCENDS » d'un passager (PER-363, retour de recette) : contrairement au cristal, rien à
+    // éteindre côté mage (aucun bonus, aucun champ ne quitte sa fiche) — seul le client du MJ agit.
+    channel.on('broadcast', { event: MOUNT_PASSENGER_RELEASE_EVENT }, ({ payload }) => {
+      if (!active || kind !== 'gm') return;
+      const release = reviveMountPassengerRelease(payload);
+      if (release) executeMountPassengerRelease(campaignId, release);
     });
 
     // `setAuth()` (sans argument → token courant) avant l'abonnement : supabase-js le

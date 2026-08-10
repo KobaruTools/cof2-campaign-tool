@@ -109,6 +109,7 @@ import { RestRequestControl } from '@/components/session/RestRequestControl';
 import { ManeuversPanel } from '@/components/sheet/ManeuversPanel';
 import { SourceRef } from '@/components/SourceRef';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
+import { MountPassengerSelect } from '@/components/sheet/MountPassengerSelect';
 import { AddMountButton, OwnedMountsPanel } from '@/components/sheet/OwnedMountsPanel';
 import { PurseField } from '@/components/sheet/PurseField';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
@@ -756,6 +757,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         // Rendre un cristal confié (PER-360) n'est pas réservé au joueur : le MJ, qui consulte la
         // fiche du porteur, peut le lui reprendre. Le cristal repart ÉTEINT chez son propriétaire.
         onReleaseCrystal={readOnly ? undefined : (crystalId) => game.releaseCrystal(crystalId)}
+        onDismountPassenger={readOnly ? undefined : () => game.releaseMountPassenger()}
       />
     );
 
@@ -1334,6 +1336,15 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                         // partagé que la carte de voie et les montures possédées. Masqué en lecture seule.
                         enSelleFor={readOnly ? undefined : (entry) => companionMountEnSelle(character, entry)}
                         onSetMounted={readOnly ? undefined : (entry, on) => setMountedTarget(on ? entry.key : null)}
+                        // Sélecteur de passager (PER-363) : seule Monture fantôme le supporte à ce jour.
+                        renderPassengerSelect={
+                          readOnly
+                            ? undefined
+                            : (entry) =>
+                                entry.key === 'prestige-invocation-majeure-r4' ? (
+                                  <MountPassengerSelect character={character} />
+                                ) : null
+                        }
                       />
                     )}
                     {ownedMounts.length > 0 && (

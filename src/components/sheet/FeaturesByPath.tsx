@@ -96,6 +96,7 @@ import { featureIdsFromHistory } from '@/lib/character/levelUp';
 import { spellArmorManaSurcharge } from '@/lib/character/manaSurcharge';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { combatRitualDiscount } from '@/lib/character/warmagePath';
+import { ghostShipActive, ghostShipManaCostFeature, majorSummoningManaDiscount } from '@/lib/character/majorSummoningPath';
 import { archmageStaffSpellGranted } from '@/lib/character/archmagePath';
 import { useContentVersion } from '@/lib/content/useContentVersion';
 // Restriction FINE d'usage d'armure par capacité d'origine (PER-86) : rendu VISUEL (rang
@@ -3178,13 +3179,16 @@ function PathBlock({
           // laissant la bande de l'hôte intacte. Pour une carte non-emprunt, on retombe sur `feature`.
           const armorRestrictedFeature = borrowed ?? feature;
           // Nom affiché : « Enchantement » + niveau courant sur 2 lignes pour la carte fusionnée de
-          // la voie de l'enchanteur (cf. commentaire `isEnchanterPath` ci-dessus) ; sinon inchangé.
+          // la voie de l'enchanteur (cf. commentaire `isEnchanterPath` ci-dessus) ; « Nef fantôme »
+          // quand la variante aérienne de Navire fantôme est activée (PER-363, r6) ; sinon inchangé.
           const displayName = isEnchanterPath ? (
             <>
               Enchantement
               <br />
               {`Niveau ${pathRank - 3}`}
             </>
+          ) : !borrowed && character && ghostShipActive(character) && feature.id === 'prestige-invocation-majeure-r6' ? (
+            'Nef fantôme'
           ) : borrowed ? (
             declinedName(borrowed)
           ) : (
@@ -3308,12 +3312,13 @@ function PathBlock({
                 (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)))
             ) && (
               <SpellManaBadge
-                feature={borrowed ?? feature}
+                feature={ghostShipManaCostFeature(character, borrowed ?? feature)}
                 // PER-74 — Capacité fabuleuse : sort (A) cible → concentration permanente (−2 PM) sur la goutte.
                 concentration={borrowed ? concentration : fabulousFor(feature).manaConcentration}
                 surcharge={character ? escalatingManaSurcharge(character, borrowed ?? feature) : 0}
                 armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, borrowed ?? feature) : null}
                 discount={character ? combatRitualDiscount(character, borrowed ?? feature) : 0}
+                majorSummoningDiscount={majorSummoningManaDiscount(borrowed ?? feature)}
                 color={(borrowed ? borrowedColor : color) ?? undefined}
                 tooltipEnterDelay={1000}
                 sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
@@ -3592,11 +3597,12 @@ function PathBlock({
                       />
                       {!itemNoMana && (
                         <SpellManaBadge
-                          feature={item}
+                          feature={ghostShipManaCostFeature(character, item)}
                           concentration={concentration}
                           surcharge={character ? escalatingManaSurcharge(character, item) : 0}
                           armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, item) : null}
                           discount={character ? combatRitualDiscount(character, item) : 0}
+                          majorSummoningDiscount={majorSummoningManaDiscount(item)}
                           color={itemColor ?? undefined}
                           tooltipEnterDelay={1000}
                           sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
@@ -4220,11 +4226,12 @@ function PathBlock({
                 </Typography>
               </Stack>
               <SpellManaBadge
-                feature={feature}
+                feature={ghostShipManaCostFeature(character, feature)}
                 concentration={fabulousFor(feature).manaConcentration}
                 surcharge={character ? escalatingManaSurcharge(character, feature) : 0}
                 armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, feature) : null}
                 discount={character ? combatRitualDiscount(character, feature) : 0}
+                majorSummoningDiscount={majorSummoningManaDiscount(feature)}
                 color={color ?? undefined}
                 tooltipEnterDelay={1000}
                 sx={{ alignSelf: 'center', mr: 1 }}

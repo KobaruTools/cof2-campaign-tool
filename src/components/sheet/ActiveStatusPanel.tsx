@@ -28,6 +28,7 @@ import { statusLabel } from '@/lib/ui/statusPalette';
 import {
   isBeneficialStatus,
   isCrystalStatus,
+  isMountPassengerStatus,
   statusRemainingRounds,
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
@@ -47,6 +48,11 @@ export interface ActiveStatusPanelProps {
    */
   onReleaseCrystal?: (crystalId: string) => void;
   /**
+   * Le PASSAGER descend d'une monture invoquée (PER-363). Absent = aucune croix sur l'état passager :
+   * sur la fiche vue par un tiers, ce ne serait le geste de personne.
+   */
+  onDismountPassenger?: () => void;
+  /**
    * Manche courante du combat en cours (« Tour N » de l'écran de MJ), dont se déduisent les tours
    * restants des états à durée (PER-305). Le joueur voit ainsi combien de temps il subit encore
    * l'état, exactement comme le MJ — mais sans pouvoir y toucher.
@@ -58,6 +64,7 @@ export function ActiveStatusPanel({
   statuses,
   onWaiveBuff,
   onReleaseCrystal,
+  onDismountPassenger,
   roundNumber,
 }: ActiveStatusPanelProps) {
   // Rien à afficher hors session ni sans état posé (l'appelant ne passe la liste qu'en session).
@@ -75,24 +82,33 @@ export function ActiveStatusPanel({
           // cristal repart chez le mage qui l'a fabriqué, ÉTEINT — le rallumer lui coûtera une action
           // limitée (p. 156), qu'il n'a pas dépensée.
           const crystal = isCrystalStatus(s.id);
+          // Un PASSAGER d'une monture invoquée (PER-363) porte lui aussi une croix, pour la même
+          // raison qu'un cristal : il ne « s'écarte » pas d'un effet, il DESCEND. Rien à éteindre côté
+          // mage (contrairement au cristal), donc pas de message équivalent.
+          const passenger = isMountPassengerStatus(s.id);
           const waivable =
-            !crystal && onWaiveBuff !== undefined && isBeneficialStatus(s.id);
+            !crystal && !passenger && onWaiveBuff !== undefined && isBeneficialStatus(s.id);
           const releasable = crystal && onReleaseCrystal !== undefined;
+          const dismountable = passenger && onDismountPassenger !== undefined;
           return (
             <Stack key={s.id} direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-              {waivable || releasable ? (
+              {waivable || releasable || dismountable ? (
                 <Box sx={{ display: 'flex' }}>
                   <StatusChipVisual id={s.id} squareRight castBy={s.castBy} />
                   <ClearStatusButton
                     label={
                       releasable
                         ? `Rendre ${statusLabel(s.id)} à son propriétaire (il le récupérera éteint)`
-                        : `Écarter ${statusLabel(s.id)} de ta fiche (pour toi seul)`
+                        : dismountable
+                          ? `Descendre de ${statusLabel(s.id)}`
+                          : `Écarter ${statusLabel(s.id)} de ta fiche (pour toi seul)`
                     }
                     onClear={() =>
                       releasable
                         ? onReleaseCrystal(s.id)
-                        : onWaiveBuff!(s.id as BeneficialEffectId)
+                        : dismountable
+                          ? onDismountPassenger()
+                          : onWaiveBuff!(s.id as BeneficialEffectId)
                     }
                   />
                 </Box>

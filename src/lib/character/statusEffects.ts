@@ -28,21 +28,27 @@ import {
   CRYSTAL_STATUSES,
   type CrystalStatusId,
 } from '@/data/crystalStatuses';
+import {
+  MOUNT_PASSENGER_STATUSES,
+  type MountPassengerStatusId,
+} from '@/data/mountPassengerStatuses';
 import { hpHealthState } from './gauges';
 import type { Depletion } from './types';
 
 /**
  * Identifiant d'état, indifféremment du glossaire (`StatusEffectId`), situationnel
  * (`SituationalEffectId`), d'environnement (`EnvironmentalEffectId`), bénéfique
- * (`BeneficialEffectId`, buffs de groupe PER-104) ou cristal confié (`CrystalStatusId`, PER-360).
- * Les cinq espaces d'ids sont disjoints : un id suffit à retrouver son catalogue (cf. `statusEntry`).
+ * (`BeneficialEffectId`, buffs de groupe PER-104), cristal confié (`CrystalStatusId`, PER-360) ou
+ * passager d'une monture invoquée (`MountPassengerStatusId`, PER-363). Les six espaces d'ids sont
+ * disjoints : un id suffit à retrouver son catalogue (cf. `statusEntry`).
  */
 export type AnyStatusEffectId =
   | StatusEffectId
   | SituationalEffectId
   | EnvironmentalEffectId
   | BeneficialEffectId
-  | CrystalStatusId;
+  | CrystalStatusId
+  | MountPassengerStatusId;
 
 /**
  * Un état APPLIQUÉ à un combattant : son id + (pour les états cumulatifs) son intensité courante.
@@ -205,8 +211,8 @@ const ATTACK_KEYS: DerivedStatId[] = ['meleeAttack', 'rangedAttack', 'magicAttac
 
 /**
  * Retourne l'entrée de catalogue d'un id d'état, qu'il soit du glossaire, situationnel,
- * d'environnement, bénéfique ou cristal confié (les cinq espaces d'ids sont disjoints).
- * `undefined` si l'id est inconnu (défensif).
+ * d'environnement, bénéfique, cristal confié ou passager de monture (les six espaces d'ids sont
+ * disjoints). `undefined` si l'id est inconnu (défensif).
  */
 export function statusEntry(id: AnyStatusEffectId): StatusEffectEntry | undefined {
   return (
@@ -214,7 +220,8 @@ export function statusEntry(id: AnyStatusEffectId): StatusEffectEntry | undefine
     (SITUATIONAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
     (ENVIRONMENTAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
     (BENEFICIAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
-    (CRYSTAL_STATUSES as Record<string, StatusEffectEntry>)[id]
+    (CRYSTAL_STATUSES as Record<string, StatusEffectEntry>)[id] ??
+    (MOUNT_PASSENGER_STATUSES as Record<string, StatusEffectEntry>)[id]
   );
 }
 
@@ -272,6 +279,11 @@ export function isBeneficialStatus(id: AnyStatusEffectId): boolean {
 /** Vrai si l'état est un CRISTAL CONFIÉ par un autre personnage (PER-360, voie des cristaux p. 156). */
 export function isCrystalStatus(id: AnyStatusEffectId): id is CrystalStatusId {
   return (CRYSTAL_STATUSES as Record<string, StatusEffectEntry>)[id] !== undefined;
+}
+
+/** Vrai si l'état est un PASSAGER d'une monture invoquée (PER-363, Monture fantôme p. 158). */
+export function isMountPassengerStatus(id: AnyStatusEffectId): id is MountPassengerStatusId {
+  return (MOUNT_PASSENGER_STATUSES as Record<string, StatusEffectEntry>)[id] !== undefined;
 }
 
 /** Vrai si l'état est CUMULATIF (compteur d'intensité) ; faux s'il est binaire. */

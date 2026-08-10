@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
@@ -52,6 +53,14 @@ interface CompanionCardProps {
   mounted?: boolean | null;
   /** Bascule l'état « en selle » (fourni seulement si `mounted` n'est pas `null`). */
   onSetMounted?: (on: boolean) => void;
+  /**
+   * Sélecteur de PASSAGER (PER-363, ex. `MountPassengerSelect` sur Monture fantôme), pour les
+   * compagnons qui le supportent — rendu sur la MÊME ligne que le toggle « En selle » (gain de place),
+   * prend le reste de la largeur. Le contenu (composant autonome, campagne comprise) est décidé par
+   * l'APPELANT — ce composant reste générique et ignore tout de la notion de passager. `undefined`/
+   * `null` → rien de rendu.
+   */
+  passengerSelect?: ReactNode;
 }
 
 /**
@@ -62,7 +71,7 @@ interface CompanionCardProps {
  * `CreatureProfile` (résolution de `hitPoints`) ; s'ils ne se résolvent pas en nombre, on
  * retombe sur l'affichage textuel des PV dans la ligne de stats (pas de barre).
  */
-function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDamage, onHeal, onReset, onDelete, mounted, onSetMounted }: CompanionCardProps) {
+function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDamage, onHeal, onReset, onDelete, mounted, onSetMounted, passengerSelect }: CompanionCardProps) {
   const { profile, pathRank, bonusDieAbilities, defenseAltActive, instanceId, instanceIndex } = entry;
   const maxHp = resolveCreatureMaxHp(profile, abilities, level, pathRank);
   const hasAbilities = !!resolveCreatureAbilities(profile, abilities);
@@ -158,26 +167,36 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
         )}
       </Box>
 
-      {/* Toggle « En selle » d'une monture de voie (PER-216) : piloté par l'interrupteur « en selle »
-          de la voie du cavalier (état partagé avec la carte de voie et les montures possédées). Rendu
-          seulement quand ce compagnon est une monture chevauchable (`mounted` non nul). */}
-      {mounted != null && onSetMounted && (
-        <Stack direction="row" sx={{ mt: 1 }}>
-          <AppTooltip title="Le chevalier est-il actuellement en selle sur cette monture ? Active les bonus « en selle » de sa voie (DEF de la monture, +DM au contact, attaque de monture).">
-            <span>
-              <ToggleButton
-                value="mounted"
-                size="small"
-                selected={mounted}
-                onChange={() => onSetMounted(!mounted)}
-                sx={{ textTransform: 'none', px: 1.5, py: 0.25 }}
-              >
-                {mounted ? 'En selle' : 'À pied'}
-              </ToggleButton>
-            </span>
-          </AppTooltip>
+      {/* Toggle « En selle » (PER-216, généralisé PER-363) + sélecteur de PASSAGER (PER-363) sur la
+          MÊME ligne (retour propriétaire : gagner de la place) — piloté par l'interrupteur « en
+          selle » de la voie de CE compagnon (état partagé avec la carte de voie et les montures
+          possédées). Le toggle est rendu seulement quand ce compagnon est une monture chevauchable
+          (`mounted` non nul) — le libellé reste générique, les voies n'accordent pas toutes le même
+          bonus (cavalier : DEF/+DM au contact ; Monture fantôme : aucun, purement positionnel). Le
+          sélecteur (contenu décidé par l'appelant, cf. `passengerSelect`) prend le reste de la
+          largeur ; soit l'un, soit l'autre, soit les deux peuvent être absents. */}
+      {(mounted != null && onSetMounted) || passengerSelect ? (
+        <Stack direction="row" spacing={1} sx={{ mt: 1, alignItems: 'flex-start' }} onClick={(e) => e.stopPropagation()}>
+          {mounted != null && onSetMounted && (
+            <AppTooltip title="Le personnage est-il actuellement en selle sur cette monture ? Partagé avec la carte de voie — active les éventuels bonus « en selle » qu'elle accorde.">
+              <span style={{ display: 'flex', flexShrink: 0 }}>
+                <ToggleButton
+                  value="mounted"
+                  size="small"
+                  selected={mounted}
+                  onChange={() => onSetMounted(!mounted)}
+                  // Hauteur ALIGNÉE sur l'input MUI voisin (`TextField` `size="small"`, 40px) plutôt
+                  // que la hauteur native du bouton — retour propriétaire (alignement en haut de ligne).
+                  sx={{ textTransform: 'none', px: 1.5, height: 40 }}
+                >
+                  {mounted ? 'En selle' : 'À pied'}
+                </ToggleButton>
+              </span>
+            </AppTooltip>
+          )}
+          {passengerSelect && <Box sx={{ flex: 1, minWidth: 0 }}>{passengerSelect}</Box>}
         </Stack>
-      )}
+      ) : null}
 
       {/* Le TEXTE D'ORIGINE verbatim n'est affiché QUE sur la mini-fiche du RANG (Voies & capacités),
           pas ici (la carte compagnon reste centrée sur le jeu : PV + stats + capacités). */}
@@ -234,6 +253,13 @@ export interface CompanionsPanelProps {
   enSelleFor?: (entry: CompanionEntry) => boolean | null;
   /** Bascule l'état « en selle » du compagnon `entry` (fourni avec `enSelleFor`, hors lecture seule). */
   onSetMounted?: (entry: CompanionEntry, on: boolean) => void;
+  /**
+   * Sélecteur de PASSAGER (PER-363) à rendre sous la carte de `entry`, pour les compagnons qui le
+   * supportent (ex. Monture fantôme). Retourne `null`/`undefined` pour ne rien rendre. Ce panneau
+   * reste générique : c'est l'APPELANT qui décide quel compagnon qualifie et quel composant rendre
+   * (`MountPassengerSelect`, campagne comprise).
+   */
+  renderPassengerSelect?: (entry: CompanionEntry) => ReactNode;
 }
 
 /**
@@ -253,6 +279,7 @@ export function CompanionsPanel({
   onDelete,
   enSelleFor,
   onSetMounted,
+  renderPassengerSelect,
 }: CompanionsPanelProps) {
   return (
     <Stack spacing={1.5}>
@@ -269,6 +296,7 @@ export function CompanionsPanel({
             onDamage={(amount, kind) => onDamage(entry.key, amount, kind)}
             onHeal={(amount) => onHeal(entry.key, amount)}
             onReset={() => onReset(entry.key)}
+            passengerSelect={renderPassengerSelect?.(entry)}
             // Corbeille rendue seulement pour une instance supprimable (zombie).
             onDelete={onDelete && entry.instanceId !== undefined ? () => onDelete(entry.key) : undefined}
             // Toggle « En selle » seulement pour une monture de voie (`mounted` non nul) et hors lecture seule.
