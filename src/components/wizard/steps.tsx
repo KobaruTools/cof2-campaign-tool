@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
@@ -42,6 +42,9 @@ import {
 import type { Armor, CharacterClass, Feature, Shield, Weapon } from '@/data/schema';
 import { AppAlert } from '@/components/AppAlert';
 import { IdentityForm } from '@/components/IdentityForm';
+import { PortraitVariantMenu } from '@/components/PortraitVariantMenu';
+import { classPortraitPath } from '@/lib/storage/useCharacterPortraitSrc';
+import { PortraitValidationError, validatePortraitFile } from '@/lib/storage/characterPortrait';
 import {
   divineFeatureOfVocation,
   involvedClassIds,
@@ -1218,16 +1221,93 @@ export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
 // Étape 6 — Identité
 // ---------------------------------------------------------------------------
 
-export function IdentityStep({ draft, patch }: StepProps) {
+// Env public — même garde-fou que côté fiche/store (pas de fichier utilitaire
+// partagé pour ce simple check, cf. convention existante du repo).
+const PORTRAIT_UPLOAD_AVAILABLE = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+);
+
+export function IdentityStep({ draft, patch, portraitFile, onPortraitFile }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
+  const characterClass = classById.get(draft.classId);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Aperçu 100 % local du fichier choisi (aucun envoi tant que le personnage
+  // n'existe pas encore en DB, cf. PER-383) — révoqué à chaque changement.
+  useEffect(() => {
+    if (!portraitFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(portraitFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [portraitFile]);
+
+  const previewSrc =
+    draft.portraitVariant === 'custom' && previewUrl
+      ? previewUrl
+      : classPortraitPath(draft.classId, draft.portraitVariant === 'alt' ? 'alt' : 'default');
+
   return (
-    <IdentityForm
-      name={draft.name}
-      identity={draft.identity}
-      ancestry={ancestry}
-      showNameGenerator
-      onName={(name) => patch({ name })}
-      onIdentity={(identityPatch) => patch({ identity: { ...draft.identity, ...identityPatch } })}
-    />
+    <Stack spacing={2}>
+      {characterClass && (
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Box
+              component="img"
+              src={previewSrc}
+              alt=""
+              aria-hidden
+              sx={{
+                width: 56,
+                height: 56,
+                borderRadius: 2,
+                objectFit: 'cover',
+                objectPosition: 'top',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+              }}
+            />
+            <PortraitVariantMenu
+              variant={draft.portraitVariant ?? 'default'}
+              onSelectStatic={(v) => {
+                onPortraitFile?.(null);
+                setPortraitError(null);
+                patch({ portraitVariant: v });
+              }}
+              onSelectFile={(file) => {
+                try {
+                  validatePortraitFile(file);
+                } catch (e) {
+                  setPortraitError(
+                    e instanceof PortraitValidationError ? e.message : 'Fichier refusé.',
+                  );
+                  return;
+                }
+                setPortraitError(null);
+                onPortraitFile?.(file);
+                patch({ portraitVariant: 'custom' });
+              }}
+              disabledCustom={!PORTRAIT_UPLOAD_AVAILABLE}
+              disabledCustomReason="Disponible une fois le personnage créé."
+            />
+          </Stack>
+          {portraitError && (
+            <AppAlert severity="error" onClose={() => setPortraitError(null)}>
+              {portraitError}
+            </AppAlert>
+          )}
+        </Stack>
+      )}
+      <IdentityForm
+        name={draft.name}
+        identity={draft.identity}
+        ancestry={ancestry}
+        showNameGenerator
+        onName={(name) => patch({ name })}
+        onIdentity={(identityPatch) => patch({ identity: { ...draft.identity, ...identityPatch } })}
+      />
+    </Stack>
   );
 }

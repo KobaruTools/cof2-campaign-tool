@@ -17,6 +17,7 @@ import { ABILITY_IDS } from '@/data/schema';
 import type { Feature, Path } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { summarize } from '@/lib/character/summary';
+import { useCharacterPortraitSrc } from '@/lib/storage/useCharacterPortraitSrc';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import {
   ANCESTRY_COLOR,
@@ -197,6 +198,7 @@ function pathColumns(character: Character): (PathColumn | undefined)[] {
 
 export function CharacterPreviewCard({ character, tinted = true }: CharacterPreviewCardProps) {
   const summary = summarize(character);
+  const portraitSrc = useCharacterPortraitSrc(character.id, character.portraitVariant, summary.classId);
   return (
     // `minWidth` : dans une infobulle qui se dimensionne au contenu (survol desktop),
     // un plancher garde les 7 badges de carac d'égale largeur. Mais réutilisée dans une
@@ -218,7 +220,7 @@ export function CharacterPreviewCard({ character, tinted = true }: CharacterPrev
       <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
         <Box
           component="img"
-          src={`/classes/${summary.classId}${character.portraitVariant === 'alt' ? '-2' : ''}.webp`}
+          src={portraitSrc}
           alt=""
           aria-hidden
           sx={{

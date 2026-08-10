@@ -258,9 +258,11 @@ export type Sex = 'male' | 'female';
 /**
  * Variante d'illustration du profil : chaque profil dispose d'une illustration
  * standard (`default` → `/classes/<id>.webp`) et d'une alternative
- * (`alt` → `/classes/<id>-2.webp`). Choix purement esthétique.
+ * (`alt` → `/classes/<id>-2.webp`), ou d'un portrait personnalisé envoyé par le
+ * joueur (`custom`, PER-383 — cf. `src/lib/storage/characterPortrait.ts` pour le
+ * fichier, ce champ ne sert qu'à savoir LEQUEL afficher). Choix esthétique.
  */
-export type PortraitVariant = 'default' | 'alt';
+export type PortraitVariant = 'default' | 'alt' | 'custom';
 
 /** Champs d'identité libres (PRD §5.2 étape 6). */
 export interface Identity {
@@ -1070,6 +1072,16 @@ export interface Character {
    * Voir `src/lib/character/crystals.ts`.
    */
   activeCrystalIds?: string[];
+
+  /**
+   * Cristaux REÇUS d'un autre personnage (PER-360, p. 156 : « Il peut le porter ou le confier à la
+   * personne de son choix »). **Champ TRANSITOIRE, jamais persisté ni diffusé** : il n'existe que
+   * dans la copie de CALCUL du porteur (`withReceivedCrystals`), reconstruite à chaque rendu depuis
+   * les états de combat posés sur lui — l'état partagé faisant foi pour tout ce qui vient d'autrui.
+   * Le porteur n'a rien APPRIS : ces cristaux ne comptent ni dans ses cristaux appris ni dans son
+   * plafond d'activation, ils ne font qu'apporter leur bonus. `[]`/absent = aucun cristal confié.
+   */
+  receivedCrystalIds?: string[];
 
   /**
    * Armes ENDUITES de poison (voie du maître des poisons, p. 143, PER-74). État de jeu transitoire

@@ -13,8 +13,13 @@ interface HeaderIllustrationsProps {
   ancestryId?: string;
   /** Profil : portrait, ancré au bord DROIT de l'écran. Absent = rien. */
   classId?: string;
-  /** Variante du portrait de profil (image alternative « -2 »). */
-  portraitVariant?: 'default' | 'alt';
+  /**
+   * Src déjà résolu du portrait de profil (illustration standard/alt statique,
+   * ou objectURL d'un portrait personnalisé — cf. `useCharacterPortraitSrc`,
+   * PER-383). Le composant n'a plus à connaître les variantes, juste à afficher
+   * l'image reçue. Défaut : illustration standard du profil (`classId`).
+   */
+  classPortraitSrc?: string;
   /**
    * Position verticale de la vitruve. Relative au parent (`position: relative`) si
    * exprimée en % — défaut `'75%'`, calibré pour l'en-tête compact de la fiche ; on
@@ -40,7 +45,7 @@ interface HeaderIllustrationsProps {
 export function HeaderIllustrations({
   ancestryId,
   classId,
-  portraitVariant = 'default',
+  classPortraitSrc,
   ancestryTop = '75%',
   ancestryHeight = '300%',
 }: HeaderIllustrationsProps) {
@@ -62,7 +67,7 @@ export function HeaderIllustrations({
         classImgRef.current.style.transform = `translateX(calc(50vw + ${mx}px)) translateY(${dy}px)`;
       }
     },
-    { trackScroll: true, deps: [ancestryId, classId, portraitVariant] },
+    { trackScroll: true, deps: [ancestryId, classId, classPortraitSrc] },
   );
 
   return (
@@ -100,7 +105,7 @@ export function HeaderIllustrations({
         <Box
           component="img"
           ref={classImgRef}
-          src={`/classes/${classId}${portraitVariant === 'alt' ? '-2' : ''}.webp`}
+          src={classPortraitSrc ?? `/classes/${classId}.webp`}
           alt=""
           aria-hidden
           sx={{

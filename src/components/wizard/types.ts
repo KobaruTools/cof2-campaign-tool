@@ -14,4 +14,12 @@ export interface StepProps {
    * (ex. vocation du prêtre) n'ont pas à le fournir.
    */
   campaignAllowsFirearms?: boolean;
+  /**
+   * Fichier de portrait personnalisé mis en attente (PER-383) — l'envoi réel est
+   * différé après la création du personnage (la RLS du bucket exige que la ligne
+   * `characters` existe déjà en DB, ce qui n'est vrai qu'après le commit final du
+   * wizard). Seule `IdentityStep` s'en sert.
+   */
+  portraitFile?: File | null;
+  onPortraitFile?: (file: File | null) => void;
 }

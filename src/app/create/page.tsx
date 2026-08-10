@@ -27,6 +27,7 @@ import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
 import { firearmsEffective } from '@/lib/character/firearms';
+import { uploadCharacterPortrait } from '@/lib/storage/characterPortrait';
 import { AppAlert } from '@/components/AppAlert';
 import { AppHeader } from '@/components/AppHeader';
 import { ClassStep, PathsStep, IdentityStep } from '@/components/wizard/steps';
@@ -160,6 +161,9 @@ export default function CreatePage() {
   // conservé tant que le commit n'a pas abouti — jamais d'inachevé en base).
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
+  // Portrait personnalisé (PER-383) : envoi différé après le commit — la RLS du
+  // bucket exige que la ligne `characters` existe déjà en DB (cf. IdentityStep).
+  const [portraitFile, setPortraitFile] = useState<File | null>(null);
   // Redirection vers la fiche après création réussie : le brouillon vient d'être
   // vidé (clear) mais la navigation n'est pas encore effective. Sans ce verrou,
   // l'effet de démarrage ci-dessous recréerait aussitôt un brouillon vierge et
@@ -183,6 +187,7 @@ export default function CreatePage() {
     // Joueur pré-attribué (PER-184, raccourci de recréation depuis un perso mort) :
     // n'a de sens que dans une campagne, donc ignoré si `campaign` est absent.
     const player = campaign ? params.get('player') : null;
+    setPortraitFile(null);
     start(campaign, player);
   }, [hasHydrated, draft, start, redirecting]);
 
@@ -292,6 +297,18 @@ export default function CreatePage() {
       setCommitting(false);
       return;
     }
+    if (portraitFile) {
+      // Envoi différé (PER-383) : la RLS du bucket exige que la ligne `characters`
+      // existe déjà, ce qui vient juste d'être fait ci-dessus. Non bloquant — en cas
+      // d'échec, le personnage existe quand même et retombe sur l'illustration
+      // standard (cf. useCharacterPortraitSrc) ; le joueur peut réessayer depuis le
+      // même menu sur la fiche.
+      try {
+        await uploadCharacterPortrait(character.id, portraitFile);
+      } catch (e) {
+        console.error("Échec de l'envoi du portrait personnalisé après création :", e);
+      }
+    }
     // Verrouille l'affichage sur l'écran d'attente AVANT de vider le brouillon :
     // empêche l'effet de démarrage de recréer une étape « Peuple » transitoire.
     setRedirecting(true);
@@ -371,7 +388,13 @@ export default function CreatePage() {
             borderColor: 'rgba(255, 255, 255, 0.10)',
           }}
         >
-          <StepComponent draft={draft} patch={patch} campaignAllowsFirearms={campaignAllowsFirearms} />
+          <StepComponent
+            draft={draft}
+            patch={patch}
+            campaignAllowsFirearms={campaignAllowsFirearms}
+            portraitFile={portraitFile}
+            onPortraitFile={setPortraitFile}
+          />
         </Paper>
 
         {/* Feedback : ce qu'il reste à faire avant de pouvoir passer à la suite. */}

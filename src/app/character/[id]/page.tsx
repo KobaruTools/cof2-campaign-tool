@@ -8,7 +8,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -77,6 +76,13 @@ import type { SessionIdentity } from '@/lib/session/useSessionChannel';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
 import { AppTooltip } from '@/components/AppTooltip';
+import { PortraitVariantMenu } from '@/components/PortraitVariantMenu';
+import { useCharacterPortraitSrc, invalidateCharacterPortraitCache } from '@/lib/storage/useCharacterPortraitSrc';
+import {
+  uploadCharacterPortrait,
+  removeCharacterPortrait,
+  PortraitValidationError,
+} from '@/lib/storage/characterPortrait';
 import { useToast } from '@/components/toast/ToastProvider';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
@@ -395,6 +401,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // les retours anticipés ci-dessous, car un Hook ne peut pas être appelé conditionnellement.
   const paidContentLoading = usePaidContentLoading();
 
+  // Portrait de profil (PER-383) — mêmes précautions : Hooks lus ICI, avant les retours
+  // anticipés, avec repli sûr tant que `character` n'est pas encore chargé.
+  const classPortraitSrc = useCharacterPortraitSrc(
+    character?.id ?? '',
+    character?.portraitVariant ?? 'default',
+    character?.classId ?? '',
+  );
+  const portraitCloudBacked = useCharactersStore((s) =>
+    character ? character.id in s.cloudVersions : false,
+  );
+  const [portraitBusy, setPortraitBusy] = useState(false);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
+
   // Spinner tant que le staging local n'est pas relu, ou que le chargement cloud
   // est en cours sans avoir encore trouvé la fiche (évite un « introuvable » fugace
   // sur accès direct à l'URL avant que le cloud ait répondu).
@@ -426,6 +445,32 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const characterClass = classById.get(character.classId);
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   const ancestry = ancestryById.get(character.ancestryId);
+
+  const handleSelectStaticPortrait = (v: 'default' | 'alt') => {
+    if (character.portraitVariant === 'custom') {
+      removeCharacterPortrait(character.id)
+        .then(() => invalidateCharacterPortraitCache(character.id))
+        .catch((e) => console.error('Retrait du portrait personnalisé échoué :', e));
+    }
+    setPortraitError(null);
+    update({ portraitVariant: v });
+  };
+
+  const handleSelectPortraitFile = async (file: File) => {
+    setPortraitError(null);
+    setPortraitBusy(true);
+    try {
+      await uploadCharacterPortrait(character.id, file);
+      invalidateCharacterPortraitCache(character.id);
+      update({ portraitVariant: 'custom' });
+    } catch (e) {
+      setPortraitError(
+        e instanceof PortraitValidationError ? e.message : "Échec de l'envoi de l'image.",
+      );
+    } finally {
+      setPortraitBusy(false);
+    }
+  };
 
   // État de jeu (PER-257) : tout ce qui suit vient du hook — `update` (sauvegarde permissive :
   // chaque modification persiste immédiatement, le store applique `updatedAt`, aucun écart aux
@@ -815,7 +860,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             <HeaderIllustrations
               ancestryId={ancestry?.id}
               classId={characterClass?.id}
-              portraitVariant={character.portraitVariant}
+              classPortraitSrc={classPortraitSrc}
             />
             {/* Attribution de campagne (PER-180), placée au-dessus du nom comme un fil
                 de contexte : hors édition, badge (cliquable vers la vue campagne) ; en
@@ -1019,19 +1064,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   </IconButton>
                 </AppTooltip>
                 {characterClass && (
-                  <AppTooltip title="Changer l’illustration du profil">
-                    <IconButton
-                      size="small"
-                      onClick={() =>
-                        update({
-                          portraitVariant:
-                            character.portraitVariant === 'alt' ? 'default' : 'alt',
-                        })
-                      }
-                    >
-                      <SwapHorizIcon />
-                    </IconButton>
-                  </AppTooltip>
+                  <PortraitVariantMenu
+                    variant={character.portraitVariant}
+                    busy={portraitBusy}
+                    onSelectStatic={handleSelectStaticPortrait}
+                    onSelectFile={(file) => void handleSelectPortraitFile(file)}
+                    disabledCustom={!portraitCloudBacked}
+                    disabledCustomReason="Disponible une fois le personnage synchronisé avec le cloud."
+                  />
                 )}
               </Stack>
             )}
@@ -1060,6 +1100,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 (réglages de campagne) ; l'effectif en découle (`firearmsAllowed`). */}
 
           </Box>
+
+          {portraitError && (
+            <AppAlert severity="error" onClose={() => setPortraitError(null)}>
+              {portraitError}
+            </AppAlert>
+          )}
 
           <ComplianceWarnings warnings={warnings} paidContentPending={paidContentLoading} />
 

@@ -17,6 +17,7 @@ import {
   type EquipmentLine,
   type FeatureChoiceSelection,
   type Identity,
+  type PortraitVariant,
   type PriestVocation,
 } from './types';
 
@@ -106,6 +107,15 @@ export interface WizardDraft {
   // Étape identité
   name: string;
   identity: Identity;
+  /**
+   * Illustration de profil retenue (PER-383) — même champ que `Character`, choisi
+   * dès le wizard via le même menu que sur la fiche. `custom` ne veut PAS dire que
+   * le fichier est déjà envoyé : l'envoi réel est différé après le commit final
+   * (cf. `create/page.tsx`), le fichier lui-même vit hors du brouillon persisté
+   * (un `File` n'est pas sérialisable). Optionnel pour rester compatible avec un
+   * brouillon persisté avant l'ajout du champ (absent = standard).
+   */
+  portraitVariant?: PortraitVariant;
 
   createdAt: string;
 }
@@ -189,6 +199,7 @@ export function createDraft(
     equipment: [],
     name: '',
     identity: {},
+    portraitVariant: 'default',
     createdAt: now,
   };
 }
@@ -307,7 +318,7 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     level: 1,
     // Vocation pertinente seulement pour un prêtre ; null sinon (cf. priestVocationComplete).
     priestVocation: draft.classId === PRIEST_CLASS_ID ? (draft.priestVocation ?? null) : null,
-    portraitVariant: 'default',
+    portraitVariant: draft.portraitVariant ?? 'default',
     firearmsAllowed: draft.firearmsAllowed ?? true,
     abilities: finalAbilities(draft, ancestry),
     baseAbilities: draft.baseAbilities,
