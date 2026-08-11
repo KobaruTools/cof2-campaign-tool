@@ -116,6 +116,13 @@ L'affichage passe par le composant commun `src/components/DieIcon.tsx`.
 | d12 | `skoll/d12.svg` | Skoll |
 | d20 | `delapouite/dice-twenty-faces-twenty.svg` | Delapouite |
 
+**Exception — d3** : le d3 (`src/lib/character/types.ts`, `DamageDie`) n'existe pas au
+catalogue game-icons.net. Son icône est un DESSIN MAISON (le corps du d6 coupé en deux par
+une barre verticale, moitié gauche pleine et moitié droite en simple contour pointillé, avec
+sa face à 3 points en diagonale) plutôt qu'une importation — seule exception à la règle
+« toute icône vient de game-icons.net » de ce dépôt. Voir `scripts/game-icons/dice/gen.mjs`
+(constante `CUSTOM_ICONS`) et `map.tsv`.
+
 ## Icônes des caractéristiques
 
 Les icônes des 7 caractéristiques (AGI, CON, FOR, PER, CHA, INT, VOL) proviennent
