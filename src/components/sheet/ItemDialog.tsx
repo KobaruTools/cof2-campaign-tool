@@ -320,6 +320,7 @@ function BonusRows<Id extends string>({
   ids,
   title,
   selectLabel,
+  addLabel,
   fullMessage,
   renderOption,
   optionLabel,
@@ -330,10 +331,17 @@ function BonusRows<Id extends string>({
 }: {
   /** Clés proposées, dans l'ordre canonique. */
   ids: readonly Id[];
-  /** Intitulé de la section (français). */
-  title: string;
+  /**
+   * Intitulé de la section (français), affiché en surtitre. Absent = pas d'en-tête (retour
+   * propriétaire, en-têtes répétitives jugées superflues) — `addLabel` porte alors seul la
+   * clarté sur ce que la ligne ajoute.
+   */
+  title?: string;
   /** Libellé du sélecteur de clé (français). */
   selectLabel: string;
+  /** Libellé EXPLICITE du bouton d'ajout (« Ajouter un bonus de caractéristique »…), pour
+   * rester clair même sans en-tête de section. */
+  addLabel: string;
   /** Message affiché quand toutes les clés sont déjà prises. */
   fullMessage: string;
   /** Rendu d'une option du sélecteur (icône + libellé). */
@@ -365,9 +373,11 @@ function BonusRows<Id extends string>({
   const optionsFor = (key: Id): Id[] => ids.filter((id) => id === key || !used.has(id));
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-        {title}
-      </Typography>
+      {title && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+          {title}
+        </Typography>
+      )}
       <Stack spacing={1}>
         {rows.map((row, i) => (
           <Stack
@@ -443,7 +453,7 @@ function BonusRows<Id extends string>({
         onClick={() => firstFree && onChange([...rows, { key: firstFree, value: 1 }])}
         sx={{ textTransform: 'none', mt: rows.length ? 1 : 0 }}
       >
-        Ajouter une ligne
+        {addLabel}
       </Button>
       {firstFree === undefined && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
@@ -486,7 +496,8 @@ function MagicPropertyRows({
   onChange,
 }: {
   kinds: readonly MagicPropertyKind[];
-  title: string;
+  /** Intitulé de la section (français). Absent = pas d'en-tête (retour propriétaire). */
+  title?: string;
   addLabel: string;
   rows: MagicProperty[];
   onChange: (rows: MagicProperty[]) => void;
@@ -495,9 +506,11 @@ function MagicPropertyRows({
     onChange(rows.map((r, i) => (i === index ? { ...r, ...next } : r)));
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-        {title}
-      </Typography>
+      {title && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+          {title}
+        </Typography>
+      )}
       <Stack spacing={1}>
         {rows.map((row, i) => {
           const rule = MAGIC_PROPERTY_RULES[row.kind];
@@ -1868,8 +1881,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                       accessoires enchantés — cape de protection, anneau…). */}
                   <MagicPropertyRows
                     kinds={type === 'weapon' ? MAGIC_WEAPON_PROPERTY_KINDS : MAGIC_DEFENSE_PROPERTY_KINDS}
-                    title="Propriétés magiques spéciales"
-                    addLabel="Ajouter une propriété"
+                    addLabel="Ajouter une propriété magique"
                     rows={form.magicProperties}
                     onChange={(rows) => setField('magicProperties', rows)}
                   />
@@ -1878,8 +1890,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                     {/* Bonus/malus de CARACTÉRISTIQUES (PER-272), par lignes. */}
                     <BonusRows
                       ids={ABILITY_IDS}
-                      title="Bonus de caractéristiques"
                       selectLabel="Caractéristique"
+                      addLabel="Ajouter un bonus de caractéristique"
                       fullMessage="Les 7 caractéristiques sont déjà couvertes."
                       renderOption={(id) => (
                         <>
@@ -1896,8 +1908,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                         magique » ci-dessus reste le seul canal d'enchantement défensif. */}
                     <BonusRows
                       ids={ITEM_DERIVED_STAT_IDS}
-                      title="Bonus de statistiques dérivées"
                       selectLabel="Statistique"
+                      addLabel="Ajouter un bonus de statistique dérivée"
                       fullMessage="Toutes les statistiques modifiables sont déjà couvertes."
                       renderOption={(id) => (
                         <>
@@ -1914,8 +1926,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                         objets sur la même cible ne s'additionnent pas, le meilleur gagne. */}
                     <BonusRows
                       ids={ITEM_TEST_TARGET_IDS}
-                      title="Bonus aux tests (bonus de magie)"
                       selectLabel="Caractéristique ou domaine"
+                      addLabel="Ajouter un bonus aux tests (bonus de magie)"
                       fullMessage="Toutes les cibles possibles sont déjà couvertes."
                       searchable
                       groupOf={(id) =>
@@ -1956,13 +1968,6 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                         rechargement à la main uniquement. RÈGLE MAISON : aucun objet à charges
                         dans le livre de base. */}
                     <Box>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: 'block', mb: 0.75 }}
-                      >
-                        Charges
-                      </Typography>
                       <TextField
                         type="number"
                         size="small"
