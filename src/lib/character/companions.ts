@@ -634,6 +634,13 @@ function resolveRichExprNumber(
   level: number,
   rank: number,
 ): number | null {
+  // Valeur FIXE sans crochets (ex. `defense: '18'`, convention courante des profils de
+  // créature) : `parseRichText` ne tague en `expr`/`quantity`/`term` que ce qui est entouré de
+  // `[...]`, un nombre nu reste un simple segment `text` → jamais résolu (bug constaté : la
+  // pastille DEF ajustable de l'écran de MJ retombait sur 0 pour le démon invoqué, sorcier
+  // voie du démon r5, alors que la mini-fiche l'affiche correctement en texte brut).
+  const bareNumber = rich.trim();
+  if (/^-?\d+$/.test(bareNumber)) return parseInt(bareNumber, 10);
   const segments = parseRichText(rich);
   let total = 0;
   let found = false;
