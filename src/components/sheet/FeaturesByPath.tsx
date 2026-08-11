@@ -3582,13 +3582,6 @@ function PathBlock({
                       sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
                     />
                     <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ fontWeight: 600, fontSize: '0.62rem' }}
-                    >
-                      {retainedPathName ?? 'Capacité de peuple'} conservée
-                    </Typography>
-                    <Typography
                       variant="body2"
                       sx={{ fontWeight: 600, fontSize: '0.75rem', width: '100%', wordBreak: 'break-word' }}
                     >
@@ -3951,7 +3944,7 @@ function PathBlock({
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} scalingTierBonus={scalingTierBonus} />
+                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} scalingTierBonus={scalingTierBonus} character={character} />
                 <FeatureSourcePage feature={openFeature} />
                 {openFeature.referencedFeatures && openFeature.referencedFeatures.length > 0 && (
                   <>
@@ -4533,7 +4526,7 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} scalingTierBonus={scalingTierBonus} />
+              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} scalingTierBonus={scalingTierBonus} character={character} />
               <FeatureSourcePage feature={feature} />
               {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
                 <>
