@@ -4,13 +4,18 @@
  * PER-397 — extensions Tiptap de l'éditeur MVP branché sur `CustomItem.description`.
  * Réduit délibérément à ce que la syntaxe texte (PER-395) sait exprimer : gras/italique/barré
  * (marques `@tiptap/extension-*` étendues) + couleur/taille (marques maison `richColor`/
- * `richSize`) + un unique paragraphe (voir `SingleParagraph` plus bas). Tout le reste de
- * `StarterKit` (titres, listes, citations, liens, blocs de code…) est désactivé : la grammaire
- * PER-395 n'a pas de syntaxe pour ça, l'activer laisserait l'éditeur produire un document que
- * la sérialisation (`richTextEditorSync.ts`) ne saurait pas rendre fidèlement.
+ * `richSize`) + un unique paragraphe DE TEXTE COURANT (voir `SingleParagraph` plus bas, nuancé
+ * ci-dessous pour les listes). Le reste de `StarterKit` (titres, citations, liens, blocs de
+ * code…) reste désactivé : la grammaire PER-395/399 n'a pas de syntaxe pour ça, l'activer
+ * laisserait l'éditeur produire un document que la sérialisation (`richTextEditorSync.ts`) ne
+ * saurait pas rendre fidèlement.
  *
  * PER-398 — étend le schéma d'un node ATOMIQUE `mechToken` (dé, formule/quantité/terme, `@carac`,
  * statut, référence de capacité/renvoi de page) : voir `MechToken` plus bas.
+ *
+ * (listes) — listes à puce/numérotées (`StarterKit`) + case à cocher (`TaskList`/`TaskItem`,
+ * packages séparés) réactivées : `richTextEditorSync.ts` sait maintenant sérialiser un doc à
+ * PLUSIEURS blocs de tête (paragraphe(s) + liste(s)), plus seulement un paragraphe unique.
  */
 import { mergeAttributes, Extension, Mark, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from '@tiptap/react';
@@ -18,6 +23,8 @@ import StarterKit from '@tiptap/starter-kit';
 import TiptapBold from '@tiptap/extension-bold';
 import TiptapItalic from '@tiptap/extension-italic';
 import TiptapStrike from '@tiptap/extension-strike';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import Box from '@mui/material/Box';
 import {
   RICH_COLOR_NAMES,
@@ -201,16 +208,23 @@ const MechToken = Node.create({
 });
 
 /**
- * Document à un seul paragraphe (cf. note de tête `richTextEditorSync.ts`) : `Enter` ET
- * `Shift+Enter` insèrent tous les deux un `hardBreak` au lieu de scinder un nouveau paragraphe
- * — la grammaire PER-395 ne distingue pas les deux (un `\n` est un `\n`, `whiteSpace: pre-line`
- * au rendu), et un second paragraphe ne se sérialiserait pas de façon exacte au nombre de
- * sauts de ligne d'origine.
+ * Hors liste, `Enter` ET `Shift+Enter` insèrent tous les deux un `hardBreak` au lieu de scinder
+ * un nouveau paragraphe (cf. tête de `richTextEditorSync.ts`) — la grammaire PER-395 ne distingue
+ * pas les deux (un `\n` est un `\n`, `whiteSpace: pre-line` au rendu), et un second paragraphe ne
+ * se sérialiserait pas de façon exacte au nombre de sauts de ligne d'origine.
+ *
+ * DANS un élément de liste (à puce/numérotée/case à cocher), on laisse au contraire le
+ * comportement PAR DÉFAUT de `ListItem`/`TaskItem` (nouvel élément, ou sortie de liste sur un
+ * élément vide) — sinon `Enter` n'y produirait jamais de nouvel item, juste un `hardBreak` dans
+ * le même item.
  */
 const SingleParagraph = Extension.create({
   name: 'singleParagraph',
   addKeyboardShortcuts() {
-    const insertBreak = () => this.editor.commands.setHardBreak();
+    const insertBreak = () => {
+      if (this.editor.isActive('listItem') || this.editor.isActive('taskItem')) return false;
+      return this.editor.commands.setHardBreak();
+    };
     return { Enter: insertBreak, 'Shift-Enter': insertBreak };
   },
 });
@@ -219,18 +233,16 @@ const SingleParagraph = Extension.create({
 export const RICH_TEXT_EDITOR_EXTENSIONS = [
   StarterKit.configure({
     // Ces désactivations reflètent le PÉRIMÈTRE MVP (5 marques inline) : aucune syntaxe PER-395
-    // pour un titre/une liste/une citation/du code/un lien/une règle horizontale.
+    // pour un titre/une citation/du code/un lien/une règle horizontale. Les listes (bulletList/
+    // orderedList/listItem/listKeymap) restent, elles, ACTIVÉES par défaut — cf. `- item`/`1. item`
+    // dans `richTextEditorSync.ts`.
     blockquote: false,
-    bulletList: false,
     code: false,
     codeBlock: false,
     gapcursor: false,
     heading: false,
     horizontalRule: false,
     link: false,
-    listItem: false,
-    listKeymap: false,
-    orderedList: false,
     // Remplacées ci-dessous par les variantes étendues (groupe d'exclusion) : jamais les deux
     // en même temps dans le schéma, sous peine de collision de nom de marque.
     bold: false,
@@ -243,5 +255,9 @@ export const RICH_TEXT_EDITOR_EXTENSIONS = [
   RichColor,
   RichSize,
   MechToken,
+  // `nested: false` : notre grammaire texte (`- item`, `1. item`, `- [ ] item`) est PLATE, sans
+  // indentation — pas de sous-liste à round-tripper.
+  TaskList,
+  TaskItem.configure({ nested: false }),
   SingleParagraph,
 ];

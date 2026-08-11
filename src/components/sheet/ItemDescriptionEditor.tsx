@@ -18,6 +18,9 @@ import FormatItalicIcon from '@mui/icons-material/FormatItalic';
 import StrikethroughSIcon from '@mui/icons-material/StrikethroughS';
 import FormatColorTextIcon from '@mui/icons-material/FormatColorText';
 import FormatSizeIcon from '@mui/icons-material/FormatSize';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
+import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
+import ChecklistIcon from '@mui/icons-material/Checklist';
 import CircleIcon from '@mui/icons-material/Circle';
 import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import FitnessCenterOutlinedIcon from '@mui/icons-material/FitnessCenterOutlined';
@@ -188,6 +191,28 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
       </ToolbarToggle>
       <ToolbarToggle title="Barré" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}>
         <StrikethroughSIcon fontSize="small" />
+      </ToolbarToggle>
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.25, my: 0.5 }} />
+      <ToolbarToggle
+        title="Liste à puces"
+        active={editor.isActive('bulletList')}
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+      >
+        <FormatListBulletedIcon fontSize="small" />
+      </ToolbarToggle>
+      <ToolbarToggle
+        title="Liste numérotée"
+        active={editor.isActive('orderedList')}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+      >
+        <FormatListNumberedIcon fontSize="small" />
+      </ToolbarToggle>
+      <ToolbarToggle
+        title="Liste à cases à cocher"
+        active={editor.isActive('taskList')}
+        onClick={() => editor.chain().focus().toggleTaskList().run()}
+      >
+        <ChecklistIcon fontSize="small" />
       </ToolbarToggle>
       <Divider orientation="vertical" flexItem sx={{ mx: 0.25, my: 0.5 }} />
       <ToolbarToggle title="Couleur" active={!!activeColor} onClick={(e) => setColorAnchor(e.currentTarget)}>
@@ -465,6 +490,26 @@ export function ItemDescriptionEditor({
             pointerEvents: 'none',
             float: 'left',
             height: 0,
+          },
+          // Listes à puce/numérotées : marge/retrait minimal, cohérent avec `p { margin: 0 }`.
+          '& .ProseMirror ul:not([data-type="taskList"]), & .ProseMirror ol': {
+            margin: 0,
+            paddingLeft: '1.4em',
+          },
+          // Case à cocher (`TaskList`/`TaskItem`) : pas de puce, case + texte alignés en ligne
+          // (feuille de style recommandée par Tiptap, adaptée à `sx`).
+          '& .ProseMirror ul[data-type="taskList"]': { listStyle: 'none', margin: 0, padding: 0 },
+          '& .ProseMirror ul[data-type="taskList"] li': { display: 'flex', alignItems: 'flex-start' },
+          '& .ProseMirror ul[data-type="taskList"] li > label': {
+            flex: '0 0 auto',
+            mr: 0.75,
+            mt: '0.2em',
+            userSelect: 'none',
+          },
+          '& .ProseMirror ul[data-type="taskList"] li > div': { flex: '1 1 auto' },
+          '& .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div': {
+            color: 'text.disabled',
+            textDecoration: 'line-through',
           },
           // Tirette de redimensionnement (Chrome/Edge only, `::-moz-resizer` n'existe pas côté
           // Firefox — le redimensionnement y reste fonctionnel, juste avec la poignée native) :

@@ -123,4 +123,67 @@ describe('descriptionToDoc / docToDescription', () => {
       { type: 'text', text: 'x', marks: [{ type: 'richColor', attrs: { name: 'bleu' } }] },
     ]);
   });
+
+  describe('listes (à puce/numérotée/case à cocher)', () => {
+    it('round-trip une liste à puces isolée', () => {
+      const text = '- pomme\n- poire\n- cerise';
+      expect(roundTrip(text)).toBe(text);
+      const doc = descriptionToDoc(text);
+      expect(doc.content).toEqual([
+        {
+          type: 'bulletList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'pomme' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'poire' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'cerise' }] }] },
+          ],
+        },
+      ]);
+    });
+
+    it('round-trip une liste numérotée isolée, renumérotée depuis le premier item', () => {
+      expect(roundTrip('1. un\n2. deux\n3. trois')).toBe('1. un\n2. deux\n3. trois');
+      // Numéros d'origine non séquentiels : renumérotés depuis le PREMIER (limitation assumée).
+      expect(roundTrip('5. un\n5. deux')).toBe('5. un\n6. deux');
+      const doc = descriptionToDoc('3. a\n4. b');
+      expect(doc.content?.[0]).toMatchObject({ type: 'orderedList', attrs: { start: 3 } });
+    });
+
+    it('round-trip une liste à cases à cocher, coché et non coché', () => {
+      const text = '- [ ] à faire\n- [x] fait';
+      expect(roundTrip(text)).toBe(text);
+      const doc = descriptionToDoc(text);
+      expect(doc.content).toEqual([
+        {
+          type: 'taskList',
+          content: [
+            {
+              type: 'taskItem',
+              attrs: { checked: false },
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'à faire' }] }],
+            },
+            {
+              type: 'taskItem',
+              attrs: { checked: true },
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'fait' }] }],
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('un item de liste porte marques et tokens mécaniques comme une ligne normale', () => {
+      const text = '- **gras** et {1d4}';
+      expect(roundTrip(text)).toBe(text);
+    });
+
+    it('round-trip texte/liste/texte, avec ou sans ligne vide autour de la liste', () => {
+      expect(roundTrip('intro\n- item1\n- item2\noutro')).toBe('intro\n- item1\n- item2\noutro');
+      expect(roundTrip('intro\n\n- item1\n- item2\n\noutro')).toBe('intro\n\n- item1\n- item2\n\noutro');
+    });
+
+    it('une ligne « - » sans espace suivant reste du texte littéral (pas une liste)', () => {
+      expect(roundTrip('valeur -')).toBe('valeur -');
+    });
+  });
 });
