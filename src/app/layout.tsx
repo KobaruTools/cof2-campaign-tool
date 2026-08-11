@@ -1,13 +1,20 @@
 import type { Metadata } from 'next';
-import { Roboto } from 'next/font/google';
+import localFont from 'next/font/local';
 import Providers from './providers';
 import { AppFooter } from '@/components/AppFooter';
 
-const roboto = Roboto({
+// Roboto auto-hébergé (fichiers latin, `next/font/google`) : évite la dépendance
+// réseau vers fonts.gstatic.com au build (Turbopack a échoué en prod sur des
+// URLs de hash périmées, voir incident 2026-08-11).
+const roboto = localFont({
   variable: '--font-roboto',
-  weight: ['300', '400', '500', '700'],
-  subsets: ['latin'],
   display: 'swap',
+  src: [
+    { path: './fonts/Roboto-300.woff2', weight: '300', style: 'normal' },
+    { path: './fonts/Roboto-400.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/Roboto-500.woff2', weight: '500', style: 'normal' },
+    { path: './fonts/Roboto-700.woff2', weight: '700', style: 'normal' },
+  ],
 });
 
 // Pas de `title` ici : le layout est partagé par toutes les routes, donc un
