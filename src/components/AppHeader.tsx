@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import LoginIcon from '@mui/icons-material/Login';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -15,6 +15,7 @@ import { AccountMenu } from '@/components/AccountMenu';
 import { AppBreadcrumbs, type Crumb } from '@/components/AppBreadcrumbs';
 import { AppHeaderBrand } from '@/components/AppHeaderBrand';
 import { AppHeaderNavDrawer } from '@/components/AppHeaderNavDrawer';
+import { FriendsWidget } from '@/components/friends/FriendsWidget';
 import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { HeaderNavButton } from '@/components/HeaderNavButton';
 import { QuestIcon } from '@/components/QuestIcon';
@@ -127,7 +128,7 @@ interface AppHeaderProps {
  * Le périmètre réel est porté par le proxy (`decideRouteAccess`) : ici on ne fait que
  * ne pas proposer de portes fermées.
  */
-export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(function AppHeader({
+export function AppHeader({
   breadcrumbs,
   action,
   accentColor,
@@ -138,7 +139,7 @@ export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(function AppHea
   sessionIndicator,
   sessionRole,
   extraRow,
-}: AppHeaderProps, ref) {
+}: AppHeaderProps) {
   const session = useAppSession();
   const effectiveRole = sessionRole ?? session.role;
   // Tant que la session n'est pas résolue, `useAppSession` répond `owner` (cas
@@ -188,7 +189,6 @@ export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(function AppHea
 
   return (
     <AppBar
-      ref={ref}
       position="sticky"
       // Verre dépoli, plus sombre que les sections de la fiche : gris quasi-noir à
       // peine transparent + le même flou d'arrière-plan (blur 10px) que les sections
@@ -277,6 +277,7 @@ export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(function AppHea
             </>
           )}
           {sessionIndicator}
+          <FriendsWidget enabled={showOwnerLinks} />
           <AccountMenu sessionRole={sessionRole} />
           {/* Visiteur sans session : seul appel à l'action de l'en-tête. Libellé
               TOUJOURS visible (contrairement aux boutons de nav qui se replient) —
@@ -356,4 +357,4 @@ export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(function AppHea
       {extraRow}
     </AppBar>
   );
-});
+}

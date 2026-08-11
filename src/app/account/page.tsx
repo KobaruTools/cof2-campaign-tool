@@ -45,6 +45,7 @@ import { HomeBackground } from '@/components/HomeBackground';
 import { ProviderIcon } from '@/components/icons/ProviderIcons';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { OAUTH_PROVIDERS } from '@/lib/auth/providers';
+import { fetchMyProfile, setMyHandle } from '@/lib/friends/repo';
 import { deleteAccount } from './actions';
 
 const IS_CONFIGURED = Boolean(
@@ -87,6 +88,8 @@ export default function AccountPage() {
   const [identities, setIdentities] = useState<UserIdentity[]>([]);
   const [displayName, setDisplayName] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [handle, setHandle] = useState('');
+  const [savingHandle, setSavingHandle] = useState(false);
   const [busyProvider, setBusyProvider] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -114,10 +117,29 @@ export default function AccountPage() {
       setDisplayName(typeof raw === 'string' ? raw : '');
       setLoading(false);
     })();
+    void fetchMyProfile().then((profile) => {
+      if (!cancelled) setHandle(profile?.handle ?? '');
+    });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  async function saveHandle() {
+    setSavingHandle(true);
+    try {
+      await setMyHandle(handle);
+      notify('Handle enregistré.');
+    } catch (err) {
+      const message = (err as { message?: string })?.message ?? '';
+      if (message.includes('friend_handle_taken')) notify('Ce handle est déjà pris.', 'error');
+      else if (message.includes('friend_handle_invalid_format')) {
+        notify('Handle invalide : 3 à 24 caractères, minuscules/chiffres/underscore.', 'error');
+      } else notify("Impossible d'enregistrer le handle.", 'error');
+    } finally {
+      setSavingHandle(false);
+    }
+  }
 
   async function saveDisplayName() {
     setSavingName(true);
@@ -265,6 +287,29 @@ export default function AccountPage() {
                   variant="contained"
                   onClick={() => void saveDisplayName()}
                   disabled={savingName}
+                  sx={{ mt: 0.5, flexShrink: 0 }}
+                >
+                  Enregistrer
+                </Button>
+              </Stack>
+            </Section>
+
+            {/* Handle public (PER-402) : sert à ce que les amis te retrouvent par
+                recherche exact-match, cf. le tiroir « Amis » de l'en-tête. */}
+            <Section title="Handle public">
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+                <TextField
+                  label="Handle"
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value)}
+                  fullWidth
+                  size="small"
+                  helperText="3 à 24 caractères : minuscules, chiffres, underscore. Utilisé par tes amis pour te retrouver."
+                />
+                <Button
+                  variant="contained"
+                  onClick={() => void saveHandle()}
+                  disabled={savingHandle}
                   sx={{ mt: 0.5, flexShrink: 0 }}
                 >
                   Enregistrer

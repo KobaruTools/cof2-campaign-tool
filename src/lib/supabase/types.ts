@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       campaign_combat: {
@@ -217,6 +192,60 @@ export type Database = {
           },
         ]
       }
+      friend_invite_links: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          token: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          token?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          token?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
+      friend_requests: {
+        Row: {
+          created_at: string
+          from_user_id: string
+          id: string
+          status: string
+          to_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_user_id: string
+          id?: string
+          status?: string
+          to_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          status?: string
+          to_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       game_session_participants: {
         Row: {
           id: string
@@ -358,6 +387,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          handle: string | null
+          id: string
+          last_seen_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          handle?: string | null
+          id: string
+          last_seen_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          handle?: string | null
+          id?: string
+          last_seen_at?: string | null
+        }
+        Relationships: []
+      }
       projection_auth_sessions: {
         Row: {
           auth_user_id: string
@@ -498,15 +551,38 @@ export type Database = {
         Args: { p_source_id: string }
         Returns: boolean
       }
+      find_profile_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          display_name: string
+          handle: string
+          id: string
+        }[]
+      }
+      find_profile_by_handle: {
+        Args: { p_handle: string }
+        Returns: {
+          display_name: string
+          handle: string
+          id: string
+        }[]
+      }
       give_item_to_character: {
         Args: { item: Json; receiver_id: string }
         Returns: Json
       }
       is_anonymous: { Args: never; Returns: boolean }
+      is_campaign_actor: { Args: { cid: string }; Returns: boolean }
+      is_campaign_member: { Args: { cid: string }; Returns: boolean }
       merge_game_state: {
         Args: { character_id: string; patch: Json }
         Returns: Json
       }
+      merge_mount_hp: {
+        Args: { current_mounts: Json; patch_mounts: Json }
+        Returns: Json
+      }
+      redeem_friend_invite: { Args: { p_token: string }; Returns: undefined }
       redeem_source_code: { Args: { p_code: string }; Returns: Json }
       resolve_active_session: {
         Args: { cid: string }
@@ -519,13 +595,21 @@ export type Database = {
           last_active_at: string
           started_at: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "game_sessions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      session_participant_join: { Args: { cid: string }; Returns: string | null }
+      session_participant_join: { Args: { cid: string }; Returns: string }
       session_participant_leave: {
         Args: { participant_id: string }
         Returns: undefined
       }
+      set_my_handle: { Args: { p_handle: string }; Returns: undefined }
       touch_game_session: { Args: { cid: string }; Returns: undefined }
+      touch_my_presence: { Args: never; Returns: undefined }
       touch_player_presence: { Args: never; Returns: undefined }
     }
     Enums: {
@@ -655,9 +739,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
