@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per366-magie-des-mots",
+  "name": "Recette PER-366 — Magicien (voie de la magie des mots)",
+  "identity": {
+    "description": "ATTENDU : magicien niveau 10 avec la voie de prestige de la magie des mots (r4→r8) acquise. r4 Chant fascinant : richText avec formule {1d6}+INT native déjà encadrée, situationalEffectIds ['fascinated']. r5 Poids des mots : verbatim seul, richText identique au text. r6 Cri de la banshee : richText avec dé {6d4°} balisé, usageCounter 1/jour (hideFromStatusPanel). r7 Mot de mana : richText avec {1d4} balisé (x2), inflictableStates ['blinded'], usageCounter 1/récupération rapide. r8 Souhait : verbatim seul, richText identique au text."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "prestige-magie-des-mots-r4",
+    "prestige-magie-des-mots-r5",
+    "prestige-magie-des-mots-r6",
+    "prestige-magie-des-mots-r7",
+    "prestige-magie-des-mots-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-366 — voie de la magie des mots (p. 162), recette des 5 rangs.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

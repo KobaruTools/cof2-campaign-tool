@@ -1478,6 +1478,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'unconscious',
   'cursed',
   'burning',
+  'fascinated',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1600,6 +1601,15 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Chaque round de combat suivant, le feu inflige 1d6 DM supplémentaires à la cible. Sur un résultat de 1 ou 2, le sort prend fin. Les DM sur la durée ne sont pas cumulables si le sort est lancé plusieurs fois.",
     sourcePage: 104,
+  },
+  // « Chant fascinant » (magie des mots, r4, p. 162). Entièrement comportemental (cesse toute
+  // activité, suit le chanteur, rien de chiffrable) : rien dans `StatusModifiers` ne représente
+  // une fascination. Le NC maximal affecté (qui augmente avec le rang) et la durée restent verbatim.
+  fascinated: {
+    label: 'Fasciné',
+    effect:
+      "Cesse toute activité et suit le lanceur du sort tant que celui-ci continue de chanter (une action de mouvement à chaque round), pour une durée maximale de [1d6 + INT] minutes. Une créature blessée reprend immédiatement ses esprits et devient immunisée pendant 24 h.",
+    sourcePage: 162,
   },
 };
 

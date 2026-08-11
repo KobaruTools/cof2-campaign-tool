@@ -3120,6 +3120,13 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le lanceur de sort entonne un chant si merveilleux qu'il fascine toutes les créatures humanoïdes et les animaux de NC 1 ou inférieur dans un rayon de 20 m. Le NC augmente de 1 par rang acquis (NC 2 au rang 6, NC 3 au rang 7 et enfin NC 4 au rang 8). Les victimes cessent toute activité tant que le personnage continue à chanter par une action de mouvement à chaque round et pour une durée maximale de [1d6 + INT] minutes et, si le personnage se déplace, elles le suivent. Les créatures sourdes ou qui se bouchent les oreilles sont immunisées au sort tant qu'elles ne l'entendent pas. Une créature blessée pendant le sort reprend ses esprits et elle y est immunisée pendant 24 h. Un barde peut aussi utiliser un instrument de musique pour lancer ce sort.",
+    // PER-74 — le NC max affecté (qui augmente avec le rang) reste verbatim (pas de primitive de
+    // seuil NC ciblable par un sort de zone). L'état « Fasciné » est un nouvel effet SITUATIONNEL
+    // (comportemental, aucun équivalent dans le glossaire fermé des 10 états ni dans le catalogue
+    // existant) — arbitrage propriétaire 2026-08-11, cf. catalogue `SITUATIONAL_EFFECTS`.
+    richText:
+      "Le lanceur de sort entonne un chant si merveilleux qu'il fascine toutes les créatures humanoïdes et les animaux de NC 1 ou inférieur dans un rayon de 20 m. Le NC augmente de 1 par rang acquis (NC 2 au rang 6, NC 3 au rang 7 et enfin NC 4 au rang 8). Les victimes cessent toute activité tant que le personnage continue à chanter par une action de mouvement à chaque round et pour une durée maximale de [1d6 + INT] minutes et, si le personnage se déplace, elles le suivent. Les créatures sourdes ou qui se bouchent les oreilles sont immunisées au sort tant qu'elles ne l'entendent pas. Une créature blessée pendant le sort reprend ses esprits et elle y est immunisée pendant 24 h. Un barde peut aussi utiliser un instrument de musique pour lancer ce sort.",
+    situationalEffectIds: ['fascinated'],
     sourcePage: 162,
   },
   {
@@ -3130,6 +3137,10 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: true,
     actionTypes: ['L'],
     text:
+      "Le personnage déforme la réalité et la plie à sa volonté par la force du conte. Par exemple, avant de savoir si une porte est fermée à clé, il dira « La porte était habituellement fermée à clé mais, ce jour-là, le maître des lieux, pressé de rejoindre sa fougueuse maîtresse, avait oublié de la verrouiller ». Le personnage peut tenter d'altérer la réalité tant que celle-ci n'a pas été révélée, ensuite ce n'est plus possible. Le MJ peut choisir de refuser les allégations du joueur mais, dans ce cas, les points de mana ne sont pas dépensés.",
+    // PER-74 — règle purement narrative (arbitrage MJ à la table) : aucune primitive ne s'applique,
+    // verbatim/richText seul (aucun dé, aucune caractéristique nommée à baliser).
+    richText:
       "Le personnage déforme la réalité et la plie à sa volonté par la force du conte. Par exemple, avant de savoir si une porte est fermée à clé, il dira « La porte était habituellement fermée à clé mais, ce jour-là, le maître des lieux, pressé de rejoindre sa fougueuse maîtresse, avait oublié de la verrouiller ». Le personnage peut tenter d'altérer la réalité tant que celle-ci n'a pas été révélée, ensuite ce n'est plus possible. Le MJ peut choisir de refuser les allégations du joueur mais, dans ce cas, les points de mana ne sont pas dépensés.",
     sourcePage: 163,
   },
@@ -3142,6 +3153,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par jour, le personnage peut pousser un terrible cri. Toutes les créatures vivantes dans un rayon de 10 m autour du personnage doivent réussir un test de CON difficulté [10 + INT] ou subir 6d4° DM (rien en cas de succès). Les alliés du mage ont un bonus de +5 à ce test (qui prend en compte le fait que ceux-ci sont prévenus et peuvent entre autres se boucher les oreilles). Les victimes qui ont été réduites à 0 PV voient leurs cheveux blanchir définitivement.",
+    // PER-74 — dé de DM balisé ; « une fois par jour » → compteur d'usage rechargé au repos long
+    // (patron mages.ts « magie-universelle-r8 »/« familier »). Les DM eux-mêmes ne sont pas appliqués
+    // par la fiche (pas de cible suivie), comme tout sort d'attaque de zone (patron Foudres divines).
+    richText:
+      "Une fois par jour, le personnage peut pousser un terrible cri. Toutes les créatures vivantes dans un rayon de 10 m autour du personnage doivent réussir un test de CON difficulté [10 + INT] ou subir {6d4°} DM (rien en cas de succès). Les alliés du mage ont un bonus de +5 à ce test (qui prend en compte le fait que ceux-ci sont prévenus et peuvent entre autres se boucher les oreilles). Les victimes qui ont été réduites à 0 PV voient leurs cheveux blanchir définitivement.",
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 163,
   },
   {
@@ -3153,6 +3170,14 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le lanceur de sort désigne une cible à une portée de 20 m et prononce un mot empreint de la puissance brute de la magie. Si la cible possède moins de 120 PV (on parle ici des PV max), elle est aveuglée pour 1d4 rounds. À partir du niveau 15, le personnage peut, s'il le souhaite, utiliser le mot d'étourdissement, si la cible possède moins de 100 PV, elle est étourdie pour 1d4 rounds. À partir du niveau 18, le personnage peut, s'il le souhaite, utiliser le mot de mort : si la cible possède moins de 80 PV, elle meurt (réduite à 0 PV). Le lanceur de sort doit terminer une récupération rapide avant d'être à nouveau capable d'utiliser ce sort.",
+    // PER-74 — mécanise l'effet de BASE (aveuglement, état du glossaire fermé) ; les paliers de
+    // niveau 15/18 (étourdissement, mort) restent verbatim, aucune primitive n'existe pour un état
+    // infligeable déverrouillé par NIVEAU DE PERSONNAGE (arbitrage propriétaire 2026-08-11) — la
+    // fiche ne suit de toute façon pas les PV max de la cible, ces seuils se jouent à l'oral.
+    richText:
+      "Le lanceur de sort désigne une cible à une portée de 20 m et prononce un mot empreint de la puissance brute de la magie. Si la cible possède moins de 120 PV (on parle ici des PV max), elle est aveuglée pour {1d4} rounds. À partir du niveau 15, le personnage peut, s'il le souhaite, utiliser le mot d'étourdissement, si la cible possède moins de 100 PV, elle est étourdie pour {1d4} rounds. À partir du niveau 18, le personnage peut, s'il le souhaite, utiliser le mot de mort : si la cible possède moins de 80 PV, elle meurt (réduite à 0 PV). Le lanceur de sort doit terminer une récupération rapide avant d'être à nouveau capable d'utiliser ce sort.",
+    inflictableStates: { stateIds: ['blinded'], resetOn: 'short-rest' },
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
     sourcePage: 163,
   },
   {
@@ -3163,6 +3188,12 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: true,
     actionTypes: ['L'],
     text:
+      "Le personnage modifie le monde par la force des mots et émet un vœu qui est exaucé. Une fois par jour, il peut dupliquer les effets de n'importe quelle capacité de n'importe quelle voie, jusqu'au rang 5. Une fois par aventure, il peut émettre un souhait qui dépasse ce cadre et dont les limites sont fixées par le seul bon vouloir du MJ. Toutefois, plutôt que d'empêcher le souhait du joueur de se réaliser, le MJ inventera des effets collatéraux préjudiciables qui feront de l'utilisation du souhait un moment de tension et de danger… Par exemple, si le personnage souhaite devenir « extrêmement fort », le MJ peut lui octroyer +4 en FOR, mais lui enlever 4 points en AGI. Les effets du sort sont généralement valables jusqu'à la fin de l'aventure en cours.",
+    // PER-74 — deux paliers d'usage hétérogènes (1×/jour pour dupliquer une capacité existante, 1×/
+    // aventure pour un souhait libre arbitré par le MJ) : aucun `resetOn` d'aventure n'existe, et la
+    // « duplication de n'importe quelle capacité » n'a pas de primitive (précédent exact : contrôle
+    // mental, magie-esprit-r8, PER-365) → verbatim/richText seul.
+    richText:
       "Le personnage modifie le monde par la force des mots et émet un vœu qui est exaucé. Une fois par jour, il peut dupliquer les effets de n'importe quelle capacité de n'importe quelle voie, jusqu'au rang 5. Une fois par aventure, il peut émettre un souhait qui dépasse ce cadre et dont les limites sont fixées par le seul bon vouloir du MJ. Toutefois, plutôt que d'empêcher le souhait du joueur de se réaliser, le MJ inventera des effets collatéraux préjudiciables qui feront de l'utilisation du souhait un moment de tension et de danger… Par exemple, si le personnage souhaite devenir « extrêmement fort », le MJ peut lui octroyer +4 en FOR, mais lui enlever 4 points en AGI. Les effets du sort sont généralement valables jusqu'à la fin de l'aventure en cours.",
     sourcePage: 163,
   },
