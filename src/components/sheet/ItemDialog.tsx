@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Accordion from '@mui/material/Accordion';
@@ -994,11 +995,11 @@ function formFromLine(line: EquipmentLine): FormState {
 }
 
 /**
- * Aperçu EN DIRECT de l'objet en cours de saisie : icône + nom + type + stat du livre (DM/DEF)
- * + badges d'enchantement, dans le même langage visuel que la ligne d'inventaire
- * (`EquipmentList`, badges partagés via `MagicItemBadges`). Épinglé en haut de la modale
- * (position sticky, cf. appelant) pour rester visible pendant la saisie des lignes
- * d'enchantement, potentiellement nombreuses.
+ * Aperçu EN DIRECT et COMPACT (une ligne, retombe en plusieurs si besoin) de l'objet en cours
+ * de saisie : icône + nom + type + stat du livre (DM/DEF) + badges d'enchantement, dans le
+ * même langage visuel que la ligne d'inventaire (`EquipmentList`, badges partagés via
+ * `MagicItemBadges`). Le sticky vit sur le conteneur appelant (en-tête type + base + aperçu),
+ * pas ici — cette carte reste un simple bloc de contenu.
  */
 function ItemPreviewCard({
   type,
@@ -1043,28 +1044,19 @@ function ItemPreviewCard({
   }
 
   return (
-    <Box
-      sx={(theme) => ({
-        position: 'sticky',
-        top: 0,
-        zIndex: 2,
-        bgcolor: 'background.paper',
-        pt: 0.5,
-        pb: 1,
-        mb: 0.5,
-        borderBottom: `1px solid ${theme.palette.divider}`,
-      })}
-    >
-      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.25 }}>
-        <ItemIcon id={iconId} size={22} sx={{ color: itemTypeColor(type) }} />
-        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+    <Stack spacing={0.35} sx={{ minWidth: 0, width: '100%' }}>
+      <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+        <ItemIcon id={iconId} size={18} sx={{ color: itemTypeColor(type), flexShrink: 0 }} />
+        <Typography variant="body2" sx={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {name || 'Nouvel objet'}
         </Typography>
+      </Stack>
+      <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.35 }}>
         <Typography variant="caption" color="text.secondary">
           {ITEM_TYPE_LABELS[type]}
         </Typography>
         {statLine && (
-          <Typography variant="body2" color="text.secondary" component="span">
+          <Typography variant="caption" color="text.secondary" component="span">
             · {statLine}
           </Typography>
         )}
@@ -1080,16 +1072,16 @@ function ItemPreviewCard({
         abilityBonuses ||
         derivedBonuses ||
         testBonuses) && (
-        <Box sx={{ mt: 0.25 }}>
+        <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.35 }}>
           {magicDefNum > 0 && <MagicDefBadge value={magicDefNum} />}
           {magicBonusNum > 0 && <MagicWeaponBonusBadge value={magicBonusNum} />}
           {magicProperties.length > 0 && <MagicPropertyBadges properties={magicProperties} />}
           {abilityBonuses && <AbilityBonusBadges bonuses={abilityBonuses} />}
           {derivedBonuses && <DerivedBonusBadges bonuses={derivedBonuses} />}
           {testBonuses && <TestBonusBadges bonuses={testBonuses} />}
-        </Box>
+        </Stack>
       )}
-    </Box>
+    </Stack>
   );
 }
 
@@ -1345,142 +1337,215 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
       fullWidth
       fullScreen={fullScreen}
     >
-      <DialogTitle>{editing ? 'Modifier l’objet' : 'Ajouter un objet'}</DialogTitle>
+      <DialogTitle sx={{ position: 'relative', pr: 6 }}>
+        {editing ? 'Modifier l’objet' : 'Ajouter un objet'}
+        <IconButton
+          aria-label="Fermer"
+          onClick={onClose}
+          size="small"
+          sx={{ position: 'absolute', top: 8, right: 8 }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
-          {/* 1. Choix du type. En édition mécanique, verrouillé (le type = la base). En
-              édition cosmétique, restreint aux types cosmétiques (re-typage autorisé). */}
-          {editing && mechanical ? (
-            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <ItemTypeIcon type={type} size={18} />
-              {ITEM_TYPE_LABELS[type]}
-            </Typography>
-          ) : !editing && type !== null ? (
-            // Création, type déjà choisi : la rangée de boutons laisse place à un rappel du
-            // type retenu + un retour « Changer de type » qui ramène au choix (écran unique).
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Button
-                size="small"
-                startIcon={<ArrowBackIcon />}
-                onClick={resetType}
-                sx={{ textTransform: 'none' }}
-              >
-                Changer de type
-              </Button>
-              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <ItemTypeIcon type={type} size={18} />
-                {ITEM_TYPE_LABELS[type]}
-              </Typography>
-            </Box>
-          ) : (
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                Type d’objet
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                {(editing ? COSMETIC_TYPES : TYPE_ORDER).map((t) => (
+          {/* En-tête STICKY (type + base du livre + aperçu) : reste visible pendant le
+              défilement des sections Identité/Caractéristiques/Enchantement, qui peuvent
+              devenir longues (retour propriétaire). AUCUN fond ici (retour propriétaire, même
+              pas un voile teinté — `background.paper` en brut est plus SOMBRE que la surface
+              réellement affichée par le Dialog, qui reçoit un overlay d'élévation MUI en thème
+              sombre ; d'où le rectangle gris foncé visible malgré l'opacité réduite tentée
+              précédemment). Seul le flou reste, pour garder lisible ce qui défile dessous.
+              Seule la carte d'aperçu à droite porte un fond plein. */}
+          <Box
+            sx={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 3,
+              pt: 0.5,
+              pb: 1,
+              mb: 0.5,
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              borderBottom: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: 'stretch' }}>
+              <Stack spacing={1.5} sx={{ flex: '1 1 auto', minWidth: 0 }}>
+              {/* 1. Choix du type. En édition mécanique, verrouillé (le type = la base). En
+                  édition cosmétique, restreint aux types cosmétiques (re-typage autorisé). */}
+              {editing && mechanical ? (
+                <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <ItemTypeIcon type={type} size={18} />
+                  {ITEM_TYPE_LABELS[type]}
+                </Typography>
+              ) : !editing && type !== null ? (
+                // Création, type déjà choisi : la rangée de boutons laisse place à un rappel du
+                // type retenu + un retour « Changer de type » qui ramène au choix (écran unique).
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Button
-                    key={t}
                     size="small"
-                    variant={type === t ? 'contained' : 'outlined'}
-                    startIcon={<ItemTypeIcon type={t} />}
-                    onClick={() => chooseType(t)}
+                    startIcon={<ArrowBackIcon />}
+                    onClick={resetType}
                     sx={{ textTransform: 'none' }}
                   >
-                    {ITEM_TYPE_LABELS[t]}
+                    Changer de type
                   </Button>
-                ))}
-              </Box>
-            </Box>
-          )}
-
-          {/* 2. Base du livre (mécanique, obligatoire). En édition, base verrouillée. */}
-          {mechanical &&
-            (editing ? (
-              <Typography variant="body2" color="text.secondary">
-                Base&nbsp;: {selectedBase?.name ?? baseId}
-              </Typography>
-            ) : (
-              <Autocomplete
-                options={baseOptions}
-                getOptionLabel={(o) => o.name}
-                value={selectedBase ?? null}
-                onChange={(_, v) => chooseBase(v ? v.id : null)}
-                // Contact / distance uniquement pour les armes (p. 183/185) : les autres types
-                // (armure, bouclier) n'ont qu'une seule base pertinente, pas de sous-groupe.
-                groupBy={type === 'weapon' ? (o) => weaponBaseGroup(o) : undefined}
-                renderGroup={(params) => {
-                  const group = params.group as WeaponBaseGroup;
-                  return (
-                    <li key={params.key}>
-                      <Box
-                        sx={(theme) => ({
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.75,
-                          px: 1.25,
-                          py: 0.5,
-                          position: 'sticky',
-                          top: -8,
-                          zIndex: 1,
-                          backgroundColor: alpha(theme.palette.background.paper, 0.92),
-                          backdropFilter: 'blur(8px)',
-                          WebkitBackdropFilter: 'blur(8px)',
-                          borderLeft: `3px solid ${itemTypeColor('weapon')}`,
-                          borderBottom: `1px solid ${theme.palette.divider}`,
-                          color: itemTypeColor('weapon'),
-                          fontWeight: 700,
-                          fontSize: '0.75rem',
-                        })}
+                  <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <ItemTypeIcon type={type} size={18} />
+                    {ITEM_TYPE_LABELS[type]}
+                  </Typography>
+                </Box>
+              ) : (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                    Type d’objet
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {(editing ? COSMETIC_TYPES : TYPE_ORDER).map((t) => (
+                      <Button
+                        key={t}
+                        size="small"
+                        variant={type === t ? 'contained' : 'outlined'}
+                        startIcon={<ItemTypeIcon type={t} />}
+                        onClick={() => chooseType(t)}
+                        sx={{ textTransform: 'none' }}
                       >
-                        {group === 'melee' ? (
-                          <SportsMartialArtsIcon sx={{ fontSize: 18 }} />
-                        ) : (
-                          <GpsFixedIcon sx={{ fontSize: 18 }} />
-                        )}
-                        <span>{WEAPON_BASE_GROUP_LABEL[group]}</span>
-                      </Box>
-                      <ul style={{ padding: 0, margin: 0 }}>{params.children}</ul>
-                    </li>
-                  );
-                }}
-                renderOption={(props, o) => {
-                  const { key, ...optionProps } = props as typeof props & { key?: string };
-                  return (
-                    <Box
-                      component="li"
-                      key={key}
-                      {...optionProps}
-                      sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
-                    >
-                      <ItemIcon id={itemIconId({ itemId: o.id, quantity: 1 })} sx={{ color: 'text.secondary' }} />
-                      <Typography variant="body2">{o.name}</Typography>
-                    </Box>
-                  );
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label={`Objet du livre (base ${ITEM_TYPE_LABELS[type].toLowerCase()})`}
-                    size="small"
-                    required
+                        {ITEM_TYPE_LABELS[t]}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {/* 2. Base du livre (mécanique, obligatoire). En édition, base verrouillée. */}
+              {mechanical &&
+                (editing ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    {baseId && <ItemIcon id={itemIconId({ itemId: baseId, quantity: 1 })} sx={{ color: 'text.secondary' }} />}
+                    Base&nbsp;: {selectedBase?.name ?? baseId}
+                  </Typography>
+                ) : (
+                  <Autocomplete
+                    options={baseOptions}
+                    getOptionLabel={(o) => o.name}
+                    value={selectedBase ?? null}
+                    onChange={(_, v) => chooseBase(v ? v.id : null)}
+                    // Contact / distance uniquement pour les armes (p. 183/185) : les autres types
+                    // (armure, bouclier) n'ont qu'une seule base pertinente, pas de sous-groupe.
+                    groupBy={type === 'weapon' ? (o) => weaponBaseGroup(o) : undefined}
+                    renderGroup={(params) => {
+                      const group = params.group as WeaponBaseGroup;
+                      return (
+                        <li key={params.key}>
+                          <Box
+                            sx={(theme) => ({
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.75,
+                              px: 1.25,
+                              py: 0.5,
+                              position: 'sticky',
+                              top: -8,
+                              zIndex: 1,
+                              backgroundColor: alpha(theme.palette.background.paper, 0.92),
+                              backdropFilter: 'blur(8px)',
+                              WebkitBackdropFilter: 'blur(8px)',
+                              borderLeft: `3px solid ${itemTypeColor('weapon')}`,
+                              borderBottom: `1px solid ${theme.palette.divider}`,
+                              color: itemTypeColor('weapon'),
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                            })}
+                          >
+                            {group === 'melee' ? (
+                              <SportsMartialArtsIcon sx={{ fontSize: 18 }} />
+                            ) : (
+                              <GpsFixedIcon sx={{ fontSize: 18 }} />
+                            )}
+                            <span>{WEAPON_BASE_GROUP_LABEL[group]}</span>
+                          </Box>
+                          <ul style={{ padding: 0, margin: 0 }}>{params.children}</ul>
+                        </li>
+                      );
+                    }}
+                    renderOption={(props, o) => {
+                      const { key, ...optionProps } = props as typeof props & { key?: string };
+                      return (
+                        <Box
+                          component="li"
+                          key={key}
+                          {...optionProps}
+                          sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+                        >
+                          <ItemIcon id={itemIconId({ itemId: o.id, quantity: 1 })} sx={{ color: 'text.secondary' }} />
+                          <Typography variant="body2">{o.name}</Typography>
+                        </Box>
+                      );
+                    }}
+                    renderInput={({ slotProps, ...params }) => (
+                      <TextField
+                        {...params}
+                        label={`Objet du livre (base ${ITEM_TYPE_LABELS[type].toLowerCase()})`}
+                        size="small"
+                        required
+                        slotProps={{
+                          ...slotProps,
+                          input: {
+                            ...slotProps.input,
+                            // Icône de la base sélectionnée, pour la retrouver au coup d'œil
+                            // (retour propriétaire) — même icône que dans le sélecteur déroulant.
+                            startAdornment: selectedBase ? (
+                              <ItemIcon
+                                id={itemIconId({ itemId: selectedBase.id, quantity: 1 })}
+                                sx={{ color: 'text.secondary', ml: 0.5 }}
+                              />
+                            ) : (
+                              slotProps.input.startAdornment
+                            ),
+                          },
+                        }}
+                      />
+                    )}
+                    blurOnSelect
                   />
-                )}
-                blurOnSelect
-              />
-            ))}
+                ))}
+              </Stack>
+
+              {/* Aperçu compact de l'objet en cours (icône/nom/type/stat/niveau) : seul bloc à
+                  porter un fond, à côté du type/de la base plutôt qu'en pleine largeur. */}
+              {type !== null && (!mechanical || baseId !== null) && (
+                <Box
+                  sx={{
+                    flex: { xs: '1 1 auto', sm: '0 0 260px' },
+                    minWidth: 0,
+                    bgcolor: 'background.paper',
+                    borderRadius: 1,
+                    border: 1,
+                    borderColor: 'divider',
+                    p: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <ItemPreviewCard
+                    type={type}
+                    mechanical={mechanical}
+                    baseId={baseId}
+                    name={effectiveName}
+                    form={form}
+                  />
+                </Box>
+              )}
+            </Stack>
+          </Box>
 
           {/* 3+. Champs de saisie : dès qu'un type cosmétique est choisi, ou qu'une base
               mécanique est sélectionnée. */}
           {type !== null && (!mechanical || baseId !== null) && (
             <>
-              <ItemPreviewCard
-                type={type}
-                mechanical={mechanical}
-                baseId={baseId}
-                name={effectiveName}
-                form={form}
-              />
               <FormAccordion title="Identité" defaultExpanded>
                 <TextField
                   autoFocus
