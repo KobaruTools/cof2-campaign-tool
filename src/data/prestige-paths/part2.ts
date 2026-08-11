@@ -2913,12 +2913,27 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Le personnage ou la cible (portée 10 m) bénéficie d'un bonus de +10 sur son prochain test d'attaque contre DEF (au contact, à distance ou magique au choix) qui doit être exécuté avant la fin du round. Si ce sort est lancé en action de mouvement, il coûte seulement 2 PM.",
     // Rendu enrichi : les 3 jets d'attaque explicités (gabarit Vision, mages.ts) pour la puce ambre
-    // dédiée de chacun. Pas d'`effects` : le bonus est consommé par LE PROCHAIN jet seul (avant la fin
-    // du round) — aucun canal du moteur ne modélise « une seule prochaine attaque » (même écart assumé
-    // que le tir de réglage du pistolero, adventurers.ts, et Protéger un allié, schema.ts) : verbatim,
-    // au joueur de gérer le round.
+    // dédiée de chacun.
     richText:
       "Le personnage ou la cible (portée 10 m) bénéficie d'un bonus de +10 sur sa prochaine attaque au contact, attaque à distance ou attaque magique (au choix) contre DEF, qui doit être exécutée avant la fin du round. Si ce sort est lancé en action de mouvement, il coûte seulement 2 PM.",
+    // Retour propriétaire : effet POSITIF applicable par le joueur ET posable par le MJ. Interrupteur
+    // de fiche (« Voies & capacités », patron Vision/mages.ts) sur les 3 jets d'attaque À LA FOIS —
+    // même écart assumé que `precision-strike`/`shield-ally` (schema.ts) : le canal ne sait pas
+    // exprimer « un seul jet », au joueur de l'éteindre après l'avoir utilisé. `groupBuffIds` déverrouille
+    // la puce VERTE de la palette de l'écran de MJ (glissable sur une carte de l'ordre d'initiative,
+    // soi-même ou un allié — pas d'`excludesCarrier`, le livre dit « le personnage OU la cible »).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [
+          { stat: 'meleeAttack', value: 10 },
+          { stat: 'rangedAttack', value: 10 },
+          { stat: 'magicAttack', value: 10 },
+        ],
+        activation: { kind: 'temporary', label: 'Coup au but actif', activeByDefault: false },
+      },
+    ],
+    groupBuffIds: ['precision-strike'],
     sourcePage: 161,
   },
   {
@@ -2934,8 +2949,10 @@ export const prestigeFeatures2: Feature[] = [
     // à l'identique, la grammaire du mini-langage l'interprète directement (dé + AGI/INT auto-tagués
     // par le glossaire). Pas d'`effects` : les DM d'un sort ne sont pas modélisés comme un bonus
     // chiffré du moteur (aucun sort de dégâts direct ne l'est ailleurs dans le jeu de données).
+    // « égal à l'INT du personnage » → terme nommé `[#INT]` (retour propriétaire) : la prose garde son
+    // déterminant (« égal à… ») là où un nombre nu se lirait mal, rendu « INT (4) » sans casser la phrase.
     richText:
-      "Le personnage invoque une bille de feu qui se positionne là où le mage lui en donne l'ordre. La trajectoire peut comporter jusqu'à deux coudes à 90° et la distance totale parcourue ne doit pas dépasser 50 m. Le magicien n'a pas besoin de voir le lieu. La bille explose immédiatement si une des conditions suivantes est remplie.\n- Quelque chose ou quelqu'un touche la bille.\n- Le magicien prononce un mot de commande (action gratuite).\n- Le délai fixé par le magicien est terminé.\n- Au bout d'un nombre de minutes égal à l'INT du personnage.\nLa bille de feu explose dans un rayon de 5 m et inflige [4d4° + INT] DM. Les créatures qui réussissent un test d'AGI difficulté [10 + INT] ne subissent que la moitié des dégâts. Avant son explosion, la bille de feu produit une lumière équivalant celle d'une torche.",
+      "Le personnage invoque une bille de feu qui se positionne là où le mage lui en donne l'ordre. La trajectoire peut comporter jusqu'à deux coudes à 90° et la distance totale parcourue ne doit pas dépasser 50 m. Le magicien n'a pas besoin de voir le lieu. La bille explose immédiatement si une des conditions suivantes est remplie.\n- Quelque chose ou quelqu'un touche la bille.\n- Le magicien prononce un mot de commande (action gratuite).\n- Le délai fixé par le magicien est terminé.\n- Au bout d'un nombre de minutes égal à [#INT].\nLa bille de feu explose dans un rayon de 5 m et inflige [4d4° + INT] DM. Les créatures qui réussissent un test d'AGI difficulté [10 + INT] ne subissent que la moitié des dégâts. Avant son explosion, la bille de feu produit une lumière équivalant celle d'une torche.",
     sourcePage: 161,
   },
   {
@@ -2947,9 +2964,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Tous vos alliés dans un rayon de 20 m autour de vous bénéficient d'un bonus de +1 en DEF et aux DM pendant INT minutes. À partir du niveau 16, ce bonus passe à +2.",
-    // PER-359 : buff de groupe posable par le MJ (`warlord-aura`). Aucun effet sur la fiche du mage
-    // de guerre lui-même — la règle ne vise QUE ses alliés (« Tous vos alliés… »), pas son porteur.
-    // Le palier suit le NIVEAU du personnage (+2 au niveau 16) et non le rang de la voie.
+    // PER-359 : effet POSITIF déjà mécanisé (posé AVANT cette session) — `groupBuffIds` déverrouille la
+    // puce VERTE de la palette de l'écran de MJ, glissable sur les cartes de l'ordre d'initiative ;
+    // `BENEFICIAL_EFFECTS['warlord-aura']` (schema.ts) porte le palier +1→+2 au NIVEAU 16
+    // (`intensityFrom: { kind: 'character-level', level: 16 }`), pas le rang de la voie. Aucun effet
+    // sur la fiche du mage de guerre lui-même — la règle ne vise QUE ses alliés (« Tous vos alliés… »),
+    // pas son porteur (`excludesCarrier: true` côté catalogue) : pas d'interrupteur de fiche pour lui.
     richText:
       "Tous vos alliés dans un rayon de 20 m autour de vous bénéficient d'un bonus de +1 en DEF et aux DM pendant INT minutes. À partir du niveau 16, ce bonus passe à +2.",
     groupBuffIds: ['warlord-aura'],
