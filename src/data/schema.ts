@@ -208,6 +208,16 @@ export interface Ancestry {
    * de l'elfe sylvain — p. 46).
    */
   ancestryPathIds: string[];
+  /**
+   * Capacités portant un CHOIX D'IDENTITÉ de peuple (`Feature.choices`, type `option`) posé à la
+   * CRÉATION dans l'étape « Peuple » de l'assistant et éditable ensuite depuis le mode édition de la
+   * section « Identité » de la fiche. Ces capacités ne sont PAS des rangs de voie (absentes des
+   * `AncestryPath.featureIds`) : elles ne sont jamais rendues comme des capacités et ne comptent pas
+   * comme rang. Ex. le type de souffle du drakonide (feu/froid/électricité/acide), qui alimente la RD
+   * typée du rang 3 via `elementFromChoice`. Résolu identiquement par `getOptionSelections` quel que
+   * soit le rang. Absent = le peuple n'a aucun choix d'identité de ce genre.
+   */
+  identityChoiceFeatureIds?: string[];
   sourcePage: SourcePage;
 }
 
@@ -887,6 +897,17 @@ export interface ConditionalStatBonusEffect {
    * qu'on a) → éteindre le 1ᵉʳ éteint le 2ᵉ, mais pas l'inverse. Absent = aucune dépendance.
    */
   deactivatesWithEffectIndex?: number;
+  /**
+   * GATING par OPTION de choix de la MÊME capacité : cet effet (et son interrupteur) n'existe que si
+   * l'option d'id `optionId` est retenue au choix `choiceIndex` de la capacité. Quand l'option n'est
+   * PAS retenue, l'interrupteur n'est pas proposé (`FeatureEffectToggles`) et `isEffectActive` renvoie
+   * toujours faux (l'effet est donc inactif même si un ancien état ON traînait dans `effectToggles`) —
+   * les bonus qui en dépendent via `requiresActiveEffectIndex` (DM d'arme, mains nues) suivent. Ex.
+   * drakonide-r4 : le buff « Fureur » n'existe que si l'option `fureur` (et non `ailes`) est choisie.
+   * Absent = aucun gating par option (cas historique : effet toujours présent). Le choix visé doit
+   * être un `OptionFeatureChoice` porté par la même capacité.
+   */
+  requiresChoiceOption?: { choiceIndex: number; optionId: string };
   /** Déclencheur (condition / durée) et état par défaut de l'interrupteur. */
   activation: EffectActivation;
   /**
@@ -3097,6 +3118,15 @@ export interface ChoiceRepeat {
 export interface OptionFeatureChoice extends FeatureChoiceBase {
   kind: 'option';
   options: FeatureChoiceOption[];
+  /**
+   * AFFICHAGE : quand une option est retenue, le descriptif de la capacité RAYE (barré + grisé) les
+   * paragraphes qui décrivent les options NON retenues — repérés par leur préfixe « <libellé option> :
+   * … ». Sert aux capacités « choisir l'une des deux » dont le texte détaille chaque branche (ex.
+   * drakonide-r4 : Fureur drakonide / Ailes puissantes). Réutilise le visuel du bonus supprimé du bâton
+   * archimage (`text.disabled` + `line-through`). Sans effet tant qu'aucune option n'est retenue.
+   * Absent = descriptif rendu tel quel (aucun rayage).
+   */
+  strikeUnchosenParagraphs?: boolean;
   /**
    * Choix RÉPÉTABLE : le joueur retient PLUSIEURS options DISTINCTES, le nombre
    * autorisé étant déterminé par la progression (`repeat`). Absent = choix simple
