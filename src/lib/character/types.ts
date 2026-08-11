@@ -15,6 +15,7 @@ import { DERIVED_STAT_IDS } from '@/data/schema';
 import type { ItemIconId } from '@/data/item-icons';
 import type {
   AbilityId,
+  DamageDie,
   DerivedStatId,
   FeatureChoice,
   PoisonKind,
@@ -23,6 +24,7 @@ import type {
   WeaponDamage,
 } from '@/data/schema';
 import type { AncestryChoice } from './ancestry';
+import type { RestorableResourceKind } from './restorableResources';
 
 /**
  * Version courante du schéma de personnage. Incrémenter à chaque évolution.
@@ -815,6 +817,29 @@ export interface CustomItem {
    * `EquipmentRef.chargesSpent` : **absent = plein**, état de jeu, borné à la lecture.
    */
   chargesSpent?: number;
+  /**
+   * Potion consommable qui restaure de l'énergie (PER-XXX) : à l'usage, le joueur lance `count`d`die`
+   * (dés lancés à la vraie table) et saisit le résultat, qui restaure d'autant la ressource
+   * `resource` (cf. `RestorableResourceKind`) — ouvre `PotionDialog`, sur le modèle de la bourse
+   * de pièces. `count` ABSENT = 1 dé (potion courante « 1dX ») ; réglable pour une potion plus
+   * puissante (« 2d6 »…). `evolving` (dé évolutif « d4° », table p. 43, RÈGLE MAISON du même
+   * ressort que le Fléau/Élément des objets magiques — `MagicProperty.customDice.evolving`) :
+   * `die` sert alors de simple placeholder, la face RÉELLE se résout au NIVEAU du personnage à
+   * l'ouverture de la potion (`scalingDie`), donc dynamiquement à mesure qu'il monte de niveau.
+   * Contrairement à la bourse (reconnue par son NOM), c'est une propriété STRUCTURÉE de
+   * l'instance : renommer la fiole (« Fiole de Grondin ») ne casse pas la mécanique. Présent ⇒
+   * `type` vaut `'consumable'`. Absent = objet consommable ordinaire (pas de restauration
+   * automatisée). `modifier` : bonus plat ajouté au résultat des dés (« 1d6+4 »), sur le modèle
+   * du bonus plat de `WeaponDamage` — absent/0 = aucun bonus. Champ additif optionnel
+   * absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
+   */
+  potion?: {
+    resource: RestorableResourceKind;
+    die: DamageDie;
+    count?: number;
+    evolving?: true;
+    modifier?: number;
+  };
 }
 
 export type EquipmentLine = EquipmentRef | CustomItem;

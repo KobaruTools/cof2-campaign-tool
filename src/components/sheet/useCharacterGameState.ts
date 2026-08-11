@@ -38,7 +38,8 @@ import {
   withReceivedCrystals,
 } from '@/lib/character/crystals';
 import { hawkHunterCustomCreature } from '@/lib/character/majorSummoningPath';
-import type { Character, LoadedAmmunitionKind, Purse, WornState } from '@/lib/character/types';
+import { RAGE_RESOURCE_KEY } from '@/lib/character/restorableResources';
+import { isCustomItem, type Character, type LoadedAmmunitionKind, type Purse, type WornState } from '@/lib/character/types';
 import { loadingContext, type LoadingContext } from '@/lib/character/weaponLoading';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
 import { deriveStats, type DerivedStats } from '@/lib/engine';
@@ -119,6 +120,8 @@ export interface CharacterGameState {
    */
   applyItemUse: (index: number) => UseItemIntent;
   openCoinPouch: (index: number, silver: number) => void;
+  /** Validation de la modale de potion (PER-XXX) : restaure `amount` sur la ressource visée. */
+  openPotion: (index: number, amount: number) => void;
   resolveStartingChoice: (index: number, option: StartingEquipmentChoiceOption) => void;
   setWorn: (index: number, worn: WornState | undefined) => void;
   setPurse: (purse: Purse) => void;
@@ -292,6 +295,7 @@ export function useCharacterGameState(
     ? target.overrides.recoveryDiceCount ?? masterDerived.recoveryDiceCount
     : 0;
   const recoveryDie = masterDerived?.recoveryDie ?? 'd6';
+  const capacityGauges = capacityResourceGauges(target);
 
   return {
     update,
@@ -303,7 +307,7 @@ export function useCharacterGameState(
     luckMax,
     recoveryDiceMax,
     recoveryDie,
-    capacityGauges: capacityResourceGauges(target),
+    capacityGauges,
     elixirDosesToLose: actions.elixirDosesToLose(target),
 
     setEffectToggleValue: bind(actions.toggleEffect),
@@ -365,6 +369,24 @@ export function useCharacterGameState(
       return intent;
     },
     openCoinPouch: bind(actions.openCoinPouch),
+    // Max EFFECTIF de la ressource visée par LA potion en cours d'usage — résolu ici, seul point
+    // qui connaît les stats dérivées (même convention que `setManaSpend` etc.). Rage : max de la
+    // jauge de capacité `capacityGauges` (0 si le personnage ne porte aucune capacité de rage).
+    openPotion: (index, amount) => {
+      const line = target.equipment[index];
+      const resource = isCustomItem(line) ? line.potion?.resource : undefined;
+      const max =
+        resource === 'mana'
+          ? (manaMax ?? 0)
+          : resource === 'luck'
+            ? luckMax
+            : resource === 'recoveryDice'
+              ? recoveryDiceMax
+              : resource === 'rage'
+                ? (capacityGauges.find((g) => g.key === RAGE_RESOURCE_KEY)?.max ?? 0)
+                : (maxHp ?? 0);
+      update(actions.openPotion(target, index, amount, max));
+    },
     resolveStartingChoice: bind(actions.resolveStartingChoice),
     setWorn: bind(actions.setEquipmentWorn),
     setPurse: (purse) => update(actions.setPurse(purse)),

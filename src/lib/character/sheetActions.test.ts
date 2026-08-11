@@ -23,6 +23,7 @@ import {
   liftShortRestLock,
   loadWeaponShot,
   openCoinPouch,
+  openPotion,
   ownedMountMaxHp,
   refillItemChargesAction,
   refillWeaponShots,
@@ -430,6 +431,85 @@ describe('useEquipmentItem — intention d’un clic « Utiliser »', () => {
     expect(useEquipmentItem(char(), 3)).toEqual({ kind: 'none' });
   });
 
+  // PER-XXX : potion custom qui restaure de l'énergie (PV/PM/chance/DR/rage) — reconnue par la
+  // propriété STRUCTURÉE `potion`, pas par le nom (contrairement à la bourse).
+  it('une potion custom demande la modale de saisie du dé', () => {
+    const c = char({
+      equipment: [
+        { custom: true, name: 'Fiole de Grondin', quantity: 1, type: 'consumable', potion: { resource: 'mana', die: 'd6' } },
+      ],
+    });
+    expect(useEquipmentItem(c, 0)).toEqual({
+      kind: 'potion',
+      index: 0,
+      resource: 'mana',
+      die: 'd6',
+      count: 1,
+    });
+  });
+
+  it('une potion custom à plusieurs dés (« 2d6 ») propage le compte', () => {
+    const c = char({
+      equipment: [
+        {
+          custom: true,
+          name: 'Fiole double',
+          quantity: 1,
+          type: 'consumable',
+          potion: { resource: 'hp', die: 'd6', count: 2 },
+        },
+      ],
+    });
+    expect(useEquipmentItem(c, 0)).toEqual({ kind: 'potion', index: 0, resource: 'hp', die: 'd6', count: 2 });
+  });
+
+  // Dé ÉVOLUTIF « d4° » (table p. 43) : `die` n'est qu'un placeholder, propagé tel quel — c'est
+  // `PotionDialog` qui résout la face réelle au niveau du personnage.
+  it('une potion à dé évolutif propage `evolving`', () => {
+    const c = char({
+      equipment: [
+        {
+          custom: true,
+          name: 'Fiole évolutive',
+          quantity: 1,
+          type: 'consumable',
+          potion: { resource: 'hp', die: 'd4', evolving: true },
+        },
+      ],
+    });
+    expect(useEquipmentItem(c, 0)).toEqual({
+      kind: 'potion',
+      index: 0,
+      resource: 'hp',
+      die: 'd4',
+      count: 1,
+      evolving: true,
+    });
+  });
+
+  // Bonus plat (« 1d6+4 »), sur le modèle du bonus plat de `WeaponDamage`.
+  it('une potion à bonus plat propage `modifier`', () => {
+    const c = char({
+      equipment: [
+        {
+          custom: true,
+          name: 'Fiole dopée',
+          quantity: 1,
+          type: 'consumable',
+          potion: { resource: 'mana', die: 'd6', modifier: 4 },
+        },
+      ],
+    });
+    expect(useEquipmentItem(c, 0)).toEqual({
+      kind: 'potion',
+      index: 0,
+      resource: 'mana',
+      die: 'd6',
+      count: 1,
+      modifier: 4,
+    });
+  });
+
   // PER-294 : un objet à charges ne se consomme pas, il se DÉPENSE — la ligne survit à l'épuisement.
   it('un objet à CHARGES dépense une charge au lieu de consommer la ligne', () => {
     const c = char({
@@ -504,6 +584,50 @@ describe('openCoinPouch', () => {
     const patch = openCoinPouch(c, 0, 9);
     expect(patch.equipment).toEqual([]);
     expect(patch.purse).toEqual({ gold: 10, silver: 4, copper: 0, platinum: 0 });
+  });
+});
+
+describe('openPotion', () => {
+  const potionChar = (resource: 'hp' | 'mana' | 'luck' | 'recoveryDice' | 'rage', over: Partial<Character> = {}) =>
+    char({
+      equipment: [{ custom: true, name: 'Potion', quantity: 1, type: 'consumable', potion: { resource, die: 'd6' } }],
+      ...over,
+    });
+
+  it('PV : soigne (létaux d’abord) et consomme la dose en une écriture', () => {
+    const c = potionChar('hp', { depletion: { hp: { lethal: 4, temp: 0 } } });
+    const patch = openPotion(c, 0, 3, 10);
+    expect(patch.equipment).toEqual([]);
+    expect(patch.depletion).toEqual({ hp: { lethal: 1, temp: 0 } });
+  });
+
+  it('PM : restaure le mana, borné au max EFFECTIF fourni par l’appelant', () => {
+    const c = potionChar('mana', { depletion: { mana: 5 } });
+    const patch = openPotion(c, 0, 8, 10);
+    expect(patch.equipment).toEqual([]);
+    expect(patch.depletion).toEqual({}); // 5 - 8 clampé à 0 → clé retirée (plein)
+  });
+
+  it('Chance : restaure les points de chance', () => {
+    const c = potionChar('luck', { depletion: { luck: 3 } });
+    expect(openPotion(c, 0, 2, 5).depletion).toEqual({ luck: 1 });
+  });
+
+  it('Dés de récupération : restaure la réserve de DR', () => {
+    const c = potionChar('recoveryDice', { depletion: { recoveryDice: 2 } });
+    expect(openPotion(c, 0, 1, 3).depletion).toEqual({ recoveryDice: 1 });
+  });
+
+  // Rage (PER-130) : réserve à clé PARTAGÉE (`sharedKey: 'rage'`), pas une jauge de `Depletion`.
+  it('Rage : restaure la réserve partagée `usageCounters.rage`', () => {
+    const c = potionChar('rage', {
+      classId: 'barbare',
+      featureIds: ['rage-r3'],
+      usageCounters: { rage: 0 },
+    });
+    const patch = openPotion(c, 0, 1, 1);
+    expect(patch.equipment).toEqual([]);
+    expect(patch.usageCounters).not.toHaveProperty('rage'); // remonté au max (1) → clé retirée
   });
 });
 

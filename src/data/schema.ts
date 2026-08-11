@@ -67,6 +67,9 @@ export interface IdealFlaw {
 
 export type Die = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
 
+/** Dés proposés à la saisie (jeu d'icônes polyédriques) — bourses de pièces, potions. */
+export const DICE: Die[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+
 // ---------------------------------------------------------------------------
 // Dégâts d'arme — modèle structuré (PER-217)
 // ---------------------------------------------------------------------------
@@ -77,6 +80,9 @@ export type Die = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
  * du jeu d'icônes polyédriques : il est rendu en texte, jamais en icône.
  */
 export type DamageDie = Die | 'd3';
+
+/** Dés proposés à la saisie incluant `d3` — DM d'arme, dés Fléau/Élément custom, potions. */
+export const DAMAGE_DICE: DamageDie[] = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'];
 
 /**
  * Dégâts STRUCTURÉS d'une arme (PER-217) — remplace l'ancienne chaîne libre pour
@@ -1675,6 +1681,7 @@ export const BENEFICIAL_EFFECT_IDS = [
   'fearless-rally',
   'towering-argument',
   'shield-ally',
+  'precision-strike',
 ] as const;
 export type BeneficialEffectId = (typeof BENEFICIAL_EFFECT_IDS)[number];
 
@@ -1775,6 +1782,24 @@ export const BENEFICIAL_EFFECTS: Record<BeneficialEffectId, StatusEffectEntry> =
     modifiers: { derived: { def: 2 } },
     scope: 'single-ally',
     excludesCarrier: true,
+  },
+  // « Coup au but » (mage de guerre, prestige-mage-de-guerre-r4, p. 161). CIBLE UNIQUE, mais SANS
+  // `excludesCarrier` : le livre dit « le personnage OU la cible », le lanceur peut se le poser à
+  // lui-même (contrairement à « Protéger un allié », qui exclut le porteur).
+  //
+  // ÉCART ASSUMÉ (même famille que `shield-ally` ci-dessus) : la règle borne le bonus à UN SEUL jet
+  // d'attaque, d'un type choisi par le joueur (contact/distance/magique), avant la fin du round.
+  // Aucun canal ne sait exprimer « le prochain jet, une seule fois » : le bonus est posé comme un état
+  // qui dure tant qu'il est là, sur LES TROIS jets à la fois (comme Vision, mages.ts, pour la même
+  // raison). Au joueur/MJ de le lever après le jet effectivement utilisé.
+  'precision-strike': {
+    label: 'Coup au but',
+    effect:
+      "Le personnage ou la cible (portée 10 m) bénéficie d'un bonus de +10 sur son prochain test d'attaque contre DEF (au contact, à distance ou magique au choix) qui doit être exécuté avant la fin du round.",
+    sourcePage: 161,
+    // Valeur FIXE (+10) : ni escalade ni palier, donc aucun `stacking` ni `intensityFrom`.
+    modifiers: { derived: { meleeAttack: 10, rangedAttack: 10, magicAttack: 10 } },
+    scope: 'single-ally',
   },
 };
 

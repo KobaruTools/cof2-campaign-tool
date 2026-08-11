@@ -25,6 +25,7 @@
 import { featureById } from '@/data';
 import { parseCoinPouchName, type CoinPouchInfo } from './coinPouch';
 import type {
+  DamageDie,
   PoisonKind,
   StartingEquipmentChoiceOption,
   WeaponModificationLoadout,
@@ -59,10 +60,12 @@ import {
   resetMana,
   restoreLuck,
   restoreMana,
+  restoreRecoveryDice,
   setRecoveryDiceMissing,
   spendLuck,
   spendMana,
 } from './gauges';
+import { RAGE_RESOURCE_KEY, type RestorableResourceKind } from './restorableResources';
 import { longRest, shortRest } from './rest';
 import { oneHandableWeaponFamiliesForCharacter, setWornAt } from './equipment';
 import {
@@ -348,12 +351,23 @@ export function consumeEquipmentLine(character: Character, index: number): Equip
  *  - `coin-pouch` : bourse de pièces (p. 31, généralisée PER-200 — « Bourse de NdM
  *    {pp|po|pa|pc} », cf. `parseCoinPouchName`) : le montant tiré s'ajoute à la monnaie
  *    concernée (PER-152) ;
+ *  - `potion` : potion d'énergie custom (PER-XXX, `CustomItem.potion`) : le résultat du dé tiré
+ *    restaure la ressource visée (PV, PM, chance, DR, rage) ;
  *  - `consume` : consommation directe, avec son patch prêt à appliquer ;
  *  - `none` : ligne inexistante, rien à faire.
  */
 export type UseItemIntent =
   | { kind: 'starting-choice'; index: number }
   | { kind: 'coin-pouch'; index: number; info: CoinPouchInfo }
+  | {
+      kind: 'potion';
+      index: number;
+      resource: RestorableResourceKind;
+      die: DamageDie;
+      count: number;
+      evolving?: true;
+      modifier?: number;
+    }
   | { kind: 'consume'; patch: Partial<Character> }
   | { kind: 'none' };
 
@@ -365,6 +379,19 @@ export function useEquipmentItem(character: Character, index: number): UseItemIn
   if (startingChoiceOptionsFor(line)) return { kind: 'starting-choice', index };
   const pouchInfo = isCustomItem(line) ? parseCoinPouchName(line.name) : null;
   if (pouchInfo) return { kind: 'coin-pouch', index, info: pouchInfo };
+  // Potion d'énergie custom (PER-XXX) : ouvre la modale de saisie du dé, sur le modèle de la
+  // bourse — reconnue par sa propriété STRUCTURÉE `potion`, pas par son nom.
+  const potion = isCustomItem(line) ? line.potion : undefined;
+  if (potion)
+    return {
+      kind: 'potion',
+      index,
+      resource: potion.resource,
+      die: potion.die,
+      count: potion.count ?? 1,
+      ...(potion.evolving ? { evolving: true as const } : {}),
+      ...(potion.modifier ? { modifier: potion.modifier } : {}),
+    };
   // Objet à CHARGES (PER-294) : « Utiliser » dépense une CHARGE et ne retire jamais la ligne — un
   // objet rechargeable ne disparaît pas quand on l'épuise. Prime sur la consommation, pour qu'une
   // fiole typée « consommable » mais dotée de charges se comporte comme la baguette qu'elle est.
@@ -389,6 +416,40 @@ export function openCoinPouch(
     equipment: consumeEquipmentLine(character, index),
     purse: { ...character.purse, [currency]: character.purse[currency] + amount },
   };
+}
+
+/**
+ * Validation de la modale de potion (PER-XXX, sur le modèle de `openCoinPouch`) : restaure
+ * `amount` points de la ressource visée par la potion (`CustomItem.potion.resource`) et consomme
+ * la dose, en UNE écriture. `max` = maximum EFFECTIF de la ressource visée (fourni par
+ * l'appelant, qui seul connaît les stats dérivées — même convention que `spendCharacterMana`
+ * etc.) ; sans objet, pour les PV (pas de plafond porté ici, `healHp` gère déjà le clamp via la
+ * dépletion). Ressource non reconnue (potion mal formée) → repli sur les PV.
+ */
+export function openPotion(
+  character: Character,
+  index: number,
+  amount: number,
+  max: number,
+): Partial<Character> {
+  const line = character.equipment[index];
+  const resource = (isCustomItem(line) ? line.potion?.resource : undefined) ?? 'hp';
+  const equipment = consumeEquipmentLine(character, index);
+  switch (resource) {
+    case 'mana':
+      return { equipment, depletion: restoreMana(character.depletion, amount, max) };
+    case 'luck':
+      return { equipment, depletion: restoreLuck(character.depletion, amount, max) };
+    case 'recoveryDice':
+      return { equipment, depletion: restoreRecoveryDice(character.depletion, amount, max) };
+    case 'rage': {
+      const current = Math.max(0, Math.min(max, character.usageCounters?.[RAGE_RESOURCE_KEY] ?? max));
+      return { equipment, ...setUsageCounter(character, RAGE_RESOURCE_KEY, current + amount, max) };
+    }
+    case 'hp':
+    default:
+      return { equipment, depletion: healHp(character.depletion, amount) };
+  }
 }
 
 /**

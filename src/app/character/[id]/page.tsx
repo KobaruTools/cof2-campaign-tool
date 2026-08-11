@@ -34,6 +34,7 @@ import { checkCompliance } from '@/lib/engine';
 import type {
   AbilityId,
   BeneficialEffectId,
+  DamageDie,
   StartingEquipmentChoiceOption,
 } from '@/data/schema';
 import type { CharacterStatus, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
@@ -120,8 +121,10 @@ import { MountPassengerSelect } from '@/components/sheet/MountPassengerSelect';
 import { AddMountButton, OwnedMountsPanel } from '@/components/sheet/OwnedMountsPanel';
 import { PurseField } from '@/components/sheet/PurseField';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
+import { PotionDialog } from '@/components/sheet/PotionDialog';
 import { StartingChoiceDialog } from '@/components/sheet/StartingChoiceDialog';
 import { parseCoinPouchName } from '@/lib/character/coinPouch';
+import type { RestorableResourceKind } from '@/lib/character/restorableResources';
 import { startingChoiceOptionsFor } from '@/lib/character/startingChoices';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
@@ -375,6 +378,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const { showToast } = useToast();
   // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
+  // Potion d'énergie custom en cours d'usage (PER-XXX) ; null = modale fermée.
+  const [potionUse, setPotionUse] = useState<
+    | {
+        index: number;
+        resource: RestorableResourceKind;
+        die: DamageDie;
+        count: number;
+        evolving?: true;
+        modifier?: number;
+      }
+    | null
+  >(null);
   // Index de la ligne de CHOIX d'équipement de départ en cours de résolution (PER-220) ; null = fermée.
   const [choiceIndex, setChoiceIndex] = useState<number | null>(null);
   // Modale d'édition rétroactive de la voie de peuple du demi-elfe (PER-324) ; DOIT rester ici, en tête
@@ -539,6 +554,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setActiveCrystal,
     applyItemUse,
     openCoinPouch,
+    openPotion,
     resolveStartingChoice,
     setWorn,
     setPurse,
@@ -693,12 +709,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     const intent = applyItemUse(index);
     if (intent.kind === 'starting-choice') setChoiceIndex(intent.index);
     else if (intent.kind === 'coin-pouch') setCoinPouchIndex(intent.index);
+    else if (intent.kind === 'potion')
+      setPotionUse({
+        index: intent.index,
+        resource: intent.resource,
+        die: intent.die,
+        count: intent.count,
+        ...(intent.evolving ? { evolving: true as const } : {}),
+        ...(intent.modifier ? { modifier: intent.modifier } : {}),
+      });
   };
   // Validation de la modale de bourse : ajoute `silver` pa à la fortune et consomme la dose.
   const confirmCoinPouch = (silver: number) => {
     if (coinPouchIndex === null) return;
     openCoinPouch(coinPouchIndex, silver);
     setCoinPouchIndex(null);
+  };
+  // Validation de la modale de potion (PER-XXX) : restaure `amount` sur la ressource visée et
+  // consomme la dose.
+  const confirmPotion = (amount: number) => {
+    if (!potionUse) return;
+    openPotion(potionUse.index, amount);
+    setPotionUse(null);
   };
   // Validation d'un choix d'équipement de départ (PER-220) : remplace la ligne placeholder
   // par le(s) vrai(s) objet(s) du catalogue de l'option retenue (un LOT en produit plusieurs).
@@ -1843,6 +1875,24 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         })()}
         onClose={() => setCoinPouchIndex(null)}
         onConfirm={confirmCoinPouch}
+      />
+
+      <PotionDialog
+        open={potionUse !== null}
+        potion={
+          potionUse
+            ? {
+                resource: potionUse.resource,
+                die: potionUse.die,
+                count: potionUse.count,
+                ...(potionUse.evolving ? { evolving: true as const } : {}),
+                ...(potionUse.modifier ? { modifier: potionUse.modifier } : {}),
+              }
+            : null
+        }
+        level={character.level}
+        onClose={() => setPotionUse(null)}
+        onConfirm={confirmPotion}
       />
 
       {/* Résolution d'un choix d'équipement de départ « X ou Y » (PER-220). */}

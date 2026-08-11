@@ -18,13 +18,11 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import type { Die } from '@/data/schema';
+import { DICE, type Die } from '@/data/schema';
 import { DieIcon } from '@/components/DieIcon';
 import { CURRENCY_ABBREV, CURRENCY_LABEL, coinPouchItemName, diceRange, type CoinCurrency } from '@/lib/character/coinPouch';
 
 const CURRENCIES: CoinCurrency[] = ['platinum', 'gold', 'silver', 'copper'];
-/** Dés proposés à la saisie — mêmes valeurs que `WeaponDamageFields` (`ItemDialog`). */
-const DICE: Die[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
 
 export interface CoinPouchCreateDialogProps {
   open: boolean;

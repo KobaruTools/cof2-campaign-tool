@@ -28,6 +28,7 @@ import type { Theme } from '@mui/material/styles';
 import { equipment as equipmentCatalog, equipmentById, testDomainById } from '@/data';
 import {
   ABILITY_IDS,
+  DAMAGE_DICE,
   WEAPON_CATEGORIES,
   type AbilityId,
   type DamageDie,
@@ -47,6 +48,12 @@ import type {
   MagicPropertyKind,
 } from '@/lib/character/types';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
+import {
+  potionDefaultName,
+  RESTORABLE_RESOURCE_KINDS,
+  RESTORABLE_RESOURCE_LABEL,
+  type RestorableResourceKind,
+} from '@/lib/character/restorableResources';
 import {
   MAGIC_DEFENSE_PROPERTY_KINDS,
   MAGIC_PROPERTY_RULES,
@@ -126,16 +133,6 @@ function weaponBaseGroup(item: EquipmentItem): WeaponBaseGroup {
 function isMechanicalType(type: ItemType): type is MechanicalCategory {
   return type === 'weapon' || type === 'armor' || type === 'shield';
 }
-
-/** Dés de DM proposés à la saisie (PER-217) — `d3` inclus, icône dédiée (dessin maison). */
-const DAMAGE_DICE: DamageDie[] = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'];
-
-/**
- * Dés FIXES proposés au dé personnalisé Fléau/Élément (RÈGLE MAISON), `d3` compris — le dé
- * ÉVOLUTIF (p. 43) n'y figure pas : c'est une entrée à part du même sélecteur (`EVOLVING_DIE_OPTION`),
- * en tête de liste plutôt qu'une case séparée.
- */
-const MAGIC_CUSTOM_DICE: DamageDie[] = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'];
 
 /** Valeur sentinelle du sélecteur de dé Custom pour le dé évolutif — distincte de tout `DamageDie`. */
 const EVOLVING_DIE_OPTION = 'evolving';
@@ -593,7 +590,7 @@ function MagicPropertyRows({
                         d4°
                       </Box>
                     </MenuItem>
-                    {MAGIC_CUSTOM_DICE.map((d) => (
+                    {DAMAGE_DICE.map((d) => (
                       <MenuItem key={d} value={d}>
                         <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                           <DieIcon die={d} size={18} noTooltip />
@@ -783,6 +780,20 @@ interface FormState {
   /** L'objet se remet à plein au repos court / au repos long (réglages CUMULABLES). */
   chargesOnShortRest: boolean;
   chargesOnLongRest: boolean;
+  /**
+   * Potion d'énergie custom (PER-XXX, type `consumable` seulement) : à l'usage, restaure
+   * `potionCount`d`potionDie` points de `potionResource`. `potionEnabled` pilote l'affichage des
+   * champs (case à cocher) — non coché, l'objet reste un consommable ordinaire.
+   */
+  potionEnabled: boolean;
+  potionResource: RestorableResourceKind;
+  potionDie: DamageDie;
+  /** Nombre de dés, saisi en chaîne (champ numérique permissif) ; `'1'` par défaut. */
+  potionCount: string;
+  /** Dé ÉVOLUTIF « d4° » (table p. 43) plutôt qu'une face fixe — `potionDie` devient un placeholder. */
+  potionEvolving: boolean;
+  /** Bonus plat (« 1d6+4 ») ; vide ou 0 = aucun bonus. */
+  potionModifier: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -804,6 +815,12 @@ const EMPTY_FORM: FormState = {
   chargesMax: '',
   chargesOnShortRest: false,
   chargesOnLongRest: false,
+  potionEnabled: false,
+  potionResource: 'hp',
+  potionDie: 'd6',
+  potionCount: '1',
+  potionEvolving: false,
+  potionModifier: '',
 };
 
 /** Pré-remplit les trois champs de charges (PER-294) depuis la ligne éditée. */
@@ -855,6 +872,12 @@ function formFromLine(line: EquipmentLine): FormState {
       derivedBonuses: rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses),
       testBonuses: rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses),
       ...chargeFieldsFromLine(line),
+      potionEnabled: line.potion !== undefined,
+      potionResource: line.potion?.resource ?? EMPTY_FORM.potionResource,
+      potionDie: line.potion?.die ?? EMPTY_FORM.potionDie,
+      potionCount: line.potion?.count ? String(line.potion.count) : EMPTY_FORM.potionCount,
+      potionEvolving: line.potion?.evolving === true,
+      potionModifier: line.potion?.modifier ? String(line.potion.modifier) : EMPTY_FORM.potionModifier,
     };
   }
   const item = effectiveItem(line);
@@ -972,7 +995,22 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
 
   const mechanical = type !== null && isMechanicalType(type);
   const trimmedName = form.name.trim();
-  const valid = type !== null && trimmedName.length > 0 && (!mechanical || baseId !== null);
+  // Potion (PER-XXX) : nom par défaut dérivé de ses propriétés (« Potion de soin 1d4° ») quand le
+  // joueur ne saisit rien — la fiole reste identifiable sans obliger à taper un nom.
+  const potionActive = type === 'consumable' && form.potionEnabled;
+  const potionCountNum = Math.max(1, Math.floor(Number(form.potionCount) || 1));
+  const potionModifierNum = Math.trunc(Number(form.potionModifier) || 0);
+  const potionDefaultNameValue = potionActive
+    ? potionDefaultName({
+        resource: form.potionResource,
+        die: form.potionDie,
+        ...(potionCountNum > 1 ? { count: potionCountNum } : {}),
+        ...(form.potionEvolving ? { evolving: true as const } : {}),
+        ...(potionModifierNum ? { modifier: potionModifierNum } : {}),
+      })
+    : '';
+  const effectiveName = trimmedName || potionDefaultNameValue;
+  const valid = type !== null && effectiveName.length > 0 && (!mechanical || baseId !== null);
 
   const confirm = () => {
     if (!valid || type === null) return;
@@ -1070,9 +1108,20 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
       };
       onConfirm(line, bulkCount);
     } else {
+      // Potion d'énergie custom (PER-XXX) : réservée aux consommables, cochée dans le formulaire.
+      // `count`/`modifier` ne sont écrits que s'ils s'écartent du défaut (1 dé, aucun bonus).
+      const potion = potionActive
+        ? {
+            resource: form.potionResource,
+            die: form.potionDie,
+            ...(potionCountNum > 1 ? { count: potionCountNum } : {}),
+            ...(form.potionEvolving ? { evolving: true as const } : {}),
+            ...(potionModifierNum ? { modifier: potionModifierNum } : {}),
+          }
+        : undefined;
       onConfirm({
         custom: true,
-        name: trimmedName,
+        name: effectiveName,
         quantity,
         ...(worn ? { worn } : {}),
         type,
@@ -1086,6 +1135,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
         ...(derivedBonuses ? { derivedBonuses } : {}),
         ...(testBonuses ? { testBonuses } : {}),
         ...carriedCharges,
+        ...(potion ? { potion } : {}),
       }, bulkCount);
     }
   };
@@ -1231,9 +1281,13 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                 autoFocus
                 size="small"
                 label="Nom de l’objet"
+                // Potion (PER-XXX) : nom vide → suggestion dérivée des propriétés (« Potion de
+                // soin 1d4° »), affichée en `placeholder` et effectivement utilisée à la
+                // validation si le joueur ne tape rien — pas d'obligation de nommer la fiole.
+                placeholder={potionActive ? potionDefaultNameValue : undefined}
                 value={form.name}
                 onChange={(e) => setField('name', e.target.value)}
-                required
+                required={!potionActive}
                 fullWidth
               />
               <TextField
@@ -1271,6 +1325,105 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                 }
                 onChange={(icon) => setField('icon', icon)}
               />
+
+              {/* Potion d'énergie custom (PER-XXX) : réservée aux consommables — restaure 1dX
+                  points d'une ressource du personnage (PV, PM, chance, DR, rage) à l'usage, sur
+                  le modèle de la « Bourse de NdM pièces ». Remontée en priorité, juste après
+                  l'identité : c'est le champ qui définit un consommable en tant que potion. */}
+              {type === 'consumable' && (
+                <>
+                  <SectionDivider label="Potion" />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={form.potionEnabled}
+                        onChange={(e) => setField('potionEnabled', e.target.checked)}
+                      />
+                    }
+                    label="Cette potion restaure de l’énergie"
+                  />
+                  {form.potionEnabled && (
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+                      <TextField
+                        select
+                        size="small"
+                        label="Énergie restaurée"
+                        value={form.potionResource}
+                        onChange={(e) => setField('potionResource', e.target.value as RestorableResourceKind)}
+                        sx={{ flex: '1 1 200px', minWidth: 180 }}
+                      >
+                        {RESTORABLE_RESOURCE_KINDS.map((k) => (
+                          <MenuItem key={k} value={k}>
+                            {RESTORABLE_RESOURCE_LABEL[k]}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Nombre de dés"
+                        value={form.potionCount}
+                        onChange={(e) => setField('potionCount', e.target.value)}
+                        slotProps={{ htmlInput: { min: 1 } }}
+                        sx={{ flex: '1 1 110px', minWidth: 100 }}
+                      />
+                      {/* Dé FIXE ou ÉVOLUTIF « d4° » (table p. 43, RÈGLE MAISON) — même sélecteur
+                          que le Fléau/Élément custom des objets magiques (`EVOLVING_DIE_OPTION`
+                          en tête de liste) : la face réelle d'un dé évolutif se résout au niveau
+                          du personnage, à l'usage (`PotionDialog`), pas ici. */}
+                      <TextField
+                        select
+                        size="small"
+                        label="Dé"
+                        value={form.potionEvolving ? EVOLVING_DIE_OPTION : form.potionDie}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === EVOLVING_DIE_OPTION) {
+                            setForm((f) => ({ ...f, potionEvolving: true, potionDie: 'd4' }));
+                          } else {
+                            setForm((f) => ({ ...f, potionEvolving: false, potionDie: v as DamageDie }));
+                          }
+                        }}
+                        sx={{ flex: '1 1 96px', minWidth: 92 }}
+                      >
+                        <MenuItem value={EVOLVING_DIE_OPTION}>
+                          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                            <DieIcon die="d4" evolving size={18} noTooltip />
+                            d4°
+                          </Box>
+                        </MenuItem>
+                        {DAMAGE_DICE.map((d) => (
+                          <MenuItem key={d} value={d}>
+                            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                              <DieIcon die={d} size={18} noTooltip />
+                              {d}
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Bonus plat"
+                        placeholder="0"
+                        value={form.potionModifier}
+                        onChange={(e) => setField('potionModifier', e.target.value)}
+                        sx={{ flex: '1 1 110px', minWidth: 100 }}
+                      />
+                      <Typography variant="caption" color="text.secondary" sx={{ flexBasis: '100%' }}>
+                        À l’usage, le joueur lance {potionCountNum}
+                        {form.potionEvolving ? 'd4°' : form.potionDie}
+                        {potionModifierNum ? `${potionModifierNum > 0 ? '+' : ''}${potionModifierNum}` : ''} à la
+                        table et saisit le résultat.
+                        {form.potionEvolving &&
+                          ' La face du dé évolutif est résolue automatiquement selon le niveau du personnage.'}
+                        {trimmedName.length === 0 && ` Nom par défaut : « ${potionDefaultNameValue} ».`}
+                      </Typography>
+                    </Stack>
+                  )}
+                </>
+              )}
 
               {/* Stats reprises du livre (arme / armure / bouclier), pré-remplies depuis la base
                   et surchargeables : c'est ce qui fait de la ligne une VARIANTE. Aucune pour un
