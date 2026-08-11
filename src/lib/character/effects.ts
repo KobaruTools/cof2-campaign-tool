@@ -118,10 +118,13 @@ export interface EffectContext {
    */
   borrowedHostPaths?: Map<string, string>;
   /**
-   * Ids de capacités OCTROYÉES (`grantedFeature`, PER-323) dont le « bonus de compétence associé » est
-   * SUPPRIMÉ : leurs effets `test-bonus` sont IGNORÉS par `rawTestContributions` (le cambion obtient le
-   * sort Ténèbres mais pas l'érudition occulte). Absent → aucune suppression (cf.
-   * `suppressedTestBonusFeatureIds`).
+   * Ids de capacités dont le « bonus de compétence associé » (`test-bonus`) est SUPPRIMÉ, IGNORÉ par
+   * `rawTestContributions` : capacités OCTROYÉES (`grantedFeature`, PER-323 — le cambion obtient le
+   * sort Ténèbres mais pas l'érudition occulte, cf. `suppressedTestBonusFeatureIds` de choices.ts) ET
+   * sorts liés au Bâton magique de l'archimage (PER-74, R5, audit généralisé 2026-08-11 — même clause
+   * annexe que pour `suppressedStatBonusFeatureIds` ci-dessous, mais portant un `test-bonus` : Ténèbres,
+   * Injonction, Mirage, Morsure de la forge). Fusion des deux sources faite au point de construction
+   * de ce contexte (`effectContext`). Absent → aucune suppression.
    */
   suppressedTestBonusFeatureIds?: Set<string>;
   /**
@@ -625,7 +628,13 @@ export function effectContext(character: Character): EffectContext {
     toggles: character.effectToggles,
     featureChoices: character.featureChoices,
     borrowedHostPaths: borrowedHostPathByFeatureId(character),
-    suppressedTestBonusFeatureIds: suppressedTestBonusFeatureIds(character),
+    // Fusion PER-323 (grantedFeature.suppressTestBonus) + Bâton magique de l'archimage (PER-74, audit
+    // généralisé 2026-08-11) : les deux mécanismes suppriment un `test-bonus` annexe pour des raisons
+    // distinctes, mais convergent vers le même Set de consommation (cf. doc du champ ci-dessus).
+    suppressedTestBonusFeatureIds: new Set([
+      ...suppressedTestBonusFeatureIds(character),
+      ...archmageStaffGrantedSpellIds(character),
+    ]),
     suppressedStatBonusFeatureIds: archmageStaffGrantedSpellIds(character),
     pathRankCounts: pathRankCountsFromFeatures(character.featureIds),
     armorWorn: isArmorWorn(character.equipment),

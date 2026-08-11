@@ -7,6 +7,7 @@ import {
   archmageStaffActionTypesOverride,
   archmageStaffGrantedSpellIds,
   archmageStaffSpellGranted,
+  archmageStaffSuppressedBonusMarker,
 } from './archmagePath';
 
 const R4 = 'prestige-archimage-r4';
@@ -137,5 +138,50 @@ describe('archmageStaffGrantedSpellIds — sorts liés au bâton dont le bonus p
       featureChoices: { [R5]: [freeActionSpell().id] },
     });
     expect(archmageStaffGrantedSpellIds(char)).toEqual(new Set());
+  });
+});
+
+describe('archmageStaffSuppressedBonusMarker — sous-chaîne à barrer sur la carte d’emprunt', () => {
+  const freeActionSpell = () => featureById.get('air-r1')!; // Murmures dans le vent, stat-bonus Init/DEF
+  const testBonusSpell = () => featureById.get('sombre-magie-r1')!; // Ténèbres, test-bonus érudition occulte
+  const rank2Spell = () => featureById.get('magie-des-arcanes-r2')!; // pas de clause « en plus de ce sort »
+
+  it('sort granté par le bâton avec bonus stat-bonus + clause verbatim → renvoie la sous-chaîne', () => {
+    const char = makeChar({ featureIds: [R5], featureChoices: { [R5]: [freeActionSpell().id] } });
+    expect(archmageStaffSuppressedBonusMarker(char, freeActionSpell())).toBe('En plus de ce sort,');
+  });
+
+  it('sort granté par le bâton avec bonus test-bonus + clause verbatim → renvoie la sous-chaîne (audit 2026-08-11)', () => {
+    const char = makeChar({ featureIds: [R5], featureChoices: { [R5]: [testBonusSpell().id] } });
+    expect(archmageStaffSuppressedBonusMarker(char, testBonusSpell())).toBe('En plus de ce sort,');
+  });
+
+  it('sort à bonus test-bonus déjà connu nativement (bonus non supprimé côté moteur) → undefined', () => {
+    const char = makeChar({
+      featureIds: [R5, testBonusSpell().id],
+      featureChoices: { [R5]: [testBonusSpell().id] },
+    });
+    expect(archmageStaffSuppressedBonusMarker(char, testBonusSpell())).toBeUndefined();
+  });
+
+  it('sort NON granté par le bâton (R5 absente) → undefined', () => {
+    const char = makeChar({ featureIds: [], featureChoices: { [R5]: [freeActionSpell().id] } });
+    expect(archmageStaffSuppressedBonusMarker(char, freeActionSpell())).toBeUndefined();
+  });
+
+  it('sort déjà connu nativement (bonus non supprimé côté moteur) → undefined', () => {
+    const char = makeChar({
+      featureIds: [R5, freeActionSpell().id],
+      featureChoices: { [R5]: [freeActionSpell().id] },
+    });
+    expect(archmageStaffSuppressedBonusMarker(char, freeActionSpell())).toBeUndefined();
+  });
+
+  it('sort granté SANS effet stat-bonus/test-bonus (aucune clause annexe) → undefined, rien à barrer', () => {
+    const char = makeChar({
+      featureIds: [R4, R5, R6, R7],
+      featureChoices: { [R5]: [freeActionSpell().id, rank2Spell().id] },
+    });
+    expect(archmageStaffSuppressedBonusMarker(char, rank2Spell())).toBeUndefined();
   });
 });

@@ -609,6 +609,31 @@ describe('capacité empruntée : rang de la voie A + domination (PER-73)', () =>
   });
 });
 
+describe('Bâton magique de l’archimage — bonus test-bonus annexe supprimé (PER-74, audit 2026-08-11)', () => {
+  // Ténèbres (sombre-magie-r1) lié au bâton (R5, 1er choix) : le sort passe, pas son érudition occulte.
+  const build = (): Character => ({
+    ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+    level: 5,
+    featureIds: ['prestige-archimage-r5'],
+    featureChoices: { 'prestige-archimage-r5': ['sombre-magie-r1'] },
+  });
+
+  it('sort granté par le bâton → érudition occulte NON comptée (bonus annexe supprimé)', () => {
+    const c = build();
+    const ids = effectiveFeatureIdsForMods(c);
+    expect(ids).toContain('sombre-magie-r1');
+    const occult = testBonusSources(ids, effectContext(c)).find((r) => r.domain === 'occult-lore');
+    expect(occult).toBeUndefined();
+  });
+
+  it('même sort connu NATIVEMENT par ailleurs (autre voie) → érudition occulte comptée normalement (pas supprimée)', () => {
+    const c: Character = { ...build(), featureIds: ['prestige-archimage-r5', 'sombre-magie-r1'] };
+    const ids = effectiveFeatureIdsForMods(c);
+    const occult = testBonusSources(ids, effectContext(c)).find((r) => r.domain === 'occult-lore');
+    expect(occult?.sources.map((s) => s.featureId)).toEqual(['sombre-magie-r1']);
+  });
+});
+
 describe('abilityTestBonusSources — buff conditionnel aux tests de carac (Bénédiction, priere-r1)', () => {
   // L'effet conditionnel de Bénédiction est le 2e (index 1) : test-bonus puis conditional.
   const ON = (toggles: Record<string, boolean[]>): EffectContext => ctx({ toggles });
