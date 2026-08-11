@@ -714,6 +714,7 @@ function GmSheetDrawerContent({
             <Divider sx={{ my: 1.5 }} />
             <EquipmentList
               equipment={character.equipment}
+              characterId={character.id}
               // SEUL `onChange` d'édition ouvert dans le panneau (ajout, variante, quantité,
               // suppression, réordonnancement) : distribuer du butin sans quitter l'écran de MJ.
               onChange={editingEquipment ? setEquipment : undefined}

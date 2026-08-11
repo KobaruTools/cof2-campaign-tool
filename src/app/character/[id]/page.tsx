@@ -1597,6 +1597,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             <EquipmentList
               equipment={character.equipment}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
+              characterId={character.id}
               // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.
               onUse={handleUseItem}
               // Chargement des armes (PER-284) : compteur de coups prêts sur les arbalètes et armes

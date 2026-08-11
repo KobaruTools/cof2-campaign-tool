@@ -79,6 +79,7 @@ import {
 } from '@/lib/character/items';
 import { ITEM_TEST_TARGET_IDS } from '@/lib/character/equipment';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { usePersistedStringSet } from '@/lib/ui/usePersistedStringSet';
 import { isFirearmItemId } from '@/lib/character/firearms';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { parseCoinPouchName } from '@/lib/character/coinPouch';
@@ -1048,6 +1049,12 @@ export interface EquipmentListProps {
    * puce « Arme liée » sur la seule arme concernée. Absent → aucune puce (wizard).
    */
   resolveBoundWeapon?: (line: EquipmentLine) => { pathName: string; category: PrestigeCategory | undefined } | null;
+  /**
+   * Identifiant du personnage : clé de persistance (localStorage) de la bascule œil
+   * « description épinglée » (par objet, cf. `pinKeyFor`). Absent (wizard, catalogue hors
+   * personnage) → la bascule reste locale à la session, non persistée.
+   */
+  characterId?: string;
 }
 
 /**
@@ -1181,20 +1188,20 @@ export function EquipmentList({
   resolveArmorRestriction,
   resolveCriticalRange,
   resolveBoundWeapon,
+  characterId,
 }: EquipmentListProps) {
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
   const [itemEdit, setItemEdit] = useState<'new' | number | null>(null);
-  // Descriptions ÉPINGLÉES sous le titre (bascule œil, PER-*). État d'affichage LOCAL,
-  // volontairement non persisté : par défaut la description n'apparaît qu'au survol (tooltip).
-  const [pinnedDesc, setPinnedDesc] = useState<Set<number>>(new Set());
-  const togglePinned = (i: number) =>
-    setPinnedDesc((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
+  // Descriptions ÉPINGLÉES sous le titre (bascule œil) : persistées par PERSONNAGE
+  // (clé stable par objet, pas par index — fragile au réordonnancement/suppression).
+  // Sans `characterId` (wizard, catalogue hors personnage) : reste local à la session.
+  const [pinnedDesc, togglePinnedKey] = usePersistedStringSet(
+    characterId ? `cof2-inventory-pinned-desc:${characterId}` : null,
+  );
+  const pinKeyFor = (line: EquipmentLine): string =>
+    isCustomItem(line) ? `custom:${line.name}` : `ref:${line.instanceId ?? line.itemId}`;
+  const togglePinned = (line: EquipmentLine) => togglePinnedKey(pinKeyFor(line));
 
   const setLine = (i: number, line: EquipmentLine) =>
     onChange?.(equipment.map((l, j) => (j === i ? line : l)));
@@ -1299,7 +1306,7 @@ export function EquipmentList({
           // (hors catalogue) ; à défaut, description du matériel du catalogue.
           line.overrides?.description ??
           (item?.category === 'gear' ? item.description : undefined);
-    const descPinned = pinnedDesc.has(i);
+    const descPinned = pinnedDesc.has(pinKeyFor(line));
     // Bonus de DEF magique de l'objet enchanté (PER-85 généralisé) : porté par n'importe
     // quel objet (armure, mais aussi accessoire enchanté) et rendu à part de la DEF
     // mondaine, pour ne pas les confondre visuellement (retour propriétaire).
@@ -1431,7 +1438,7 @@ export function EquipmentList({
           <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>
             <IconButton
               size="small"
-              onClick={() => togglePinned(i)}
+              onClick={() => togglePinned(line)}
               sx={{ p: 0.25 }}
               aria-label={descPinned ? 'Masquer la description' : 'Afficher la description'}
             >
