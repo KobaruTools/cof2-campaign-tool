@@ -1488,6 +1488,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'fascinated',
   'imprisoned',
   'mind-controlled',
+  'time-displaced',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1637,6 +1638,16 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Ses actions sont dictées par le lanceur du sort (le corps de celui-ci reste inactif pendant ce temps), pour une durée dépendant du NC de la cible (table verbatim de la capacité source). Un test d'INT réussi divise la durée par deux (minimum 1 round). Sans effet si la cible a une INT supérieure ou égale à celle du lanceur.",
     sourcePage: 162,
+  },
+  // « Décalage » (magie du temps, r6, p. 164). Retrait de combat COURT (1d4° minutes au maximum,
+  // contre les jours/NC d'emprisonné/contrôlé) mais même limite : aucun `StatusModifiers` ne
+  // représente un combattant rendu immatériel et immobile, hors de portée. Nouveau tag posé
+  // (arbitrage propriétaire 2026-08-11) pour suivi à l'écran MJ malgré la courte durée.
+  'time-displaced': {
+    label: 'Décalage temporel',
+    effect:
+      "Devient une image transparente, immatérielle et immobile, hors de portée, jusqu'à son retour (durée choisie par le lanceur, 1d4° minutes au maximum). Reprend consistance et son activité normale à la fin. Si un obstacle occupe sa position à son retour, elle réapparaît au plus près et subit des DM.",
+    sourcePage: 164,
   },
 };
 

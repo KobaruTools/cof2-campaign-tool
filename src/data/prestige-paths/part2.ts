@@ -3218,6 +3218,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage se projette dans le futur, s'il réussit un test d'attaque magique contre une difficulté égale à [10 + durée choisie en min], il disparaît et réapparaît à la fin de la durée choisie. Si un obstacle occupe sa position, il réapparaît au plus près et subit 1d4° DM, s'il s'agit d'un être vivant la créature subit des DM similaires.",
+    // Auto-effet (le lanceur se téléporte lui-même) : même patron que l'Ombre furtive (voleur,
+    // part1.ts) ou l'ensorceleur intangible (mages.ts) — jamais de tag situationnel pour un
+    // déplacement du PORTEUR lui-même. La difficulté « [10 + durée choisie en min] » n'est pas une
+    // formule déterministe (choix libre du joueur) → retombe en littéral, déjà identique au livre.
+    richText:
+      "Le personnage se projette dans le futur, s'il réussit un test d'attaque magique contre une difficulté égale à [10 + durée choisie en min], il disparaît et réapparaît à la fin de la durée choisie. Si un obstacle occupe sa position, il réapparaît au plus près et subit {1d4°} DM, s'il s'agit d'un être vivant la créature subit des DM similaires.",
     sourcePage: 164,
   },
   {
@@ -3229,6 +3235,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage doit emporter un test opposé d'attaque magique contre une créature située à moins de 30 m. Si la cible est de niveau supérieur ou égal au PJ, elle est ralentie pendant 1d4 rounds sinon la durée est doublée. Si la victime réussit son test de résistance, elle ne peut plus être la cible de ce pour le reste du combat.",
+    // Inflige l'état de base Ralenti mais sort RÉPÉTABLE (aucun cap « 1×/combat par état ») → PAS
+    // d'`inflictableStates` (réservé au toggle 1×/combat, patron spadassin-r5, même raisonnement que
+    // Cécité/vision-r4). « ralentie » déjà auto-glosé (StatusEffectChip, glossary.ts).
+    richText:
+      "Le personnage doit emporter un test opposé d'attaque magique contre une créature située à moins de 30 m. Si la cible est de niveau supérieur ou égal au PJ, elle est ralentie pendant {1d4} rounds sinon la durée est doublée. Si la victime réussit son test de résistance, elle ne peut plus être la cible de ce pour le reste du combat.",
     sourcePage: 164,
   },
   {
@@ -3240,6 +3251,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage touche sa cible et doit réussir un test opposé d'attaque magique contre elle. En cas de réussite, il envoie la cible 1d4° min dans le futur (au maximum, moins s'il le souhaite). La victime devient une image transparente, immatérielle et immobile pour la durée du sort. Elle reprend consistance et son activité normale à la fin de celui-ci. Si un obstacle occupe sa position, elle réapparaît au plus près et subit 1d4° DM, s'il s'agit d'un être vivant la créature subit des DM similaires.",
+    // Retrait de combat COURT (aucun `StatusModifiers` ne modélise un combattant immatériel/immobile
+    // hors de portée). Nouveau tag situationnel `time-displaced` posé (arbitrage propriétaire
+    // 2026-08-11, même logique qu'emprisonné/contrôlé PER-365 malgré la durée bien plus courte).
+    situationalEffectIds: ['time-displaced'],
+    richText:
+      "Le personnage touche sa cible et doit réussir un test opposé d'attaque magique contre elle. En cas de réussite, il envoie la cible {1d4°} min dans le futur (au maximum, moins s'il le souhaite). La victime devient une image transparente, immatérielle et immobile pour la durée du sort. Elle reprend consistance et son activité normale à la fin de celui-ci. Si un obstacle occupe sa position, elle réapparaît au plus près et subit {1d4°} DM, s'il s'agit d'un être vivant la créature subit des DM similaires.",
     sourcePage: 164,
   },
   {
@@ -3251,6 +3268,16 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par combat, le personnage désigne une cible à moins de 20 m d'un mouvement de la main et un tourbillon de lumière multicolore emporte la victime en un lieu lointain. En cas de succès d'un test opposé d'attaque magique, la cible est instantanément téléportée dans une direction aléatoire (à peu près horizontalement et dans un milieu adapté à sa survie). Les créatures de NC inférieur à la moitié du niveau du magicien sont téléportées à une distance de 2d4° × 100 km, celles de niveau inférieur à 2d4° km et celles de niveau supérieur ou égal à 2d4° × 10 m. Une créature ne peut pas être victime de ce sort plus d'une fois par jour.",
+    // « Une fois par combat » → `usageCounter` (règle d'office des voies de prestige, patron
+    // prison mentale PER-365 : suivi sur la carte de la capacité, pas en jauge « État du
+    // personnage »). Distances de téléportation SANS tag situationnel — même mécanique et même
+    // absence de tag que Sphère multicolore (chaos-r8) : aucun précédent tagué pour un simple
+    // bannissement à distance (contrairement au retrait « hors jeu » d'emprisonné/contrôlé/décalage,
+    // qui laisse la cible sur place). « × 100 km »/« km » restent littéraux (un dé ne se multiplie
+    // pas dans une formule). Le plafond « pas plus d'1×/jour PAR CIBLE » reste comportemental.
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
+    richText:
+      "Une fois par combat, le personnage désigne une cible à moins de 20 m d'un mouvement de la main et un tourbillon de lumière multicolore emporte la victime en un lieu lointain. En cas de succès d'un test opposé d'attaque magique, la cible est instantanément téléportée dans une direction aléatoire (à peu près horizontalement et dans un milieu adapté à sa survie). Les créatures de NC inférieur à la moitié du niveau du magicien sont téléportées à une distance de {2d4°} × 100 km, celles de niveau inférieur à {2d4°} km et celles de niveau supérieur ou égal à {2d4°} × 10 m. Une créature ne peut pas être victime de ce sort plus d'une fois par jour.",
     sourcePage: 164,
   },
   {
@@ -3262,6 +3289,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le magicien peut arrêter le temps pendant [1d4° + INT] rounds. Seul le magicien peut agir à sa guise pendant cette période, lancer des sorts sur lui-même, se déplacer et déplacer des objets, tant qu'il ne touche pas un autre être vivant ou n'interagit pas avec lui (en lui lançant un sort, par exemple). Dans le cas d'un contact (même magique), le temps reprend instantanément son cours normal. Si vous utilisez la règle optionnelle du contretemps, l'effet se produit sur un résultat de 1 au d4° qui détermine la durée du sort.",
+    // Même famille que « hors du temps » (mages.ts, ensorceleur) et Souhait (magie des mots r8,
+    // PER-366) : mécanique de tour complète sans primitive (« seul le lanceur agit », immunité aux
+    // interactions) → verbatim/richText seul. Difficulté déjà entre crochets valides dans le livre.
+    richText:
+      "Le magicien peut arrêter le temps pendant [1d4° + INT] rounds. Seul le magicien peut agir à sa guise pendant cette période, lancer des sorts sur lui-même, se déplacer et déplacer des objets, tant qu'il ne touche pas un autre être vivant ou n'interagit pas avec lui (en lui lançant un sort, par exemple). Dans le cas d'un contact (même magique), le temps reprend instantanément son cours normal. Si vous utilisez la règle optionnelle du contretemps, l'effet se produit sur un résultat de 1 au {d4°} qui détermine la durée du sort.",
     sourcePage: 164,
   },
 
