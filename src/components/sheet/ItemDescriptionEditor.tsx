@@ -452,6 +452,9 @@ export function ItemDescriptionEditor({
       <Box
         sx={{
           minHeight: 56,
+          maxHeight: '70vh',
+          overflow: 'auto',
+          resize: 'vertical',
           fontSize: '0.9375rem', // aligné sur MUI `body2`, taille de référence des 5 marques (`em`)
           '& .ProseMirror': { outline: 'none' },
           '& .ProseMirror p': { margin: 0 },
@@ -462,6 +465,23 @@ export function ItemDescriptionEditor({
             pointerEvents: 'none',
             float: 'left',
             height: 0,
+          },
+          // Tirette de redimensionnement (Chrome/Edge only, `::-moz-resizer` n'existe pas côté
+          // Firefox — le redimensionnement y reste fonctionnel, juste avec la poignée native) :
+          // remplace le triangle gris par défaut par 3 traits diagonaux discrets, sur fond
+          // transparent plutôt que le carré gris du natif.
+          '&::-webkit-resizer': {
+            backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(
+              '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">'
+                + '<g stroke="#9e9e9e" stroke-width="1.4" stroke-linecap="round">'
+                + '<line x1="10" y1="2" x2="2" y2="10"/>'
+                + '<line x1="10" y1="6" x2="6" y2="10"/>'
+                + '<line x1="10" y1="10" x2="9.3" y2="10.3"/>'
+                + '</g></svg>',
+            )}")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+            backgroundColor: 'transparent',
           },
         }}
       >
