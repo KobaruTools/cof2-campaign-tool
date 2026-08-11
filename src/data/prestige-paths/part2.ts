@@ -3014,6 +3014,15 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage ou un allié au contact est immunisé à toutes les tentatives de détection des mensonges, des sentiments ou des émotions, même magiques pendant INT heures. Il ne peut pas non plus être localisé ou scruté par des moyens magiques (sorts ou pouvoirs comme clairvoyance ou détection de l'invisible). En plus de ce sort, le personnage obtient un bonus de +5 à tous les tests destinés à cacher ses émotions et ses sentiments ou pour résister aux sorts qui affectent l'esprit (charme, fascination, domination, etc.).",
+    // Rendu enrichi : « pendant INT heures » garde son déterminant (« pendant… ») → terme nommé
+    // `[#INT]` (patron Vision/mages.ts, PER-364). Les DEUX volets restent VERBATIM sans primitive :
+    // l'immunité à la détection/localisation magique ne fait pas partie des 8 `IMMUNITY_IDS` (catalogue
+    // scopé aux ÉTATS DE COMBAT, pas aux effets de détection/scrying) ; le bonus de +5 aux tests pour
+    // résister aux sorts d'esprit est le même genre de bonus générique que celui du bâton (« Sceptre
+    // défensif », archimage r4) ou de l'elfe/halfelin (p. 50/56) — déjà documenté hors périmètre moteur
+    // (`StaffDefBonusEffect`, schema.ts).
+    richText:
+      "Le personnage ou un allié au contact est immunisé à toutes les tentatives de détection des mensonges, des sentiments ou des émotions, même magiques pendant [#INT] heures. Il ne peut pas non plus être localisé ou scruté par des moyens magiques (sorts ou pouvoirs comme clairvoyance ou détection de l'invisible). En plus de ce sort, le personnage obtient un bonus de +5 à tous les tests destinés à cacher ses émotions et ses sentiments ou pour résister aux sorts qui affectent l'esprit (charme, fascination, domination, etc.).",
     sourcePage: 161,
   },
   {
@@ -3025,6 +3034,23 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "S'il réussit un test opposé d'attaque magique contre une créature de NC inférieur à son niveau, le personnage « entend » les pensées de la cible, pendant [1d6 + INT] rounds (portée 20 m). Il ne peut fouiller dans sa mémoire, seulement savoir ce qu'elle pense à ce moment-là. En combat, le lanceur obtient un bonus de +3 en DEF contre les attaques portées par la cible du sort.",
+    // Formule déjà entre crochets dans le livre (convention CO2 native, cf. mage-de-guerre r5/r8) :
+    // `richText` reprend le texte à l'identique. Le bonus de +3 en DEF est mécanisé en interrupteur de
+    // fiche (`conditional-stat-bonus`, patron Coup au but/precision-strike) : contrairement à ce dernier,
+    // c'est un buff PERSONNEL (pas posable sur un allié via l'écran de MJ), donc pas de `groupBuffIds`.
+    // Écart assumé documenté : le moteur ne sait pas restreindre un bonus de DEF « seulement contre les
+    // attaques d'UNE cible désignée » — le bonus reste actif contre TOUS les adversaires tant que le
+    // joueur n'éteint pas l'interrupteur (même famille d'écart que Coup au but, un seul jet visé dans le
+    // texte mais appliqué en continu côté moteur).
+    richText:
+      "S'il réussit un test opposé d'attaque magique contre une créature de NC inférieur à son niveau, le personnage « entend » les pensées de la cible, pendant [1d6 + INT] rounds (portée 20 m). Il ne peut fouiller dans sa mémoire, seulement savoir ce qu'elle pense à ce moment-là. En combat, le lanceur obtient un bonus de +3 en DEF contre les attaques portées par la cible du sort.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: 3 }],
+        activation: { kind: 'temporary', label: 'Lire les pensées actif', activeByDefault: false },
+      },
+    ],
     sourcePage: 161,
   },
   {
@@ -3036,6 +3062,14 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par combat, le personnage peut faire un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de réussite, la victime est emprisonnée dans un labyrinthe extradimensionnel. La durée d'emprisonnement dépend du NC de la cible :\n- NC 1 ou moins, valeur d'INT jours ;\n- NC 2, valeur d'INT heures ;\n- NC 3, valeur d'INT minutes ;\n- NC 4 et +, 1d6 rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux sa durée d'emprisonnement (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort.",
+    // « Une fois par combat » → `usageCounter` (resetOn: 'combat', patron Botte secrète/PER-206).
+    // Termes nommés `[#INT]` sur les paliers de durée (déterminant « valeur d'… »), dé nu `{1d6}` sur le
+    // dernier palier ; le reste (formule de difficulté) est déjà entre crochets dans le livre. La durée
+    // d'emprisonnement (table par NC) et le retrait effectif du combat restent VERBATIM : aucune primitive
+    // n'exprime « la cible est hors jeu pendant N » (même limite que la prise de contrôle du rang 8).
+    richText:
+      "Une fois par combat, le personnage peut faire un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de réussite, la victime est emprisonnée dans un labyrinthe extradimensionnel. La durée d'emprisonnement dépend du NC de la cible :\n- NC 1 ou moins, [#INT] jours ;\n- NC 2, [#INT] heures ;\n- NC 3, [#INT] minutes ;\n- NC 4 et +, {1d6} rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux sa durée d'emprisonnement (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort.",
+    usageCounter: { max: 1, resetOn: 'combat' },
     sourcePage: 162,
   },
   {
@@ -3047,6 +3081,14 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une surcharge de stimulus sensoriels qui provoque des DM et éventuellement une perte de connaissance de la cible. Le personnage fait un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de succès, il inflige [5d4° + INT] DM et la cible doit faire un test d'INT difficulté [10 + INT]. En cas d'échec, si la cible est de niveau inférieur au mage, elle perd conscience pour 1d6 rounds, sinon elle est immobilisée (sonnée debout) pour 1 round.",
+    // Formules DM/difficulté déjà entre crochets dans le livre. Branche « perd conscience » → catalogue
+    // `situationalEffectIds: ['unconscious']` (même id que « Arc-en-ciel »/chaos-r4, PER-288 : aucun des
+    // 10 états du glossaire ne réduit l'inconscience). Branche « sonnée debout » → état de base Sonné
+    // (`STATUS_EFFECT_IDS`), déjà auto-glosé dans le verbatim, pas de champ dédié. Dé nu de la branche
+    // inconsciente `{1d6}`.
+    richText:
+      "Une surcharge de stimulus sensoriels qui provoque des DM et éventuellement une perte de connaissance de la cible. Le personnage fait un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de succès, il inflige [5d4° + INT] DM et la cible doit faire un test d'INT difficulté [10 + INT]. En cas d'échec, si la cible est de niveau inférieur au mage, elle perd conscience pour {1d6} rounds, sinon elle est immobilisée (sonnée debout) pour 1 round.",
+    situationalEffectIds: ['unconscious'],
     sourcePage: 162,
   },
   {
@@ -3058,6 +3100,13 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Si le personnage réussit un test opposé d'attaque magique contre une cible à une portée de 20 m, il prend le contrôle des actions de sa cible (c'est le joueur qui décide de ses actions comme s'il s'agissait de son PJ). Pendant ce temps-là, le corps du mage est inactif.\nLa durée du contrôle dépend du NC de la cible :\n- NC 1 ou moins, valeur d'INT heures ;\n- NC 2, valeur d'INT minutes ;\n- NC 3, valeur d'INT rounds ;\n- NC 4 et +, 1d6 rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux la durée de contrôle (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort. Le mage ne peut contrôler plus d'une créature à la fois.",
+    // Prise de contrôle totale d'une créature EXISTANTE (pas une invocation) : aucun précédent dans le
+    // jeu de données (contrairement à PER-363 r7, qui AJOUTE un adversaire MJ-only — ici on TRANSFÈRE
+    // le contrôle d'une créature déjà en jeu). Reste VERBATIM/richText seul, comme la prison mentale du
+    // rang 6 — le moteur n'a pas de notion de « changement temporaire de camp » d'une créature. Mêmes
+    // termes nommés/dé nu que le rang 6.
+    richText:
+      "Si le personnage réussit un test opposé d'attaque magique contre une cible à une portée de 20 m, il prend le contrôle des actions de sa cible (c'est le joueur qui décide de ses actions comme s'il s'agissait de son PJ). Pendant ce temps-là, le corps du mage est inactif.\nLa durée du contrôle dépend du NC de la cible :\n- NC 1 ou moins, [#INT] heures ;\n- NC 2, [#INT] minutes ;\n- NC 3, [#INT] rounds ;\n- NC 4 et +, {1d6} rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux la durée de contrôle (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort. Le mage ne peut contrôler plus d'une créature à la fois.",
     sourcePage: 162,
   },
 
