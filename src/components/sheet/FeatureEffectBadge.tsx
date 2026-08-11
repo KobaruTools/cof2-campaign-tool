@@ -5,15 +5,23 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CallSplitIcon from '@mui/icons-material/CallSplit';
 import OpacityIcon from '@mui/icons-material/Opacity';
 import PersonalInjuryIcon from '@mui/icons-material/PersonalInjury';
+import RemoveModeratorIcon from '@mui/icons-material/RemoveModerator';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import type { Abilities } from '@/lib/engine';
+import { SourceRef } from '@/components/SourceRef';
 import { AttackQualifierBadge, type AttackBadgeColor } from '@/components/sheet/AttackQualifierBadge';
 import { CapabilityChip, RichInline } from '@/components/sheet/FeatureRichText';
 
 /** Clé d'icône d'un effet de capacité (résolue ici, pour garder la couche de données SANS JSX). */
-export type FeatureEffectIcon = 'bleeding' | 'grievous-wounds' | 'merciless' | 'arcane-strike' | 'half-damage';
+export type FeatureEffectIcon =
+  | 'bleeding'
+  | 'grievous-wounds'
+  | 'merciless'
+  | 'arcane-strike'
+  | 'half-damage'
+  | 'ignore-rd';
 
 const ICONS: Record<FeatureEffectIcon, ReactNode> = {
   bleeding: <OpacityIcon sx={{ fontSize: 18 }} />,
@@ -22,6 +30,8 @@ const ICONS: Record<FeatureEffectIcon, ReactNode> = {
   'arcane-strike': <AutoAwesomeIcon sx={{ fontSize: 18 }} />,
   // Métamorphose élémentaire, forme Air (élémentaliste r8, PER-74) : DM physiques divisés par 2.
   'half-damage': <CallSplitIcon sx={{ fontSize: 18 }} />,
+  // Ignore la RD des créatures de grande taille (demi-ogre r4, PER-325) : bouclier barré = RD levée.
+  'ignore-rd': <RemoveModeratorIcon sx={{ fontSize: 18 }} />,
 };
 
 /**
@@ -38,6 +48,11 @@ export interface FeatureEffectNote {
   reminder: string;
   /** N'affiché qu'en mode ARME (mode mains nues exclu). Absent/`false` = les deux modes. */
   weaponOnly?: boolean;
+  /**
+   * Page de RÈGLE référencée dans l'info-bulle (badge `SourceRef` cliquable, livre de base par défaut).
+   * Ex. la RD des créatures de grande taille (p. 206) pour le demi-ogre r4. Absent = aucun renvoi.
+   */
+  sourcePage?: number;
   /**
    * Teinte du badge, au même logiciel de couleurs que le reste de la fiche (retour propriétaire) :
    * `'info'` (bleu) pour un effet PERMANENT — même famille que « Combat à deux armes »/« Cape
@@ -74,6 +89,11 @@ export function FeatureEffectBadge({
           <Typography variant="body2" sx={{ mb: 0.75 }}>
             <RichInline text={note.reminder} abilities={abilities} level={level} rank={0} />
           </Typography>
+          {note.sourcePage != null && (
+            <Box sx={{ mb: 0.75 }}>
+              <SourceRef page={note.sourcePage} />
+            </Box>
+          )}
           <CapabilityChip featureId={note.featureId} label={null} />
         </Box>
       }

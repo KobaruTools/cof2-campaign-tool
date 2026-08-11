@@ -72,6 +72,7 @@ import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import type { FeatureEffectNote } from '@/components/sheet/FeatureEffectBadge';
+import { demiOgreMeleeAttackNotes, demiOgreRangedAttackNotes } from '@/lib/character/demiOgrePath';
 import { flayerMeleeAttackNotes, flayerRetaliationBadge } from '@/lib/character/flayerPath';
 import { warmageHasDeflection, warmageMeleeAttackNotes } from '@/lib/character/warmagePath';
 import {
@@ -786,8 +787,12 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ...flayerMeleeAttackNotes(modFeatureIds),
     ...warmageMeleeAttackNotes(modFeatureIds),
     ...elementalistMeleeAttackNotes(character),
+    ...demiOgreMeleeAttackNotes(character),
   ];
-  const rangedAttackNotes = elementalistRangedAttackNotes(character);
+  const rangedAttackNotes = [
+    ...elementalistRangedAttackNotes(character),
+    ...demiOgreRangedAttackNotes(character),
+  ];
 
   return {
     modFeatureIds,
