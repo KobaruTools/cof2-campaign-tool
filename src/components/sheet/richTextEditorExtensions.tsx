@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * PER-397 — extensions Tiptap de l'éditeur MVP branché sur `CustomItem.description`.
  * Réduit délibérément à ce que la syntaxe texte (PER-395) sait exprimer : gras/italique/barré
@@ -6,12 +8,17 @@
  * `StarterKit` (titres, listes, citations, liens, blocs de code…) est désactivé : la grammaire
  * PER-395 n'a pas de syntaxe pour ça, l'activer laisserait l'éditeur produire un document que
  * la sérialisation (`richTextEditorSync.ts`) ne saurait pas rendre fidèlement.
+ *
+ * PER-398 — étend le schéma d'un node ATOMIQUE `mechToken` (dé, formule/quantité/terme, `@carac`,
+ * statut, référence de capacité/renvoi de page) : voir `MechToken` plus bas.
  */
-import { mergeAttributes, Extension, Mark } from '@tiptap/core';
+import { mergeAttributes, Extension, Mark, Node } from '@tiptap/core';
+import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapBold from '@tiptap/extension-bold';
 import TiptapItalic from '@tiptap/extension-italic';
 import TiptapStrike from '@tiptap/extension-strike';
+import Box from '@mui/material/Box';
 import {
   RICH_COLOR_NAMES,
   RICH_SIZE_NAMES,
@@ -20,6 +27,7 @@ import {
   type RichColorName,
   type RichSizeName,
 } from '@/lib/ui/featureRichText';
+import { MechTokenRun } from './FeatureRichText';
 
 /**
  * Groupe d'exclusion mutuelle des 5 marques MVP : la grammaire PER-395 est PLATE (une marque
@@ -46,6 +54,10 @@ declare module '@tiptap/core' {
       /** Applique `{{size:nom}}…{{/size}}` sur la sélection (remplace toute autre marque du groupe). */
       setRichSize: (name: RichSizeName) => ReturnType;
       unsetRichSize: () => ReturnType;
+    };
+    mechToken: {
+      /** Insère un token mécanique (`raw` = texte source canonique, ex. `{1d4}`, `@FOR`, `[!immobilized]`). */
+      insertMechToken: (raw: string) => ReturnType;
     };
   }
 }
@@ -121,6 +133,74 @@ const RichSize = Mark.create({
 });
 
 /**
+ * Rendu React d'un `mechToken` (PER-398) : la MÊME puce/icône que la lecture sans contexte de
+ * personnage (`MechTokenRun`, `FeatureRichText.tsx`) — source unique, jamais un second rendu qui
+ * pourrait diverger de l'aperçu de lecture. Léger cadre en pointillé quand le node est SÉLECTIONNÉ
+ * (clic dessus, ou navigation clavier) : seul repère visuel possible pour un atome sans contenu
+ * éditable, sinon indiscernable d'un simple affichage.
+ */
+function MechTokenView({ node, selected }: ReactNodeViewProps) {
+  return (
+    <NodeViewWrapper as="span" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+      <Box
+        component="span"
+        sx={{
+          borderRadius: 0.5,
+          outline: selected ? '2px solid' : 'none',
+          outlineColor: 'primary.main',
+          outlineOffset: '1px',
+        }}
+      >
+        <MechTokenRun raw={node.attrs.raw as string} />
+      </Box>
+    </NodeViewWrapper>
+  );
+}
+
+/**
+ * Node ATOMIQUE (PER-398) portant un token de la grammaire mécanique (dé, formule/quantité/terme,
+ * `@carac`, statut, référence de capacité/renvoi de page) — `raw` est le texte source EXACT
+ * (`splitMechanicalTokens`, `richTextEditorSync.ts`), jamais recalculé ni réinterprété ici : ce
+ * node est une simple BOÎTE opaque pour la sérialisation, le rendu passant par `MechTokenRun`
+ * (source unique, partagée avec la lecture). JAMAIS de marque (gras/couleur/etc.) sur ce node :
+ * la grammaire ne les imbrique jamais (une marque ne traverse pas un token, cf. note de tête de
+ * `featureRichText.ts`) — inutile de déclarer `marks` dans le schéma.
+ */
+const MechToken = Node.create({
+  name: 'mechToken',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      raw: {
+        default: '',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-mech-raw'),
+        renderHTML: (attrs: { raw: string }) => ({ 'data-mech-raw': attrs.raw }),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-mech-raw]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes)];
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(MechTokenView);
+  },
+  addCommands() {
+    return {
+      insertMechToken:
+        (raw: string) =>
+        ({ commands }: { commands: { insertContent: (content: Record<string, unknown>) => boolean } }) =>
+          commands.insertContent({ type: this.name, attrs: { raw } }),
+    };
+  },
+});
+
+/**
  * Document à un seul paragraphe (cf. note de tête `richTextEditorSync.ts`) : `Enter` ET
  * `Shift+Enter` insèrent tous les deux un `hardBreak` au lieu de scinder un nouveau paragraphe
  * — la grammaire PER-395 ne distingue pas les deux (un `\n` est un `\n`, `whiteSpace: pre-line`
@@ -162,5 +242,6 @@ export const RICH_TEXT_EDITOR_EXTENSIONS = [
   Strike,
   RichColor,
   RichSize,
+  MechToken,
   SingleParagraph,
 ];

@@ -557,6 +557,19 @@ describe('resolveExpr — produit de variables (Téléportation, PER-163)', () =
   });
 });
 
+describe('parseRichText — référence de statut préjudiciable (PER-398)', () => {
+  it('reconnaît [!id] pour un état préjudiciable du catalogue', () => {
+    expect(parseRichText('la cible est [!immobilized]')).toEqual([
+      { kind: 'text', value: 'la cible est ' },
+      { kind: 'statusRef', stateId: 'immobilized' },
+    ]);
+  });
+
+  it('un id hors catalogue retombe en texte littéral (crochets compris)', () => {
+    expect(parseRichText('[!pas-un-etat]')).toEqual([{ kind: 'text', value: '[!pas-un-etat]' }]);
+  });
+});
+
 describe('parseRichText — multi-paragraphe (PER-395)', () => {
   it('conserve un texte multi-paragraphe (double saut de ligne) sans le tronquer', () => {
     expect(parseRichText('Premier paragraphe.\n\nSecond paragraphe.')).toEqual([

@@ -69,6 +69,44 @@ describe('descriptionToDoc / docToDescription', () => {
     ]);
   });
 
+  it('round-trip un dé mécanique isolé, porté par un nœud mechToken dédié', () => {
+    expect(roundTrip('{1d4}')).toBe('{1d4}');
+    const doc = descriptionToDoc('{1d4}');
+    expect(doc.content?.[0].content).toEqual([{ type: 'mechToken', attrs: { raw: '{1d4}' } }]);
+  });
+
+  it('round-trip une référence de caractéristique, une formule et un statut', () => {
+    expect(roundTrip('@FOR')).toBe('@FOR');
+    expect(roundTrip('[FOR + 1]')).toBe('[FOR + 1]');
+    expect(roundTrip('[!immobilized]')).toBe('[!immobilized]');
+    expect(roundTrip('[&epee-longue]')).toBe('[&epee-longue]');
+  });
+
+  it('un token mal formé retombe en texte littéral (aucun nœud mechToken)', () => {
+    expect(roundTrip('[!pas-un-etat]')).toBe('[!pas-un-etat]');
+    const doc = descriptionToDoc('[!pas-un-etat]');
+    expect(doc.content?.[0].content).toEqual([{ type: 'text', text: '[!pas-un-etat]' }]);
+  });
+
+  it('round-trip un renvoi de page, avec ou sans qualificatif de livre', () => {
+    expect(roundTrip('(p. 42)')).toBe('(p. 42)');
+    const doc = descriptionToDoc('(p. 42, compagnon)');
+    expect(doc.content?.[0].content).toEqual([{ type: 'mechToken', attrs: { raw: '(p. 42, compagnon)' } }]);
+    expect(docToDescription(doc)).toBe('(p. 42, compagnon)');
+  });
+
+  it('un token mécanique ne porte jamais de marque, même adjacent à du texte marqué', () => {
+    const text = '**avant** {1d4} *après*';
+    expect(roundTrip(text)).toBe(text);
+    expect(descriptionToDoc(text).content?.[0].content).toEqual([
+      { type: 'text', text: 'avant', marks: [{ type: 'bold' }] },
+      { type: 'text', text: ' ' },
+      { type: 'mechToken', attrs: { raw: '{1d4}' } },
+      { type: 'text', text: ' ' },
+      { type: 'text', text: 'après', marks: [{ type: 'italic' }] },
+    ]);
+  });
+
   it('porte les attrs `name` pour couleur/taille', () => {
     const doc = descriptionToDoc('{{color:bleu}}x{{/color}}');
     expect(doc.content?.[0].content).toEqual([

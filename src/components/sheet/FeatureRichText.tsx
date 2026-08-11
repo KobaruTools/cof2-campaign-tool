@@ -41,6 +41,10 @@ import {
   richColorSx,
   richSizeSx,
   splitMarkdownMarks,
+  splitMechanicalTokens,
+  withCoeff,
+  type ExprTerm,
+  type ProductFactor,
   type ResolvedExpr,
 } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
@@ -499,7 +503,7 @@ function GlossaryMark({ label, title }: { label: string; title: string }) {
  * sa casse et son accord tels qu'écrits dans la prose (« immobilisée ») ; l'info-bulle rappelle
  * l'effet VERBATIM de l'état et sa page source (catalogue `STATUS_EFFECTS`, source unique).
  */
-function StatusEffectChip({ label, stateId }: { label: string; stateId: StatusEffectId }) {
+export function StatusEffectChip({ label, stateId }: { label: string; stateId: StatusEffectId }) {
   const info = STATUS_EFFECTS[stateId];
   // Rouge « moins marqué » (retour propriétaire) : très légère désaturation du rouge d'erreur.
   const chipRed = (theme: Theme) => desaturate(theme.palette.error.main, 0.22);
@@ -676,18 +680,139 @@ export function GlossaryText({ children }: { children: string }) {
 }
 
 /**
+ * Facteur SYMBOLIQUE d'un terme `product` (`niveau × INT`), sans valeur résolue (PER-398) : le
+ * pendant sans contexte de personnage des `productParts` de `ResolvedPart`.
+ */
+function SymbolicFactor({ factor }: { factor: ProductFactor }) {
+  switch (factor.kind) {
+    case 'ability':
+      return <AbilityCodeChip ability={factor.ability} noTooltip />;
+    case 'abilityBest':
+      return <>{factor.abilities.join('/')}</>;
+    case 'rank':
+      return <>rang</>;
+    case 'level':
+      return <>niveau</>;
+    case 'milestoneBonus':
+      return <>paliers</>;
+  }
+}
+
+/**
+ * Terme SYMBOLIQUE d'une formule/quantité, sans valeur résolue (PER-398) : rendu des SYMBOLES
+ * seuls (code de caractéristique en puce, dé en icône à sa face de base) — jamais de total, faute
+ * de personnage (`abilities`/`level`/`rank`) pour appeler `resolveExpr`. `rang`/`niveau`/`paliers`
+ * restent des mots, sans valeur à afficher.
+ */
+function SymbolicTerm({ term }: { term: ExprTerm }) {
+  switch (term.kind) {
+    case 'ability':
+      return term.coeff !== undefined ? (
+        <>
+          <AbilityCodeChip ability={term.ability} noTooltip /> × {term.coeff}
+        </>
+      ) : (
+        <AbilityCodeChip ability={term.ability} noTooltip />
+      );
+    case 'abilityBest':
+      return <>{withCoeff(term.abilities.join('/'), term.coeff)}</>;
+    case 'die': {
+      // Rang 0 (pas de voie hôte hors contexte perso) → dé/palier de BASE ; dé évolutif affiché à sa
+      // face imprimée SANS niveau (`level` omis), même convention que les créatures (PER-238).
+      const { count, die, evolving } = dieAtRank(term.token, 0);
+      return <DiePart count={count} die={die} evolving={evolving} noTooltip />;
+    }
+    case 'number':
+      return <>{term.value}</>;
+    case 'rank':
+      return <>{withCoeff('rang', term.coeff)}</>;
+    case 'level':
+      return <>{withCoeff('niveau', term.coeff)}</>;
+    case 'milestoneBonus':
+      return <>{withCoeff('paliers', term.coeff)}</>;
+    case 'product':
+      return (
+        <>
+          {term.factors.map((f, i) => (
+            <Fragment key={i}>
+              {i > 0 && ' × '}
+              <SymbolicFactor factor={f} />
+            </Fragment>
+          ))}
+          {term.coeff !== undefined && ` × ${term.coeff}`}
+        </>
+      );
+  }
+}
+
+/** Suite de termes SYMBOLIQUES (`1d4° + FOR`), séparés par leurs opérateurs signés. */
+function SymbolicTerms({ terms }: { terms: ExprTerm[] }) {
+  return (
+    <>
+      {terms.map((t, i) => (
+        <Fragment key={i}>
+          {i > 0 ? ` ${t.sign === -1 ? '−' : '+'} ` : t.sign === -1 ? '− ' : ''}
+          <SymbolicTerm term={t} />
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Un token mécanique isolé (PER-398, `splitMechanicalTokens`) : dé, formule/quantité/terme,
+ * `@carac`, statut ou référence de capacité — rendu avec les MÊMES puces/icônes que la lecture
+ * AVEC contexte de personnage (`RichInline`), mais SANS valeur résolue (pas d'`abilities`
+ * garanti). `raw` est re-parsé via `parseRichText` : source unique de la grammaire, jamais une
+ * seconde interprétation qui pourrait diverger. Un renvoi de page (`(p. N)`) n'est PAS un segment
+ * de `parseRichText` (grammaire distincte, `splitPageRefs`) : il retombe naturellement dans le
+ * repli `RichTextRun`, qui le reconnaît déjà.
+ */
+export function MechTokenRun({ raw }: { raw: string }) {
+  const seg = parseRichText(raw)[0];
+  if (!seg) return null;
+  if (seg.kind === 'die') {
+    const { count, die, evolving } = dieAtRank(seg.token, 0);
+    return <DiePart count={count} die={die} evolving={evolving} />;
+  }
+  if (seg.kind === 'abilityRef')
+    return <RefChip label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" ability={seg.ability} />;
+  if (seg.kind === 'statusRef') {
+    const info = STATUS_EFFECTS[seg.stateId];
+    return <StatusEffectChip label={info.label} stateId={seg.stateId} />;
+  }
+  if (seg.kind === 'capabilityRef') return <CapabilityChip featureId={seg.featureId} label={seg.label} />;
+  if (seg.kind === 'expr' || seg.kind === 'quantity' || seg.kind === 'term') return <SymbolicTerms terms={seg.terms} />;
+  // Repli (renvoi de page, ou token finalement non reconnu) : chaîne verbatim, chokepoint habituel.
+  return <RichTextRun value={raw} />;
+}
+
+/**
  * `GlossaryText` + les 5 marques MVP de PER-395/397 (`**gras**`, `*italique*`, `~~barré~~`,
- * `{{color:nom}}…{{/color}}`, `{{size:nom}}…{{/size}}`) — SANS le reste de la grammaire
- * mécanique de `parseRichText` (dés, formules, références de capacité/créature) : ce
- * renderer sert des champs SANS contexte de personnage garanti (`CustomItem.description`,
- * `EquipmentLine.details`), à la différence de `RichInline` qui exige `abilities`/`level`/
- * `rank`. Même rendu visuel que `RichInline` pour ces 5 marques (mêmes `Box`/`sx`) : c'est
- * la garantie de cohérence lecture/édition exigée par PER-397 pour l'éditeur Tiptap.
+ * `{{color:nom}}…{{/color}}`, `{{size:nom}}…{{/size}}`) + la grammaire MÉCANIQUE de PER-398 (dé,
+ * formule/quantité/terme, `@carac`, statut, référence de capacité/renvoi de page) — SANS résolution
+ * (pas d'`abilities`/`level`/`rank` garanti) : ce renderer sert des champs SANS contexte de
+ * personnage garanti (`CustomItem.description`, `EquipmentLine.details`), à la différence de
+ * `RichInline` qui EXIGE `abilities`/`level`/`rank` et calcule des totaux. Les tokens mécaniques
+ * sont isolés EN PREMIER (`splitMechanicalTokens`, même priorité que `parseRichText` et l'éditeur
+ * Tiptap : une marque ne traverse jamais un token), le texte restant repassant par les 5 marques
+ * MVP — c'est la garantie de cohérence lecture/édition exigée par PER-397/398 pour l'éditeur Tiptap.
  */
 export function GlossaryRichText({ children }: { children: string }) {
   return (
     <>
-      {splitMarkdownMarks(children).map((seg, i) => {
+      {splitMechanicalTokens(children).map((chunk, i) =>
+        chunk.kind === 'token' ? <MechTokenRun key={i} raw={chunk.raw} /> : <GlossaryMarksRun key={i} value={chunk.value} />,
+      )}
+    </>
+  );
+}
+
+/** Portion SANS token mécanique (déjà isolée par `splitMechanicalTokens`) : les 5 marques MVP. */
+function GlossaryMarksRun({ value }: { value: string }) {
+  return (
+    <>
+      {splitMarkdownMarks(value).map((seg, i) => {
         if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
         if (seg.kind === 'bold')
           return (
@@ -1310,6 +1435,10 @@ export function RichInline({
               level={evolvingDieBase ? undefined : level}
             />
           );
+        }
+        if (seg.kind === 'statusRef') {
+          const info = STATUS_EFFECTS[seg.stateId];
+          return <StatusEffectChip key={i} label={info.label} stateId={seg.stateId} />;
         }
         const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus, abilitySubstitutions, scalingTierBonus);
         if (seg.kind === 'term') {

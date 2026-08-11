@@ -18,39 +18,51 @@
  * rend la sérialisation ci-dessous triviale (pas de gestion d'imbrication à inventer).
  */
 import type { JSONContent } from '@tiptap/core';
-import { splitMarkdownMarks, type RichColorName, type RichSizeName } from './featureRichText';
+import { splitMarkdownMarks, splitMechanicalTokens, type RichColorName, type RichSizeName } from './featureRichText';
 
 /** Nom de marque Tiptap pour chaque famille (les 3 premières sont les marques `@tiptap/extension-*` étendues). */
 type MarkType = 'bold' | 'italic' | 'strike' | 'richColor' | 'richSize';
 
 /**
+ * Convertit un morceau de texte SANS token mécanique (déjà isolé par `splitMechanicalTokens`,
+ * PER-398) en nœuds `text` marqués, poussés dans `content`. `splitMarkdownMarks` n'émet jamais
+ * que ces 6 natures (texte + 5 marques) — les branches ci-dessous couvrent donc tout cas réel.
+ */
+function pushMarkedText(content: JSONContent[], line: string): void {
+  for (const seg of splitMarkdownMarks(line)) {
+    if (seg.kind === 'text') {
+      if (seg.value) content.push({ type: 'text', text: seg.value });
+      continue;
+    }
+    // Une marque sur une plage VIDE (`**{{color:rouge}}...` mal formé donnant `value: ''`)
+    // n'a rien à porter — ProseMirror interdit un nœud `text` de longueur nulle.
+    if (seg.kind === 'bold' || seg.kind === 'italic' || seg.kind === 'strike') {
+      if (seg.value) content.push({ type: 'text', text: seg.value, marks: [{ type: seg.kind }] });
+      continue;
+    }
+    if (seg.kind === 'color' || seg.kind === 'size') {
+      if (!seg.value) continue;
+      const type: MarkType = seg.kind === 'color' ? 'richColor' : 'richSize';
+      content.push({ type: 'text', text: seg.value, marks: [{ type, attrs: { name: seg.name } }] });
+    }
+  }
+}
+
+/**
  * Convertit le texte stocké (`CustomItem.description`) en document Tiptap initial. Chaîne
- * vide → paragraphe vide (Tiptap l'accepte sans `content`).
+ * vide → paragraphe vide (Tiptap l'accepte sans `content`). Les tokens mécaniques (PER-398 :
+ * dé, formule/quantité/terme, `@carac`, statut, référence de capacité) sont isolés EN PREMIER
+ * (`splitMechanicalTokens`) et posés en nœud `mechToken` autonome — jamais sous une marque, même
+ * règle que dans le reste de la grammaire (une marque ne traverse pas un token).
  */
 export function descriptionToDoc(text: string): JSONContent {
   const lines = text.split('\n');
   const content: JSONContent[] = [];
   lines.forEach((line, i) => {
     if (i > 0) content.push({ type: 'hardBreak' });
-    // `splitMarkdownMarks` n'émet jamais que ces 6 natures (texte + 5 marques) — les autres
-    // membres de l'union `RichTextSegment` (dé/formule/référence…) viennent de `parseRichText`,
-    // jamais de ce parseur-ci ; les branches ci-dessous couvrent donc tout cas réel.
-    for (const seg of splitMarkdownMarks(line)) {
-      if (seg.kind === 'text') {
-        if (seg.value) content.push({ type: 'text', text: seg.value });
-        continue;
-      }
-      // Une marque sur une plage VIDE (`**{{color:rouge}}...` mal formé donnant `value: ''`)
-      // n'a rien à porter — ProseMirror interdit un nœud `text` de longueur nulle.
-      if (seg.kind === 'bold' || seg.kind === 'italic' || seg.kind === 'strike') {
-        if (seg.value) content.push({ type: 'text', text: seg.value, marks: [{ type: seg.kind }] });
-        continue;
-      }
-      if (seg.kind === 'color' || seg.kind === 'size') {
-        if (!seg.value) continue;
-        const type: MarkType = seg.kind === 'color' ? 'richColor' : 'richSize';
-        content.push({ type: 'text', text: seg.value, marks: [{ type, attrs: { name: seg.name } }] });
-      }
+    for (const chunk of splitMechanicalTokens(line)) {
+      if (chunk.kind === 'token') content.push({ type: 'mechToken', attrs: { raw: chunk.raw } });
+      else pushMarkedText(content, chunk.value);
     }
   });
   return { type: 'doc', content: [{ type: 'paragraph', ...(content.length ? { content } : {}) }] };
@@ -80,6 +92,8 @@ function wrapMarked(text: string, markType: string, attrs: Record<string, unknow
 
 function inlineNodeToText(node: JSONContent): string {
   if (node.type === 'hardBreak') return '\n';
+  // Token mécanique (PER-398) : `attrs.raw` porte le texte source exact posé par `descriptionToDoc`.
+  if (node.type === 'mechToken') return (node.attrs?.raw as string | undefined) ?? '';
   if (node.type !== 'text') return '';
   const text = node.text ?? '';
   const mark = node.marks?.[0];

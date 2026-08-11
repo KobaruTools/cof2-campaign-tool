@@ -61,9 +61,19 @@
  * pour ne jamais casser l'affichage d'un balisage approximatif.
  */
 import { scalingDie } from '@/lib/engine';
-import { ABILITY_IDS, type AbilityId, type AbilitySubstitution, type Die, type ProgressionRules } from '@/data/schema';
+import {
+  ABILITY_IDS,
+  STATUS_EFFECT_IDS,
+  type AbilityId,
+  type AbilitySubstitution,
+  type Die,
+  type ProgressionRules,
+  type StatusEffectId,
+} from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { ABILITY_NAMES } from './ability';
+import type { BookId } from './books';
+import { splitPageRefs } from './pageRefs';
 
 /** Un dé tokenisé : nombre, faces, et marqueur évolutif. */
 export interface DieToken {
@@ -131,6 +141,13 @@ export type RichTextSegment =
   | { kind: 'quantity'; terms: ExprTerm[]; raw: string }
   | { kind: 'term'; terms: ExprTerm[]; raw: string }
   | { kind: 'abilityRef'; ability: AbilityId }
+  // PER-398 — référence EXPLICITE à un état préjudiciable du catalogue (`[!immobilized]`), pour
+  // l'insertion assistée depuis la toolbar de l'éditeur riche (PER-398) : contrairement à
+  // l'auto-détection du mot français (`GAME_TERMS`/`STATUS_EFFECT_FORMS`, `src/lib/ui/glossary.ts`),
+  // ce balisage reste non ambigu quel que soit le contexte de la phrase (un mot comme « ralentie »
+  // peut apparaître sans désigner l'état). `id` hors catalogue → texte littéral (même robustesse
+  // que les autres tokens).
+  | { kind: 'statusRef'; stateId: StatusEffectId }
   // Référence à une AUTRE capacité (PER-72), balisée `[&feature-id]` ou
   // `[&feature-id|texte affiché]`. Le rendu en fait une puce aux couleurs du profil
   // de la capacité citée (cf. `CapabilityChip`). `label` = texte verbatim de la prose
@@ -534,6 +551,16 @@ export function parseRichText(richText: string): RichTextSegment[] {
         else pushText(m[0]); // `[&]` vide → littéral
         continue;
       }
+      // Référence de statut préjudiciable (`[!immobilized]`, PER-398) : `id` doit être un membre du
+      // catalogue `STATUS_EFFECT_IDS` — sinon repli littéral (crochets compris), même robustesse que
+      // les autres tokens de crochets.
+      if (trimmed.startsWith('!')) {
+        const stateId = trimmed.slice(1).trim();
+        if ((STATUS_EFFECT_IDS as readonly string[]).includes(stateId)) {
+          segments.push({ kind: 'statusRef', stateId: stateId as StatusEffectId });
+        } else pushText(m[0]);
+        continue;
+      }
       const isQuantity = trimmed.startsWith('=');
       const isTerm = trimmed.startsWith('#');
       const exprBody = isQuantity || isTerm ? trimmed.slice(1) : body;
@@ -556,6 +583,82 @@ export function parseRichText(richText: string): RichTextSegment[] {
   }
   pushText(richText.slice(lastIndex));
   return segments.flatMap((seg) => (seg.kind === 'text' ? splitMarkdownMarks(seg.value) : [seg]));
+}
+
+/** Un fragment de texte pour l'éditeur riche (PER-398) : texte littéral, ou un token mécanique isolé. */
+export type MechanicalTokenSegment = { kind: 'text'; value: string } | { kind: 'token'; raw: string };
+
+/**
+ * Isole les tokens de la grammaire mécanique (dé, formule/quantité/terme, `@carac`, statut,
+ * référence de capacité) d'un texte, SANS toucher aux marques Markdown (PER-395) : utilisé par
+ * l'éditeur Tiptap (`richTextEditorSync.ts`) pour poser un nœud `mechToken` dédié sur chaque
+ * token reconnu (PER-398), avant que le texte restant ne passe par `splitMarkdownMarks` — les
+ * marques ne traversent jamais un token (même règle que le reste de la grammaire, cf. note de
+ * tête du fichier). `raw` est le texte source EXACT du token (`m[0]`), pour un round-trip fidèle
+ * dans `docToDescription`. Même robustesse que `parseRichText` : un `{…}`/`[…]`/`@CODE` non
+ * reconnu retombe en texte littéral.
+ */
+export function splitMechanicalTokens(text: string): MechanicalTokenSegment[] {
+  const segments: MechanicalTokenSegment[] = [];
+  let lastIndex = 0;
+  TOKEN_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  const pushText = (value: string) => {
+    if (!value) return;
+    const last = segments[segments.length - 1];
+    if (last?.kind === 'text') last.value += value;
+    else segments.push({ kind: 'text', value });
+  };
+  while ((m = TOKEN_RE.exec(text)) !== null) {
+    pushText(text.slice(lastIndex, m.index));
+    lastIndex = TOKEN_RE.lastIndex;
+    if (m[1] !== undefined) {
+      // Dé (`{1d4°}`).
+      if (parseDie(m[1])) segments.push({ kind: 'token', raw: m[0] });
+      else pushText(m[0]);
+    } else if (m[2] !== undefined) {
+      const trimmed = m[2].trimStart();
+      if (trimmed.startsWith('&')) {
+        // Référence de capacité (`[&feature-id]` / `[&feature-id|texte]`) : un id non vide suffit.
+        const rest = trimmed.slice(1);
+        const featureId = (rest.indexOf('|') >= 0 ? rest.slice(0, rest.indexOf('|')) : rest).trim();
+        if (featureId) segments.push({ kind: 'token', raw: m[0] });
+        else pushText(m[0]);
+      } else if (trimmed.startsWith('!')) {
+        // Statut préjudiciable (`[!immobilized]`, PER-398).
+        const stateId = trimmed.slice(1).trim();
+        if ((STATUS_EFFECT_IDS as readonly string[]).includes(stateId)) segments.push({ kind: 'token', raw: m[0] });
+        else pushText(m[0]);
+      } else {
+        // Formule/quantité/terme (`[FOR + 1]`, `[=CHA]`, `[#rang]`).
+        const isPrefixed = trimmed.startsWith('=') || trimmed.startsWith('#');
+        const exprBody = isPrefixed ? trimmed.slice(1) : m[2];
+        if (parseExpr(exprBody)) segments.push({ kind: 'token', raw: m[0] });
+        else pushText(m[0]);
+      }
+    } else {
+      // Référence de caractéristique (`@FOR`) : toujours reconnue par construction de `TOKEN_RE`.
+      segments.push({ kind: 'token', raw: m[0] });
+    }
+  }
+  pushText(text.slice(lastIndex));
+  // Second passage : les renvois de page (`(p. N)`, `(p. N, Compagnon)`) utilisent des
+  // PARENTHÈSES, jamais capturées par `TOKEN_RE` — on les isole dans les segments `text` restants
+  // (`splitPageRefs`, source unique de la grammaire de renvoi). Le token reconstruit est TOUJOURS
+  // la forme canonique `(p. N[, livre])` : une saisie historique en prose (« voir page N ») serait
+  // renormalisée à l'ouverture dans l'éditeur — effet de bord mineur et sans perte de sens.
+  return segments.flatMap((seg) => (seg.kind === 'text' ? splitPageRefsAsTokens(seg.value) : [seg]));
+}
+
+/** Mot-clé de qualificatif de livre reconnu par `splitPageRefs` pour un renvoi HORS livre de base. */
+const PAGE_REF_BOOK_KEYWORD: Partial<Record<BookId, string>> = { companion: 'compagnon', bestiaire: 'bestiaire' };
+
+function splitPageRefsAsTokens(text: string): MechanicalTokenSegment[] {
+  return splitPageRefs(text).map((seg) => {
+    if (seg.kind === 'text') return { kind: 'text', value: seg.value };
+    const keyword = seg.book ? PAGE_REF_BOOK_KEYWORD[seg.book] : undefined;
+    return { kind: 'token', raw: `(p. ${seg.page}${keyword ? `, ${keyword}` : ''})` };
+  });
 }
 
 /** Un terme de formule résolu pour l'affichage. */
@@ -606,8 +709,12 @@ export interface ResolvedExpr {
   parts: ResolvedPart[];
 }
 
-/** Symbole d'une variable, suffixé du multiplicateur éventuel (« CHA × 100 »). */
-function withCoeff(base: string, coeff?: number): string {
+/**
+ * Symbole d'une variable, suffixé du multiplicateur éventuel (« CHA × 100 »). Exportée pour le
+ * rendu SYMBOLIQUE sans contexte de personnage (PER-398, `MechTokenRun`) : `rang`/`niveau`/
+ * `paliers` n'ont pas de valeur à afficher hors résolution, seul le symbole compte.
+ */
+export function withCoeff(base: string, coeff?: number): string {
   return coeff !== undefined ? `${base} × ${coeff}` : base;
 }
 
