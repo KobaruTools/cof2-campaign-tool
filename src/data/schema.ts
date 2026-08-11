@@ -1177,6 +1177,12 @@ export const IMMUNITY_IDS = [
   'paralyzed',
   'prone',
   'surprised',
+  // Esprit impénétrable (magie de l'esprit r4, p. 161, PER-74/PER-365) : « immunisé à toutes les
+  // tentatives de détection des mensonges, des sentiments ou des émotions… ne peut pas non plus être
+  // localisé ou scruté par des moyens magiques ». Catégorie DÉTECTION/SCRYING, distincte des états de
+  // combat ci-dessus mais même mécanique de badge (aucune logique de blocage automatique, purement
+  // informatif — comme les 10 autres immunités).
+  'magic-detection',
 ] as const;
 export type ImmunityId = (typeof IMMUNITY_IDS)[number];
 
@@ -1192,6 +1198,7 @@ export const IMMUNITY_LABELS: Record<ImmunityId, string> = {
   paralyzed: 'Paralysé',
   prone: 'Renversé',
   surprised: 'Surpris',
+  'magic-detection': 'Détection magique',
 };
 
 /**
@@ -1479,6 +1486,8 @@ export const SITUATIONAL_EFFECT_IDS = [
   'cursed',
   'burning',
   'fascinated',
+  'imprisoned',
+  'mind-controlled',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1609,6 +1618,24 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     label: 'Fasciné',
     effect:
       "Cesse toute activité et suit le lanceur du sort tant que celui-ci continue de chanter (une action de mouvement à chaque round), pour une durée maximale de [1d6 + INT] minutes. Une créature blessée reprend immédiatement ses esprits et devient immunisée pendant 24 h.",
+    sourcePage: 162,
+  },
+  // « Prison mentale » (magie de l'esprit, r6, p. 162). Entièrement comportemental (retrait effectif
+  // du combat) : la table de durée par NC et le fait d'être « hors jeu » ne sont chiffrables par
+  // aucun `StatusModifiers` (le moteur ne modélise pas le retrait d'un combattant). Arbitrage
+  // propriétaire 2026-08-11 : posé pour le suivi à l'écran MJ malgré l'absence d'effet chiffré.
+  imprisoned: {
+    label: 'Emprisonné',
+    effect:
+      "Enfermé dans un labyrinthe extradimensionnel, hors de combat, pour une durée dépendant du NC de la cible (table verbatim de la capacité source). Un test d'INT réussi divise la durée par deux (minimum 1 round). Sans effet si la cible a une INT supérieure ou égale à celle du lanceur.",
+    sourcePage: 162,
+  },
+  // « Contrôle mental » (magie de l'esprit, r8, p. 162). Même limite que ci-dessus : prise de contrôle
+  // TOTALE d'une créature déjà en jeu, aucune primitive de « changement temporaire de camp ».
+  'mind-controlled': {
+    label: 'Contrôlé',
+    effect:
+      "Ses actions sont dictées par le lanceur du sort (le corps de celui-ci reste inactif pendant ce temps), pour une durée dépendant du NC de la cible (table verbatim de la capacité source). Un test d'INT réussi divise la durée par deux (minimum 1 round). Sans effet si la cible a une INT supérieure ou égale à celle du lanceur.",
     sourcePage: 162,
   },
 };

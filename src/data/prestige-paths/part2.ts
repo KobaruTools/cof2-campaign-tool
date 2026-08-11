@@ -3015,14 +3015,17 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Le personnage ou un allié au contact est immunisé à toutes les tentatives de détection des mensonges, des sentiments ou des émotions, même magiques pendant INT heures. Il ne peut pas non plus être localisé ou scruté par des moyens magiques (sorts ou pouvoirs comme clairvoyance ou détection de l'invisible). En plus de ce sort, le personnage obtient un bonus de +5 à tous les tests destinés à cacher ses émotions et ses sentiments ou pour résister aux sorts qui affectent l'esprit (charme, fascination, domination, etc.).",
     // Rendu enrichi : « pendant INT heures » garde son déterminant (« pendant… ») → terme nommé
-    // `[#INT]` (patron Vision/mages.ts, PER-364). Les DEUX volets restent VERBATIM sans primitive :
-    // l'immunité à la détection/localisation magique ne fait pas partie des 8 `IMMUNITY_IDS` (catalogue
-    // scopé aux ÉTATS DE COMBAT, pas aux effets de détection/scrying) ; le bonus de +5 aux tests pour
-    // résister aux sorts d'esprit est le même genre de bonus générique que celui du bâton (« Sceptre
-    // défensif », archimage r4) ou de l'elfe/halfelin (p. 50/56) — déjà documenté hors périmètre moteur
-    // (`StaffDefBonusEffect`, schema.ts).
+    // `[#INT]` (patron Vision/mages.ts, PER-364). Immunité à la détection/localisation magique →
+    // nouvelle catégorie `magic-detection` dans `IMMUNITY_IDS` (arbitrage propriétaire 2026-08-11 :
+    // même mécanique de badge informatif que les 10 autres immunités, aucune logique de blocage
+    // automatique n'existait déjà pour cette catégorie). Le bonus de +5 aux tests pour résister aux
+    // sorts d'esprit reste VERBATIM (arbitrage propriétaire 2026-08-11, distinct de l'immunité
+    // ci-dessus) : la fiche n'a qu'un seul chiffre `magicAttack` partagé attaque/résistance, et aucun
+    // panneau n'existe encore pour afficher un bonus purement informatif sans le recalculer — même
+    // limite que le bâton de l'archimage (r4) et l'elfe/halfelin (p. 50/56).
     richText:
       "Le personnage ou un allié au contact est immunisé à toutes les tentatives de détection des mensonges, des sentiments ou des émotions, même magiques pendant [#INT] heures. Il ne peut pas non plus être localisé ou scruté par des moyens magiques (sorts ou pouvoirs comme clairvoyance ou détection de l'invisible). En plus de ce sort, le personnage obtient un bonus de +5 à tous les tests destinés à cacher ses émotions et ses sentiments ou pour résister aux sorts qui affectent l'esprit (charme, fascination, domination, etc.).",
+    effects: [{ kind: 'immunity', immunities: ['magic-detection'] }],
     sourcePage: 161,
   },
   {
@@ -3069,10 +3072,12 @@ export const prestigeFeatures2: Feature[] = [
     // d'… »), dé nu `{1d6}` sur le dernier palier ; le reste (formule de difficulté) est déjà entre
     // crochets dans le livre. La durée d'emprisonnement (table par NC) et le retrait effectif du
     // combat restent VERBATIM : aucune primitive n'exprime « la cible est hors jeu pendant N » (même
-    // limite que la prise de contrôle du rang 8).
+    // limite que la prise de contrôle du rang 8). Nouvel effet situationnel `imprisoned` ajouté
+    // (arbitrage propriétaire 2026-08-11) pour au moins suivre l'état à l'écran MJ, sans effet chiffré.
     richText:
       "Une fois par combat, le personnage peut faire un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de réussite, la victime est emprisonnée dans un labyrinthe extradimensionnel. La durée d'emprisonnement dépend du NC de la cible :\n- NC 1 ou moins, [#INT] jours ;\n- NC 2, [#INT] heures ;\n- NC 3, [#INT] minutes ;\n- NC 4 et +, {1d6} rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux sa durée d'emprisonnement (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort.",
     usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
+    situationalEffectIds: ['imprisoned'],
     sourcePage: 162,
   },
   {
@@ -3105,11 +3110,13 @@ export const prestigeFeatures2: Feature[] = [
       "Si le personnage réussit un test opposé d'attaque magique contre une cible à une portée de 20 m, il prend le contrôle des actions de sa cible (c'est le joueur qui décide de ses actions comme s'il s'agissait de son PJ). Pendant ce temps-là, le corps du mage est inactif.\nLa durée du contrôle dépend du NC de la cible :\n- NC 1 ou moins, valeur d'INT heures ;\n- NC 2, valeur d'INT minutes ;\n- NC 3, valeur d'INT rounds ;\n- NC 4 et +, 1d6 rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux la durée de contrôle (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort. Le mage ne peut contrôler plus d'une créature à la fois.",
     // Prise de contrôle totale d'une créature EXISTANTE (pas une invocation) : aucun précédent dans le
     // jeu de données (contrairement à PER-363 r7, qui AJOUTE un adversaire MJ-only — ici on TRANSFÈRE
-    // le contrôle d'une créature déjà en jeu). Reste VERBATIM/richText seul, comme la prison mentale du
-    // rang 6 — le moteur n'a pas de notion de « changement temporaire de camp » d'une créature. Mêmes
-    // termes nommés/dé nu que le rang 6.
+    // le contrôle d'une créature déjà en jeu). La table de durée par NC et le transfert de contrôle
+    // lui-même restent VERBATIM — le moteur n'a pas de notion de « changement temporaire de camp »
+    // d'une créature. Nouvel effet situationnel `mind-controlled` ajouté (arbitrage propriétaire
+    // 2026-08-11), même limite que la prison mentale du rang 6 : suivi à l'écran MJ, sans effet chiffré.
     richText:
       "Si le personnage réussit un test opposé d'attaque magique contre une cible à une portée de 20 m, il prend le contrôle des actions de sa cible (c'est le joueur qui décide de ses actions comme s'il s'agissait de son PJ). Pendant ce temps-là, le corps du mage est inactif.\nLa durée du contrôle dépend du NC de la cible :\n- NC 1 ou moins, [#INT] heures ;\n- NC 2, [#INT] minutes ;\n- NC 3, [#INT] rounds ;\n- NC 4 et +, {1d6} rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux la durée de contrôle (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort. Le mage ne peut contrôler plus d'une créature à la fois.",
+    situationalEffectIds: ['mind-controlled'],
     sourcePage: 162,
   },
 

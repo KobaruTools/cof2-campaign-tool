@@ -435,6 +435,7 @@ dans `STATUS_EFFECT_ICON_SOURCES` (même fichier) et dans
 | Étourdi | `lorc/star-swirl.svg` | Lorc |
 | Invalide | `lorc/broken-bone.svg` | Lorc |
 | Combat aquatique | `lorc/big-wave.svg` | Lorc |
+| Détection magique | `lorc/crystal-ball.svg` | Lorc |
 
 ## Icônes des badges défensifs
 
