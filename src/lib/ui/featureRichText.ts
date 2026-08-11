@@ -172,6 +172,27 @@ export function richColorSx(name: RichColorName): string {
   }
 }
 
+/**
+ * Couleur `{{color:nom}}` en variable CSS BRUTE (`var(--mui-palette-xxx-main)`, thème
+ * `cssVariables: true` de `src/theme.ts`) — pendant de `richColorSx` pour un contexte HORS
+ * `sx` MUI (PER-397 : `renderHTML` d'une marque Tiptap, qui ne peut consommer qu'une chaîne
+ * CSS littérale, jamais un chemin de thème). Même mapping couleur → palette que `richColorSx`.
+ */
+export function richColorCssVar(name: RichColorName): string {
+  switch (name) {
+    case 'rouge':
+      return 'var(--mui-palette-error-main)';
+    case 'vert':
+      return 'var(--mui-palette-success-main)';
+    case 'bleu':
+      return 'var(--mui-palette-info-main)';
+    case 'ambre':
+      return 'var(--mui-palette-warning-main)';
+    case 'violet':
+      return 'var(--mui-palette-secondary-main)';
+  }
+}
+
 /** Taille de police (`em`, relative au texte englobant) pour `{{size:nom}}`. */
 export function richSizeSx(name: RichSizeName): string {
   switch (name) {
@@ -430,16 +451,24 @@ function isNamedTermExpr(terms: ExprTerm[]): boolean {
  * segments `text` déjà isolés par `parseRichText` : ne traverse jamais un dé/une
  * formule.
  */
+// Construit chaque alternative séparément puis les joint (PAS de concaténation `+`
+// multi-lignes mêlant littéraux et template strings calculées : un bug du minifieur
+// SWC/Turbopack de Next.js 16.2.9 tronque silencieusement ce genre de chaîne au build,
+// cassant le groupe `{{color:…}}` — reproduit en local, cf. incident 2026-08-11).
+const colorAlt = `\\{\\{color:(${RICH_COLOR_NAMES.join('|')})\\}\\}([\\s\\S]*?)\\{\\{/color\\}\\}`;
+const sizeAlt = `\\{\\{size:(${RICH_SIZE_NAMES.join('|')})\\}\\}([\\s\\S]*?)\\{\\{/size\\}\\}`;
 const MARKDOWN_RE = new RegExp(
-  '\\*\\*([\\s\\S]+?)\\*\\*' +
-    '|~~([\\s\\S]+?)~~' +
-    '|\\*([^*\\n]+?)\\*' +
-    `|\\{\\{color:(${RICH_COLOR_NAMES.join('|')})\\}\\}([\\s\\S]*?)\\{\\{/color\\}\\}` +
-    `|\\{\\{size:(${RICH_SIZE_NAMES.join('|')})\\}\\}([\\s\\S]*?)\\{\\{/size\\}\\}`,
+  ['\\*\\*([\\s\\S]+?)\\*\\*', '~~([\\s\\S]+?)~~', '\\*([^*\\n]+?)\\*', colorAlt, sizeAlt].join('|'),
   'gi',
 );
 
-function splitMarkdownMarks(text: string): RichTextSegment[] {
+/**
+ * PER-397 — exportée pour être réutilisée à l'IDENTIQUE par l'éditeur Tiptap (sérialisation
+ * `descriptionToDoc`/`docToDescription`, `src/lib/ui/richTextEditorSync.ts`) et par le rendu de
+ * lecture hors capacités (`GlossaryRichText`) : une seule source de vérité pour reconnaître les 5
+ * marques MVP, jamais deux regex qui pourraient diverger.
+ */
+export function splitMarkdownMarks(text: string): RichTextSegment[] {
   const out: RichTextSegment[] = [];
   let last = 0;
   MARKDOWN_RE.lastIndex = 0;
