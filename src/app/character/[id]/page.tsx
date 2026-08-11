@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
@@ -109,6 +109,7 @@ import { SheetInitiativeBar } from '@/components/sheet/SheetInitiativeBar';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
+import { PinSectionButton } from '@/components/sheet/PinSectionButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { StickySheetStatusBar } from '@/components/sheet/StickySheetStatusBar';
@@ -179,45 +180,6 @@ const NO_EDIT: Record<EditBlock, boolean> = {
   identity: false,
   notes: false,
 };
-
-/**
- * Un bloc de la fiche a-t-il ENTIÈREMENT défilé sous l'en-tête collé (`AppHeader`) ? Comparaison de
- * rects mesurés EN DIRECT (`getBoundingClientRect`, comme `useUnstuckFromViewportBottom` de
- * `SheetInitiativeBar`) plutôt qu'un `IntersectionObserver` à `rootMargin` fixe : l'en-tête grandit
- * lui-même quand `StickySheetStatusBar` révèle un groupe (son 3ᵉ étage, `extraRow`), un seuil figé
- * dériverait donc dès la première révélation. Alimente la révélation PROGRESSIVE de la barre :
- * chaque bloc (Caractéristiques, Statistiques dérivées, État du personnage) n'ajoute son condensé
- * qu'une fois lui-même sorti de vue — pas dès le premier défilement (retour propriétaire : le
- * déclencheur unique sur la ligne d'identité les révélait tous trop tôt).
- */
-function useScrolledPastBlock(
-  headerRef: RefObject<HTMLElement | null>,
-  blockRef: RefObject<HTMLElement | null>,
-): boolean {
-  const [passed, setPassed] = useState(false);
-  useEffect(() => {
-    const measure = () => {
-      const header = headerRef.current;
-      const block = blockRef.current;
-      if (!header || !block) return;
-      setPassed(block.getBoundingClientRect().top <= header.getBoundingClientRect().bottom);
-    };
-    measure();
-    window.addEventListener('scroll', measure, { passive: true });
-    window.addEventListener('resize', measure);
-    // L'en-tête change de hauteur SANS scroll (révélation d'un groupe, cf. ci-dessus) : un
-    // `ResizeObserver` sur lui-même capte ces croissances pour ne pas rater une remesure.
-    const header = headerRef.current;
-    const resizeObserver = header ? new ResizeObserver(measure) : null;
-    if (header && resizeObserver) resizeObserver.observe(header);
-    return () => {
-      window.removeEventListener('scroll', measure);
-      window.removeEventListener('resize', measure);
-      resizeObserver?.disconnect();
-    };
-  }, [headerRef, blockRef]);
-  return passed;
-}
 
 export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -375,20 +337,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     // La ligne d'identité est toujours montée dès que la fiche est chargée ; on
     // (ré)attache l'observer quand la cible peut changer (chargement, id de perso).
   }, [character?.id]);
-  // `StickySheetStatusBar` est désormais le 3ᵉ étage de l'en-tête global lui-même (`AppHeader.extraRow`,
-  // retour propriétaire) : cette ref DONNE accès à son rect rendu, pour les sentinelles de bas de bloc
-  // ci-dessous (`useScrolledPastBlock`).
-  const appHeaderRef = useRef<HTMLElement>(null);
-  // Sentinelles de bas de bloc (retour propriétaire) : le condensé de « Caractéristiques », de
-  // « Statistiques dérivées » (Défense/Initiative/touches) et d'« État du personnage » (PV/mana/
-  // chance) ne s'ajoutent à la barre qu'une fois CHACUN de ces blocs sorti de vue — pas dès la ligne
-  // d'identité passée, qui les révélait tous les trois d'un coup, bien avant d'avoir défilé jusqu'à eux.
-  const abilitiesEndRef = useRef<HTMLDivElement>(null);
-  const derivedStatsEndRef = useRef<HTMLDivElement>(null);
-  const statusEndRef = useRef<HTMLDivElement>(null);
-  const showAbilitiesSticky = useScrolledPastBlock(appHeaderRef, abilitiesEndRef);
-  const showDerivedStatsSticky = useScrolledPastBlock(appHeaderRef, derivedStatsEndRef);
-  const showStatusGaugesSticky = useScrolledPastBlock(appHeaderRef, statusEndRef);
+  // Épingles de la barre condensée collée à l'en-tête (`StickySheetStatusBar`, 3ᵉ étage
+  // d'`AppHeader.extraRow`, retour propriétaire) : chaque section (Caractéristiques, Statistiques
+  // dérivées, État du personnage) porte son propre `PinSectionButton`, à côté de son crayon
+  // d'édition. Épinglée, elle reste condensée EN PERMANENCE dans la barre, quel que soit le
+  // défilement ; non épinglée, elle n'y apparaît jamais (plus de détection de défilement
+  // automatique — le déclencheur unique sur la ligne d'identité, puis les sentinelles de bas de
+  // bloc, révélaient tout sans que le joueur ait pu choisir CE qu'il voulait garder sous les yeux).
+  // Préférence GLOBALE persistée, comme `voiesLayout`/`featuresVerbatim` ci-dessous.
+  const [pinAbilities, setPinAbilities] = usePersistedBoolean('sheet:pin-abilities', false);
+  const [pinDerivedStats, setPinDerivedStats] = usePersistedBoolean('sheet:pin-derived-stats', false);
+  const [pinStatusGauges, setPinStatusGauges] = usePersistedBoolean('sheet:pin-status-gauges', false);
   // Disposition des voies : « colonnes » sur grand écran (défaut historique), mais
   // « lignes » par défaut sur mobile (PER-229) — en colonnes, le bloc central de la
   // fiche rend une grille large à défilement horizontal, très inconfortable au doigt.
@@ -895,17 +854,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           (clignotement nom → titre de base). Réactif : suit l'édition du nom. */}
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
       <AppHeader
-        ref={appHeaderRef}
         // Barre condensée Caractéristiques/Statistiques dérivées/État du personnage (retour
         // propriétaire) : rattachée à l'en-tête lui-même plutôt qu'à un bloc séparé de la fiche,
-        // pour hériter de son verre dépoli sans wrapper propre (cf. `StickySheetStatusBar`).
+        // pour hériter de son verre dépoli sans wrapper propre (cf. `StickySheetStatusBar`). Chaque
+        // groupe n'y apparaît que si SON `PinSectionButton` est actif (retour propriétaire).
         extraRow={
           masterDerived ? (
             <StickySheetStatusBar
-              showAbilities={showAbilitiesSticky}
+              showAbilities={pinAbilities}
               abilities={character.abilities}
-              showDerivedStats={showDerivedStatsSticky}
-              showStatusGauges={showStatusGaugesSticky}
+              showDerivedStats={pinDerivedStats}
+              showStatusGauges={pinStatusGauges}
               maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
               depletion={character.depletion}
               manaMax={manaMax}
@@ -1274,15 +1233,24 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           <SheetSection
             title="Caractéristiques"
             icon="abilities"
-            action={(collapsed) =>
-              collapsed || readOnly ? null : (
-                <BlockEditButton
-                  editing={editingBlocks.abilities}
-                  onToggle={() => toggleBlock('abilities')}
+            action={(collapsed) => (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                {/* Épingle (retour propriétaire) : indépendante du mode édition, toujours
+                    proposée — épingler une section ne suppose pas de la modifier. */}
+                <PinSectionButton
+                  pinned={pinAbilities}
+                  onToggle={() => setPinAbilities(!pinAbilities)}
                   label="caractéristiques"
                 />
-              )
-            }
+                {!collapsed && !readOnly && (
+                  <BlockEditButton
+                    editing={editingBlocks.abilities}
+                    onToggle={() => toggleBlock('abilities')}
+                    label="caractéristiques"
+                  />
+                )}
+              </Stack>
+            )}
           >
             <AbilitiesGrid
               abilities={character.abilities}
@@ -1298,9 +1266,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               abilityCrystalBonuses={display.abilityCrystalBonuses}
               bonusDieSources={display.bonusDieSourcesDetailed}
             />
-            {/* Sentinelle de bas de bloc — cf. `useScrolledPastBlock` : condition le condensé
-                des caractéristiques de `StickySheetStatusBar`. */}
-            <Box ref={abilitiesEndRef} sx={{ height: 0 }} />
           </SheetSection>
 
           {/* Section « Statistiques dérivées » avec un sélecteur de vue, même idiome que « Voies &
@@ -1321,14 +1286,23 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             // Crayon d'édition en `pinnedAction` (≠ `action`), par cohérence avec toute section à
             // onglets (cf. « Voies & capacités ») : reste sur la ligne des onglets quelle que soit
             // la taille d'écran, plutôt que de basculer avec un éventuel futur bouton d'`action`.
+            // L'épingle (retour propriétaire) y reste aussi sur les DEUX onglets : elle porte sur
+            // les stats dérivées elles-mêmes (toujours calculées), pas sur la vue affichée.
             pinnedAction={
-              statsView === 'tests' || readOnly ? null : (
-                <BlockEditButton
-                  editing={editingBlocks.derived}
-                  onToggle={() => toggleBlock('derived')}
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                <PinSectionButton
+                  pinned={pinDerivedStats}
+                  onToggle={() => setPinDerivedStats(!pinDerivedStats)}
                   label="statistiques dérivées"
                 />
-              )
+                {statsView !== 'tests' && !readOnly && (
+                  <BlockEditButton
+                    editing={editingBlocks.derived}
+                    onToggle={() => toggleBlock('derived')}
+                    label="statistiques dérivées"
+                  />
+                )}
+              </Stack>
             }
           >
             {statsView === 'tests' ? (
@@ -1387,13 +1361,22 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 Profil incomplet : statistiques dérivées indisponibles.
               </Typography>
             )}
-            {/* Sentinelle de bas de bloc — cf. `useScrolledPastBlock` : condition le condensé
-                Défense/Initiative/touches de `StickySheetStatusBar`. */}
-            <Box ref={derivedStatsEndRef} sx={{ height: 0 }} />
           </SheetSection>
 
           {masterDerived && (
-            <SheetSection title="État du personnage" icon="status">
+            <SheetSection
+              title="État du personnage"
+              icon="status"
+              // Pas de crayon d'édition ici (jauges = état de JEU, pas de mode « Modifier ») :
+              // seule l'épingle (retour propriétaire) occupe cet emplacement.
+              action={
+                <PinSectionButton
+                  pinned={pinStatusGauges}
+                  onToggle={() => setPinStatusGauges(!pinStatusGauges)}
+                  label="état du personnage"
+                />
+              }
+            >
               {/* États de combat appliqués par le MJ en session (PER-281), AU-DESSUS de la barre de
                   vie (PER-358) : badges + effet verbatim + delta agrégé, en lecture seule, et
                   l'annonce d'un effet de groupe. Le chiffre est déjà répercuté sur les stats/attaques
@@ -1460,9 +1443,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   onLongRest={doLongRest}
                 />
               )}
-              {/* Sentinelle de bas de bloc — cf. `useScrolledPastBlock` : condition le condensé
-                  PV/mana/chance de `StickySheetStatusBar`. */}
-              <Box ref={statusEndRef} sx={{ height: 0 }} />
             </SheetSection>
           )}
 
