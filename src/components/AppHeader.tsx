@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { forwardRef, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import LoginIcon from '@mui/icons-material/Login';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -94,6 +94,13 @@ interface AppHeaderProps {
    * comme l'attribut ARIA.
    */
   sessionRole?: SessionRole;
+  /**
+   * Troisième étage, SOUS le sous-header (fil d'Ariane), rattaché à l'en-tête SANS wrapper propre
+   * (ni fond, ni bordure, ni ombre : il hérite du verre dépoli de l'`AppBar`) — le condensé
+   * PV/mana/chance + Défense/Initiative/touches de la fiche de personnage (`StickySheetStatusBar`),
+   * qui gère lui-même sa révélation progressive et son propre filet séparateur. Absent ailleurs.
+   */
+  extraRow?: ReactNode;
 }
 
 /**
@@ -120,7 +127,7 @@ interface AppHeaderProps {
  * Le périmètre réel est porté par le proxy (`decideRouteAccess`) : ici on ne fait que
  * ne pas proposer de portes fermées.
  */
-export function AppHeader({
+export const AppHeader = forwardRef<HTMLElement, AppHeaderProps>(function AppHeader({
   breadcrumbs,
   action,
   accentColor,
@@ -130,7 +137,8 @@ export function AppHeader({
   gmScreenCampaignId,
   sessionIndicator,
   sessionRole,
-}: AppHeaderProps) {
+  extraRow,
+}: AppHeaderProps, ref) {
   const session = useAppSession();
   const effectiveRole = sessionRole ?? session.role;
   // Tant que la session n'est pas résolue, `useAppSession` répond `owner` (cas
@@ -180,6 +188,7 @@ export function AppHeader({
 
   return (
     <AppBar
+      ref={ref}
       position="sticky"
       // Verre dépoli, plus sombre que les sections de la fiche : gris quasi-noir à
       // peine transparent + le même flou d'arrière-plan (blur 10px) que les sections
@@ -340,6 +349,11 @@ export function AppHeader({
           )}
         </Box>
       )}
+
+      {/* Étage 3 — SANS wrapper propre (ni fond, ni bordure, ni ombre) : le contenu hérite tel
+          quel du verre dépoli de l'`AppBar` ci-dessus. Sa révélation progressive et son filet
+          séparateur sont portés par le contenu lui-même (cf. `StickySheetStatusBar`). */}
+      {extraRow}
     </AppBar>
   );
-}
+});

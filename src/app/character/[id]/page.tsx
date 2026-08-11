@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
@@ -30,7 +30,7 @@ import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
 import { ancestryById, classById, families, pathById, progression } from '@/data';
-import { checkCompliance } from '@/lib/engine';
+import { checkCompliance, deriveStats } from '@/lib/engine';
 import type {
   AbilityId,
   BeneficialEffectId,
@@ -111,6 +111,7 @@ import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
+import { StickySheetStatusBar } from '@/components/sheet/StickySheetStatusBar';
 import { RestProposalDialog } from '@/components/session/RestProposalDialog';
 import { BuffRequestControl } from '@/components/session/BuffRequestControl';
 import { RestRequestControl } from '@/components/session/RestRequestControl';
@@ -140,7 +141,10 @@ import { weaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange'
 import { boundWeaponPathFor } from '@/lib/character/boundWeapon';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
+import { ItemDescriptionEditor } from '@/components/sheet/ItemDescriptionEditor';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { DemiElfeAncestryDialog } from '@/components/sheet/DemiElfeAncestryDialog';
+import { AncestryChoicesDialog } from '@/components/sheet/AncestryChoicesDialog';
 import { setDemiElfeAncestryPath } from '@/lib/character/sheetActions';
 import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
 import { usePaidContentLoading } from '@/lib/content/usePaidContentLoading';
@@ -175,6 +179,45 @@ const NO_EDIT: Record<EditBlock, boolean> = {
   identity: false,
   notes: false,
 };
+
+/**
+ * Un bloc de la fiche a-t-il ENTIÈREMENT défilé sous l'en-tête collé (`AppHeader`) ? Comparaison de
+ * rects mesurés EN DIRECT (`getBoundingClientRect`, comme `useUnstuckFromViewportBottom` de
+ * `SheetInitiativeBar`) plutôt qu'un `IntersectionObserver` à `rootMargin` fixe : l'en-tête grandit
+ * lui-même quand `StickySheetStatusBar` révèle un groupe (son 3ᵉ étage, `extraRow`), un seuil figé
+ * dériverait donc dès la première révélation. Alimente la révélation PROGRESSIVE de la barre :
+ * chaque bloc (Caractéristiques, Statistiques dérivées, État du personnage) n'ajoute son condensé
+ * qu'une fois lui-même sorti de vue — pas dès le premier défilement (retour propriétaire : le
+ * déclencheur unique sur la ligne d'identité les révélait tous trop tôt).
+ */
+function useScrolledPastBlock(
+  headerRef: RefObject<HTMLElement | null>,
+  blockRef: RefObject<HTMLElement | null>,
+): boolean {
+  const [passed, setPassed] = useState(false);
+  useEffect(() => {
+    const measure = () => {
+      const header = headerRef.current;
+      const block = blockRef.current;
+      if (!header || !block) return;
+      setPassed(block.getBoundingClientRect().top <= header.getBoundingClientRect().bottom);
+    };
+    measure();
+    window.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('resize', measure);
+    // L'en-tête change de hauteur SANS scroll (révélation d'un groupe, cf. ci-dessus) : un
+    // `ResizeObserver` sur lui-même capte ces croissances pour ne pas rater une remesure.
+    const header = headerRef.current;
+    const resizeObserver = header ? new ResizeObserver(measure) : null;
+    if (header && resizeObserver) resizeObserver.observe(header);
+    return () => {
+      window.removeEventListener('scroll', measure);
+      window.removeEventListener('resize', measure);
+      resizeObserver?.disconnect();
+    };
+  }, [headerRef, blockRef]);
+  return passed;
+}
 
 export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -332,6 +375,20 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     // La ligne d'identité est toujours montée dès que la fiche est chargée ; on
     // (ré)attache l'observer quand la cible peut changer (chargement, id de perso).
   }, [character?.id]);
+  // `StickySheetStatusBar` est désormais le 3ᵉ étage de l'en-tête global lui-même (`AppHeader.extraRow`,
+  // retour propriétaire) : cette ref DONNE accès à son rect rendu, pour les sentinelles de bas de bloc
+  // ci-dessous (`useScrolledPastBlock`).
+  const appHeaderRef = useRef<HTMLElement>(null);
+  // Sentinelles de bas de bloc (retour propriétaire) : le condensé de « Caractéristiques », de
+  // « Statistiques dérivées » (Défense/Initiative/touches) et d'« État du personnage » (PV/mana/
+  // chance) ne s'ajoutent à la barre qu'une fois CHACUN de ces blocs sorti de vue — pas dès la ligne
+  // d'identité passée, qui les révélait tous les trois d'un coup, bien avant d'avoir défilé jusqu'à eux.
+  const abilitiesEndRef = useRef<HTMLDivElement>(null);
+  const derivedStatsEndRef = useRef<HTMLDivElement>(null);
+  const statusEndRef = useRef<HTMLDivElement>(null);
+  const showAbilitiesSticky = useScrolledPastBlock(appHeaderRef, abilitiesEndRef);
+  const showDerivedStatsSticky = useScrolledPastBlock(appHeaderRef, derivedStatsEndRef);
+  const showStatusGaugesSticky = useScrolledPastBlock(appHeaderRef, statusEndRef);
   // Disposition des voies : « colonnes » sur grand écran (défaut historique), mais
   // « lignes » par défaut sur mobile (PER-229) — en colonnes, le bloc central de la
   // fiche rend une grille large à défilement horizontal, très inconfortable au doigt.
@@ -395,6 +452,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Modale d'édition rétroactive de la voie de peuple du demi-elfe (PER-324) ; DOIT rester ici, en tête
   // avec les autres hooks, avant tout `return` anticipé (Rules of Hooks).
   const [demiElfeDialogOpen, setDemiElfeDialogOpen] = useState(false);
+  const [ancestryChoicesDialogOpen, setAncestryChoicesDialogOpen] = useState(false);
   // Ancre du menu de statut (PER-183) ; null = fermé.
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   // Statut d'archivage en attente de confirmation (mort/retiré) ; null = aucune. Le
@@ -791,6 +849,15 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     ? [...statusImpact.allTestsMalusDie, ...statusImpact.attackTestsMalusDie]
     : [];
 
+  // Valeurs EFFECTIVES (surcharge manuelle incluse) pour la barre condensée collée au défilement
+  // (`StickySheetStatusBar`) : même logique que les cartes de « Statistiques dérivées », dupliquée
+  // ici en miniature plutôt que remontée depuis `DerivedStatsGrid`, qui ne renvoie rien à l'appelant.
+  const stickyDerived = adjustedDerivedInput ? deriveStats(adjustedDerivedInput) : null;
+  const stickyDefense = character.overrides.def ?? stickyDerived?.defense ?? null;
+  const stickyInitiative = character.overrides.initiative ?? stickyDerived?.initiative ?? null;
+  const stickyMeleeAttack = character.overrides.meleeAttack ?? stickyDerived?.meleeAttack ?? null;
+  const stickyRangedAttack = character.overrides.rangedAttack ?? stickyDerived?.rangedAttack ?? null;
+
   // Rappel des états posés par le MJ (PER-281), remonté en tête d'« État du personnage » (PER-358),
   // au-dessus de la barre de vie. Cette section n'existe que si les stats dérivées sont calculables,
   // d'où ce bloc nommé, monté à la place historique pour un profil incomplet — les deux montages
@@ -828,6 +895,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           (clignotement nom → titre de base). Réactif : suit l'édition du nom. */}
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
       <AppHeader
+        ref={appHeaderRef}
+        // Barre condensée Caractéristiques/Statistiques dérivées/État du personnage (retour
+        // propriétaire) : rattachée à l'en-tête lui-même plutôt qu'à un bloc séparé de la fiche,
+        // pour hériter de son verre dépoli sans wrapper propre (cf. `StickySheetStatusBar`).
+        extraRow={
+          masterDerived ? (
+            <StickySheetStatusBar
+              showAbilities={showAbilitiesSticky}
+              abilities={character.abilities}
+              showDerivedStats={showDerivedStatsSticky}
+              showStatusGauges={showStatusGaugesSticky}
+              maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
+              depletion={character.depletion}
+              manaMax={manaMax}
+              luckMax={luckMax}
+              defense={stickyDefense}
+              initiative={stickyInitiative}
+              meleeAttack={stickyMeleeAttack}
+              rangedAttack={stickyRangedAttack}
+            />
+          ) : undefined
+        }
         // Fil d'Ariane : rattaché à une campagne → « {campagne} / {nom} » (le parent
         // pointe vers la vue campagne) ; sinon le nom seul (page de premier niveau).
         // Le fil se DÉPLIE au défilement : « {campagne} / Fiche de personnage » en haut
@@ -1209,6 +1298,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               abilityCrystalBonuses={display.abilityCrystalBonuses}
               bonusDieSources={display.bonusDieSourcesDetailed}
             />
+            {/* Sentinelle de bas de bloc — cf. `useScrolledPastBlock` : condition le condensé
+                des caractéristiques de `StickySheetStatusBar`. */}
+            <Box ref={abilitiesEndRef} sx={{ height: 0 }} />
           </SheetSection>
 
           {/* Section « Statistiques dérivées » avec un sélecteur de vue, même idiome que « Voies &
@@ -1295,6 +1387,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 Profil incomplet : statistiques dérivées indisponibles.
               </Typography>
             )}
+            {/* Sentinelle de bas de bloc — cf. `useScrolledPastBlock` : condition le condensé
+                Défense/Initiative/touches de `StickySheetStatusBar`. */}
+            <Box ref={derivedStatsEndRef} sx={{ height: 0 }} />
           </SheetSection>
 
           {masterDerived && (
@@ -1365,6 +1460,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   onLongRest={doLongRest}
                 />
               )}
+              {/* Sentinelle de bas de bloc — cf. `useScrolledPastBlock` : condition le condensé
+                  PV/mana/chance de `StickySheetStatusBar`. */}
+              <Box ref={statusEndRef} sx={{ height: 0 }} />
             </SheetSection>
           )}
 
@@ -1759,6 +1857,22 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                         />
                       </>
                     )}
+                    {/* Choix d'identité du peuple type option (PER-401) — ex. type de souffle du
+                        drakonide (PER-326) : posés à la création, réédités ici hors des rangs de voie. */}
+                    {(ancestry?.identityChoiceFeatureIds?.length ?? 0) > 0 && (
+                      <>
+                        <Button size="small" variant="outlined" sx={{ mt: 1.5 }} onClick={() => setAncestryChoicesDialogOpen(true)}>
+                          Choix du peuple…
+                        </Button>
+                        <AncestryChoicesDialog
+                          open={ancestryChoicesDialogOpen}
+                          onClose={() => setAncestryChoicesDialogOpen(false)}
+                          character={character}
+                          featureIds={ancestry?.identityChoiceFeatureIds ?? []}
+                          onChange={setChoice}
+                        />
+                      </>
+                    )}
                   </>
                 ) : (
                   <IdentityFields
@@ -1788,17 +1902,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             }
           >
             {editingBlocks.notes ? (
-              <TextField
-                multiline
-                minRows={3}
-                fullWidth
-                placeholder="Notes libres du joueur…"
+              <ItemDescriptionEditor
                 value={character.notes}
-                onChange={(e) => update({ notes: e.target.value })}
+                onChange={(text) => update({ notes: text })}
+                placeholder="Notes libres du joueur…"
               />
             ) : character.notes ? (
               <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                {character.notes}
+                <GlossaryRichText>{character.notes}</GlossaryRichText>
               </Typography>
             ) : (
               <Typography variant="body2" color="text.secondary">
