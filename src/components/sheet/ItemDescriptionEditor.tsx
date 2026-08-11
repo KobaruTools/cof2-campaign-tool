@@ -12,8 +12,6 @@ import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import Popover from '@mui/material/Popover';
 import TextField from '@mui/material/TextField';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatItalicIcon from '@mui/icons-material/FormatItalic';
@@ -26,6 +24,7 @@ import FitnessCenterOutlinedIcon from '@mui/icons-material/FitnessCenterOutlined
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import { AppTooltip } from '@/components/AppTooltip';
+import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_IDS, STATUS_EFFECT_IDS, STATUS_EFFECTS, type AbilityId, type Die } from '@/data/schema';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { RICH_COLOR_NAMES, RICH_SIZE_NAMES, richColorSx, type RichColorName, type RichSizeName } from '@/lib/ui/featureRichText';
@@ -47,6 +46,14 @@ const SIZE_LABELS: Record<RichSizeName, string> = {
 };
 
 const DIE_FACES: Die[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+
+/**
+ * Valeur sentinelle du sélecteur de dé pour le dé ÉVOLUTIF « d4° » (table p. 43) — même
+ * convention que `EVOLVING_DIE_OPTION` d'`ItemDialog.tsx` (Fléau/Élément custom, potions) :
+ * une entrée de TÊTE DE LISTE plutôt qu'une case séparée, le dé évolutif étant toujours basé
+ * sur `d4`.
+ */
+const EVOLVING_DIE_OPTION = 'evolving';
 
 /** Qualificatif de livre pour un renvoi de page (PER-398) — clés de `PAGE_REF_BOOK_QUALIFIERS`, `src/lib/ui/pageRefs.ts`. */
 const PAGE_REF_BOOKS: { value: string; label: string }[] = [
@@ -98,8 +105,7 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
   const [sizeAnchor, setSizeAnchor] = useState<HTMLElement | null>(null);
   const [dieAnchor, setDieAnchor] = useState<HTMLElement | null>(null);
   const [dieCount, setDieCount] = useState(1);
-  const [dieFaces, setDieFaces] = useState<Die>('d6');
-  const [dieEvolving, setDieEvolving] = useState(false);
+  const [dieFace, setDieFace] = useState<Die | typeof EVOLVING_DIE_OPTION>('d6');
   const [abilityAnchor, setAbilityAnchor] = useState<HTMLElement | null>(null);
   const [abilityCode, setAbilityCode] = useState<AbilityId>(ABILITY_IDS[0]);
   const [abilityMod, setAbilityMod] = useState('');
@@ -113,11 +119,12 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
   const insertToken = (raw: string) => editor.chain().focus().insertMechToken(raw).run();
 
   const insertDie = () => {
+    const evolving = dieFace === EVOLVING_DIE_OPTION;
+    const face: Die = evolving ? 'd4' : dieFace;
     const countPart = dieCount > 1 ? String(dieCount) : '';
-    insertToken(`{${countPart}${dieFaces}${dieEvolving ? '°' : ''}}`);
+    insertToken(`{${countPart}${face}${evolving ? '°' : ''}}`);
     setDieAnchor(null);
     setDieCount(1);
-    setDieEvolving(false);
   };
 
   const insertAbility = () => {
@@ -220,17 +227,28 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
             onChange={(e) => setDieCount(Math.max(1, Math.min(20, Math.trunc(Number(e.target.value)) || 1)))}
             slotProps={{ htmlInput: { min: 1, max: 20 } }}
           />
-          <TextField select label="Faces" size="small" value={dieFaces} onChange={(e) => setDieFaces(e.target.value as Die)}>
+          <TextField
+            select
+            label="Dé"
+            size="small"
+            value={dieFace}
+            onChange={(e) => setDieFace(e.target.value as Die | typeof EVOLVING_DIE_OPTION)}
+          >
+            <MenuItem value={EVOLVING_DIE_OPTION}>
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                <DieIcon die="d4" evolving size={18} noTooltip />
+                d4°
+              </Box>
+            </MenuItem>
             {DIE_FACES.map((f) => (
               <MenuItem key={f} value={f}>
-                {f}
+                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                  <DieIcon die={f} size={18} noTooltip />
+                  {f}
+                </Box>
               </MenuItem>
             ))}
           </TextField>
-          <FormControlLabel
-            control={<Checkbox size="small" checked={dieEvolving} onChange={(e) => setDieEvolving(e.target.checked)} />}
-            label="Dé évolutif (°)"
-          />
           <Button variant="contained" size="small" onClick={insertDie}>
             Insérer
           </Button>
