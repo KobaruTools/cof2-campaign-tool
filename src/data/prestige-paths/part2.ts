@@ -3063,13 +3063,16 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Une fois par combat, le personnage peut faire un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de réussite, la victime est emprisonnée dans un labyrinthe extradimensionnel. La durée d'emprisonnement dépend du NC de la cible :\n- NC 1 ou moins, valeur d'INT jours ;\n- NC 2, valeur d'INT heures ;\n- NC 3, valeur d'INT minutes ;\n- NC 4 et +, 1d6 rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux sa durée d'emprisonnement (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort.",
     // « Une fois par combat » → `usageCounter` (resetOn: 'combat', patron Botte secrète/PER-206).
-    // Termes nommés `[#INT]` sur les paliers de durée (déterminant « valeur d'… »), dé nu `{1d6}` sur le
-    // dernier palier ; le reste (formule de difficulté) est déjà entre crochets dans le livre. La durée
-    // d'emprisonnement (table par NC) et le retrait effectif du combat restent VERBATIM : aucune primitive
-    // n'exprime « la cible est hors jeu pendant N » (même limite que la prise de contrôle du rang 8).
+    // `hideFromStatusPanel` : règle d'office des voies de prestige — l'usage se suit sur la carte de
+    // la capacité, jamais en jauge dans « État du personnage » (retour propriétaire 2026-08-11 : la
+    // jauge y était inutile). Termes nommés `[#INT]` sur les paliers de durée (déterminant « valeur
+    // d'… »), dé nu `{1d6}` sur le dernier palier ; le reste (formule de difficulté) est déjà entre
+    // crochets dans le livre. La durée d'emprisonnement (table par NC) et le retrait effectif du
+    // combat restent VERBATIM : aucune primitive n'exprime « la cible est hors jeu pendant N » (même
+    // limite que la prise de contrôle du rang 8).
     richText:
       "Une fois par combat, le personnage peut faire un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de réussite, la victime est emprisonnée dans un labyrinthe extradimensionnel. La durée d'emprisonnement dépend du NC de la cible :\n- NC 1 ou moins, [#INT] jours ;\n- NC 2, [#INT] heures ;\n- NC 3, [#INT] minutes ;\n- NC 4 et +, {1d6} rounds.\nLa cible peut faire un test d'INT difficulté [10 + INT] pour diviser par deux sa durée d'emprisonnement (minimum 1 round). Dans tous les cas, si la victime possède une valeur d'INT supérieure ou égale à celle du mage, elle n'est pas affectée par le sort.",
-    usageCounter: { max: 1, resetOn: 'combat' },
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 162,
   },
   {
