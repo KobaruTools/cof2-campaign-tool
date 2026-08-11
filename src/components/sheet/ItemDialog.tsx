@@ -4,6 +4,10 @@ import { useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -18,6 +22,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import { ItemDescriptionEditor } from './ItemDescriptionEditor';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
@@ -75,7 +80,7 @@ import { ITEM_TEST_TARGET_IDS } from '@/lib/character/equipment';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { DERIVED_MOD_DISPLAY_ID, DERIVED_MOD_NAMES } from '@/lib/ui/derivedStats';
 import { AbilityIcon } from '@/components/AbilityIcon';
-import { AbilityCodeChip } from '@/components/sheet/FeatureRichText';
+import { AbilityCodeChip, GlossaryText } from '@/components/sheet/FeatureRichText';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ItemIcon } from '@/components/ItemIcon';
@@ -85,6 +90,16 @@ import { itemTypeColor } from '@/lib/ui/itemTypeColors';
 import type { ItemIconId } from '@/data/item-icons';
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
+import { DamageValue } from '@/components/DamageValue';
+import { formatWeaponDamage } from '@/lib/character/weaponDamage';
+import {
+  MagicDefBadge,
+  MagicWeaponBonusBadge,
+  MagicPropertyBadges,
+  AbilityBonusBadges,
+  DerivedBonusBadges,
+  TestBonusBadges,
+} from '@/components/sheet/MagicItemBadges';
 import SportsMartialArtsIcon from '@mui/icons-material/SportsMartialArts';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 
@@ -429,11 +444,11 @@ function BonusRows<Id extends string>({
       >
         Ajouter une ligne
       </Button>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-        {firstFree === undefined
-          ? fullMessage
-          : 'Score positif (bonus) ou négatif (malus), pris en compte quand l’objet est équipé.'}
-      </Typography>
+      {firstFree === undefined && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+          {fullMessage}
+        </Typography>
+      )}
     </Box>
   );
 }
@@ -749,6 +764,57 @@ function SectionDivider({ label }: { label?: string }) {
   );
 }
 
+/**
+ * Section repliable du formulaire d'objet (remplace `SectionDivider` pour les blocs assez longs
+ * pour justifier de gagner de la place) : bordure fine + en-tête cliquable, dans le même langage
+ * visuel que les accordéons de montée de niveau (`LevelUpDialog`). Non contrôlée (`defaultExpanded`)
+ * pour un simple repli de confort (Identité, Caractéristiques) ; contrôlée (`expanded`/`onChange`)
+ * quand l'état déplié/replié doit aussi dépendre des données (Enchantement, cf. `formHasEnchantment`).
+ */
+function FormAccordion({
+  title,
+  subtitle,
+  defaultExpanded,
+  expanded,
+  onChange,
+  children,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  defaultExpanded?: boolean;
+  expanded?: boolean;
+  onChange?: (expanded: boolean) => void;
+  children: ReactNode;
+}) {
+  return (
+    <Accordion
+      disableGutters
+      elevation={0}
+      {...(onChange
+        ? { expanded, onChange: (_: unknown, next: boolean) => onChange(next) }
+        : { defaultExpanded })}
+      sx={{
+        bgcolor: 'transparent',
+        border: 1,
+        borderColor: 'divider',
+        '&::before': { display: 'none' },
+      }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: '0.08em', fontWeight: 700 }}>
+            {title}
+          </Typography>
+          {subtitle}
+        </Stack>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Stack spacing={2}>{children}</Stack>
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 interface FormState {
   name: string;
   description: string;
@@ -822,6 +888,21 @@ const EMPTY_FORM: FormState = {
   potionEvolving: false,
   potionModifier: '',
 };
+
+/** Le bloc Enchantement doit-il partir DÉPLIÉ ? Oui si l'objet édité porte déjà une des
+ * propriétés qu'il regroupe (bonus magique, DEF magique, propriétés spéciales, apports de
+ * caracs/stats dérivées/tests, charges). */
+function formHasEnchantment(f: FormState): boolean {
+  return (
+    Boolean(Number(f.magicDef) || 0) ||
+    Boolean(Number(f.magicBonus) || 0) ||
+    f.magicProperties.length > 0 ||
+    f.abilityBonuses.length > 0 ||
+    f.derivedBonuses.length > 0 ||
+    f.testBonuses.length > 0 ||
+    Boolean(Number(f.chargesMax) || 0)
+  );
+}
 
 /** Pré-remplit les trois champs de charges (PER-294) depuis la ligne éditée. */
 function chargeFieldsFromLine(line: EquipmentLine): Pick<
@@ -912,6 +993,106 @@ function formFromLine(line: EquipmentLine): FormState {
   return base;
 }
 
+/**
+ * Aperçu EN DIRECT de l'objet en cours de saisie : icône + nom + type + stat du livre (DM/DEF)
+ * + badges d'enchantement, dans le même langage visuel que la ligne d'inventaire
+ * (`EquipmentList`, badges partagés via `MagicItemBadges`). Épinglé en haut de la modale
+ * (position sticky, cf. appelant) pour rester visible pendant la saisie des lignes
+ * d'enchantement, potentiellement nombreuses.
+ */
+function ItemPreviewCard({
+  type,
+  mechanical,
+  baseId,
+  name,
+  form,
+}: {
+  type: ItemType;
+  mechanical: boolean;
+  baseId: string | null;
+  name: string;
+  form: FormState;
+}) {
+  const iconId: ItemIconId =
+    form.icon ?? (mechanical && baseId ? defaultItemIconId({ itemId: baseId, quantity: 1 }) : type);
+  const magicDefNum = Math.max(0, Number(form.magicDef) || 0);
+  const magicBonusNum = type === 'weapon' ? Math.max(0, Number(form.magicBonus) || 0) : 0;
+  const magicProperties = form.magicProperties.map(normalizeMagicProperty);
+  const level = magicLevel({ magicBonus: magicBonusNum, magicDef: magicDefNum, magicProperties });
+  const abilityBonuses = bonusesFromRows(form.abilityBonuses);
+  const derivedBonuses = bonusesFromRows(form.derivedBonuses);
+  const testBonuses = bonusesFromRows(form.testBonuses);
+
+  let statLine: ReactNode = null;
+  if (type === 'weapon') {
+    statLine = (
+      <>
+        <GlossaryText>DM</GlossaryText>{' '}
+        <DamageValue damage={formatWeaponDamage(draftToDamage(form.damage))} />
+        {form.weaponCategory === 'oneOrTwoHands' && (
+          <>
+            {' / '}
+            <DamageValue damage={formatWeaponDamage(draftToDamage(form.twoHandedDamage))} />
+          </>
+        )}
+        {form.range && ` · portée ${form.range}`}
+      </>
+    );
+  } else if (type === 'armor' || type === 'shield') {
+    statLine = <GlossaryText>{`DEF +${Number(form.def) || 0}`}</GlossaryText>;
+  }
+
+  return (
+    <Box
+      sx={(theme) => ({
+        position: 'sticky',
+        top: 0,
+        zIndex: 2,
+        bgcolor: 'background.paper',
+        pt: 0.5,
+        pb: 1,
+        mb: 0.5,
+        borderBottom: `1px solid ${theme.palette.divider}`,
+      })}
+    >
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.25 }}>
+        <ItemIcon id={iconId} size={22} sx={{ color: itemTypeColor(type) }} />
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          {name || 'Nouvel objet'}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {ITEM_TYPE_LABELS[type]}
+        </Typography>
+        {statLine && (
+          <Typography variant="body2" color="text.secondary" component="span">
+            · {statLine}
+          </Typography>
+        )}
+        {level > 0 && (
+          <Typography variant="caption" sx={{ color: 'secondary.main', fontWeight: 700 }}>
+            niv.&nbsp;+{level}
+          </Typography>
+        )}
+      </Stack>
+      {(magicDefNum > 0 ||
+        magicBonusNum > 0 ||
+        magicProperties.length > 0 ||
+        abilityBonuses ||
+        derivedBonuses ||
+        testBonuses) && (
+        <Box sx={{ mt: 0.25 }}>
+          {magicDefNum > 0 && <MagicDefBadge value={magicDefNum} />}
+          {magicBonusNum > 0 && <MagicWeaponBonusBadge value={magicBonusNum} />}
+          {magicProperties.length > 0 && <MagicPropertyBadges properties={magicProperties} />}
+          {abilityBonuses && <AbilityBonusBadges bonuses={abilityBonuses} />}
+          {derivedBonuses && <DerivedBonusBadges bonuses={derivedBonuses} />}
+          {testBonuses && <TestBonusBadges bonuses={testBonuses} />}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 export interface ItemDialogProps {
   open: boolean;
   onClose: () => void;
@@ -959,9 +1140,15 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
 
   const [type, setType] = useState<ItemType | null>(initialType);
   const [baseId, setBaseId] = useState<string | null>(initialBaseId);
-  const [form, setForm] = useState<FormState>(initial ? formFromLine(initial) : EMPTY_FORM);
+  const initialForm = initial ? formFromLine(initial) : EMPTY_FORM;
+  const [form, setForm] = useState<FormState>(initialForm);
   // Nombre d'exemplaires demandés (`bulkCreate`, création uniquement) — jamais lu en édition.
   const [count, setCount] = useState(1);
+  // Accordéon Enchantement : PUREMENT d'affichage (contrairement à une case à cocher, le
+  // replier ne doit pas effacer les valeurs saisies). Replié par défaut (la plupart des
+  // objets ne sont pas magiques) — déplié d'entrée si l'objet édité porte déjà une trace
+  // d'enchantement.
+  const [enchantmentExpanded, setEnchantmentExpanded] = useState(() => formHasEnchantment(initialForm));
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -975,6 +1162,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
     if (isMechanicalType(t) || wasMechanical) {
       setBaseId(null);
       setForm(EMPTY_FORM);
+      setEnchantmentExpanded(false);
     }
   };
 
@@ -983,6 +1171,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
     setBaseId(id);
     const base = id ? equipmentById.get(id) : undefined;
     setForm(base ? formFromBase(base) : EMPTY_FORM);
+    setEnchantmentExpanded(false);
   };
 
   // Retour au choix du type (création uniquement) : réinitialise base + formulaire, comme
@@ -991,6 +1180,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
     setType(null);
     setBaseId(null);
     setForm(EMPTY_FORM);
+    setEnchantmentExpanded(false);
   };
 
   const mechanical = type !== null && isMechanicalType(type);
@@ -1146,7 +1336,15 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
   const selectedBase = baseId ? equipmentById.get(baseId) : undefined;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={fullScreen}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      // Largeur FIXE (md) qu'Enchantement soit ouvert ou pas — sinon la modale change de
+      // taille au dépli/repli, désagréable (retour propriétaire).
+      maxWidth="md"
+      fullWidth
+      fullScreen={fullScreen}
+    >
       <DialogTitle>{editing ? 'Modifier l’objet' : 'Ajouter un objet'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
@@ -1276,55 +1474,60 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
               mécanique est sélectionnée. */}
           {type !== null && (!mechanical || baseId !== null) && (
             <>
-              <SectionDivider label="Identité" />
-              <TextField
-                autoFocus
-                size="small"
-                label="Nom de l’objet"
-                // Potion (PER-XXX) : nom vide → suggestion dérivée des propriétés (« Potion de
-                // soin 1d4° »), affichée en `placeholder` et effectivement utilisée à la
-                // validation si le joueur ne tape rien — pas d'obligation de nommer la fiole.
-                placeholder={potionActive ? potionDefaultNameValue : undefined}
-                value={form.name}
-                onChange={(e) => setField('name', e.target.value)}
-                required={!potionActive}
-                fullWidth
+              <ItemPreviewCard
+                type={type}
+                mechanical={mechanical}
+                baseId={baseId}
+                name={effectiveName}
+                form={form}
               />
-              <TextField
-                size="small"
-                label="Description"
-                placeholder="Origine, propriétés, notes libres…"
-                value={form.description}
-                onChange={(e) => setField('description', e.target.value)}
-                multiline
-                minRows={2}
-                fullWidth
-              />
-              {/* Nombre d'exemplaires (`bulkCreate`, Outils du MJ, extension PER-200) : crée
-                  `count` CARTES DISTINCTES portant chacune cette ligne — jamais une seule ligne
-                  à quantité N, pour rester attribuables/dupliquables indépendamment. */}
-              {bulkCreate && !editing && (
+              <FormAccordion title="Identité" defaultExpanded>
                 <TextField
-                  type="number"
+                  autoFocus
                   size="small"
-                  label="Nombre d’exemplaires"
-                  value={count}
-                  onChange={(e) => setCount(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
-                  slotProps={{ htmlInput: { min: 1, max: 50 } }}
-                  helperText="Crée cette carte plusieurs fois d’un coup (ex. 5 bourses identiques)."
-                  sx={{ maxWidth: 260 }}
+                  label="Nom de l’objet"
+                  // Potion (PER-XXX) : nom vide → suggestion dérivée des propriétés (« Potion de
+                  // soin 1d4° »), affichée en `placeholder` et effectivement utilisée à la
+                  // validation si le joueur ne tape rien — pas d'obligation de nommer la fiole.
+                  placeholder={potionActive ? potionDefaultNameValue : undefined}
+                  value={form.name}
+                  onChange={(e) => setField('name', e.target.value)}
+                  required={!potionActive}
+                  fullWidth
                 />
-              )}
-              {/* Icône de l'objet : pré-réglée sur celle que l'inventaire lui donnerait
-                  (sous-catégorie du livre pour une variante, icône du type pour un objet
-                  libre), et librement changeable. */}
-              <ItemIconPicker
-                value={form.icon}
-                defaultIcon={
-                  mechanical && baseId ? defaultItemIconId({ itemId: baseId, quantity: 1 }) : type
-                }
-                onChange={(icon) => setField('icon', icon)}
-              />
+                {/* Éditeur riche Tiptap (PER-397) : gras/italique/barré/couleur/taille, sérialisés
+                    en `string` simple (jamais de HTML) — voir `richTextEditorSync.ts`. */}
+                <ItemDescriptionEditor
+                  value={form.description}
+                  onChange={(text) => setField('description', text)}
+                  placeholder="Origine, propriétés, notes libres…"
+                />
+                {/* Nombre d'exemplaires (`bulkCreate`, Outils du MJ, extension PER-200) : crée
+                    `count` CARTES DISTINCTES portant chacune cette ligne — jamais une seule ligne
+                    à quantité N, pour rester attribuables/dupliquables indépendamment. */}
+                {bulkCreate && !editing && (
+                  <TextField
+                    type="number"
+                    size="small"
+                    label="Nombre d’exemplaires"
+                    value={count}
+                    onChange={(e) => setCount(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
+                    slotProps={{ htmlInput: { min: 1, max: 50 } }}
+                    helperText="Crée cette carte plusieurs fois d’un coup (ex. 5 bourses identiques)."
+                    sx={{ maxWidth: 260 }}
+                  />
+                )}
+                {/* Icône de l'objet : pré-réglée sur celle que l'inventaire lui donnerait
+                    (sous-catégorie du livre pour une variante, icône du type pour un objet
+                    libre), et librement changeable. */}
+                <ItemIconPicker
+                  value={form.icon}
+                  defaultIcon={
+                    mechanical && baseId ? defaultItemIconId({ itemId: baseId, quantity: 1 }) : type
+                  }
+                  onChange={(icon) => setField('icon', icon)}
+                />
+              </FormAccordion>
 
               {/* Potion d'énergie custom (PER-XXX) : réservée aux consommables — restaure 1dX
                   points d'une ressource du personnage (PV, PM, chance, DR, rage) à l'usage, sur
@@ -1427,293 +1630,317 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
 
               {/* Stats reprises du livre (arme / armure / bouclier), pré-remplies depuis la base
                   et surchargeables : c'est ce qui fait de la ligne une VARIANTE. Aucune pour un
-                  objet libre, d'où le séparateur conditionné à la famille mécanique. */}
-              {mechanical && <SectionDivider label="Caractéristiques" />}
+                  objet libre, d'où l'accordéon conditionné à la famille mécanique. */}
+              {mechanical && (
+                <FormAccordion title="Caractéristiques" defaultExpanded>
+                  {/* Stats d'arme. */}
+                  {type === 'weapon' && (
+                    <>
+                      <TextField
+                        select
+                        size="small"
+                        label="Catégorie"
+                        value={form.weaponCategory}
+                        onChange={(e) => setField('weaponCategory', e.target.value as WeaponCategory)}
+                        fullWidth
+                      >
+                        {WEAPON_CATEGORIES.map((c) => (
+                          <MenuItem key={c} value={c}>
+                            {WEAPON_CATEGORY_LABELS[c]}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <WeaponDamageFields
+                        label={form.weaponCategory === 'oneOrTwoHands' ? 'DM à une main' : 'Dégâts (DM)'}
+                        value={form.damage}
+                        onChange={(d) => setField('damage', d)}
+                      />
+                      {form.weaponCategory === 'oneOrTwoHands' && (
+                        <WeaponDamageFields
+                          label="DM à deux mains"
+                          value={form.twoHandedDamage}
+                          onChange={(d) => setField('twoHandedDamage', d)}
+                        />
+                      )}
+                      <TextField
+                        size="small"
+                        label="Portée"
+                        placeholder="ex. 20 m"
+                        value={form.range}
+                        onChange={(e) => setField('range', e.target.value)}
+                        fullWidth
+                      />
+                    </>
+                  )}
 
-              {/* Stats d'arme. */}
-              {type === 'weapon' && (
-                <>
-                  <TextField
-                    select
-                    size="small"
-                    label="Catégorie"
-                    value={form.weaponCategory}
-                    onChange={(e) => setField('weaponCategory', e.target.value as WeaponCategory)}
-                    fullWidth
-                  >
-                    {WEAPON_CATEGORIES.map((c) => (
-                      <MenuItem key={c} value={c}>
-                        {WEAPON_CATEGORY_LABELS[c]}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <WeaponDamageFields
-                    label={form.weaponCategory === 'oneOrTwoHands' ? 'DM à une main' : 'Dégâts (DM)'}
-                    value={form.damage}
-                    onChange={(d) => setField('damage', d)}
-                  />
-                  {form.weaponCategory === 'oneOrTwoHands' && (
-                    <WeaponDamageFields
-                      label="DM à deux mains"
-                      value={form.twoHandedDamage}
-                      onChange={(d) => setField('twoHandedDamage', d)}
+                  {/* Stats d'armure de corps : DEF mondaine + plafond AGI (catalogue). */}
+                  {type === 'armor' && (
+                    <Stack direction="row" spacing={1}>
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="DEF"
+                        value={form.def}
+                        onChange={(e) => setField('def', e.target.value)}
+                        sx={{ flex: 1 }}
+                      />
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Plafond AGI"
+                        placeholder="aucun"
+                        helperText="vide = pas de plafond"
+                        value={form.maxAgi}
+                        onChange={(e) => setField('maxAgi', e.target.value)}
+                        sx={{ flex: 1 }}
+                      />
+                    </Stack>
+                  )}
+
+                  {/* Stat de bouclier : DEF seule. */}
+                  {type === 'shield' && (
+                    <TextField
+                      type="number"
+                      size="small"
+                      label="DEF"
+                      value={form.def}
+                      onChange={(e) => setField('def', e.target.value)}
+                      sx={{ width: 140 }}
                     />
                   )}
-                  <TextField
-                    size="small"
-                    label="Portée"
-                    placeholder="ex. 20 m"
-                    value={form.range}
-                    onChange={(e) => setField('range', e.target.value)}
-                    fullWidth
-                  />
-                </>
+                </FormAccordion>
               )}
 
-              {/* Stats d'armure de corps : DEF mondaine + plafond AGI (catalogue). */}
-              {type === 'armor' && (
-                <Stack direction="row" spacing={1}>
+              {/* Enchantement : tout ce qui relève de l'EXEMPLAIRE possédé et non du livre. Accordéon
+                  CONTRÔLÉ (contrairement à Identité/Caractéristiques) : replié par défaut (la plupart
+                  des objets ne sont pas magiques), mais déplié d'entrée si l'objet édité porte déjà
+                  une de ces propriétés (`formHasEnchantment`) — et le repli ne les efface jamais. */}
+              <FormAccordion
+                title="Enchantement"
+                expanded={enchantmentExpanded}
+                onChange={setEnchantmentExpanded}
+                subtitle={(() => {
+                  const level = magicLevel({
+                    magicBonus: type === 'weapon' ? Number(form.magicBonus) || 0 : 0,
+                    magicDef: Number(form.magicDef) || 0,
+                    magicProperties: form.magicProperties,
+                  });
+                  if (level <= 0) return null;
+                  return (
+                    <Typography variant="caption" sx={{ color: 'secondary.main', fontWeight: 700 }}>
+                      niveau&nbsp;+{level}
+                    </Typography>
+                  );
+                })()}
+              >
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{ alignItems: 'flex-start', flexWrap: 'wrap', rowGap: 1 }}
+                >
+                  {/* Bonus magique +N d'ARME (PER-306, p. 251) : « un bonus en attaque et aux
+                      dommages ». Réservé aux armes — pour un objet défensif, c'est la DEF
+                      magique ci-dessous qui porte le +N. */}
+                  {type === 'weapon' && (
+                    <SignedNumberField
+                      size="small"
+                      label="Bonus magique (+N)"
+                      value={Math.max(0, Math.floor(Number(form.magicBonus) || 0))}
+                      onChange={(v) => setField('magicBonus', v > 0 ? String(v) : '')}
+                      containerSx={{ maxWidth: 200 }}
+                    />
+                  )}
+
+                  {/* Bonus de DEF MAGIQUE (PER-85 généralisé) : disponible sur TOUT type
+                      d'objet (armure, mais aussi bottes/cape/anneau enchantés). */}
                   <TextField
                     type="number"
                     size="small"
-                    label="DEF"
-                    value={form.def}
-                    onChange={(e) => setField('def', e.target.value)}
-                    sx={{ flex: 1 }}
-                  />
-                  <TextField
-                    type="number"
-                    size="small"
-                    label="Plafond AGI"
-                    placeholder="aucun"
-                    helperText="vide = pas de plafond"
-                    value={form.maxAgi}
-                    onChange={(e) => setField('maxAgi', e.target.value)}
-                    sx={{ flex: 1 }}
+                    label="DEF magique"
+                    placeholder="0"
+                    helperText="hors surcoût de mana (p. 178)"
+                    value={form.magicDef}
+                    onChange={(e) => setField('magicDef', e.target.value)}
+                    sx={{ maxWidth: 200 }}
                   />
                 </Stack>
-              )}
 
-              {/* Stat de bouclier : DEF seule. Rangée AVEC les autres caractéristiques du livre —
-                  elle était jusqu'ici tout en bas du formulaire, séparée des stats d'arme et
-                  d'armure par les quatre blocs d'enchantement, ce qui n'avait aucune raison d'être. */}
-              {type === 'shield' && (
-                <TextField
-                  type="number"
-                  size="small"
-                  label="DEF"
-                  value={form.def}
-                  onChange={(e) => setField('def', e.target.value)}
-                  sx={{ width: 140 }}
-                />
-              )}
-
-              {/* Enchantement : tout ce qui relève de l'EXEMPLAIRE possédé et non du livre — DEF
-                  magique, apports de caracs / de stats dérivées / aux tests. Chacun a son propre
-                  intitulé, d'où des séparateurs sans titre entre eux. */}
-              <SectionDivider label="Enchantement" />
-
-              {/* Bonus magique +N d'ARME (PER-306, p. 251) : « un bonus en attaque et aux
-                  dommages ». Réservé aux armes — pour un objet défensif, c'est la DEF magique
-                  ci-dessous qui porte le +N. Les effets sont câblés au ticket suivant (PER-307). */}
-              {type === 'weapon' && (
-                <SignedNumberField
-                  size="small"
-                  label="Bonus magique (+N)"
-                  value={Math.max(0, Math.floor(Number(form.magicBonus) || 0))}
-                  onChange={(v) => setField('magicBonus', v > 0 ? String(v) : '')}
-                  containerSx={{ maxWidth: 200 }}
-                />
-              )}
-
-              {/* Bonus de DEF MAGIQUE (PER-85 généralisé) : disponible sur TOUT type d'objet
-                  (armure, mais aussi bottes/cape/anneau enchantés). Se cumule dans la DEF
-                  totale quand l'objet est porté, hors surcoût de mana des sorts en armure. Pour
-                  un objet magique de défense, c'est aussi ce +N qui compte dans le niveau de
-                  magie (p. 253). */}
-              <TextField
-                type="number"
-                size="small"
-                label="DEF magique"
-                placeholder="0"
-                helperText="bonus magique cumulable si l’objet est équipé (hors surcoût de mana)"
-                value={form.magicDef}
-                onChange={(e) => setField('magicDef', e.target.value)}
-                sx={{ maxWidth: 320 }}
-              />
-
-              {/* Propriétés spéciales (PER-306, p. 251-254) : famille ARME pour une arme,
-                  famille DÉFENSE pour tout le reste (armure, bouclier, mais aussi accessoires
-                  enchantés — cape de protection, anneau…). Effets câblés en PER-307. */}
-              <MagicPropertyRows
-                kinds={type === 'weapon' ? MAGIC_WEAPON_PROPERTY_KINDS : MAGIC_DEFENSE_PROPERTY_KINDS}
-                title="Propriétés magiques spéciales"
-                addLabel="Ajouter une propriété"
-                rows={form.magicProperties}
-                onChange={(rows) => setField('magicProperties', rows)}
-              />
-
-              {/* Récapitulatif EN DIRECT du niveau de magie et de la valeur estimée (p. 244 :
-                  valeur = niveau² × 200 po). N'apparaît qu'une fois l'objet réellement enchanté. */}
-              {(() => {
-                const level = magicLevel({
-                  magicBonus: type === 'weapon' ? Number(form.magicBonus) || 0 : 0,
-                  magicDef: Number(form.magicDef) || 0,
-                  magicProperties: form.magicProperties,
-                });
-                if (level <= 0 && form.magicProperties.length === 0) return null;
-                return (
-                  <Typography variant="body2" color="text.secondary">
-                    Niveau de magie&nbsp;: <strong>{level}</strong>
-                    {level > 0 && (
-                      <>
-                        {' '}
-                        — valeur estimée ≈ {magicItemValue(level).toLocaleString('fr-FR')} po
-                      </>
-                    )}
-                  </Typography>
-                );
-              })()}
-
-              <SectionDivider />
-
-              {/* Bonus/malus de CARACTÉRISTIQUES (PER-272), par lignes : même famille que la DEF
-                  magique (propriété de l'instance enchantée, pas du catalogue), donc disponible
-                  sur TOUT type d'objet. Ne comptent que si l'objet est équipé. */}
-              <BonusRows
-                ids={ABILITY_IDS}
-                title="Bonus de caractéristiques"
-                selectLabel="Caractéristique"
-                fullMessage="Les 7 caractéristiques sont déjà couvertes."
-                renderOption={(id) => (
-                  <>
-                    <AbilityIcon ability={id} size={18} />
-                    {id} — {ABILITY_NAMES[id]}
-                  </>
-                )}
-                rows={form.abilityBonuses}
-                onChange={(rows) => setField('abilityBonuses', rows)}
-              />
-
-              <SectionDivider />
-
-              {/* Bonus/malus de STATISTIQUES DÉRIVÉES (PER-273), par lignes : même mécanique que
-                  ci-dessus, appliquée directement à la stat (PV, initiative, chance…) au lieu de
-                  la caractéristique. La DÉFENSE n'y figure pas volontairement (cf.
-                  `ItemDerivedStatId`) : trop de règles se calculent depuis les valeurs d'armure,
-                  et la « DEF magique » ci-dessus reste le seul canal d'enchantement défensif. */}
-              <BonusRows
-                ids={ITEM_DERIVED_STAT_IDS}
-                title="Bonus de statistiques dérivées"
-                selectLabel="Statistique"
-                fullMessage="Toutes les statistiques modifiables sont déjà couvertes."
-                renderOption={(id) => (
-                  <>
-                    <DerivedStatIcon statId={DERIVED_MOD_DISPLAY_ID[id]} size={18} />
-                    {DERIVED_MOD_NAMES[id]}
-                  </>
-                )}
-                rows={form.derivedBonuses}
-                onChange={(rows) => setField('derivedBonuses', rows)}
-              />
-
-              <SectionDivider />
-
-              {/* Bonus/malus aux TESTS (PER-275), par lignes : une cible = soit une caractéristique
-                  (tous ses tests), soit un domaine de compétence. Sélecteur cherchable, la liste
-                  des domaines étant longue. C'est un BONUS DE MAGIE : il se cumule aux bonus de
-                  compétence des voies (p. 203) mais pas à un autre bonus de magie sur le même
-                  test — deux objets sur la même cible ne s'additionnent pas, le meilleur gagne. */}
-              <BonusRows
-                ids={ITEM_TEST_TARGET_IDS}
-                title="Bonus aux tests (bonus de magie)"
-                selectLabel="Caractéristique ou domaine"
-                fullMessage="Toutes les cibles possibles sont déjà couvertes."
-                searchable
-                groupOf={(id) =>
-                  testDomainById.has(id) ? 'Domaines de compétence' : 'Caractéristiques (tous les tests)'
-                }
-                optionLabel={(id) => {
-                  const domain = testDomainById.get(id);
-                  return domain ? domain.label : `${id} — ${ABILITY_NAMES[id as AbilityId]}`;
-                }}
-                renderOption={(id) => {
-                  const domain = testDomainById.get(id);
-                  // Le code de la carac passe par la puce tiretée teintée qui est la NORME
-                  // d'affichage d'une caractéristique dans l'app (`AbilityCodeChip`) : dans une
-                  // liste d'une centaine de domaines, c'est ce qui rend la carac gouvernante
-                  // repérable d'un coup d'œil. Un domaine multi-carac en porte une par carac.
-                  return domain ? (
-                    <>
-                      <Box component="span">{domain.label}</Box>
-                      {domain.abilities.map((a) => (
-                        <AbilityCodeChip key={a} ability={a} noTooltip />
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      <AbilityIcon ability={id as AbilityId} size={18} />
-                      <AbilityCodeChip ability={id as AbilityId} noTooltip />
-                      {ABILITY_NAMES[id as AbilityId]}
-                    </>
-                  );
-                }}
-                rows={form.testBonuses}
-                onChange={(rows) => setField('testBonuses', rows)}
-              />
-
-              <SectionDivider label="Charges" />
-
-              {/* CHARGES (PER-294) : baguette, sceptre, talisman… Même famille que les bonus
-                  ci-dessus — propriété de l'exemplaire possédé, disponible sur TOUT type d'objet.
-                  Les deux cases de rechargement sont indépendantes et cumulables ; aucune cochée =
-                  rechargement à la main uniquement. Elles n'apparaissent qu'une fois un nombre de
-                  charges saisi, pour ne pas encombrer le formulaire de la quasi-totalité des objets
-                  qui n'en ont pas. RÈGLE MAISON : aucun objet à charges dans le livre de base. */}
-              <Box>
-                <TextField
-                  type="number"
-                  size="small"
-                  label="Nombre de charges"
-                  placeholder="0"
-                  helperText="vide = objet sans charges (utilisations illimitées)"
-                  value={form.chargesMax}
-                  onChange={(e) => setField('chargesMax', e.target.value)}
-                  sx={{ maxWidth: 320 }}
-                />
-                {(Number(form.chargesMax) || 0) > 0 && (
-                  <Stack sx={{ mt: 0.5 }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={form.chargesOnShortRest}
-                          onChange={(e) => setField('chargesOnShortRest', e.target.checked)}
-                        />
-                      }
-                      label="Se recharge à plein au repos court"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={form.chargesOnLongRest}
-                          onChange={(e) => setField('chargesOnLongRest', e.target.checked)}
-                        />
-                      }
-                      label="Se recharge à plein au repos long"
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {form.chargesOnShortRest
-                        ? 'Un repos long recharge aussi ce qui se recharge au repos court.'
-                        : form.chargesOnLongRest
-                          ? 'Le repos court ne rechargera pas cet objet.'
-                          : 'Aucune case cochée : l’objet ne se recharge qu’avec le bouton « Recharger ».'}
+                {/* Récapitulatif EN DIRECT du niveau de magie et de la valeur estimée (p. 244 :
+                    valeur = niveau² × 200 po). */}
+                {(() => {
+                  const level = magicLevel({
+                    magicBonus: type === 'weapon' ? Number(form.magicBonus) || 0 : 0,
+                    magicDef: Number(form.magicDef) || 0,
+                    magicProperties: form.magicProperties,
+                  });
+                  if (level <= 0 && form.magicProperties.length === 0) return null;
+                  return (
+                    <Typography variant="body2" color="text.secondary">
+                      Niveau de magie&nbsp;: <strong>{level}</strong>
+                      {level > 0 && (
+                        <>
+                          {' '}
+                          — valeur estimée ≈ {magicItemValue(level).toLocaleString('fr-FR')} po
+                        </>
+                      )}
                     </Typography>
-                  </Stack>
-                )}
-              </Box>
+                  );
+                })()}
 
+                {/* Deux colonnes sur écran large (repli en 1 colonne sous `sm`, mobile déjà
+                    plein cadre) : gauche = propriétés spéciales, droite = apports d'instance
+                    (caracs / stats dérivées / tests) + charges. */}
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                    alignItems: 'start',
+                  }}
+                >
+                  {/* Propriétés spéciales (PER-306, p. 251-254) : famille ARME pour une arme,
+                      famille DÉFENSE pour tout le reste (armure, bouclier, mais aussi
+                      accessoires enchantés — cape de protection, anneau…). */}
+                  <MagicPropertyRows
+                    kinds={type === 'weapon' ? MAGIC_WEAPON_PROPERTY_KINDS : MAGIC_DEFENSE_PROPERTY_KINDS}
+                    title="Propriétés magiques spéciales"
+                    addLabel="Ajouter une propriété"
+                    rows={form.magicProperties}
+                    onChange={(rows) => setField('magicProperties', rows)}
+                  />
+
+                  <Stack spacing={2} divider={<Divider />}>
+                    {/* Bonus/malus de CARACTÉRISTIQUES (PER-272), par lignes. */}
+                    <BonusRows
+                      ids={ABILITY_IDS}
+                      title="Bonus de caractéristiques"
+                      selectLabel="Caractéristique"
+                      fullMessage="Les 7 caractéristiques sont déjà couvertes."
+                      renderOption={(id) => (
+                        <>
+                          <AbilityIcon ability={id} size={18} />
+                          {id} — {ABILITY_NAMES[id]}
+                        </>
+                      )}
+                      rows={form.abilityBonuses}
+                      onChange={(rows) => setField('abilityBonuses', rows)}
+                    />
+
+                    {/* Bonus/malus de STATISTIQUES DÉRIVÉES (PER-273), par lignes. La DÉFENSE
+                        n'y figure pas volontairement (cf. `ItemDerivedStatId`) : la « DEF
+                        magique » ci-dessus reste le seul canal d'enchantement défensif. */}
+                    <BonusRows
+                      ids={ITEM_DERIVED_STAT_IDS}
+                      title="Bonus de statistiques dérivées"
+                      selectLabel="Statistique"
+                      fullMessage="Toutes les statistiques modifiables sont déjà couvertes."
+                      renderOption={(id) => (
+                        <>
+                          <DerivedStatIcon statId={DERIVED_MOD_DISPLAY_ID[id]} size={18} />
+                          {DERIVED_MOD_NAMES[id]}
+                        </>
+                      )}
+                      rows={form.derivedBonuses}
+                      onChange={(rows) => setField('derivedBonuses', rows)}
+                    />
+
+                    {/* Bonus/malus aux TESTS (PER-275), par lignes : c'est un BONUS DE MAGIE, non
+                        cumulable avec un autre bonus de magie sur le même test (p. 80) — deux
+                        objets sur la même cible ne s'additionnent pas, le meilleur gagne. */}
+                    <BonusRows
+                      ids={ITEM_TEST_TARGET_IDS}
+                      title="Bonus aux tests (bonus de magie)"
+                      selectLabel="Caractéristique ou domaine"
+                      fullMessage="Toutes les cibles possibles sont déjà couvertes."
+                      searchable
+                      groupOf={(id) =>
+                        testDomainById.has(id) ? 'Domaines de compétence' : 'Caractéristiques (tous les tests)'
+                      }
+                      optionLabel={(id) => {
+                        const domain = testDomainById.get(id);
+                        return domain ? domain.label : `${id} — ${ABILITY_NAMES[id as AbilityId]}`;
+                      }}
+                      renderOption={(id) => {
+                        const domain = testDomainById.get(id);
+                        // Le code de la carac passe par la puce tiretée teintée qui est la NORME
+                        // d'affichage d'une caractéristique dans l'app (`AbilityCodeChip`) : dans
+                        // une liste d'une centaine de domaines, c'est ce qui rend la carac
+                        // gouvernante repérable d'un coup d'œil. Un domaine multi-carac en porte
+                        // une par carac.
+                        return domain ? (
+                          <>
+                            <Box component="span">{domain.label}</Box>
+                            {domain.abilities.map((a) => (
+                              <AbilityCodeChip key={a} ability={a} noTooltip />
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            <AbilityIcon ability={id as AbilityId} size={18} />
+                            <AbilityCodeChip ability={id as AbilityId} noTooltip />
+                            {ABILITY_NAMES[id as AbilityId]}
+                          </>
+                        );
+                      }}
+                      rows={form.testBonuses}
+                      onChange={(rows) => setField('testBonuses', rows)}
+                    />
+
+                    {/* CHARGES (PER-294) : baguette, sceptre, talisman… Les deux cases de
+                        rechargement sont indépendantes et cumulables ; aucune cochée =
+                        rechargement à la main uniquement. RÈGLE MAISON : aucun objet à charges
+                        dans le livre de base. */}
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', mb: 0.75 }}
+                      >
+                        Charges
+                      </Typography>
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Nombre de charges"
+                        placeholder="0"
+                        helperText="vide = utilisations illimitées"
+                        value={form.chargesMax}
+                        onChange={(e) => setField('chargesMax', e.target.value)}
+                        fullWidth
+                      />
+                      {(Number(form.chargesMax) || 0) > 0 && (
+                        <Stack sx={{ mt: 0.5 }}>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={form.chargesOnShortRest}
+                                onChange={(e) => setField('chargesOnShortRest', e.target.checked)}
+                              />
+                            }
+                            label="Se recharge à plein au repos court"
+                          />
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={form.chargesOnLongRest}
+                                onChange={(e) => setField('chargesOnLongRest', e.target.checked)}
+                              />
+                            }
+                            label="Se recharge à plein au repos long"
+                          />
+                          {form.chargesOnShortRest && (
+                            <Typography variant="caption" color="text.secondary">
+                              Un repos long recharge aussi ce qui se recharge au repos court.
+                            </Typography>
+                          )}
+                        </Stack>
+                      )}
+                    </Box>
+                  </Stack>
+                </Box>
+              </FormAccordion>
             </>
           )}
         </Stack>
