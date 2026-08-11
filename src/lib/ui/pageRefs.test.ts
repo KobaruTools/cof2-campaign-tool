@@ -69,4 +69,26 @@ describe('splitPageRefs', () => {
       { kind: 'text', value: 'noms (voir pages 51 et 56).' },
     ]);
   });
+
+  it('reconnaît le qualificatif de livre « (p. N, Compagnon) » (PER-395)', () => {
+    expect(splitPageRefs('un pouvoir (p. 40, Compagnon) rare')).toEqual([
+      { kind: 'text', value: 'un pouvoir ' },
+      { kind: 'page', page: '40', book: 'companion' },
+      { kind: 'text', value: ' rare' },
+    ]);
+  });
+
+  it('reconnaît le qualificatif « Bestiaire », insensible à la casse', () => {
+    expect(splitPageRefs('(p. 12, bestiaire)')).toEqual([{ kind: 'page', page: '12', book: 'bestiaire' }]);
+  });
+
+  it('reste rétrocompatible sans qualificatif (pas de champ book)', () => {
+    const [seg] = splitPageRefs('(p. 188)');
+    expect(seg).toEqual({ kind: 'page', page: '188' });
+    expect((seg as { book?: string }).book).toBeUndefined();
+  });
+
+  it('ignore sans crash un qualificatif de livre inconnu — retombe en texte littéral', () => {
+    expect(splitPageRefs('(p. 10, Almanach)')).toEqual([{ kind: 'text', value: '(p. 10, Almanach)' }]);
+  });
 });

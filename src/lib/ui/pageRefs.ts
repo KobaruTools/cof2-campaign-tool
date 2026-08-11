@@ -1,3 +1,5 @@
+import type { BookId } from './books';
+
 /**
  * Découpe d'un texte français sur ses références de page du livre — notion GLOBALE
  * (les règles citent leur page partout : notes de calcul, avertissements, verbatim,
@@ -11,7 +13,18 @@
  */
 export type PageRefSegment =
   | { kind: 'text'; value: string }
-  | { kind: 'page'; page: string };
+  | { kind: 'page'; page: string; book?: BookId };
+
+/**
+ * Qualificatif de LIVRE optionnel (PER-395) : « (p. 40, Compagnon) » distingue une page
+ * du Compagnon d'une page du livre de base. Mot-clé tapé (pas le nom d'affichage complet
+ * de `BOOKS`) → `BookId`. Absent = livre de base, rétrocompatible avec `(p. N)` sans
+ * qualificatif (`SourceRef` retombe alors sur `DEFAULT_BOOK_ID`).
+ */
+const PAGE_REF_BOOK_QUALIFIERS: Record<string, BookId> = {
+  compagnon: 'companion',
+  bestiaire: 'bestiaire',
+};
 
 /**
  * « (p. 188) », « (p.188) », « (p. 219-220) » (tiret simple ou demi-cadratin), ainsi
@@ -19,8 +32,18 @@ export type PageRefSegment =
  * Le préfixe « voir » et le mot « page(s) » sont optionnels/interchangeables ; seule la
  * (les) page(s) est capturée. Une double référence « (voir pages 51 et 56) » n'est PAS
  * reconnue (forme rare, laissée en texte plutôt que tronquée à la première page).
+ *
+ * Qualificatif de livre optionnel `, Nom` (PER-395) : le nom est borné à la liste fermée
+ * de `PAGE_REF_BOOK_QUALIFIERS` DANS le motif — un qualificatif inconnu (« (p. 10,
+ * Almanach) ») ne referme donc jamais le groupe optionnel, la parenthèse n'est plus
+ * immédiatement après le nombre de page, et le match échoue ENTIÈREMENT (retombe en
+ * texte littéral, comme la double référence ci-dessus) plutôt que d'avaler la prose qui
+ * suit la virgule.
  */
-const PAGE_REF = /\((?:voir\s+)?(?:p\.\s*|pages?\s+)(\d+(?:[-–]\d+)?)\)/gi;
+const PAGE_REF = new RegExp(
+  `\\((?:voir\\s+)?(?:p\\.\\s*|pages?\\s+)(\\d+(?:[-–]\\d+)?)(?:,\\s*(${Object.keys(PAGE_REF_BOOK_QUALIFIERS).join('|')}))?\\)`,
+  'gi',
+);
 
 /**
  * Découpe `text` en segments : portions littérales et références de page extraites.
@@ -33,7 +56,8 @@ export function splitPageRefs(text: string): PageRefSegment[] {
   for (const match of text.matchAll(PAGE_REF)) {
     const start = match.index;
     if (start > last) segments.push({ kind: 'text', value: text.slice(last, start) });
-    segments.push({ kind: 'page', page: match[1] });
+    const book = match[2] ? PAGE_REF_BOOK_QUALIFIERS[match[2].toLowerCase()] : undefined;
+    segments.push(book ? { kind: 'page', page: match[1], book } : { kind: 'page', page: match[1] });
     last = start + match[0].length;
   }
   if (last < text.length) segments.push({ kind: 'text', value: text.slice(last) });

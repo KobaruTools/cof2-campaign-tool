@@ -557,6 +557,104 @@ describe('resolveExpr — produit de variables (Téléportation, PER-163)', () =
   });
 });
 
+describe('parseRichText — multi-paragraphe (PER-395)', () => {
+  it('conserve un texte multi-paragraphe (double saut de ligne) sans le tronquer', () => {
+    expect(parseRichText('Premier paragraphe.\n\nSecond paragraphe.')).toEqual([
+      { kind: 'text', value: 'Premier paragraphe.\n\nSecond paragraphe.' },
+    ]);
+  });
+
+  it('reconnaît dés et formules quand ils sont séparés par un saut de paragraphe', () => {
+    expect(parseRichText('Attaque : {1d6}\n\nDégâts : [FOR + 1]')).toEqual([
+      { kind: 'text', value: 'Attaque : ' },
+      { kind: 'die', token: { count: 1, die: 'd6', evolving: false } },
+      { kind: 'text', value: '\n\nDégâts : ' },
+      {
+        kind: 'expr',
+        raw: '[FOR + 1]',
+        terms: [
+          { kind: 'ability', sign: 1, ability: 'FOR' },
+          { kind: 'number', sign: 1, value: 1 },
+        ],
+      },
+    ]);
+  });
+});
+
+describe('parseRichText — marques Markdown (PER-395)', () => {
+  it('reconnaît le gras **...**', () => {
+    expect(parseRichText('un **texte en gras** ici')).toEqual([
+      { kind: 'text', value: 'un ' },
+      { kind: 'bold', value: 'texte en gras' },
+      { kind: 'text', value: ' ici' },
+    ]);
+  });
+
+  it('reconnaît l’italique *...*', () => {
+    expect(parseRichText('un *texte en italique* ici')).toEqual([
+      { kind: 'text', value: 'un ' },
+      { kind: 'italic', value: 'texte en italique' },
+      { kind: 'text', value: ' ici' },
+    ]);
+  });
+
+  it('reconnaît le barré ~~...~~', () => {
+    expect(parseRichText('un ~~texte barré~~ ici')).toEqual([
+      { kind: 'text', value: 'un ' },
+      { kind: 'strike', value: 'texte barré' },
+      { kind: 'text', value: ' ici' },
+    ]);
+  });
+
+  it('ne confond pas le gras et l’italique', () => {
+    expect(parseRichText('**gras** puis *italique*')).toEqual([
+      { kind: 'bold', value: 'gras' },
+      { kind: 'text', value: ' puis ' },
+      { kind: 'italic', value: 'italique' },
+    ]);
+  });
+
+  it('ne casse pas un multiplicateur `*` ASCII dans une formule existante', () => {
+    // Régression : `[niveau * 3]` est déjà consommé comme formule par le token
+    // principal AVANT le passage Markdown — un seul `*` ne doit jamais matcher.
+    expect((parseRichText('[niveau * 3]')[0] as { terms: unknown }).terms).toEqual([
+      { kind: 'level', sign: 1, coeff: 3 },
+    ]);
+  });
+
+  it('laisse un `*` isolé (sans paire) en texte littéral', () => {
+    expect(parseRichText('un astérisque * isolé')).toEqual([
+      { kind: 'text', value: 'un astérisque * isolé' },
+    ]);
+  });
+});
+
+describe('parseRichText — tokens {{color:...}} / {{size:...}} (PER-395)', () => {
+  it('reconnaît {{color:rouge}}...{{/color}}', () => {
+    expect(parseRichText('{{color:rouge}}danger{{/color}}')).toEqual([
+      { kind: 'color', name: 'rouge', value: 'danger' },
+    ]);
+  });
+
+  it('reconnaît {{size:grand}}...{{/size}}', () => {
+    expect(parseRichText('{{size:grand}}IMPORTANT{{/size}}')).toEqual([
+      { kind: 'size', name: 'grand', value: 'IMPORTANT' },
+    ]);
+  });
+
+  it('ignore sans crash un nom de couleur inconnu (enum fermée) — retombe en littéral', () => {
+    expect(parseRichText('{{color:magenta}}texte{{/color}}')).toEqual([
+      { kind: 'text', value: '{{color:magenta}}texte{{/color}}' },
+    ]);
+  });
+
+  it('ignore sans crash un nom de taille inconnu (enum fermée) — retombe en littéral', () => {
+    expect(parseRichText('{{size:enorme}}texte{{/size}}')).toEqual([
+      { kind: 'text', value: '{{size:enorme}}texte{{/size}}' },
+    ]);
+  });
+});
+
 describe('resolveExpr — substitution de caractéristique contextuelle (PER-163)', () => {
   const CHA_TO_INT = [{ from: 'CHA', to: 'INT' } as const];
 

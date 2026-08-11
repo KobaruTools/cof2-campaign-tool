@@ -44,6 +44,18 @@
  *   codes `AGI/CON/FOR/PER/CHA/INT/VOL` uniquement.
  * - tout le reste : texte littéral.
  *
+ * PER-395 — deux familles de syntaxe ADDITIVES, appliquées en second passage sur les
+ * segments `text` déjà découpés ci-dessus (jamais à l'intérieur d'un `{…}`/`[…]`, donc
+ * sans jamais toucher la grammaire mécanique existante) :
+ * - Markdown standard : `**gras**`, `*italique*`, `~~barré~~`. Ne traverse PAS un dé/une
+ *   formule (une marque commencée avant un `{…}`/`[…]` et refermée après ne sera pas
+ *   reconnue) — limitation assumée du socle, pas requise par PER-395.
+ * - `{{color:nom}}…{{/color}}` / `{{size:nom}}…{{/size}}` : couleur/taille sur une
+ *   PLAGE de texte, `nom` limité à une liste fermée (`RICH_COLOR_NAMES`/`RICH_SIZE_NAMES`)
+ *   directement encodée dans le motif de reconnaissance — un nom hors liste ne matche
+ *   simplement pas et retombe en texte littéral (délimiteurs compris), jamais de valeur
+ *   libre transmise à un style CSS.
+ *
  * Robustesse : un `{…}` ou `[…]` dont le contenu n'est pas entièrement
  * reconnaissable est rendu tel quel (délimiteurs compris) comme texte littéral,
  * pour ne jamais casser l'affichage d'un balisage approximatif.
@@ -123,7 +135,52 @@ export type RichTextSegment =
   // `[&feature-id|texte affiché]`. Le rendu en fait une puce aux couleurs du profil
   // de la capacité citée (cf. `CapabilityChip`). `label` = texte verbatim de la prose
   // (ex. « encaisser un coup ») ; absent → le nom canonique de la capacité.
-  | { kind: 'capabilityRef'; featureId: string; label: string | null };
+  | { kind: 'capabilityRef'; featureId: string; label: string | null }
+  // PER-395 — marques Markdown (`**gras**`, `*italique*`, `~~barré~~`), `value` = texte
+  // englobé (encore susceptible de contenir des renvois de page/glossaire, rendus par
+  // `RichTextRun`, mais PAS de dé/formule — cf. note de robustesse ci-dessus).
+  | { kind: 'bold'; value: string }
+  | { kind: 'italic'; value: string }
+  | { kind: 'strike'; value: string }
+  // PER-395 — `{{color:nom}}…{{/color}}` / `{{size:nom}}…{{/size}}`, `nom` toujours une
+  // valeur de l'enum fermée (garanti par construction : `MARKDOWN_RE` n'inclut que les
+  // noms de `RICH_COLOR_NAMES`/`RICH_SIZE_NAMES` dans son motif).
+  | { kind: 'color'; name: RichColorName; value: string }
+  | { kind: 'size'; name: RichSizeName; value: string };
+
+/** Noms de couleur admis par `{{color:nom}}` (enum fermée, jamais de valeur CSS libre). */
+export const RICH_COLOR_NAMES = ['rouge', 'vert', 'bleu', 'ambre', 'violet'] as const;
+export type RichColorName = (typeof RICH_COLOR_NAMES)[number];
+
+/** Noms de taille admis par `{{size:nom}}` (enum fermée). */
+export const RICH_SIZE_NAMES = ['petit', 'grand'] as const;
+export type RichSizeName = (typeof RICH_SIZE_NAMES)[number];
+
+/** Jeton de thème MUI (chemin `palette.xxx.main`) pour une couleur `{{color:nom}}`. */
+export function richColorSx(name: RichColorName): string {
+  switch (name) {
+    case 'rouge':
+      return 'error.main';
+    case 'vert':
+      return 'success.main';
+    case 'bleu':
+      return 'info.main';
+    case 'ambre':
+      return 'warning.main';
+    case 'violet':
+      return 'secondary.main';
+  }
+}
+
+/** Taille de police (`em`, relative au texte englobant) pour `{{size:nom}}`. */
+export function richSizeSx(name: RichSizeName): string {
+  switch (name) {
+    case 'petit':
+      return '0.85em';
+    case 'grand':
+      return '1.3em';
+  }
+}
 
 // `(\d*)d<faces>(°?)` éventuellement suivi de paliers par rang de voie : soit
 // `|C@R` (seul le NOMBRE de dés passe à C — `1d4°|2@4`), soit `|CdF@R` (le DÉ COMPLET
@@ -364,9 +421,56 @@ function isNamedTermExpr(terms: ExprTerm[]): boolean {
 }
 
 /**
+ * Reconnaît les marques Markdown (`**gras**`, `~~barré~~`, `*italique*`) et les tokens
+ * `{{color:nom}}…{{/color}}` / `{{size:nom}}…{{/size}}` (PER-395). Le gras est tenté
+ * AVANT l'italique dans l'alternance pour que `**x**` ne soit jamais lu comme deux
+ * italiques adjacents. `nom` est directement borné à l'enum fermée dans le motif — un
+ * nom hors liste ne matche simplement pas et retombe en texte littéral, délimiteurs
+ * compris (même robustesse que les `{…}`/`[…]` mécaniques). N'est appliqué qu'aux
+ * segments `text` déjà isolés par `parseRichText` : ne traverse jamais un dé/une
+ * formule.
+ */
+const MARKDOWN_RE = new RegExp(
+  '\\*\\*([\\s\\S]+?)\\*\\*' +
+    '|~~([\\s\\S]+?)~~' +
+    '|\\*([^*\\n]+?)\\*' +
+    `|\\{\\{color:(${RICH_COLOR_NAMES.join('|')})\\}\\}([\\s\\S]*?)\\{\\{/color\\}\\}` +
+    `|\\{\\{size:(${RICH_SIZE_NAMES.join('|')})\\}\\}([\\s\\S]*?)\\{\\{/size\\}\\}`,
+  'gi',
+);
+
+function splitMarkdownMarks(text: string): RichTextSegment[] {
+  const out: RichTextSegment[] = [];
+  let last = 0;
+  MARKDOWN_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  const pushText = (value: string) => {
+    if (!value) return;
+    const lastSeg = out[out.length - 1];
+    if (lastSeg?.kind === 'text') lastSeg.value += value;
+    else out.push({ kind: 'text', value });
+  };
+  while ((m = MARKDOWN_RE.exec(text)) !== null) {
+    pushText(text.slice(last, m.index));
+    last = MARKDOWN_RE.lastIndex;
+    if (m[1] !== undefined) out.push({ kind: 'bold', value: m[1] });
+    else if (m[2] !== undefined) out.push({ kind: 'strike', value: m[2] });
+    else if (m[3] !== undefined) out.push({ kind: 'italic', value: m[3] });
+    else if (m[4] !== undefined)
+      out.push({ kind: 'color', name: m[4].toLowerCase() as RichColorName, value: m[5] });
+    else out.push({ kind: 'size', name: m[6].toLowerCase() as RichSizeName, value: m[7] });
+  }
+  pushText(text.slice(last));
+  return out;
+}
+
+/**
  * Découpe `richText` en segments. Les `{…}`/`[…]` non reconnus retombent en
  * texte littéral (délimiteurs inclus). Un `[=…]` produit une quantité (valeur
  * brute), un `[#…]` un terme nommé (le mot), un `[…]` une formule de modificateur.
+ * Les segments `text` obtenus sont ensuite repassés dans `splitMarkdownMarks`
+ * (PER-395) pour en extraire les marques Markdown/couleur/taille — un texte sans
+ * aucune de ces marques ressort inchangé (rétrocompatibilité totale).
  */
 export function parseRichText(richText: string): RichTextSegment[] {
   const segments: RichTextSegment[] = [];
@@ -422,7 +526,7 @@ export function parseRichText(richText: string): RichTextSegment[] {
     }
   }
   pushText(richText.slice(lastIndex));
-  return segments;
+  return segments.flatMap((seg) => (seg.kind === 'text' ? splitMarkdownMarks(seg.value) : [seg]));
 }
 
 /** Un terme de formule résolu pour l'affichage. */

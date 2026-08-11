@@ -33,7 +33,14 @@ import {
 } from '@/lib/ui/classColors';
 import { PRESTIGE_GRADIENT_STOPS } from '@/lib/ui/prestigeStyle';
 import { useCapabilityScroll } from '@/components/sheet/capabilityScroll';
-import { dieAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
+import {
+  dieAtRank,
+  parseRichText,
+  resolveExpr,
+  richColorSx,
+  richSizeSx,
+  type ResolvedExpr,
+} from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitActionMarkers, splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
 import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
@@ -684,7 +691,7 @@ function PageRefsRun({ value }: { value: string }) {
     <>
       {splitPageRefs(value).map((seg, i) =>
         seg.kind === 'page' ? (
-          <SourceRef key={i} page={seg.page} sx={{ mx: 0.25 }} />
+          <SourceRef key={i} page={seg.page} book={seg.book} sx={{ mx: 0.25 }} />
         ) : (
           <GameTermsRun key={i} value={seg.value} />
         ),
@@ -1133,6 +1140,40 @@ export function RichInline({
               tone="ability"
               ability={seg.ability}
             />
+          );
+        // PER-395 — marques Markdown/couleur/taille : le contenu englobé repasse par
+        // `RichTextRun` (renvois de page, glossaire, liens de créature), jamais par
+        // `RichInline` — ces marques ne traversent pas un dé/une formule (cf. note de
+        // robustesse de `splitMarkdownMarks`).
+        if (seg.kind === 'bold')
+          return (
+            <Box key={i} component="strong" sx={{ fontWeight: 700 }}>
+              <RichTextRun value={seg.value} />
+            </Box>
+          );
+        if (seg.kind === 'italic')
+          return (
+            <Box key={i} component="em">
+              <RichTextRun value={seg.value} />
+            </Box>
+          );
+        if (seg.kind === 'strike')
+          return (
+            <Box key={i} component="s">
+              <RichTextRun value={seg.value} />
+            </Box>
+          );
+        if (seg.kind === 'color')
+          return (
+            <Box key={i} component="span" sx={{ color: richColorSx(seg.name) }}>
+              <RichTextRun value={seg.value} />
+            </Box>
+          );
+        if (seg.kind === 'size')
+          return (
+            <Box key={i} component="span" sx={{ fontSize: richSizeSx(seg.name) }}>
+              <RichTextRun value={seg.value} />
+            </Box>
           );
         if (seg.kind === 'die') {
           // Nombre, faces ET caractère évolutif résolus au rang de voie (un palier `|1d4°@R`

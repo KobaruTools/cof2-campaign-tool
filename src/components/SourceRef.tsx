@@ -138,7 +138,7 @@ export function PageRefText({ children, book }: { children: string; book?: BookI
         seg.kind === 'text' ? (
           <Fragment key={i}>{seg.value}</Fragment>
         ) : (
-          <SourceRef key={i} page={seg.page} book={book} sx={{ mx: 0.25 }} />
+          <SourceRef key={i} page={seg.page} book={seg.book ?? book} sx={{ mx: 0.25 }} />
         ),
       )}
     </>
