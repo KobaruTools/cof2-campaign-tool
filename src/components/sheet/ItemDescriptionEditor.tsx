@@ -23,14 +23,22 @@ import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import FitnessCenterOutlinedIcon from '@mui/icons-material/FitnessCenterOutlined';
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
+import CircularProgress from '@mui/material/CircularProgress';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DieIcon } from '@/components/DieIcon';
+import { features } from '@/data';
 import { ABILITY_IDS, STATUS_EFFECT_IDS, STATUS_EFFECTS, type AbilityId, type Die } from '@/data/schema';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { useContentVersion } from '@/lib/content/useContentVersion';
 import { RICH_COLOR_NAMES, RICH_SIZE_NAMES, richColorSx, type RichColorName, type RichSizeName } from '@/lib/ui/featureRichText';
 import { descriptionToDoc, docToDescription } from '@/lib/ui/richTextEditorSync';
+import { useBestiaryStore } from '@/stores/bestiary';
 import { AbilityCodeChip } from './FeatureRichText';
+import { FeaturePathAutocomplete } from './FeaturePathAutocomplete';
 import { RICH_TEXT_EDITOR_EXTENSIONS } from './richTextEditorExtensions';
+import { CreatureCatalogAutocomplete } from '@/components/campaign/CreatureCatalogAutocomplete';
 
 const COLOR_LABELS: Record<RichColorName, string> = {
   rouge: 'Rouge',
@@ -113,8 +121,18 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
   const [pageAnchor, setPageAnchor] = useState<HTMLElement | null>(null);
   const [pageNum, setPageNum] = useState('');
   const [pageBook, setPageBook] = useState('');
+  const [capabilityAnchor, setCapabilityAnchor] = useState<HTMLElement | null>(null);
+  const [creatureAnchor, setCreatureAnchor] = useState<HTMLElement | null>(null);
   const activeColor = RICH_COLOR_NAMES.find((n) => editor.isActive('richColor', { name: n }));
   const activeSize = RICH_SIZE_NAMES.find((n) => editor.isActive('richSize', { name: n }));
+
+  // Abonnement à la version de contenu (PER-321) : `features` reflète le contenu payant déjà
+  // fusionné (jamais celui non débloqué, cf. `isCapabilityAccessible`) — le picker n'a donc jamais
+  // besoin de filtrer lui-même, mais doit se re-rendre si une fusion a lieu pendant l'édition.
+  useContentVersion();
+  const capabilityOptions = features.map((f) => f.id);
+  const creatureList = useBestiaryStore((s) => s.list);
+  const loadCreatureList = useBestiaryStore((s) => s.loadList);
 
   const insertToken = (raw: string) => editor.chain().focus().insertMechToken(raw).run();
 
@@ -142,6 +160,22 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
     setPageAnchor(null);
     setPageNum('');
     setPageBook('');
+  };
+
+  // Picker de capacité (PER-399) : `[&feature-id]` (sans libellé — la puce affiche le nom
+  // canonique de la capacité, décliné le cas échéant, cf. `CapabilityChip`).
+  const insertCapability = (featureId: string | null) => {
+    if (featureId) insertToken(`[&${featureId}]`);
+    setCapabilityAnchor(null);
+  };
+
+  // Picker de créature (PER-399) : `[[creature:slug|libellé]]` — le libellé est TOUJOURS le nom
+  // canonique de la créature choisie (la grammaire l'exige, `creatureLinks.ts`) ; `creatureList`
+  // est déjà filtrée par la RLS (PER-396) donc jamais de nom d'une créature verrouillée à divulguer.
+  const insertCreature = (slug: string | null) => {
+    const name = slug ? creatureList?.find((c) => c.id === slug)?.name : undefined;
+    if (slug && name) insertToken(`[[creature:${slug}|${name}]]`);
+    setCreatureAnchor(null);
   };
 
   return (
@@ -174,6 +208,20 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
       </ToolbarToggle>
       <ToolbarToggle title="Insérer un renvoi de page" active={false} onClick={(e) => setPageAnchor(e.currentTarget)}>
         <MenuBookOutlinedIcon fontSize="small" />
+      </ToolbarToggle>
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.25, my: 0.5 }} />
+      <ToolbarToggle title="Insérer une référence de capacité" active={false} onClick={(e) => setCapabilityAnchor(e.currentTarget)}>
+        <LinkOutlinedIcon fontSize="small" />
+      </ToolbarToggle>
+      <ToolbarToggle
+        title="Insérer une référence de créature"
+        active={false}
+        onClick={(e) => {
+          setCreatureAnchor(e.currentTarget);
+          void loadCreatureList();
+        }}
+      >
+        <PetsOutlinedIcon fontSize="small" />
       </ToolbarToggle>
 
       <Menu anchorEl={colorAnchor} open={!!colorAnchor} onClose={() => setColorAnchor(null)}>
@@ -322,6 +370,32 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
           <Button variant="contained" size="small" onClick={insertPage} disabled={!pageNum.trim()}>
             Insérer
           </Button>
+        </Box>
+      </Popover>
+
+      <Popover anchorEl={capabilityAnchor} open={!!capabilityAnchor} onClose={() => setCapabilityAnchor(null)}>
+        <Box sx={{ p: 1.5, width: 340 }}>
+          <FeaturePathAutocomplete
+            label="Capacité"
+            options={capabilityOptions}
+            value={null}
+            onChange={insertCapability}
+            groupMode="profile"
+            clearOnSelect
+          />
+        </Box>
+      </Popover>
+
+      <Popover anchorEl={creatureAnchor} open={!!creatureAnchor} onClose={() => setCreatureAnchor(null)}>
+        <Box sx={{ p: 1.5, width: 340 }}>
+          {creatureList ? (
+            <CreatureCatalogAutocomplete options={creatureList} value={null} onSelect={insertCreature} label="Créature" />
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', py: 1 }}>
+              <CircularProgress size={16} />
+              Chargement du bestiaire…
+            </Box>
+          )}
         </Box>
       </Popover>
     </Box>

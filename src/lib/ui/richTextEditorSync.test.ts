@@ -95,6 +95,16 @@ describe('descriptionToDoc / docToDescription', () => {
     expect(docToDescription(doc)).toBe('(p. 42, compagnon)');
   });
 
+  it('round-trip une référence de créature, portée par un nœud mechToken dédié', () => {
+    expect(roundTrip('[[creature:spore-zombie|le zombie à spores]]')).toBe(
+      '[[creature:spore-zombie|le zombie à spores]]',
+    );
+    const doc = descriptionToDoc('[[creature:spore-zombie|le zombie à spores]]');
+    expect(doc.content?.[0].content).toEqual([
+      { type: 'mechToken', attrs: { raw: '[[creature:spore-zombie|le zombie à spores]]' } },
+    ]);
+  });
+
   it('un token mécanique ne porte jamais de marque, même adjacent à du texte marqué', () => {
     const text = '**avant** {1d4} *après*';
     expect(roundTrip(text)).toBe(text);

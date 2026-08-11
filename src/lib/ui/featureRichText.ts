@@ -73,6 +73,7 @@ import {
 import type { Abilities } from '@/lib/engine';
 import { ABILITY_NAMES } from './ability';
 import type { BookId } from './books';
+import { splitCreatureLinks } from './creatureLinks';
 import { splitPageRefs } from './pageRefs';
 
 /** Un dé tokenisé : nombre, faces, et marqueur évolutif. */
@@ -642,12 +643,24 @@ export function splitMechanicalTokens(text: string): MechanicalTokenSegment[] {
     }
   }
   pushText(text.slice(lastIndex));
-  // Second passage : les renvois de page (`(p. N)`, `(p. N, Compagnon)`) utilisent des
-  // PARENTHÈSES, jamais capturées par `TOKEN_RE` — on les isole dans les segments `text` restants
-  // (`splitPageRefs`, source unique de la grammaire de renvoi). Le token reconstruit est TOUJOURS
-  // la forme canonique `(p. N[, livre])` : une saisie historique en prose (« voir page N ») serait
-  // renormalisée à l'ouverture dans l'éditeur — effet de bord mineur et sans perte de sens.
-  return segments.flatMap((seg) => (seg.kind === 'text' ? splitPageRefsAsTokens(seg.value) : [seg]));
+  // Deux seconds passages, sur les segments `text` restants — chacun a ses propres délimiteurs
+  // (`[[creature:…]]` vs `(p. N)`), jamais capturés par `TOKEN_RE` (crochets SIMPLES) :
+  // - Lien de créature (`[[creature:<slug>|<libellé>]]`, `creatureLinks.ts`) : grammaire DISTINCTE
+  //   de `[&feature-id]` (double crochet, libellé obligatoire) — non reconnue par `parseRichText`
+  //   lui-même (cf. `MechTokenRun`, qui la rend via son repli `RichTextRun`/`splitCreatureLinks`).
+  // - Renvoi de page (`(p. N)`, `(p. N, Compagnon)`) : parenthèses (`splitPageRefs`, source unique
+  //   de la grammaire de renvoi). Le token reconstruit est TOUJOURS la forme canonique
+  //   `(p. N[, livre])` : une saisie historique en prose (« voir page N ») serait renormalisée à
+  //   l'ouverture dans l'éditeur — effet de bord mineur et sans perte de sens.
+  return segments
+    .flatMap((seg) => (seg.kind === 'text' ? splitCreatureLinksAsTokens(seg.value) : [seg]))
+    .flatMap((seg) => (seg.kind === 'text' ? splitPageRefsAsTokens(seg.value) : [seg]));
+}
+
+function splitCreatureLinksAsTokens(text: string): MechanicalTokenSegment[] {
+  return splitCreatureLinks(text).map((seg) =>
+    seg.kind === 'text' ? { kind: 'text', value: seg.value } : { kind: 'token', raw: `[[creature:${seg.slug}|${seg.label}]]` },
+  );
 }
 
 /** Mot-clé de qualificatif de livre reconnu par `splitPageRefs` pour un renvoi HORS livre de base. */
