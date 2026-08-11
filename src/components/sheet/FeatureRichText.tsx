@@ -40,6 +40,7 @@ import {
   resolveExpr,
   richColorSx,
   richSizeSx,
+  splitMarkdownMarks,
   type ResolvedExpr,
 } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
@@ -672,6 +673,57 @@ function GlossaryRun({ value }: { value: string }) {
  */
 export function GlossaryText({ children }: { children: string }) {
   return <RichTextRun value={children} />;
+}
+
+/**
+ * `GlossaryText` + les 5 marques MVP de PER-395/397 (`**gras**`, `*italique*`, `~~barré~~`,
+ * `{{color:nom}}…{{/color}}`, `{{size:nom}}…{{/size}}`) — SANS le reste de la grammaire
+ * mécanique de `parseRichText` (dés, formules, références de capacité/créature) : ce
+ * renderer sert des champs SANS contexte de personnage garanti (`CustomItem.description`,
+ * `EquipmentLine.details`), à la différence de `RichInline` qui exige `abilities`/`level`/
+ * `rank`. Même rendu visuel que `RichInline` pour ces 5 marques (mêmes `Box`/`sx`) : c'est
+ * la garantie de cohérence lecture/édition exigée par PER-397 pour l'éditeur Tiptap.
+ */
+export function GlossaryRichText({ children }: { children: string }) {
+  return (
+    <>
+      {splitMarkdownMarks(children).map((seg, i) => {
+        if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
+        if (seg.kind === 'bold')
+          return (
+            <Box key={i} component="strong" sx={{ fontWeight: 700 }}>
+              <RichTextRun value={seg.value} />
+            </Box>
+          );
+        if (seg.kind === 'italic')
+          return (
+            <Box key={i} component="em">
+              <RichTextRun value={seg.value} />
+            </Box>
+          );
+        if (seg.kind === 'strike')
+          return (
+            <Box key={i} component="s">
+              <RichTextRun value={seg.value} />
+            </Box>
+          );
+        if (seg.kind === 'color')
+          return (
+            <Box key={i} component="span" sx={{ color: richColorSx(seg.name) }}>
+              <RichTextRun value={seg.value} />
+            </Box>
+          );
+        // `seg.kind === 'size'` : dernière branche réelle de `splitMarkdownMarks` (qui n'émet
+        // jamais les autres membres de l'union `RichTextSegment`, cf. note de tête ci-dessus).
+        if (seg.kind !== 'size') return null;
+        return (
+          <Box key={i} component="span" sx={{ fontSize: richSizeSx(seg.name) }}>
+            <RichTextRun value={seg.value} />
+          </Box>
+        );
+      })}
+    </>
+  );
 }
 
 /**
