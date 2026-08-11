@@ -407,7 +407,7 @@ function finesseWeaponEligible(character: Character, effect: FinesseAttackEffect
     masteredClassIds(character, rulesContext),
     rulesContext,
     character.firearmsAllowed,
-    extraMasteredWeaponIds(character),
+    extraMasteredWeaponIds(character, character.firearmsAllowed),
   );
 }
 

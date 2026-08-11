@@ -86,6 +86,32 @@ describe('weaponDamageBonuses — Archer émérite (+PER à l\'arc, permanent)',
   });
 });
 
+describe('weaponDamageBonuses — Merveille technologique du gnome (+AGI aux arbalètes/poudre, gnome-r4)', () => {
+  const gnome = makeCharacter({ featureIds: ['gnome-r4'] });
+
+  it('arbalète en main → +AGI agrégé au DM à distance', () => {
+    const r = weaponDamageBonuses(gnome, 'ranged', arbaleteLegere);
+    expect(r.addedAbilities).toHaveLength(1);
+    expect(r.addedAbilities[0]).toMatchObject({ ability: 'AGI', featureId: 'gnome-r4' });
+    expect(r.situational).toEqual([]);
+  });
+
+  it('arme à poudre en main → +AGI aussi (si autorisée à la table)', () => {
+    const petoire = weapon('petoire');
+    const r = weaponDamageBonuses(gnome, 'ranged', petoire);
+    expect(r.addedAbilities).toHaveLength(1);
+    expect(r.addedAbilities[0]).toMatchObject({ ability: 'AGI', featureId: 'gnome-r4' });
+  });
+
+  it('arc en main → PAS de bonus (arbalètes/poudre seulement)', () => {
+    expect(weaponDamageBonuses(gnome, 'ranged', arcLong).addedAbilities).toEqual([]);
+  });
+
+  it('mode contact → PAS de bonus (bonus à distance)', () => {
+    expect(weaponDamageBonuses(gnome, 'melee', epeeLongue).addedAbilities).toEqual([]);
+  });
+});
+
 describe('weaponDamageBonuses — Attaque éclair (bonus à ACTIVATION, non modélisé)', () => {
   it('traqueur-r2 : aucun badge — le +AGI relève d\'une capacité activée, pas de l\'attaque régulière', () => {
     const traqueur = makeCharacter({ featureIds: ['traqueur-r2'] });

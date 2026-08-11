@@ -250,7 +250,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
         equipment={draft.equipment}
         masteredIds={masteredClassIds(preview, rulesContext)}
         firearmsAllowed={firearmsAllowed}
-        extraMasteredWeaponIds={extraMasteredWeaponIds(preview)}
+        extraMasteredWeaponIds={extraMasteredWeaponIds(preview, firearmsAllowed)}
       />
 
       {/* Combat à deux armes (PER-116) : dé malus sur chaque attaque (p. 215) — consultatif. */}

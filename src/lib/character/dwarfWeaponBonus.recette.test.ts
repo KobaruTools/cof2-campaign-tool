@@ -19,7 +19,7 @@ function loadFixture(name: string): Character {
 /** L'arme du catalogue `itemId` est-elle maîtrisée par le personnage (aucun dé malus) ? */
 function masters(c: Character, itemId: string): boolean {
   const item = equipmentById.get(itemId) as Weapon;
-  return isWeaponMastered(item, masteredClassIds(c, rulesContext), rulesContext, c.firearmsAllowed, extraMasteredWeaponIds(c));
+  return isWeaponMastered(item, masteredClassIds(c, rulesContext), rulesContext, c.firearmsAllowed, extraMasteredWeaponIds(c, c.firearmsAllowed));
 }
 
 describe('PER-154 — nain « Haches et marteaux » (recette end-to-end)', () => {

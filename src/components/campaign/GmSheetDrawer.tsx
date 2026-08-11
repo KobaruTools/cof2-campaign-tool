@@ -738,7 +738,7 @@ function GmSheetDrawerContent({
               characterClass={characterClass}
               masteredIds={masteredClassIds(character, rulesContext)}
               firearmsAllowed={firearmsAllowed}
-              extraMasteredWeaponIds={extraMasteredWeaponIds(character)}
+              extraMasteredWeaponIds={extraMasteredWeaponIds(character, firearmsAllowed)}
               resolveWeaponAffinities={(itemId) => weaponAffinities(character, itemId)}
               twoWeaponStatus={twoWeaponCombatStatus(character)}
               resolveArmorRestriction={(line) =>

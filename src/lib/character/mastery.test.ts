@@ -7,6 +7,7 @@ import type { Character } from './types';
 import {
   ancestryWeaponMasteryIds,
   extraMasteredWeaponIds,
+  gnomeCrossbowMasteryIds,
   grantedFirearmMasteryIds,
   isWeaponMastered,
   masteredClassIds,
@@ -268,7 +269,7 @@ describe('isWeaponMastered avec octroi de capacité — armes à poudre du flibu
 
   it('Coup de crosse + pétoire en main → maîtrise du mousquet, malgré un profil sans poudre', () => {
     const flibustier = withFirearm();
-    const extra = extraMasteredWeaponIds(flibustier);
+    const extra = extraMasteredWeaponIds(flibustier, true);
     // Sans l'octroi : un guerrier ne maîtrise pas les armes à poudre.
     expect(isWeaponMastered(weapon('mousquet'), guerrierIds, ctx, true)).toBe(false);
     // Avec la capacité ET une arme à poudre en main : maîtrisée (court-circuite `cls.powderAllowed`).
@@ -291,5 +292,44 @@ describe('isWeaponMastered avec octroi de capacité — armes à poudre du flibu
     expect(grantedFirearmMasteryIds(sansCapacite).size).toBe(0);
     // Avec pétoire en main, la capacité n'octroie QUE des armes à poudre, pas les armes de contact.
     expect(grantedFirearmMasteryIds(withFirearm()).has('epee-longue')).toBe(false);
+  });
+});
+
+describe('isWeaponMastered avec octroi de capacité — Merveille technologique du gnome (gnome-r4)', () => {
+  const magicienIds = masteredClassIds(makeChar({ classId: 'magicien' }), ctx);
+
+  const gnomeMagicien = makeChar({
+    classId: 'magicien',
+    ancestryId: 'gnome',
+    ancestryPathId: 'gnome',
+    featureIds: ['gnome-r4'],
+  });
+
+  it('maîtrise les arbalètes quel que soit le profil, sans avoir besoin de l’arme en main', () => {
+    const extra = gnomeCrossbowMasteryIds(gnomeMagicien, true);
+    // Sans l'octroi : un magicien ne maîtrise pas l'arbalète lourde (accès à distance nul).
+    expect(isWeaponMastered(weapon('arbalete-lourde'), magicienIds, ctx, true)).toBe(false);
+    // Avec la capacité, même sans arbalète équipée : maîtrisée.
+    expect(isWeaponMastered(weapon('arbalete-lourde'), magicienIds, ctx, true, extra)).toBe(true);
+    expect(isWeaponMastered(weapon('arbalete-legere'), magicienIds, ctx, true, extra)).toBe(true);
+  });
+
+  it('maîtrise aussi les armes à poudre, mais seulement si autorisées (règle campagne, PER-185)', () => {
+    expect(gnomeCrossbowMasteryIds(gnomeMagicien, true).has('mousquet')).toBe(true);
+    // Poudre interdite dans l'univers → pas d'octroi sur les armes à poudre (les arbalètes restent).
+    const withoutFirearms = gnomeCrossbowMasteryIds(gnomeMagicien, false);
+    expect(withoutFirearms.has('mousquet')).toBe(false);
+    expect(withoutFirearms.has('arbalete-lourde')).toBe(true);
+  });
+
+  it('sans la capacité, aucun octroi', () => {
+    const sansCapacite = makeChar({ classId: 'magicien', ancestryId: 'gnome', ancestryPathId: 'gnome' });
+    expect(gnomeCrossbowMasteryIds(sansCapacite, true).size).toBe(0);
+  });
+
+  it('n’octroie pas les armes de contact ni les autres armes à distance', () => {
+    const extra = gnomeCrossbowMasteryIds(gnomeMagicien, true);
+    expect(extra.has('epee-longue')).toBe(false);
+    expect(extra.has('arc-long')).toBe(false);
   });
 });

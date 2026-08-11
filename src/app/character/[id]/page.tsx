@@ -1641,7 +1641,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               masteredIds={masteredClassIds(character, rulesContext)}
               firearmsAllowed={firearmsAllowed}
               // Maîtrises par exception : arme sacrée du prêtre spécialiste (PER-96) + octroi de peuple nain (PER-154).
-              extraMasteredWeaponIds={extraMasteredWeaponIds(character)}
+              extraMasteredWeaponIds={extraMasteredWeaponIds(character, firearmsAllowed)}
               // Badge positif d'affinité d'arme (PER-218) : arme sacrée / arme de peuple « maîtrisée ».
               resolveWeaponAffinities={(itemId) => weaponAffinities(character, itemId)}
               // Indicateur « combat à deux armes → dé malus » (PER-116) par arme en main.

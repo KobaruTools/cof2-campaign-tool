@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-gnome-r4-merveille-technologique",
+  "name": "Recette gnome-r4 — Merveille technologique",
+  "identity": {
+    "description": "ATTENDU : arbalète légère en main → badge « Maîtrisée » (pas « Non maîtrisée »), et +AGI ajouté aux DM à distance."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "gnome",
+  "classId": "magicien",
+  "level": 4,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 2,
+    "CON": 0,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 2,
+    "CON": 0,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "gnome",
+  "featureIds": [
+    "gnome-r1",
+    "gnome-r2",
+    "gnome-r3",
+    "gnome-r4"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arbalete-legere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "Recette gnome-r4 — vérification de la maîtrise + AGI aux DM (bug signalé : non mécanisé).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -159,16 +159,35 @@ export function grantedFirearmMasteryIds(character: Character): ReadonlySet<stri
 }
 
 /**
+ * Ids d'armes maîtrisées PAR OCTROI DE CAPACITÉ « Merveille technologique » (gnome-r4, p. 54) : « Le
+ * gnome sait utiliser les arbalètes (et les armes à poudre si votre MJ autorise leur usage), quel que
+ * soit son profil. » Les arbalètes (`rangedKind: 'crossbow'`) sont maîtrisées d'office ; les armes à
+ * poudre (`rangedKind: 'firearm'`) ne le sont que si `firearmsAllowed` (autorisation EFFECTIVE,
+ * campagne ∧ choix perso, PER-185) — contrairement au flibustier (`grantedFirearmMasteryIds`), non
+ * gaté sur une arme en main : c'est un savoir-faire de peuple, pas un réflexe de combat.
+ */
+export function gnomeCrossbowMasteryIds(character: Character, firearmsAllowed: boolean): ReadonlySet<string> {
+  const ids = new Set<string>();
+  if (!character.featureIds.includes('gnome-r4')) return ids;
+  for (const w of weapons) {
+    if (w.rangedKind === 'crossbow') ids.add(w.id);
+    if (firearmsAllowed && isFirearmItem(w)) ids.add(w.id);
+  }
+  return ids;
+}
+
+/**
  * Ensemble des maîtrises PAR EXCEPTION à une arme précise (union), à passer en `extraMasteredWeaponIds`
  * d'`isWeaponMastered` : arme sacrée du prêtre spécialiste (`sacredWeaponMasteryIds`, PER-96), octrois
- * de peuple (`ancestryWeaponMasteryIds`, PER-154) ET octrois de capacité (`grantedFirearmMasteryIds`,
- * PER-74 flibustier). Court-circuite l'analyse des accès de profil.
+ * de peuple (`ancestryWeaponMasteryIds`, PER-154), octrois de capacité (`grantedFirearmMasteryIds`,
+ * PER-74 flibustier ; `gnomeCrossbowMasteryIds`, gnome-r4). Court-circuite l'analyse des accès de profil.
  */
-export function extraMasteredWeaponIds(character: Character): ReadonlySet<string> {
+export function extraMasteredWeaponIds(character: Character, firearmsAllowed: boolean): ReadonlySet<string> {
   return new Set<string>([
     ...sacredWeaponMasteryIds(character),
     ...ancestryWeaponMasteryIds(character),
     ...grantedFirearmMasteryIds(character),
+    ...gnomeCrossbowMasteryIds(character, firearmsAllowed),
   ]);
 }
 

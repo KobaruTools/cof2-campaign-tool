@@ -468,6 +468,14 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le gnome sait utiliser les arbalètes (et les armes à poudre si votre MJ autorise leur usage), quel que soit son profil. Il ajoute son AGI aux DM qu’il inflige avec ces armes.',
+    // Maîtrise des arbalètes (+ armes à poudre si autorisées) : `gnomeCrossbowMasteryIds`, mastery.ts.
+    effects: [
+      {
+        kind: 'weapon-damage-bonus',
+        ability: 'AGI',
+        condition: { attackMode: 'ranged', rangedKinds: ['crossbow', 'firearm'] },
+      },
+    ],
     sourcePage: 54,
   },
   {
