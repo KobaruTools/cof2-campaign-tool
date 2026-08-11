@@ -20,6 +20,7 @@ import {
 } from '@/lib/character/height';
 import { identityWarnings } from '@/lib/character/identityWarnings';
 import type { Identity, Sex } from '@/lib/character/types';
+import { ItemDescriptionEditor } from '@/components/sheet/ItemDescriptionEditor';
 
 /** Ne conserve que les chiffres et la virgule décimale (âge, taille, poids). */
 function digitsOnly(value: string): string {
@@ -213,15 +214,16 @@ export function IdentityForm({
           </Grid>
         )}
       </Grid>
-      <TextField
-        label="Description"
-        multiline
-        minRows={6}
-        placeholder="Décrivez votre héros : allure, caractère, passé, ce qui le pousse à l'aventure…"
-        value={identity.description ?? ''}
-        onChange={(e) => onIdentity({ description: e.target.value })}
-        fullWidth
-      />
+      <Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+          Description
+        </Typography>
+        <ItemDescriptionEditor
+          value={identity.description ?? ''}
+          onChange={(text) => onIdentity({ description: text })}
+          placeholder="Décrivez votre héros : allure, caractère, passé, ce qui le pousse à l'aventure…"
+        />
+      </Box>
     </Stack>
   );
 }

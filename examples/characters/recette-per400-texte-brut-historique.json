@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per400-texte-brut-historique",
+  "name": "Recette PER-400 — texte brut historique (notes + description)",
+  "identity": {
+    "description": "Grande cicatrice sur la joue gauche.\nPorte toujours son manteau de voyage, même en ville.\n\nParle peu, sauf de chevaux."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 1,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "ATTENDU (PER-400) : ce texte a été saisi AVANT que Notes/Description passent par l'éditeur riche (Tiptap) — jamais réécrit par lui. Ouvrir la fiche : le bloc « Notes » doit afficher ce texte SANS le corrompre (retours à ligne conservés, *elfes noirs* en italique, **ne jamais** en gras, ~~20 po~~ barré). Cliquer « Éditer » doit rouvrir l'éditeur riche avec exactement ce contenu, prêt à continuer l'édition.\n\n---\n\nDoit un service à l’aubergiste du Cerf Blanc.\n\nSe méfie des *elfes noirs* depuis l’incident de la caravane — **ne jamais** le rappeler devant témoins.\nDette : ~~20 po~~ remboursée.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

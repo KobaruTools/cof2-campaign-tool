@@ -8,7 +8,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { BreakdownContent } from '@/components/BreakdownContent';
 import { PageRefText } from '@/components/SourceRef';
 import { AttackQualifierBadge } from '@/components/sheet/AttackQualifierBadge';
-import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { CapabilityChip, GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { buildColossusWeightBreakdown, formatWeightKg } from '@/lib/character/colossusWeight';
 import { characterSizeCategory } from '@/lib/character/size';
 import type { Identity } from '@/lib/character/types';
@@ -99,7 +99,7 @@ export function IdentityFields({ identity, ancestryId, featureIds }: IdentityFie
           color={identity.description ? 'text.primary' : 'text.disabled'}
           sx={{ whiteSpace: 'pre-line' }}
         >
-          {identity.description || '—'}
+          {identity.description ? <GlossaryRichText>{identity.description}</GlossaryRichText> : '—'}
         </Typography>
       </Grid>
     </Grid>
