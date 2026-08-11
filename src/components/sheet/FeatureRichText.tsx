@@ -13,7 +13,8 @@ import {
   type SxProps,
   type Theme,
 } from '@mui/material/styles';
-import { createContext, useContext, Fragment, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, Fragment, type ReactNode } from 'react';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { featureById, pathById, progression } from '@/data';
 import type { AbilityId, AbilitySubstitution, Die, Feature, StatusEffectId } from '@/data/schema';
 import { STATUS_EFFECTS } from '@/data/schema';
@@ -46,7 +47,9 @@ import { splitActionMarkers, splitGameTerms, splitGlossary } from '@/lib/ui/glos
 import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
 import { bestiaryCreatureHref, splitCreatureLinks } from '@/lib/ui/creatureLinks';
+import { creatureLinkAccess, isCapabilityAccessible } from '@/lib/ui/lockedContentAccess';
 import { useDeclined } from '@/components/sheet/FeatureDeclension';
+import { useBestiaryStore } from '@/stores/bestiary';
 import NextLink from 'next/link';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
@@ -251,13 +254,51 @@ function RefChip({
 }
 
 /**
+ * Puce GÉNÉRIQUE pour une référence croisée dont la cible n'est pas accessible au rôle
+ * courant (PER-396, capacité ou créature d'un supplément payant non débloqué) : cadenas +
+ * texte neutre, jamais le nom réel ni le libellé fourni par l'auteur de la référence — ce
+ * libellé pourrait le divulguer. Ni lien ni info-bulle détaillée (rien de plus à dire côté
+ * client : la cible verrouillée est, par construction, absente de tout catalogue/liste
+ * accessible — RLS bestiaire ou registre de contenu payant non fusionné).
+ */
+function LockedRefChip({ label, sx }: { label: string; sx?: SxProps<Theme> }) {
+  return (
+    <Box
+      component="span"
+      sx={[
+        {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.4,
+          mx: 0.2,
+          px: 0.6,
+          py: 0.1,
+          borderRadius: '4px',
+          fontSize: 'inherit',
+          color: 'text.disabled',
+          bgcolor: (theme) => alpha(theme.palette.text.disabled, 0.08),
+          border: 1,
+          borderColor: (theme) => alpha(theme.palette.text.disabled, 0.3),
+        },
+        ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
+      ]}
+    >
+      <LockOutlinedIcon sx={{ fontSize: '0.9em' }} />
+      {label}
+    </Box>
+  );
+}
+
+/**
  * Référence à une AUTRE capacité (`[&feature-id|texte]`, PER-72) : puce encadrée aux couleurs du
  * PROFIL de la capacité citée. Style UNIQUE (PER-73, unifié) : fond de couleur de voie ASSOMBRIE vers
  * le noir, texte + icône de couleur de voie ÉCLAIRCIE vers le blanc, et une ombre portée noire discrète
  * derrière le texte et l'icône. Lisible sur tout fond (clair, sombre, tooltip) sans variante. Affichage
  * de base UNIFORME (décision propriétaire) : couleur + icône du profil + NOM de la capacité ; l'ORIGINE
- * (« Voie du X, rang N ») passe en info-bulle. Référence inconnue (id erroné) → repli silencieux sur le
- * texte brut.
+ * (« Voie du X, rang N ») passe en info-bulle. Référence à une capacité ABSENTE du catalogue
+ * courant (PER-396 : id erroné, OU capacité d'un contenu payant non débloqué — indiscernables
+ * côté client, par construction) → puce générique (`LockedRefChip`), jamais le `label` fourni
+ * par l'auteur de la référence (pourrait divulguer le nom d'une capacité verrouillée).
  */
 export function CapabilityChip({
   featureId,
@@ -288,7 +329,12 @@ export function CapabilityChip({
   // `null` hors fiche navigable (récap du wizard, écran de MJ) : la puce reste alors une simple
   // info-bulle, comme avant.
   const scrollToCapability = useCapabilityScroll();
-  if (!feature || (!classId && !ancestryId && !isMage && !isPrestige)) return <>{text}</>;
+  // `!feature` en second membre : uniquement pour le rétrécissement de type (même lookup que
+  // `isCapabilityAccessible`, testé indépendamment dans `lockedContentAccess.test.ts`).
+  if (!isCapabilityAccessible(featureId) || !feature) {
+    return <LockedRefChip label="Capacité verrouillée" sx={sx} />;
+  }
+  if (!classId && !ancestryId && !isMage && !isPrestige) return <>{text}</>;
 
   // Voie de PRESTIGE (PER-74) : style « précieux » DÉDIÉ — au lieu d'une teinte pleine, une bordure en
   // dégradé blanc/gris clair qui tourne LENTEMENT (couche conique en rotation, masquée au centre par la
@@ -662,8 +708,28 @@ function GameTermsRun({ value }: { value: string }) {
  * cf. `splitCreatureLinks`). Vraie ancre `next/link` pilotant la sélection via `?c=`
  * (refresh/partage OK) ; `scroll={false}` pour ne pas remonter la page (on reste en vue
  * maître-détail). Style discret aligné sur la teinte primaire.
+ *
+ * Slug ABSENT de la liste accessible du store bestiaire (PER-396 : supplément payant non
+ * débloqué — masqué par la RLS, le client n'en connaît ni le nom ni la source — ou slug
+ * inexistant) → puce générique (`LockedRefChip`), jamais le `label` fourni par l'auteur de
+ * la référence. Déclenche lui-même `loadList()` : ce lien peut apparaître sur une fiche sans
+ * que la page /bestiary ait jamais été visitée (idempotent, cache disque d'abord).
  */
 function CreatureLink({ slug, label }: { slug: string; label: string }) {
+  const list = useBestiaryStore((s) => s.list);
+  const loadList = useBestiaryStore((s) => s.loadList);
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
+
+  const access = creatureLinkAccess(list, slug);
+  if (access === 'locked') return <LockedRefChip label="Créature verrouillée" />;
+  // Liste pas encore chargée (première référence de la session) : ni le nom réel (on ne sait
+  // pas encore si le slug est accessible) ni « verrouillé » (pourrait être faux) — rien, le
+  // temps que `loadList()` résolve (quasi instantané depuis le cache disque). Se corrige seul
+  // au prochain rendu (souscription réactive au store).
+  if (access === 'loading') return null;
+
   return (
     <Box
       component={NextLink}

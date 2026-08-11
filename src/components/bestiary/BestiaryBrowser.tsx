@@ -62,6 +62,7 @@ import {
 } from "@/lib/ui/creature";
 import { BOOKS, DEFAULT_BOOK_ID } from "@/lib/ui/books";
 import { bestiaryCreatureHref } from "@/lib/ui/creatureLinks";
+import { creatureLinkAccess } from "@/lib/ui/lockedContentAccess";
 import { usePersistedState } from "@/lib/ui/usePersistedState";
 import { useBestiaryStore } from "@/stores/bestiary";
 import { AppAlert } from "@/components/AppAlert";
@@ -446,7 +447,8 @@ function BestiaryBrowserView({
   // (slug d'un payant non débloqué — masqué par la RLS — ou slug inexistant) → panneau d'info.
   // N'a de sens qu'en pleine page : en tiroir la sélection ne vient jamais d'un lien profond.
   const urlCreature = urlSlug ? list.find((c) => c.id === urlSlug) : undefined;
-  const urlUnavailable = !embedded && urlSlug !== "" && !urlCreature;
+  const urlUnavailable =
+    !embedded && urlSlug !== "" && creatureLinkAccess(list, urlSlug) !== "accessible";
 
   // Filtre source EFFECTIF : le choix persisté n'est retenu que si le groupe est
   // affiché ET que la source existe toujours (entitlement conservé) ; sinon `"all"`.
