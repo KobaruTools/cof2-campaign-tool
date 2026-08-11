@@ -104,7 +104,11 @@ import {
   majorSummoningManaDiscount,
 } from '@/lib/character/majorSummoningPath';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
-import { archmageStaffActionTypesOverride, archmageStaffSpellGranted } from '@/lib/character/archmagePath';
+import {
+  archmageStaffActionTypesOverride,
+  archmageStaffSpellGranted,
+  archmageStaffSuppressedBonusMarker,
+} from '@/lib/character/archmagePath';
 import { useContentVersion } from '@/lib/content/useContentVersion';
 // Restriction FINE d'usage d'armure par capacité d'origine (PER-86) : rendu VISUEL (rang
 // désaturé + infobulle/notice), pas un avertissement de conformité.
@@ -563,6 +567,7 @@ function BorrowedFeatureBlock({
   spellNoteOverride,
   actionTypesOverride,
   suppressTextMarker,
+  suppressedBonusNote,
 }: {
   feature: Feature;
   /**
@@ -570,6 +575,12 @@ function BorrowedFeatureBlock({
    * rendue BARRÉE (bonus de compétence d'un sort octroyé + supprimé, ex. Ténèbres du cambion). Absent = rien.
    */
   suppressTextMarker?: string;
+  /**
+   * Notice affichée sous la queue barrée (`suppressTextMarker`) pour expliquer POURQUOI ce bonus ne
+   * s'applique pas (ex. Bâton magique de l'archimage : le bonus tient à la voie d'origine du sort, pas
+   * au sort lui-même). Sans effet si `suppressTextMarker` ne matche pas le texte. Absent = rien.
+   */
+  suppressedBonusNote?: ReactNode;
   abilities?: Abilities;
   level?: number;
   /**
@@ -740,6 +751,11 @@ function BorrowedFeatureBlock({
                 >
                   {tailText}
                 </Typography>
+                {suppressedBonusNote ? (
+                  <AppAlert severity="warning" sx={{ mt: 0.75 }}>
+                    {suppressedBonusNote}
+                  </AppAlert>
+                ) : null}
               </>
             );
           })()
@@ -3526,6 +3542,70 @@ function PathBlock({
                 })}
               </Box>
             )}
+            {/* Voie du mage : capacité de peuple de rang 1 conservée (p. 60), portée par SA PROPRE
+                capacité (ex. « Don étrange » du gnome) sans occuper de carte à part (elle n'a pas sa
+                propre ligne dans la grille — cf. `retainedFeature`). On remonte donc ICI, sur la carte
+                de rang 1 de la voie du mage, sa puce « Choisir » tant que rien n'est retenu, sinon la
+                mini-carte de la capacité empruntée (même mise en forme qu'un emprunt classique). */}
+            {retainedFeature && feature.rank === 1 && (() => {
+              const retainedBorrowed = borrowedFeatureOf(character, retainedFeature);
+              if (retainedBorrowed) {
+                const rbPath = pathById.get(retainedBorrowed.pathId);
+                const rbClassId = rbPath?.type === 'class' ? rbPath.classIds[0] : undefined;
+                const rbColor = rbClassId ? classColor(rbClassId) : undefined;
+                return (
+                  <Box
+                    sx={{
+                      mt: 0.5,
+                      width: '100%',
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      pt: 1.5,
+                      pb: 0.5,
+                      px: 0.75,
+                      border: 1,
+                      borderColor: rbColor ?? 'divider',
+                      borderRadius: 1,
+                      backgroundColor: 'background.paper',
+                      backgroundImage: rbColor
+                        ? `linear-gradient(${alpha(rbColor, 0.06)}, ${alpha(rbColor, 0.06)})`
+                        : undefined,
+                    }}
+                  >
+                    <FeatureMarkerHexes
+                      feature={retainedBorrowed}
+                      color={rbColor}
+                      concentration={concentration}
+                      pathRank={retainedFeature.rank}
+                      sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
+                    />
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 600, fontSize: '0.62rem' }}
+                    >
+                      {retainedPathName ?? 'Capacité de peuple'} conservée
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, fontSize: '0.75rem', width: '100%', wordBreak: 'break-word' }}
+                    >
+                      {declinedName(retainedBorrowed)}
+                    </Typography>
+                  </Box>
+                );
+              }
+              return hasChoices(retainedFeature) ? (
+                <Box sx={{ mt: 0.5, width: '100%', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {renderChoiceDisplay(retainedFeature, {
+                    compact: true,
+                    onEdit: canEditChoices ? () => requestChoiceEdit(retainedFeature) : undefined,
+                  })}
+                </Box>
+              ) : null;
+            })()}
             {/* Choix PROPRE de la capacité empruntée (ex. catégorie d'animaux de Langage des
                 animaux, débloquée par un rang 4 de druide) : la carte compacte de l'hôte étant
                 teintée à la voie source, on y remonte le choix de l'emprunt (puce « Choix à faire »
@@ -3824,6 +3904,50 @@ function PathBlock({
                       abilities={abilities}
                       level={level}
                     />
+                    {hasChoices(retainedFeature) && (
+                      <Box sx={{ mt: 1 }}>
+                        {renderChoiceDisplay(retainedFeature, {
+                          onEdit: canEditChoices
+                            ? () => {
+                                setOpenFeature(null);
+                                requestChoiceEdit(retainedFeature);
+                              }
+                            : undefined,
+                        })}
+                        {onChoiceChange && (
+                          <Button
+                            size="small"
+                            startIcon={<EditIcon fontSize="small" />}
+                            sx={{ mt: 1 }}
+                            onClick={() => {
+                              setOpenFeature(null);
+                              setChoiceEditFeature(retainedFeature);
+                            }}
+                          >
+                            Modifier le choix
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+                    {(() => {
+                      const retainedBorrowedList = borrowedFeaturesOf(character, retainedFeature);
+                      return retainedBorrowedList.length ? (
+                        <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                          {retainedBorrowedList.map((rb, i) => (
+                            <BorrowedFeatureBlock
+                              key={`retained-${i}-${rb.id}`}
+                              feature={rb}
+                              abilities={abilities}
+                              level={level}
+                              hostPathRank={retainedFeature.rank}
+                              concentration={concentration}
+                              armorRestricted={isArmorRestricted(rb)}
+                              armorRestrictedMessage={armorRestrictedMessage(rb)}
+                            />
+                          ))}
+                        </Stack>
+                      ) : null;
+                    })()}
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
@@ -4002,7 +4126,17 @@ function PathBlock({
                             spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
                             actionTypesOverride={staffGranted ? archmageStaffActionTypesOverride(character!, borrowed) : undefined}
                             suppressTextMarker={
-                              grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
+                              (character && archmageStaffSuppressedBonusMarker(character, borrowed)) ||
+                              (grant?.suppressTestBonus ? grant.suppressTextMarker : undefined)
+                            }
+                            suppressedBonusNote={
+                              character && archmageStaffSuppressedBonusMarker(character, borrowed) ? (
+                                <>
+                                  Bonus non appliqué : lié au bâton magique, ce sort n’apporte que son effet
+                                  propre — le bonus permanent tient à la voie d’origine du sort, pas au bâton
+                                  (<SourceRef page={154} />).
+                                </>
+                              ) : undefined
                             }
                             footer={
                               <>
@@ -4370,6 +4504,32 @@ function PathBlock({
                     abilities={abilities}
                     level={level}
                   />
+                  {hasChoices(retainedFeature) && (
+                    <Box sx={{ mt: 1 }}>
+                      {onChoiceChange
+                        ? renderChoiceEditor(retainedFeature)
+                        : renderChoiceDisplay(retainedFeature, { onEdit: onEnableFeatureEditing })}
+                    </Box>
+                  )}
+                  {(() => {
+                    const retainedBorrowedList = borrowedFeaturesOf(character, retainedFeature);
+                    return retainedBorrowedList.length ? (
+                      <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                        {retainedBorrowedList.map((rb, i) => (
+                          <BorrowedFeatureBlock
+                            key={`retained-${i}-${rb.id}`}
+                            feature={rb}
+                            abilities={abilities}
+                            level={level}
+                            hostPathRank={retainedFeature.rank}
+                            concentration={concentration}
+                            armorRestricted={isArmorRestricted(rb)}
+                            armorRestrictedMessage={armorRestrictedMessage(rb)}
+                          />
+                        ))}
+                      </Stack>
+                    ) : null;
+                  })()}
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
@@ -4513,7 +4673,17 @@ function PathBlock({
                           spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
                           actionTypesOverride={staffGranted ? archmageStaffActionTypesOverride(character!, borrowed) : undefined}
                           suppressTextMarker={
-                            grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
+                            (character && archmageStaffSuppressedBonusMarker(character, borrowed)) ||
+                            (grant?.suppressTestBonus ? grant.suppressTextMarker : undefined)
+                          }
+                          suppressedBonusNote={
+                            character && archmageStaffSuppressedBonusMarker(character, borrowed) ? (
+                              <>
+                                Bonus non appliqué : lié au bâton magique, ce sort n’apporte que son effet
+                                propre — le bonus permanent tient à la voie d’origine du sort, pas au bâton
+                                (<SourceRef page={154} />).
+                              </>
+                            ) : undefined
                           }
                           footer={
                             <>
