@@ -3897,6 +3897,25 @@ export interface AbilitySubstitution {
   to: AbilityId;
 }
 
+/**
+ * CURSEUR DE DURÉE CHOISIE PAR LE JOUEUR À L'INCANTATION, dont la difficulté du test suit
+ * directement (Fuite en avant, magie du temps r4, p. 164 : « contre une difficulté égale à
+ * [10 + durée choisie en min] », retour propriétaire PER-367). Premier rang du livre où la
+ * difficulté dépend d'un choix libre du joueur (pas d'une carac ni d'un rang) : aucune primitive
+ * antérieure, `difficulté = base + durée`. Rendu = curseur MUI borné à `sliderMax` (repère RAW mais
+ * non contraignant) + champ numérique libre pour dépasser le curseur (`ChosenDurationDifficultyField`,
+ * FeaturesByPath.tsx). AUCUNE persistance sur `Character` : le choix se refait à chaque incantation,
+ * comme au livre — état local au composant.
+ */
+export interface ChosenDurationDifficulty {
+  /** Borne haute du CURSEUR (repère visuel ; le champ numérique libre permet d'aller plus loin). */
+  sliderMax: number;
+  /** Terme constant de la formule (`difficulté = base + durée`). */
+  base: number;
+  /** Unité affichée (français), ex. « minutes ». */
+  unit: string;
+}
+
 export interface Feature {
   id: string;
   name: string;
@@ -4146,6 +4165,11 @@ export interface Feature {
    * Absent = la capacité n'a pas d'usage limité décompté.
    */
   usageCounter?: UsageCounter;
+  /**
+   * Curseur de durée choisie par le joueur à l'incantation, qui fixe la difficulté du test (cf.
+   * `ChosenDurationDifficulty`). Absent = aucune difficulté de ce type sur cette capacité.
+   */
+  chosenDurationDifficulty?: ChosenDurationDifficulty;
   /**
    * Soin SUPPLÉMENTAIRE par dé de récupération dépensé lors d'un repos (Survie, rôdeur, p. 72 :
    * « s'il dépense 1 DR, il guérit 1d4° PV supplémentaire »). N'est accordé que si le PREMIER effet

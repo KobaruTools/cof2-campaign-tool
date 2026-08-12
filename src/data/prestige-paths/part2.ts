@@ -3222,6 +3222,10 @@ export const prestigeFeatures2: Feature[] = [
     // part1.ts) ou l'ensorceleur intangible (mages.ts) — jamais de tag situationnel pour un
     // déplacement du PORTEUR lui-même. La difficulté « [10 + durée choisie en min] » n'est pas une
     // formule déterministe (choix libre du joueur) → retombe en littéral, déjà identique au livre.
+    // Retour propriétaire : curseur de durée (0-30 min, champ libre au-delà) qui calcule la
+    // difficulté en direct — `ChosenDurationDifficultyField` (FeaturesByPath.tsx). Pas de plafond RAW
+    // à 30 min : c'est un simple repère, le champ numérique va plus loin.
+    chosenDurationDifficulty: { sliderMax: 30, base: 10, unit: 'minutes' },
     richText:
       "Le personnage se projette dans le futur, s'il réussit un test d'attaque magique contre une difficulté égale à [10 + durée choisie en min], il disparaît et réapparaît à la fin de la durée choisie. Si un obstacle occupe sa position, il réapparaît au plus près et subit {1d4°} DM, s'il s'agit d'un être vivant la créature subit des DM similaires.",
     sourcePage: 164,

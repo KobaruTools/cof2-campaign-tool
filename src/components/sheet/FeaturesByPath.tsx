@@ -32,6 +32,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
+import Slider from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
@@ -1961,6 +1962,56 @@ function FinesseAttackSelector({
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
+    </Box>
+  );
+}
+
+/**
+ * Curseur de DURÉE CHOISIE À L'INCANTATION (Fuite en avant, magie du temps r4, PER-367 retour
+ * propriétaire) : la difficulté (`base + durée`) est recalculée en direct. AUCUNE persistance — le
+ * choix se refait à chaque incantation (comme au livre), état local au composant. Le curseur MUI est
+ * borné à `sliderMax` (repère, pas un plafond RAW) ; un champ numérique à côté permet de le dépasser,
+ * la difficulté affichée suivant toujours la valeur RÉELLE (curseur ou champ). `stopPropagation` sur
+ * le clic (patron `FinesseAttackSelector`) : la carte parente reste dépliée pendant qu'on manipule le
+ * curseur.
+ */
+function ChosenDurationDifficultyField({ feature }: { feature: Feature }) {
+  const config = feature.chosenDurationDifficulty;
+  const [minutes, setMinutes] = useState(0);
+  if (!config) return null;
+  const difficulty = config.base + minutes;
+  return (
+    <Box sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
+        Durée choisie ({config.unit}) — difficulté du test
+      </Typography>
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Slider
+          size="small"
+          value={Math.min(minutes, config.sliderMax)}
+          min={0}
+          max={config.sliderMax}
+          step={1}
+          valueLabelDisplay="auto"
+          onChange={(_, next) => setMinutes(typeof next === 'number' ? next : next[0])}
+          sx={{ maxWidth: 200 }}
+        />
+        <TextField
+          size="small"
+          type="number"
+          value={minutes}
+          onChange={(e) => setMinutes(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+          slotProps={{ htmlInput: { min: 0, style: { width: 48, textAlign: 'center' } } }}
+        />
+        <Typography variant="body2" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+          Difficulté : {difficulty}
+        </Typography>
+      </Stack>
+      {minutes > config.sliderMax && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>
+          Au-delà du curseur (repère à {config.sliderMax} {config.unit}) — la difficulté suit quand même.
+        </Typography>
+      )}
     </Box>
   );
 }
@@ -4281,6 +4332,12 @@ function PathBlock({
                     />
                   </>
                 )}
+                {openFeature.chosenDurationDifficulty && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <ChosenDurationDifficultyField feature={openFeature} />
+                  </>
+                )}
                 {openFeature.usageCounter &&
                   character &&
                   // r4/r5 (pool + sorts reproduits) : les boutons « Créer cet élixir » vivent DANS
@@ -4770,6 +4827,12 @@ function PathBlock({
                 <>
                   <Divider sx={{ my: 1.5 }} />
                   <FinesseAttackSelector feature={feature} character={character} onSetInput={onSetEffectInput} />
+                </>
+              )}
+              {feature.chosenDurationDifficulty && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <ChosenDurationDifficultyField feature={feature} />
                 </>
               )}
               {feature.usageCounter &&
