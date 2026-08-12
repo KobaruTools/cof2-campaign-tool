@@ -25,7 +25,11 @@ import { ancestryById, ancestries, pathById } from '@/data';
 import type { AbilityModifier } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { initialChoices } from '@/lib/character/ancestry';
+import { materializeDraft } from '@/lib/character/wizard';
+import { setFeatureChoice } from '@/lib/character/choices';
 import { AbilityBadge } from '@/components/AbilityBadge';
+import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
+import { SourceRef } from '@/components/SourceRef';
 import type { StepProps } from './types';
 
 function splitDescription(desc: string): {
@@ -121,6 +125,10 @@ function AncestryModifier({ mod }: { mod: AbilityModifier }) {
 export function AncestryStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const desc = ancestry ? splitDescription(ancestry.description) : null;
+  // Personnage de travail pour résoudre/afficher les choix d'identité du peuple (PER-401), au même
+  // titre que `PathsStep` pour les choix de rang 1. `null` tant qu'aucun peuple n'est retenu.
+  const choicePreview = ancestry ? materializeDraft(draft, ancestry, draft.createdAt) : null;
+  const identityChoiceIds = ancestry?.identityChoiceFeatureIds ?? [];
 
   const chooseAncestry = (id: string) => {
     const p = ancestryById.get(id);
@@ -188,9 +196,10 @@ export function AncestryStep({ draft, patch }: StepProps) {
               '&:last-child': { pb: { xs: 15, sm: 21 } },
             }}
           >
-            <Typography variant="subtitle1" gutterBottom>
-              {ancestry.name}
-            </Typography>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+              <Typography variant="subtitle1">{ancestry.name}</Typography>
+              <SourceRef page={ancestry.sourcePage} term={ancestry.name} />
+            </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
               {desc?.intro}
             </Typography>
@@ -226,6 +235,29 @@ export function AncestryStep({ draft, patch }: StepProps) {
                 ))}
               </Stack>
             </Box>
+
+            {/* Choix d'identité du peuple type option (PER-401) — ex. type de souffle du drakonide
+                (PER-326) : posé dès la création, hors des rangs de voie, réédité ensuite en Identité. */}
+            {choicePreview && identityChoiceIds.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Choix du peuple
+                </Typography>
+                <Stack spacing={1}>
+                  {identityChoiceIds.map((fid) => (
+                    <FeatureChoiceField
+                      key={fid}
+                      character={choicePreview}
+                      featureId={fid}
+                      mode="edit"
+                      onChange={(id, index, value) =>
+                        patch({ featureChoices: setFeatureChoice(choicePreview, id, index, value) })
+                      }
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            )}
 
             {/* Sélecteur de voie culturelle standard — masqué en mode Compagnon (la voie devient
                 `demi-elfe`, absente de cette liste). */}
