@@ -10,6 +10,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Checkbox from '@mui/material/Checkbox';
@@ -28,6 +29,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
+import { useRouter } from 'next/navigation';
 import {
   featureById,
   equipment,
@@ -44,6 +46,7 @@ import { AppAlert } from '@/components/AppAlert';
 import { IdentityForm } from '@/components/IdentityForm';
 import { PortraitVariantMenu } from '@/components/PortraitVariantMenu';
 import { classPortraitPath } from '@/lib/storage/useCharacterPortraitSrc';
+import { useAppSession } from '@/lib/supabase/useAppSession';
 import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
 import {
   divineFeatureOfVocation,
@@ -1221,12 +1224,6 @@ export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
 // Étape 6 — Identité
 // ---------------------------------------------------------------------------
 
-// Env public — même garde-fou que côté fiche/store (pas de fichier utilitaire
-// partagé pour ce simple check, cf. convention existante du repo).
-const PORTRAIT_UPLOAD_AVAILABLE = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-);
-
 export function IdentityStep({
   draft,
   patch,
@@ -1234,10 +1231,18 @@ export function IdentityStep({
   portraitCropRect,
   onPortraitFile,
 }: StepProps) {
+  const router = useRouter();
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
   const [portraitError, setPortraitError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // L'image personnalisée est envoyée au bucket cloud (RLS `owner_id`), donc exige
+  // un compte réel — un visiteur sans session (navigation privée, sans lien magique)
+  // ne peut choisir qu'une des deux illustrations statiques. `resolved` défaut à
+  // `true` (hypothèse optimiste), cf. `useAppSession` : pas de flash de l'option
+  // grisée pour l'utilisateur (dominant) déjà connecté.
+  const session = useAppSession();
+  const portraitUploadBlocked = session.resolved && session.role === 'anonymous';
 
   // Aperçu 100 % local du fichier choisi (aucun envoi tant que le personnage
   // n'existe pas encore en DB, cf. PER-383) — révoqué à chaque changement.
@@ -1292,13 +1297,31 @@ export function IdentityStep({
                 patch({ portraitVariant: 'custom' });
               }}
               onValidationError={setPortraitError}
-              disabledCustom={!PORTRAIT_UPLOAD_AVAILABLE}
-              disabledCustomReason="Disponible une fois le personnage créé."
+              disabledCustom={portraitUploadBlocked}
+              disabledCustomReason="Nécessite un compte."
             />
           </Stack>
           {portraitError && (
             <AppAlert severity="error" onClose={() => setPortraitError(null)}>
               {portraitError}
+            </AppAlert>
+          )}
+          {portraitUploadBlocked && (
+            <AppAlert
+              severity="warning"
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => router.push('/login?next=/create')}
+                >
+                  Créer un compte
+                </Button>
+              }
+            >
+              Une image personnalisée nécessite un compte (elle est stockée en ligne). Ton
+              personnage reste enregistré sur cet appareil : tu ne le perdras pas en quittant cette
+              page.
             </AppAlert>
           )}
         </Stack>
