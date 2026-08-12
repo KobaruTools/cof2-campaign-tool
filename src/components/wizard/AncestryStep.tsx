@@ -96,6 +96,11 @@ function ModifierValueBadge({ value }: { value: number }) {
  * `translateX(0) → translateX(-50%)` — la translation vaut alors exactement la largeur d'un
  * exemplaire, donc la jointure entre la fin du premier et le début du second est invisible (pixels
  * identiques), quel que soit le rendu réel des images. Pas besoin de connaître leur largeur en px.
+ *
+ * Chaque exemplaire garde son ratio NATUREL (hauteur bloquée à la colonne, largeur automatique,
+ * sans `aspectRatio`/`objectFit` forcés) : forcer un cadrage portrait sur ces illustrations
+ * paysage ne montrait qu'une bande centrale rognée. Ici toute l'image défile progressivement dans
+ * la fenêtre étroite de la colonne (retour utilisateur explicite).
  */
 function AncestryPortraitCarousel({ ancestryId, name }: { ancestryId: string; name: string }) {
   const src = `/ancestries/${ancestryId}.webp`;
@@ -114,7 +119,7 @@ function AncestryPortraitCarousel({ ancestryId, name }: { ancestryId: string; na
               from: { transform: 'translateX(0)' },
               to: { transform: 'translateX(-50%)' },
             },
-            animation: 'ancestry-portrait-scroll 14s linear infinite',
+            animation: 'ancestry-portrait-scroll 40s linear infinite',
             '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
           }}
         >
@@ -128,9 +133,6 @@ function AncestryPortraitCarousel({ ancestryId, name }: { ancestryId: string; na
               sx={{
                 height: '100%',
                 width: 'auto',
-                aspectRatio: '2 / 3',
-                objectFit: 'cover',
-                objectPosition: 'center',
                 flexShrink: 0,
               }}
             />
