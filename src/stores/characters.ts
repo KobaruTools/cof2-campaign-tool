@@ -488,7 +488,11 @@ export const useCharactersStore = create<CharactersState>()(
 
         commitNewCharacter: async (character) => {
           const stamped = withTimestamp(character);
-          if (!isSupabaseConfigured()) {
+          // Même garde-fou que `load()` : un visiteur SANS session (pas de lien
+          // magique, pas de compte — navigation privée notamment) doit pouvoir créer
+          // un perso, qui reste alors en staging localStorage plutôt que d'échouer sur
+          // l'absence de session Supabase.
+          if (!isSupabaseConfigured() || !(await hasSupabaseSession())) {
             // Mode local dégradé : le perso reste en staging localStorage.
             set((s) => ({ characters: [...s.characters, stamped] }));
             return stamped;
