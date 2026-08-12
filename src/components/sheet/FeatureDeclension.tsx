@@ -19,6 +19,7 @@
 import { createContext, useContext } from 'react';
 import type { Feature } from '@/data/schema';
 import { declineForFeature, declineText } from '@/lib/character/dragonElement';
+import { chosenOptionName } from '@/lib/character/choices';
 import type { Character } from '@/lib/character/types';
 
 /** Personnage contre lequel décliner les capacités affichées ; `null` = aucun (repli imprimé). */
@@ -34,9 +35,15 @@ export function useDeclined(feature: Pick<Feature, 'elementFromChoice'>, value: 
   return character ? declineForFeature(character, feature, value) : declineText(value, null);
 }
 
-/** Nom AFFICHÉ d'une capacité, décliné le cas échéant (« Résistance au feu » → « Résistance à la foudre »). */
+/**
+ * Nom AFFICHÉ d'une capacité : d'abord dérivé de l'option retenue si la capacité le demande
+ * (`nameFromChosenOption`, ex. drakonide-r4 → « Fureur drakonide »), puis décliné par élément le cas
+ * échéant (« Résistance au feu » → « Résistance à la foudre »). Source UNIQUE du nom affiché.
+ */
 export function useDeclinedFeatureName(feature: Feature): string {
-  return useDeclined(feature, feature.name);
+  const character = useContext(FeatureDeclensionContext);
+  const base = (character ? chosenOptionName(character, feature) : null) ?? feature.name;
+  return useDeclined(feature, base);
 }
 
 /**
@@ -52,10 +59,11 @@ export function useFeatureDecliner(): (feature: Pick<Feature, 'elementFromChoice
   };
 }
 
-/** Raccourci de `useFeatureDecliner` pour le cas courant : le NOM de la capacité. */
+/** Raccourci de `useFeatureDecliner` pour le cas courant : le NOM de la capacité (option retenue incluse). */
 export function useFeatureNameDecliner(): (feature: Feature) => string {
+  const character = useContext(FeatureDeclensionContext);
   const decline = useFeatureDecliner();
-  return (feature) => decline(feature, feature.name);
+  return (feature) => decline(feature, (character ? chosenOptionName(character, feature) : null) ?? feature.name);
 }
 
 /**

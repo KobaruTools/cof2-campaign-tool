@@ -111,7 +111,8 @@ describe('loadPaidContent — propriétaire entitlé', () => {
 
     const result = await loadPaidContent();
 
-    expect(fetchPaidContentJson).toHaveBeenCalledWith('companion');
+    // La version cible est passée au fetch pour le cache-busting d'URL (`?version=`, cf. paidContentRepo).
+    expect(fetchPaidContentJson).toHaveBeenCalledWith('companion', 5);
     expect(result.registered).toEqual(['companion']);
     expect(writeCachedBundle).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'companion', contentVersion: 5 }),

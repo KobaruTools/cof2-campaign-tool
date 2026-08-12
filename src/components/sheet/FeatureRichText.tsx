@@ -16,8 +16,17 @@ import {
 import { createContext, useContext, useEffect, Fragment, type ReactNode } from 'react';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { featureById, pathById, progression } from '@/data';
-import type { AbilityId, AbilitySubstitution, Die, Feature, StatusEffectId } from '@/data/schema';
+import type {
+  AbilityId,
+  AbilitySubstitution,
+  Die,
+  Feature,
+  OptionFeatureChoice,
+  StatusEffectId,
+} from '@/data/schema';
 import { STATUS_EFFECTS } from '@/data/schema';
+import type { Character } from '@/lib/character/types';
+import { getOptionSelections } from '@/lib/character/choices';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
@@ -53,7 +62,7 @@ import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
 import { bestiaryCreatureHref, splitCreatureLinks } from '@/lib/ui/creatureLinks';
 import { creatureLinkAccess, isCapabilityAccessible } from '@/lib/ui/lockedContentAccess';
-import { useDeclined } from '@/components/sheet/FeatureDeclension';
+import { useDeclined, FeatureDeclensionContext } from '@/components/sheet/FeatureDeclension';
 import { useBestiaryStore } from '@/stores/bestiary';
 import NextLink from 'next/link';
 
@@ -1572,6 +1581,12 @@ export interface FeatureTextProps {
    * (contextes sans personnage). L'hôte qui dispose du personnage renseigne cette valeur.
    */
   scalingTierBonus?: number;
+  /**
+   * Personnage courant — requis UNIQUEMENT pour rayer les paragraphes des options NON retenues d'un
+   * choix `option` marqué `strikeUnchosenParagraphs` (ex. drakonide-r4 Fureur / Ailes). Absent (ou
+   * capacité sans un tel choix) = descriptif rendu tel quel. N'affecte aucun autre rendu.
+   */
+  character?: Character;
 }
 
 /**
@@ -1591,6 +1606,7 @@ export function FeatureText({
   dense,
   abilitySubstitutions,
   scalingTierBonus = 0,
+  character,
 }: FeatureTextProps) {
   // Bascule « Texte d'origine » (PER-88) : quand elle est active (Provider dans l'en-tête
   // de la section), on rend le verbatim TOTALEMENT BRUT — le `text` extrait du PDF, tel
@@ -1633,6 +1649,52 @@ export function FeatureText({
     ) : (
       <RichTextRun value={value} />
     );
+
+  // Rayage des paragraphes d'options NON retenues (`OptionFeatureChoice.strikeUnchosenParagraphs`,
+  // ex. drakonide-r4 Fureur / Ailes) : libellés des options non choisies, pour repérer leurs
+  // paragraphes « <libellé> : … » et les barrer + griser. Vide si aucun choix marqué, aucun personnage,
+  // ou tant qu'aucune option n'est retenue. Le personnage vient du prop OU, à défaut, du contexte de
+  // déclinaison (fourni à toute la fiche) — comme le NOM affiché — pour que le rayage marche AUSSI dans
+  // la modale de détail et partout où `FeatureText` est rendu sans recevoir le prop `character`.
+  const contextCharacter = useContext(FeatureDeclensionContext);
+  const struckCharacter = character ?? contextCharacter;
+  const struckOptionLabels = ((): string[] => {
+    if (!struckCharacter) return [];
+    const idx = feature.choices?.findIndex(
+      (c): c is OptionFeatureChoice => c.kind === 'option' && c.strikeUnchosenParagraphs === true,
+    );
+    if (idx === undefined || idx < 0) return [];
+    const choice = feature.choices![idx] as OptionFeatureChoice;
+    const selected = getOptionSelections(struckCharacter, feature.id, idx);
+    if (selected.length === 0) return [];
+    return choice.options.filter((o) => !selected.includes(o.id)).map((o) => o.label);
+  })();
+  /** Le paragraphe décrit-il une option NON retenue (préfixe « <libellé> : ») ? */
+  const isStruckParagraph = (paragraph: string): boolean => {
+    const head = paragraph.trimStart();
+    return struckOptionLabels.some(
+      (l) => head.startsWith(l) && head.slice(l.length).trimStart().startsWith(':'),
+    );
+  };
+  // Corps de capacité : quand un rayage est actif, on découpe en paragraphes (`\n\n`) et on barre +
+  // grise (patron du bonus supprimé du bâton archimage) les paragraphes des options non retenues, en
+  // laissant les séparateurs littéraux pour que `pre-line` conserve les lignes vides.
+  const renderBody = (value: string): ReactNode => {
+    if (struckOptionLabels.length === 0) return renderChunk(value);
+    const paragraphs = value.split('\n\n');
+    return paragraphs.map((paragraph, pi) => (
+      <Fragment key={pi}>
+        {pi > 0 ? '\n\n' : ''}
+        {isStruckParagraph(paragraph) ? (
+          <Box component="span" sx={{ color: 'text.disabled', textDecoration: 'line-through' }}>
+            <RichTextRun value={paragraph} />
+          </Box>
+        ) : (
+          renderChunk(paragraph)
+        )}
+      </Fragment>
+    ));
+  };
   const source = enriched ? richText : feature.text;
 
   // Une NOTE est rendue en BLOC (`NoteSpan` = div) : c'est ce qui lui donne son
@@ -1658,7 +1720,7 @@ export function FeatureText({
         let value = chunk.value;
         if (chunks[i + 1]?.kind === 'note') value = value.replace(/\n+$/, '');
         if (chunks[i - 1]?.kind === 'note') value = value.replace(/^\n+/, '');
-        return <Fragment key={i}>{renderChunk(value)}</Fragment>;
+        return <Fragment key={i}>{renderBody(value)}</Fragment>;
       })}
     </Typography>
   );

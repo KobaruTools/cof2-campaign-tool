@@ -1123,6 +1123,10 @@ export function FeatureChoiceField({
           // libellé complet « voie — rang — nom » en mode long (pas de complément).
           const shortInChip = compact || choice.kind === 'option';
           const label = choiceSelectionLabel(choice, selection, shortInChip);
+          // Le NOM de la capacité porte déjà le choix (`nameFromChosenOption`, ex. drakonide-r4) : la
+          // puce de valeur ferait doublon → masquée une fois le choix fait. La puce « Choisir » (choix
+          // non encore retenu, `label` absent) reste, elle, affichée.
+          if (choice.kind === 'option' && choice.nameFromChosenOption && label) return null;
           const complement = compact ? null : choiceSelectionComplement(choice, selection);
           const valueChip = label ? (
             <ChoiceValueBadge label={label} compact={compact} onClick={onEditValue} />

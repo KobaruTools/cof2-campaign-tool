@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per326-drakonide-feu",
+  "name": "Recette PER-326 — Drakonide (souffle feu, Fureur)",
+  "identity": {
+    "description": "ATTENDU : peuple drakonide (+1 FOR/+1 VOL/−1 AGI/−1 PER, taille normale), voie r1→r5, souffle = FEU. r1 Sang dragon : +3 à tous les tests d’intimidation (permanent) + vision 30 m (verbatim). r2 Souffle : choix « Feu » (alimente la RD du r3). r3 Écailles robustes : +1 DEF + RD feu = rang atteint (3 à ce niveau). r4 : Fureur retenue → interrupteur « En Fureur… » : +1 attaque + +1 aux DM. r5 Héritage draconique : +1 CON et +1 CHA → CON 2 / CHA 1."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "drakonide",
+  "classId": "guerrier",
+  "level": 9,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 2,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "drakonide",
+  "featureIds": [
+    "drakonide-r1",
+    "drakonide-r2",
+    "drakonide-r3",
+    "drakonide-r4",
+    "drakonide-r5"
+  ],
+  "featureChoices": {
+    "drakonide-r2": [
+      "fire"
+    ],
+    "drakonide-r4": [
+      "fureur"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    },
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-326 — recette souffle feu + Fureur. Vérifier : intimidation +3, +1 DEF, RD feu = rang, +1 CON/+1 CHA, interrupteur Fureur (+1 attaque/DM).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

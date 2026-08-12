@@ -170,6 +170,25 @@ export function getOptionSelections(
 }
 
 /**
+ * Nom AFFICHÉ dérivé de l'option retenue (PER-401 / PER-326) : si la capacité porte un choix `option`
+ * marqué `nameFromChosenOption` ET qu'UNE seule option est retenue, renvoie le libellé de cette option
+ * (ex. « Fureur drakonide ») pour REMPLACER le nom générique « X / Y ». `null` si aucun tel choix,
+ * aucune sélection, ou sélection multiple. Résolu par `useDeclinedFeatureName` (source unique du nom).
+ */
+export function chosenOptionName(character: Character, feature: Feature): string | null {
+  const choices = feature.choices;
+  if (!choices) return null;
+  const index = choices.findIndex(
+    (c): c is OptionFeatureChoice => c.kind === 'option' && c.nameFromChosenOption === true,
+  );
+  if (index < 0) return null;
+  const selected = getOptionSelections(character, feature.id, index);
+  if (selected.length !== 1) return null;
+  const choice = choices[index] as OptionFeatureChoice;
+  return choice.options.find((o) => o.id === selected[0])?.label ?? null;
+}
+
+/**
  * L'arme portée (via ses `weaponFamilies`) partage-t-elle au moins une des FAMILLES de prédilection
  * retenues sur le choix `option` à l'index 0 de `choiceFeatureId` (PER-136/PER-226) ? Helper partagé
  * par la plage de critique (`weaponCriticalConditionMet`, effects.ts) et les bonus d'attaque/DM

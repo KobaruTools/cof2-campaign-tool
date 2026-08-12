@@ -28,6 +28,7 @@ import {
   conditionalEffectsOf,
   conditionalEffectBonuses,
   conditionalAbilityTestBonus,
+  conditionalOptionGateMet,
   isEffectActive,
   isTemporaryActivationShortRestLocked,
 } from '@/lib/character/effects';
@@ -111,7 +112,12 @@ export function FeatureEffectToggles({
   disabled = false,
   sessionStatusIds = [],
 }: FeatureEffectTogglesProps) {
-  const entries = conditionalEffectsOf(featureId);
+  // Gating par option de choix (ex. drakonide r4) : un effet dont l'option requise n'est PAS retenue
+  // (« Ailes » choisie alors que le buff appartient à « Fureur ») n'est pas proposé du tout — pas
+  // d'interrupteur mort. `isEffectActive` le tient déjà pour inactif côté moteur.
+  const entries = conditionalEffectsOf(featureId).filter(({ effect }) =>
+    conditionalOptionGateMet(character, featureId, effect),
+  );
   if (entries.length === 0) return null;
 
   // Dépendance à sens unique (PER-109) : un interrupteur qui dépend d'un autre
