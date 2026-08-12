@@ -36,6 +36,8 @@ import { ABILITY_IDS, STATUS_EFFECT_IDS, STATUS_EFFECTS, type AbilityId, type Di
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { useContentVersion } from '@/lib/content/useContentVersion';
 import { RICH_COLOR_NAMES, RICH_SIZE_NAMES, richColorSx, type RichColorName, type RichSizeName } from '@/lib/ui/featureRichText';
+import { pageRefQualifierForBook } from '@/lib/ui/pageRefs';
+import { useUnlockedBooks } from '@/lib/ui/useUnlockedBooks';
 import { descriptionToDoc, docToDescription } from '@/lib/ui/richTextEditorSync';
 import { useBestiaryStore } from '@/stores/bestiary';
 import { AbilityCodeChip } from './FeatureRichText';
@@ -66,12 +68,10 @@ const DIE_FACES: Die[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
  */
 const EVOLVING_DIE_OPTION = 'evolving';
 
-/** Qualificatif de livre pour un renvoi de page (PER-398) — clés de `PAGE_REF_BOOK_QUALIFIERS`, `src/lib/ui/pageRefs.ts`. */
-const PAGE_REF_BOOKS: { value: string; label: string }[] = [
-  { value: '', label: 'Livre de base' },
-  { value: 'compagnon', label: 'Compagnon' },
-  { value: 'bestiaire', label: 'Bestiaire' },
-];
+/** Qualificatif de livre pour un renvoi de page (PER-398) — mot-clé (`pageRefQualifierForBook`) + libellé. */
+type PageRefBookOption = { value: string; label: string };
+/** Toujours proposé, quel que soit le compte : `(p. N)` sans qualificatif = livre de base. */
+const PAGE_REF_BASE_BOOK: PageRefBookOption = { value: '', label: 'Livre de base' };
 
 function ToolbarToggle({
   title,
@@ -136,6 +136,24 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
   const capabilityOptions = features.map((f) => f.id);
   const creatureList = useBestiaryStore((s) => s.list);
   const loadCreatureList = useBestiaryStore((s) => s.loadList);
+
+  // Livres payants DÉBLOQUÉS par le compte courant (`useUnlockedBooks`, même source que le
+  // bouton d'en-tête) : le livre de base est toujours proposé, mais « Compagnon »/« Bestiaire »
+  // ne le sont QUE pour un compte qui les a débloqués — pas de teaser d'un livre non possédé
+  // (même invariant que la gating de contenu payant, PER-321/396).
+  const unlockedBooks = useUnlockedBooks();
+  const pageRefBooks: PageRefBookOption[] = useMemo(
+    () => [
+      PAGE_REF_BASE_BOOK,
+      ...unlockedBooks
+        .map((b) => {
+          const qualifier = pageRefQualifierForBook(b.id);
+          return qualifier ? { value: qualifier, label: b.name } : null;
+        })
+        .filter((o): o is PageRefBookOption => o !== null),
+    ],
+    [unlockedBooks],
+  );
 
   const insertToken = (raw: string) => editor.chain().focus().insertMechToken(raw).run();
 
@@ -386,7 +404,7 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
             autoFocus
           />
           <TextField select label="Livre" size="small" value={pageBook} onChange={(e) => setPageBook(e.target.value)}>
-            {PAGE_REF_BOOKS.map((b) => (
+            {pageRefBooks.map((b) => (
               <MenuItem key={b.value} value={b.value}>
                 {b.label}
               </MenuItem>

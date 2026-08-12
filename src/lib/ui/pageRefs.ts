@@ -46,6 +46,17 @@ const PAGE_REF = new RegExp(
 );
 
 /**
+ * Mot-clé qualificatif (grammaire ci-dessus) pour un livre donné, ou `undefined` si ce livre
+ * n'a pas de qualificatif dédié (livre de base — `(p. N)` sans suffixe). Réciproque de
+ * `PAGE_REF_BOOK_QUALIFIERS` : sert à l'UI d'INSERTION (`ItemDescriptionEditor.tsx`) pour ne
+ * proposer que les livres réellement debloquables (croisé avec `useUnlockedBooks`), sans
+ * dupliquer la liste des mots-clés.
+ */
+export function pageRefQualifierForBook(bookId: BookId): string | undefined {
+  return Object.entries(PAGE_REF_BOOK_QUALIFIERS).find(([, id]) => id === bookId)?.[0];
+}
+
+/**
  * Découpe `text` en segments : portions littérales et références de page extraites.
  * Les segments texte vides sont omis. L'ordre et la concaténation des `value`/`(p. N)`
  * reconstituent exactement le texte d'origine.
