@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per368-maitre-des-sorts",
+  "name": "Recette PER-368 — Magicien (voie du maître des sorts)",
+  "identity": {
+    "description": "ATTENDU : magicien niveau 10 avec la voie de prestige du maître des sorts (r4→r8) acquise. Chaque rang porte 2 choix feature-from-path (spellsOnly, classIds=[ensorceleur,forgesort,magicien,sorcier,barde], allowedRanks=[rang-3]) : le domaine de chaque choix contient bien des sorts des 4 profils de mage ET de barde, au bon rang, sorts uniquement. Les 10 sorts choisis (2 par rang, croisant les profils) doivent apparaître comme capacités empruntées sur la fiche (bouton import puis onglet Voies/Capacités)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "prestige-maitre-des-sorts-r4",
+    "prestige-maitre-des-sorts-r5",
+    "prestige-maitre-des-sorts-r6",
+    "prestige-maitre-des-sorts-r7",
+    "prestige-maitre-des-sorts-r8"
+  ],
+  "featureChoices": {
+    "prestige-maitre-des-sorts-r4": [
+      "air-r1",
+      "metal-r1"
+    ],
+    "prestige-maitre-des-sorts-r5": [
+      "air-r2",
+      "metal-r2"
+    ],
+    "prestige-maitre-des-sorts-r6": [
+      "air-r3",
+      "metal-r3"
+    ],
+    "prestige-maitre-des-sorts-r7": [
+      "air-r4",
+      "metal-r4"
+    ],
+    "prestige-maitre-des-sorts-r8": [
+      "air-r5",
+      "mort-r5"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-368 — voie du maître des sorts (p. 164), recette des 5 rangs.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

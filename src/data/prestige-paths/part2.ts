@@ -3220,15 +3220,14 @@ export const prestigeFeatures2: Feature[] = [
       "Le personnage se projette dans le futur, s'il réussit un test d'attaque magique contre une difficulté égale à [10 + durée choisie en min], il disparaît et réapparaît à la fin de la durée choisie. Si un obstacle occupe sa position, il réapparaît au plus près et subit 1d4° DM, s'il s'agit d'un être vivant la créature subit des DM similaires.",
     // Auto-effet (le lanceur se téléporte lui-même) : même patron que l'Ombre furtive (voleur,
     // part1.ts) ou l'ensorceleur intangible (mages.ts) — jamais de tag situationnel pour un
-    // déplacement du PORTEUR lui-même.
-    // Retour propriétaire : curseur de durée (0-30 min, champ libre au-delà, `ChosenDurationDifficultyField`
-    // dans FeaturesByPath.tsx) MÉCANISÉ jusque dans le texte — nouveau terme `duree` (featureRichText.ts,
-    // patron `paliers`) injecté par le composant hôte, `[10 + duree]` rend un chip calculé (10 + valeur du
-    // curseur) au lieu du littéral `[10 + durée choisie en min]` du livre. Pas de plafond RAW à 30 min :
-    // c'est un simple repère, le champ numérique va plus loin, le chip suit quand même.
+    // déplacement du PORTEUR lui-même. La difficulté « [10 + durée choisie en min] » n'est pas une
+    // formule déterministe (choix libre du joueur) → retombe en littéral, déjà identique au livre.
+    // Retour propriétaire : curseur de durée (0-30 min, champ libre au-delà) qui calcule la
+    // difficulté en direct — `ChosenDurationDifficultyField` (FeaturesByPath.tsx). Pas de plafond RAW
+    // à 30 min : c'est un simple repère, le champ numérique va plus loin.
     chosenDurationDifficulty: { sliderMax: 30, base: 10, unit: 'minutes' },
     richText:
-      "Le personnage se projette dans le futur, s'il réussit un test d'attaque magique contre une difficulté égale à [10 + duree] (durée choisie en minutes), il disparaît et réapparaît à la fin de la durée choisie. Si un obstacle occupe sa position, il réapparaît au plus près et subit {1d4°} DM, s'il s'agit d'un être vivant la créature subit des DM similaires.",
+      "Le personnage se projette dans le futur, s'il réussit un test d'attaque magique contre une difficulté égale à [10 + durée choisie en min], il disparaît et réapparaît à la fin de la durée choisie. Si un obstacle occupe sa position, il réapparaît au plus près et subit {1d4°} DM, s'il s'agit d'un être vivant la créature subit des DM similaires.",
     sourcePage: 164,
   },
   {
@@ -3303,6 +3302,15 @@ export const prestigeFeatures2: Feature[] = [
   },
 
   // ----- Voie du maître des sorts (p. 164) -----
+  // PER-368 : les 5 rangs partagent une seule mécanique — apprendre DEUX sorts d'un rang donné,
+  // pris dans la « magie profane » (verbatim r8, p. 165 : « tous les sorts des profils de mage plus
+  // les sorts de barde »). Modélisé par DEUX choix `feature-from-path` indépendants (un par sort —
+  // `Character.featureChoices[id]` est un tableau ALIGNÉ PAR POSITION avec `Feature.choices`, PER-66 ;
+  // pas de primitive « choisir N à la fois »), chacun filtré `spellsOnly: true` + `classIds` sur les
+  // 4 profils de mage (ensorceleur/forgesort/magicien/sorcier) + barde, au rang du palier. Aucun
+  // garde-fou contre un doublon entre les deux choix (le domaine ne se connaît pas entre choix
+  // frères, cf. `featuresInChoiceDomain`) : cohérent avec la fiche permissive existante (un doublon
+  // ne fait que gâcher un choix, aucun effet dupliqué côté moteur).
   {
     id: 'prestige-maitre-des-sorts-r4',
     name: 'Connaissance des arcanes inférieures',
@@ -3312,6 +3320,22 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend deux sorts de rang 1 de magie profane de son choix.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Premier sort appris (rang 1, magie profane)',
+        allowedRanks: [1],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+      {
+        kind: 'feature-from-path',
+        prompt: 'Second sort appris (rang 1, magie profane)',
+        allowedRanks: [1],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+    ],
     sourcePage: 164,
   },
   {
@@ -3323,6 +3347,22 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend deux sorts de rang 2 de magie profane de son choix.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Premier sort appris (rang 2, magie profane)',
+        allowedRanks: [2],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+      {
+        kind: 'feature-from-path',
+        prompt: 'Second sort appris (rang 2, magie profane)',
+        allowedRanks: [2],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+    ],
     sourcePage: 164,
   },
   {
@@ -3334,6 +3374,22 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend deux sorts de rang 3 de magie profane de son choix.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Premier sort appris (rang 3, magie profane)',
+        allowedRanks: [3],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+      {
+        kind: 'feature-from-path',
+        prompt: 'Second sort appris (rang 3, magie profane)',
+        allowedRanks: [3],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+    ],
     sourcePage: 164,
   },
   {
@@ -3345,6 +3401,22 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend deux sorts de rang 4 de magie profane de son choix.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Premier sort appris (rang 4, magie profane)',
+        allowedRanks: [4],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+      {
+        kind: 'feature-from-path',
+        prompt: 'Second sort appris (rang 4, magie profane)',
+        allowedRanks: [4],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+    ],
     sourcePage: 165,
   },
   {
@@ -3355,7 +3427,23 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text:
-      "Le personnage apprend deux sorts de rang 5 de magie profane de son choix.",
+      "Le personnage apprend deux sorts de rang 5 de magie profane de son choix. Les sorts de magie profane sont tous les sorts des profils de mage plus les sorts de barde.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Premier sort appris (rang 5, magie profane)',
+        allowedRanks: [5],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+      {
+        kind: 'feature-from-path',
+        prompt: 'Second sort appris (rang 5, magie profane)',
+        allowedRanks: [5],
+        classIds: ['ensorceleur', 'forgesort', 'magicien', 'sorcier', 'barde'],
+        spellsOnly: true,
+      },
+    ],
     sourcePage: 165,
   },
 
