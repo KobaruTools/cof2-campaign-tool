@@ -105,6 +105,7 @@ import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
 import { classColor } from '@/lib/ui/classColors';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { usePersistedState } from '@/lib/ui/usePersistedState';
 import { SheetInitiativeBar } from '@/components/sheet/SheetInitiativeBar';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
@@ -351,18 +352,26 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Disposition des voies : « colonnes » sur grand écran (défaut historique), mais
   // « lignes » par défaut sur mobile (PER-229) — en colonnes, le bloc central de la
   // fiche rend une grille large à défilement horizontal, très inconfortable au doigt.
-  // On respecte un choix manuel : dès que l'utilisateur bascule, on ne réimpose plus
-  // le défaut lié à la largeur d'écran (`layoutTouchedRef`).
+  // On respecte un choix manuel, PERSISTÉ (`sheet:voies-layout`) : dès que l'utilisateur
+  // bascule, on ne réimpose plus le défaut lié à la largeur d'écran (`layoutTouchedRef`),
+  // y compris après rechargement — sans quoi le remontage de la page effaçait la ref et
+  // réimposait « lignes » sur mobile même si l'utilisateur avait choisi « colonnes ».
   const isNarrowViewport = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
-  const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
-  const layoutTouchedRef = useRef(false);
+  const [voiesLayout, setVoiesLayout] = usePersistedState<FeaturesLayout>(
+    'sheet:voies-layout',
+    'columns',
+    (raw) => (raw === 'rows' || raw === 'columns' ? raw : undefined),
+  );
+  const layoutTouchedRef = useRef(
+    typeof window !== 'undefined' && window.localStorage.getItem('sheet:voies-layout') != null,
+  );
   useEffect(() => {
     if (!layoutTouchedRef.current) setVoiesLayout(isNarrowViewport ? 'rows' : 'columns');
-  }, [isNarrowViewport]);
+  }, [isNarrowViewport, setVoiesLayout]);
   const changeVoiesLayout = useCallback((layout: FeaturesLayout) => {
     layoutTouchedRef.current = true;
     setVoiesLayout(layout);
-  }, []);
+  }, [setVoiesLayout]);
   // Texte d'origine (PER-88) : OFF (défaut) → rendu enrichi des capacités ; ON →
   // verbatim du livre. Préférence d'affichage transitoire, comme la disposition des voies.
   const [featuresVerbatim, setFeaturesVerbatim] = useState(false);
@@ -380,6 +389,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const scrollToCapability = useCallback(() => {
     setVoiesView('features');
     document.getElementById('voies-capacites-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+  // Clic sur un groupe de la barre condensée collée à l'en-tête (`StickySheetStatusBar`) : défile
+  // jusqu'à la section qu'il condense. Contrairement à `scrollToCapability` ci-dessus, un simple
+  // `scrollIntoView` ne suffit pas : l'en-tête a un 3ᵉ étage OPTIONNEL (cette même barre) qui varie sa
+  // hauteur selon les pins actifs, donc `block: 'start'` caserait la section sous son bord haut,
+  // PAS sous son bord bas réel — on mesure `#app-header` en direct (au clic, pas en continu — pas
+  // besoin d'un `ResizeObserver` pour une action ponctuelle) et on vise nous-mêmes le bon `scrollTop`.
+  const scrollToSection = useCallback((id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const headerHeight = document.getElementById('app-header')?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+    window.scrollTo({ top, behavior: 'smooth' });
   }, []);
   // Vue de la section « Statistiques dérivées », même idiome que « Voies & capacités »
   // ci-dessus : les stats dérivées (défaut) ou « Compétences & tests » (lecture seule).
@@ -863,8 +885,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             <StickySheetStatusBar
               showAbilities={pinAbilities}
               abilities={character.abilities}
+              onJumpToAbilities={() => scrollToSection('abilities-section')}
               showDerivedStats={pinDerivedStats}
+              onJumpToDerivedStats={() => scrollToSection('derived-stats-section')}
               showStatusGauges={pinStatusGauges}
+              onJumpToStatusGauges={() => scrollToSection('status-section')}
               maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
               depletion={character.depletion}
               manaMax={manaMax}
@@ -1231,6 +1256,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           {!masterDerived && sessionStatusBlock}
 
           <SheetSection
+            id="abilities-section"
             title="Caractéristiques"
             icon="abilities"
             action={(collapsed) => (
@@ -1275,6 +1301,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               des domaines de la vue « tests » sont portés par le CONTENU (pas assez de place dans
               l'en-tête à côté du bandeau d'onglets), cf. `TestDomainsPanel`. */}
           <SheetSection
+            id="derived-stats-section"
             title="Statistiques dérivées"
             icon="derived"
             tabs={[
@@ -1365,6 +1392,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           {masterDerived && (
             <SheetSection
+              id="status-section"
               title="État du personnage"
               icon="status"
               // Pas de crayon d'édition ici (jauges = état de JEU, pas de mode « Modifier ») :
