@@ -695,6 +695,8 @@ function SymbolicFactor({ factor }: { factor: ProductFactor }) {
       return <>niveau</>;
     case 'milestoneBonus':
       return <>paliers</>;
+    case 'chosenDuration':
+      return <>durée</>;
   }
 }
 
@@ -730,6 +732,8 @@ function SymbolicTerm({ term }: { term: ExprTerm }) {
       return <>{withCoeff('niveau', term.coeff)}</>;
     case 'milestoneBonus':
       return <>{withCoeff('paliers', term.coeff)}</>;
+    case 'chosenDuration':
+      return <>{withCoeff('durée', term.coeff)}</>;
     case 'product':
       return (
         <>
@@ -1342,6 +1346,7 @@ export function RichInline({
   abilitySubstitutions,
   evolvingDieBase = false,
   scalingTierBonus = 0,
+  chosenDuration = 0,
 }: {
   text: string;
   abilities: Abilities;
@@ -1349,6 +1354,11 @@ export function RichInline({
   rank: number;
   /** Bonus plat cross-voie injecté au terme `paliers` des formules (défaut 0). */
   milestoneBonus?: number;
+  /**
+   * Durée choisie par le joueur à l'incantation, injectée au terme `duree` des formules (PER-367,
+   * curseur `ChosenDurationDifficultyField`). Défaut 0.
+   */
+  chosenDuration?: number;
   /** Substitutions de carac contextuelles (PER-163, ex. forgesort → INT). Passées à `resolveExpr`. */
   abilitySubstitutions?: AbilitySubstitution[];
   /**
@@ -1440,7 +1450,7 @@ export function RichInline({
           const info = STATUS_EFFECTS[seg.stateId];
           return <StatusEffectChip key={i} label={info.label} stateId={seg.stateId} />;
         }
-        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus, abilitySubstitutions, scalingTierBonus);
+        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus, abilitySubstitutions, scalingTierBonus, chosenDuration);
         if (seg.kind === 'term') {
           // `[#…]` : substantif « symboles (valeur) ». Un terme nu garde son mot
           // (« rang (5) », « INT (4) ») ; une formule conserve son écriture, suivie de
@@ -1539,6 +1549,12 @@ export interface FeatureTextProps {
    */
   milestoneBonus?: number;
   /**
+   * Durée choisie par le joueur à l'incantation, injectée au terme `duree` des formules (PER-367,
+   * curseur `ChosenDurationDifficultyField`). Calculé par le composant hôte (`FeaturesByPath`) ;
+   * absent → 0 (le terme `duree` reste affiché, contrairement à `paliers`).
+   */
+  chosenDuration?: number;
+  /**
    * Rendu COMPACT (PER-163) : taille de police et interligne réduits d'environ 10 %, pour les blocs
    * d'information encadrés qui citent un sort (sorts reproduits, élixirs préparables, pouvoirs
    * empruntés). Défaut `false` (rendu normal du corps de capacité).
@@ -1571,6 +1587,7 @@ export function FeatureText({
   level,
   pathRank,
   milestoneBonus,
+  chosenDuration,
   dense,
   abilitySubstitutions,
   scalingTierBonus = 0,
@@ -1609,6 +1626,7 @@ export function FeatureText({
         level={level!}
         rank={rank}
         milestoneBonus={milestoneBonus}
+        chosenDuration={chosenDuration}
         abilitySubstitutions={abilitySubstitutions}
         scalingTierBonus={scalingTierBonus}
       />

@@ -1968,22 +1968,29 @@ function FinesseAttackSelector({
 
 /**
  * Curseur de DURÉE CHOISIE À L'INCANTATION (Fuite en avant, magie du temps r4, PER-367 retour
- * propriétaire) : la difficulté (`base + durée`) est recalculée en direct. AUCUNE persistance — le
- * choix se refait à chaque incantation (comme au livre), état local au composant. Le curseur MUI est
- * borné à `sliderMax` (repère, pas un plafond RAW) ; un champ numérique à côté permet de le dépasser,
- * la difficulté affichée suivant toujours la valeur RÉELLE (curseur ou champ). `stopPropagation` sur
- * le clic (patron `FinesseAttackSelector`) : la carte parente reste dépliée pendant qu'on manipule le
- * curseur.
+ * propriétaire) : contrôlé par le PARENT (`PathBlock`, `chosenDurations` state) — la même valeur
+ * alimente le chip mécanisé `[10 + duree]` DANS la description (terme `chosenDuration`,
+ * featureRichText.ts) et ce curseur, d'où l'absence de tout affichage de la difficulté ICI (elle vit
+ * déjà dans le texte). AUCUNE persistance sur `Character` : le choix se refait à chaque incantation,
+ * comme au livre. Le curseur MUI est borné à `sliderMax` (repère, pas un plafond RAW) ; un champ
+ * numérique à côté permet de le dépasser. `stopPropagation` sur le clic (patron
+ * `FinesseAttackSelector`) : la carte parente reste dépliée pendant qu'on manipule le curseur.
  */
-function ChosenDurationDifficultyField({ feature }: { feature: Feature }) {
+function ChosenDurationDifficultyField({
+  feature,
+  minutes,
+  onChange,
+}: {
+  feature: Feature;
+  minutes: number;
+  onChange: (minutes: number) => void;
+}) {
   const config = feature.chosenDurationDifficulty;
-  const [minutes, setMinutes] = useState(0);
   if (!config) return null;
-  const difficulty = config.base + minutes;
   return (
     <Box sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
-        Durée choisie ({config.unit}) — difficulté du test
+        Durée choisie ({config.unit})
       </Typography>
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <Slider
@@ -1993,23 +2000,21 @@ function ChosenDurationDifficultyField({ feature }: { feature: Feature }) {
           max={config.sliderMax}
           step={1}
           valueLabelDisplay="auto"
-          onChange={(_, next) => setMinutes(typeof next === 'number' ? next : next[0])}
+          onChange={(_, next) => onChange(typeof next === 'number' ? next : next[0])}
           sx={{ maxWidth: 200 }}
         />
         <TextField
           size="small"
           type="number"
           value={minutes}
-          onChange={(e) => setMinutes(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+          onChange={(e) => onChange(Math.max(0, Math.round(Number(e.target.value) || 0)))}
           slotProps={{ htmlInput: { min: 0, style: { width: 48, textAlign: 'center' } } }}
         />
-        <Typography variant="body2" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-          Difficulté : {difficulty}
-        </Typography>
       </Stack>
       {minutes > config.sliderMax && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>
-          Au-delà du curseur (repère à {config.sliderMax} {config.unit}) — la difficulté suit quand même.
+          Au-delà du curseur (repère à {config.sliderMax} {config.unit}) — la difficulté dans le texte
+          ci-dessus suit quand même.
         </Typography>
       )}
     </Box>
@@ -2864,6 +2869,16 @@ function PathBlock({
         : undefined;
     return undefined;
   };
+  // Durée choisie par le joueur à l'incantation (PER-367, curseur `ChosenDurationDifficultyField`),
+  // injectée au terme `duree` de la formule de difficulté DANS LA DESCRIPTION de la capacité — même
+  // état PARTAGÉ entre le curseur (sous la carte) et le chip mécanisé (dans le texte), keyé par id de
+  // capacité (plusieurs pourraient un jour en avoir chacune la sienne). AUCUNE persistance sur
+  // `Character` : remis à zéro à la fermeture/réouverture de la fiche, comme un choix refait à chaque
+  // incantation.
+  const [chosenDurations, setChosenDurations] = useState<Record<string, number>>({});
+  const chosenDurationFor = (feature: Feature): number => chosenDurations[feature.id] ?? 0;
+  const setChosenDurationFor = (featureId: string, minutes: number) =>
+    setChosenDurations((prev) => ({ ...prev, [featureId]: minutes }));
   // Profil dont la voie est issue : le profil principal si la voie lui appartient
   // (cas courant), sinon le profil d'origine de la voie (hybridation). Sert à la
   // teinte ET à l'icône, pour distinguer les voies hybrides du profil principal.
@@ -3995,7 +4010,7 @@ function PathBlock({
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} scalingTierBonus={scalingTierBonus} />
+                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} chosenDuration={chosenDurationFor(openFeature)} scalingTierBonus={scalingTierBonus} />
                 <FeatureSourcePage feature={openFeature} />
                 {openFeature.referencedFeatures && openFeature.referencedFeatures.length > 0 && (
                   <>
@@ -4335,7 +4350,11 @@ function PathBlock({
                 {openFeature.chosenDurationDifficulty && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
-                    <ChosenDurationDifficultyField feature={openFeature} />
+                    <ChosenDurationDifficultyField
+                      feature={openFeature}
+                      minutes={chosenDurationFor(openFeature)}
+                      onChange={(m) => setChosenDurationFor(openFeature.id, m)}
+                    />
                   </>
                 )}
                 {openFeature.usageCounter &&
@@ -4583,7 +4602,7 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} scalingTierBonus={scalingTierBonus} />
+              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} chosenDuration={chosenDurationFor(feature)} scalingTierBonus={scalingTierBonus} />
               <FeatureSourcePage feature={feature} />
               {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
                 <>
@@ -4832,7 +4851,11 @@ function PathBlock({
               {feature.chosenDurationDifficulty && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
-                  <ChosenDurationDifficultyField feature={feature} />
+                  <ChosenDurationDifficultyField
+                    feature={feature}
+                    minutes={chosenDurationFor(feature)}
+                    onChange={(m) => setChosenDurationFor(feature.id, m)}
+                  />
                 </>
               )}
               {feature.usageCounter &&

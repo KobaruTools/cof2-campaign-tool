@@ -343,6 +343,28 @@ describe('resolveExpr — évaluation', () => {
     expect(r0.parts[0].kind).toBe('number');
   });
 
+  it('terme `duree` : durée choisie par le joueur injectée (Fuite en avant, PER-367)', () => {
+    const segs = parseRichText('[10 + duree]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    // chosenDuration = 9e paramètre positionnel de resolveExpr.
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 0, 0, undefined, 0, 30);
+    expect(r.hasDie).toBe(false);
+    expect(r.total).toBe(40); // 10 + 30
+    expect(r.parts).toHaveLength(2);
+    expect(r.parts[1].kind).toBe('chosenDuration');
+    expect(r.parts[1].value).toBe(30);
+  });
+
+  it('terme `duree` : JAMAIS omis à 0 (contrairement à `paliers`)', () => {
+    const segs = parseRichText('[10 + duree]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 0, 0, undefined, 0, 0);
+    expect(r.total).toBe(10);
+    expect(r.parts).toHaveLength(2); // le terme `duree` reste affiché, à la différence de `paliers`
+    expect(r.parts[1].kind).toBe('chosenDuration');
+    expect(r.parts[1].value).toBe(0);
+  });
+
   it('résout le terme rang via le rang passé en argument', () => {
     const segs = parseRichText('[10 + rang]');
     const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;

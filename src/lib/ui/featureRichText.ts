@@ -118,6 +118,11 @@ export type ExprTerm =
   | { kind: 'rank'; sign: 1 | -1; coeff?: number }
   | { kind: 'level'; sign: 1 | -1; coeff?: number }
   | { kind: 'milestoneBonus'; sign: 1 | -1; coeff?: number }
+  // DURÉE CHOISIE PAR LE JOUEUR À L'INCANTATION (Fuite en avant, magie du temps r4, PER-367),
+  // fournie de l'EXTÉRIEUR comme `paliers` (curseur `ChosenDurationDifficultyField`). Terme `duree`
+  // (sans accent, mini-langage ASCII). Défaut 0 → le terme n'est PAS omis (contrairement à `paliers`) :
+  // une difficulté « 10 + durée » doit toujours afficher son terme, même à 0 minute choisie.
+  | { kind: 'chosenDuration'; sign: 1 | -1; coeff?: number }
   // PRODUIT DE DEUX VARIABLES OU PLUS (`niveau × INT`, portée de Téléportation, p. 106). La grammaire
   // n'admet qu'une variable par terme additif SAUF ici : un produit explicite de variables (chacune
   // résolue puis multipliée), avec un éventuel `coeff` numérique global. Déterministe (pas de dé).
@@ -132,7 +137,8 @@ export type ProductFactor =
   | { kind: 'abilityBest'; abilities: AbilityId[] }
   | { kind: 'rank' }
   | { kind: 'level' }
-  | { kind: 'milestoneBonus' };
+  | { kind: 'milestoneBonus' }
+  | { kind: 'chosenDuration' };
 
 /** Un fragment de `richText` prêt à rendre. */
 export type RichTextSegment =
@@ -318,7 +324,8 @@ type ExprAtom =
   | { kind: 'number'; value: number }
   | { kind: 'rank' }
   | { kind: 'level' }
-  | { kind: 'milestoneBonus' };
+  | { kind: 'milestoneBonus' }
+  | { kind: 'chosenDuration' };
 
 /** Parse un opérande unique en atome. `null` si non reconnu. */
 function parseAtom(raw: string): ExprAtom | null {
@@ -339,6 +346,7 @@ function parseAtom(raw: string): ExprAtom | null {
   if (/^rang$/i.test(raw)) return { kind: 'rank' };
   if (/^niveau$/i.test(raw)) return { kind: 'level' };
   if (/^paliers$/i.test(raw)) return { kind: 'milestoneBonus' };
+  if (/^duree$/i.test(raw)) return { kind: 'chosenDuration' };
   if (/^\d+$/.test(raw)) return { kind: 'number', value: Number(raw) };
   return null;
 }
@@ -362,7 +370,8 @@ function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
       f.kind === 'abilityBest' ||
       f.kind === 'rank' ||
       f.kind === 'level' ||
-      f.kind === 'milestoneBonus',
+      f.kind === 'milestoneBonus' ||
+      f.kind === 'chosenDuration',
   );
   const coeffProduct = numbers.reduce((acc, n) => acc * n.value, 1);
   if (vars.length === 0) {
@@ -377,7 +386,8 @@ function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
       if (v.kind === 'abilityBest') return { kind: 'abilityBest', abilities: v.abilities };
       if (v.kind === 'rank') return { kind: 'rank' };
       if (v.kind === 'level') return { kind: 'level' };
-      return { kind: 'milestoneBonus' };
+      if (v.kind === 'milestoneBonus') return { kind: 'milestoneBonus' };
+      return { kind: 'chosenDuration' };
     });
     return coeff !== undefined
       ? { kind: 'product', sign, factors: factorsOut, coeff }
@@ -399,6 +409,9 @@ function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
   }
   if (v.kind === 'milestoneBonus') {
     return coeff !== undefined ? { kind: 'milestoneBonus', sign, coeff } : { kind: 'milestoneBonus', sign };
+  }
+  if (v.kind === 'chosenDuration') {
+    return coeff !== undefined ? { kind: 'chosenDuration', sign, coeff } : { kind: 'chosenDuration', sign };
   }
   return coeff !== undefined ? { kind: 'level', sign, coeff } : { kind: 'level', sign };
 }
@@ -769,6 +782,7 @@ export function resolveExpr(
   milestoneBonus = 0,
   substitutions?: AbilitySubstitution[],
   scalingTierBonus = 0,
+  chosenDuration = 0,
 ): ResolvedExpr {
   const allParts: ResolvedPart[] = terms.map((term) => {
     switch (term.kind) {
@@ -838,6 +852,18 @@ export function resolveExpr(
           value: milestoneBonus * (term.coeff ?? 1),
           coeff: term.coeff,
         };
+      case 'chosenDuration':
+        // Durée choisie par le joueur à l'incantation, injectée par le composant hôte (curseur
+        // `ChosenDurationDifficultyField`, PER-367). Même patron que `paliers` mais JAMAIS omis à 0
+        // (une difficulté « 10 + durée » doit toujours montrer son terme).
+        return {
+          kind: 'chosenDuration',
+          sign: term.sign,
+          label: 'Durée choisie',
+          symbol: withCoeff('durée', term.coeff),
+          value: chosenDuration * (term.coeff ?? 1),
+          coeff: term.coeff,
+        };
       case 'die': {
         // Nombre, faces ET caractère évolutif résolus au rang de voie atteint (paliers
         // `countSteps`/`dieSteps` ; un palier `|1d4°@R` peut rendre le dé évolutif).
@@ -880,6 +906,8 @@ export function resolveExpr(
                 return { label: 'Niveau', symbol: 'niveau', value: level };
               case 'milestoneBonus':
                 return { label: 'Bonus de paliers de voie', symbol: 'paliers', value: milestoneBonus };
+              case 'chosenDuration':
+                return { label: 'Durée choisie', symbol: 'durée', value: chosenDuration };
             }
           },
         );
@@ -909,6 +937,7 @@ export function resolveExpr(
       t.kind === 'rank' ||
       t.kind === 'level' ||
       t.kind === 'milestoneBonus' ||
+      t.kind === 'chosenDuration' ||
       t.kind === 'product',
   );
   const total = hasDie
