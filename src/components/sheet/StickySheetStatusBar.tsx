@@ -12,6 +12,7 @@ import { currentHp, currentLuck, currentMana, hpHealthState } from '@/lib/charac
 import type { DerivedStatId } from '@/lib/ui/derivedStats';
 import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { GaugeBar } from './GaugeBar';
 
@@ -35,16 +36,22 @@ export interface StickySheetStatusBarProps {
   showAbilities: boolean;
   /** Caractéristiques EFFECTIVES (mods de peuple/capacités déjà fondus), comme `AbilitiesGrid`. */
   abilities: Record<AbilityId, number>;
+  /** Clic sur le groupe Caractéristiques : défile jusqu'à sa section source sur la fiche. */
+  onJumpToAbilities: () => void;
   /**
    * Révèle le condensé Défense/Initiative/touches — piloté par le PIN de la section
    * « Statistiques dérivées » (`PinSectionButton`, cf. la fiche), pas par le défilement.
    */
   showDerivedStats: boolean;
+  /** Clic sur le groupe Défense/Initiative/touches : défile jusqu'à sa section source. */
+  onJumpToDerivedStats: () => void;
   /**
    * Révèle les mini-jauges PV/mana/chance — piloté par le PIN de la section « État du
    * personnage » (`PinSectionButton`, cf. la fiche), pas par le défilement.
    */
   showStatusGauges: boolean;
+  /** Clic sur le groupe PV/mana/chance : défile jusqu'à sa section source. */
+  onJumpToStatusGauges: () => void;
   /** PV maximum EFFECTIF (surcharge manuelle incluse), comme `PlayerStatusPanel`. */
   maxHp: number;
   /** Dépletion transitoire courante du personnage. */
@@ -121,8 +128,11 @@ function AbilityChip({ ability, value }: { ability: AbilityId; value: number }) 
  * démontage (`mounted`) du temps de la transition CSS (`GROUP_TRANSITION_MS`) au lieu de couper le
  * groupe net, et on ne bascule `entered` qu'à la frame SUIVANTE (`requestAnimationFrame`) pour que
  * le navigateur peigne d'abord l'état de départ avant de transitionner vers l'état d'arrivée.
+ *
+ * `onClick` (retour propriétaire) : présent sur les groupes de CONTENU (caracs/stats/jauges), absent
+ * sur les séparateurs — un clic ramène à la section source sur la fiche (cf. `scrollToSection`).
  */
-function RevealGroup({ show, children }: { show: boolean; children: ReactNode }) {
+function RevealGroup({ show, onClick, children }: { show: boolean; onClick?: () => void; children: ReactNode }) {
   const [mounted, setMounted] = useState(show);
   const [entered, setEntered] = useState(show);
   useEffect(() => {
@@ -137,10 +147,23 @@ function RevealGroup({ show, children }: { show: boolean; children: ReactNode })
   }, [show]);
 
   if (!mounted) return null;
-  return (
+  const content = (
     <Stack
       direction="row"
       spacing={1.5}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       sx={{
         alignItems: 'center',
         // `stretch` (au lieu d'hériter du `center` du Stack parent) : ce groupe occupe alors toute
@@ -149,14 +172,29 @@ function RevealGroup({ show, children }: { show: boolean; children: ReactNode })
         // un `Divider` seul dans ce groupe se retrouverait haut de quelques pixels à peine.
         alignSelf: 'stretch',
         flexShrink: 0,
+        // Rembourrage horizontal propre au groupe (au lieu du `spacing` du Stack parent, cf.
+        // celui-ci ci-dessous) : c'est CE rembourrage — identique sur tous les groupes, séparateurs
+        // inclus — qui crée l'espace visuel entre deux groupes voisins. Un fond de survol (ci-
+        // dessous) colore alors la boîte de rembourrage EN ENTIER et touche donc pile le rembourrage
+        // du voisin, sans bande morte ni marge négative à faire correspondre (retour propriétaire :
+        // la marge négative précédente entrait en conflit avec le `spacing` du Stack parent et
+        // laissait des bandes irrégulières, cf. capture DevTools montrant un groupe séparateur
+        // réduit à 1px).
+        px: 0.75,
         opacity: entered ? 1 : 0,
         transform: entered ? 'translateY(0)' : 'translateY(-6px)',
-        transition: `opacity ${GROUP_TRANSITION_MS}ms ease, transform ${GROUP_TRANSITION_MS}ms ease`,
+        transition: `opacity ${GROUP_TRANSITION_MS}ms ease, transform ${GROUP_TRANSITION_MS}ms ease, background-color 0.15s ease`,
+        ...(onClick && {
+          cursor: 'pointer',
+          outline: 'none',
+          '&:hover, &:focus-visible': { bgcolor: 'rgba(255, 255, 255, 0.08)' },
+        }),
       }}
     >
       {children}
     </Stack>
   );
+  return onClick ? <AppTooltip title="Aller à la section">{content}</AppTooltip> : content;
 }
 
 /**
@@ -181,8 +219,11 @@ function RevealGroup({ show, children }: { show: boolean; children: ReactNode })
 export function StickySheetStatusBar({
   showAbilities,
   abilities,
+  onJumpToAbilities,
   showDerivedStats,
+  onJumpToDerivedStats,
   showStatusGauges,
+  onJumpToStatusGauges,
   maxHp,
   depletion,
   manaMax,
@@ -215,7 +256,6 @@ export function StickySheetStatusBar({
     >
       <Stack
         direction="row"
-        spacing={1.5}
         sx={{
           alignItems: 'center',
           height: BAR_HEIGHT - 1,
@@ -223,7 +263,7 @@ export function StickySheetStatusBar({
           overflowX: 'auto',
         }}
       >
-        <RevealGroup show={showAbilities}>
+        <RevealGroup show={showAbilities} onClick={onJumpToAbilities}>
           {ABILITY_IDS.map((id) => (
             <AbilityChip key={id} ability={id} value={abilities[id]} />
           ))}
@@ -231,7 +271,7 @@ export function StickySheetStatusBar({
         <RevealGroup show={showAbilities && (showDerivedStats || showStatusGauges)}>
           <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255, 255, 255, 0.12)' }} />
         </RevealGroup>
-        <RevealGroup show={showDerivedStats}>
+        <RevealGroup show={showDerivedStats} onClick={onJumpToDerivedStats}>
           <StatChip statId="defense" value={defense} />
           <StatChip statId="initiative" value={initiative} />
           <StatChip statId="meleeAttack" value={meleeAttack} />
@@ -240,7 +280,7 @@ export function StickySheetStatusBar({
         <RevealGroup show={showDerivedStats && showStatusGauges}>
           <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255, 255, 255, 0.12)' }} />
         </RevealGroup>
-        <RevealGroup show={showStatusGauges}>
+        <RevealGroup show={showStatusGauges} onClick={onJumpToStatusGauges}>
           <MiniGauge icon={<DerivedStatIcon statId="maxHp" size={22} />} current={currentHp(maxHp, depletion)} max={maxHp} color={hpColor} />
           {manaMax !== null && (
             <MiniGauge
