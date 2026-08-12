@@ -4526,7 +4526,7 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} scalingTierBonus={scalingTierBonus} character={character} />
+              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} scalingTierBonus={scalingTierBonus} />
               <FeatureSourcePage feature={feature} />
               {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
                 <>
