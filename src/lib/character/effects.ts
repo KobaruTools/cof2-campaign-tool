@@ -834,6 +834,15 @@ function isConditionalActive(
   index: number,
   ctx?: EffectContext,
 ): boolean {
+  // Gating par option de choix de la même capacité (ex. drakonide « Fureur » vs « Ailes ») : si
+  // l'option requise n'est PAS retenue, l'effet est inactif quoi qu'il arrive (même déclencheur riding
+  // ou état ON résiduel). Miroir, côté `EffectContext`, de `conditionalOptionGateMet`.
+  const gate = effect.requiresChoiceOption;
+  if (gate) {
+    const sel = ctx?.featureChoices?.[featureId]?.[gate.choiceIndex];
+    const met = Array.isArray(sel) ? sel.includes(gate.optionId) : sel === gate.optionId;
+    if (!met) return false;
+  }
   if (ridingForcesActivation(effect, ctx?.ridingOptionIds)) return true;
   const toggled = ctx?.toggles[featureId]?.[index];
   return toggled ?? effect.activation.activeByDefault ?? false;
@@ -1380,11 +1389,32 @@ export function conditionalAbilityTestBonus(
   return resolveValue(effect.abilityTestBonus, feature.pathId, pathRanks, effectContext(character));
 }
 
+/**
+ * L'option requise par `requiresChoiceOption` d'un effet conditionnel est-elle retenue ? Renvoie true
+ * s'il n'y a pas de gating. Le choix visé est porté par la MÊME capacité (`featureId`) : on lit
+ * directement sa sélection dans `Character.featureChoices` (`string | string[] | null`). Partagé par
+ * `isEffectActive` (moteur) et le filtrage des interrupteurs affichés (`FeatureEffectToggles`).
+ */
+export function conditionalOptionGateMet(
+  character: Character,
+  featureId: string,
+  effect: ConditionalStatBonusEffect,
+): boolean {
+  const gate = effect.requiresChoiceOption;
+  if (!gate) return true;
+  const sel = character.featureChoices?.[featureId]?.[gate.choiceIndex];
+  return Array.isArray(sel) ? sel.includes(gate.optionId) : sel === gate.optionId;
+}
+
 /** L'interrupteur du i-ème effet d'une capacité est-il actif pour ce personnage ? */
 export function isEffectActive(character: Character, featureId: string, index: number): boolean {
   const effects = featureById.get(featureId)?.effects;
   const effect = effects?.[index];
   if (!effect || effect.kind !== 'conditional-stat-bonus') return false;
+  // Gating par option de choix de la même capacité (ex. drakonide « Fureur » vs « Ailes ») : si
+  // l'option requise n'est PAS retenue, l'effet est inactif quoi qu'il arrive (même si un ancien état
+  // ON traîne dans `effectToggles`). Prioritaire sur toute (ré)activation, y compris `riding`.
+  if (!conditionalOptionGateMet(character, featureId, effect)) return false;
   // PER-74 — second déclencheur déduit de l'état de jeu (« … ou chevauche son drake »).
   if (ridingForcesActivation(effect, ridingMountOptionIds(character))) return true;
   const toggled = character.effectToggles[featureId]?.[index];

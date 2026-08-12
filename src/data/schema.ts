@@ -3128,6 +3128,15 @@ export interface OptionFeatureChoice extends FeatureChoiceBase {
    */
   strikeUnchosenParagraphs?: boolean;
   /**
+   * AFFICHAGE : quand une (seule) option est retenue, le NOM affiché de la capacité DEVIENT le libellé
+   * de cette option (partout : carte, modale de détail, wizard, montée de niveau — via
+   * `useDeclinedFeatureName`), au lieu du nom générique « X / Y ». Comme le nom porte alors le choix, la
+   * puce de valeur du choix est masquée dans la carte (`FeatureChoiceField` mode display). Sert aux
+   * capacités « choisir l'une des deux » (ex. drakonide-r4 : « Fureur drakonide » ou « Ailes puissantes »).
+   * Sans effet si aucune option (ou plusieurs) n'est retenue. Absent = nom générique conservé + puce visible.
+   */
+  nameFromChosenOption?: boolean;
+  /**
    * Choix RÉPÉTABLE : le joueur retient PLUSIEURS options DISTINCTES, le nombre
    * autorisé étant déterminé par la progression (`repeat`). Absent = choix simple
    * (une seule option). La valeur persistée à cette position est alors un TABLEAU

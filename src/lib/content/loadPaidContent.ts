@@ -105,7 +105,9 @@ async function runLoad(): Promise<LoadPaidContentResult> {
   // 2. Sources nouvelles / version bumpée → téléchargement gaté, fusion, mise en cache.
   for (const slug of plan.toFetch) {
     try {
-      const raw = await fetchPaidContentJson(slug);
+      // Passe la version cible pour le cache-busting d'URL (cf. `fetchPaidContentJson`) : une source
+      // republiée (version bumpée) est ainsi TOUJOURS re-téléchargée fraîche, jamais servie du cache HTTP.
+      const raw = await fetchPaidContentJson(slug, versionBySlug.get(slug));
       if (raw == null) continue; // Entitlé mais pas de content.json (ex. Bestiaire) → rien.
       const bundle = parseContentBundle(raw);
       added += registerContentBundle(bundle).added;

@@ -20,7 +20,10 @@ const BUCKET = 'paid-books';
  * l'accès refusé (4xx — indiscernables par conception côté Storage). LÈVE sur toute
  * autre erreur (réseau, 5xx, JSON illisible) : le chargeur la traite en best-effort.
  */
-export async function fetchPaidContentJson(sourceSlug: string): Promise<unknown | null> {
+export async function fetchPaidContentJson(
+  sourceSlug: string,
+  contentVersion?: number,
+): Promise<unknown | null> {
   const supabase = createBrowserSupabaseClient();
   const {
     data: { session },
@@ -32,9 +35,17 @@ export async function fetchPaidContentJson(sourceSlug: string): Promise<unknown 
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const apiKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
   const path = `${sourceSlug}/content.json`;
-  const endpoint = `${baseUrl}/storage/v1/object/authenticated/${BUCKET}/${path}`;
+  // CACHE-BUSTING (essentiel) : Supabase Storage sert l'objet avec `cache-control: max-age=3600`, si
+  // bien qu'après une republication (upsert au MÊME chemin) le navigateur resservait l'ANCIEN corps
+  // pendant une heure — le contenu ne se mettait pas à jour malgré un vidage d'IndexedDB. On force donc
+  // (1) un paramètre de version dans l'URL (une version bumpée = une URL neuve, jamais en cache) et
+  // (2) `cache: 'no-store'` (le navigateur ne relit jamais sa copie HTTP). Le `?version=` est ignoré par
+  // l'endpoint Storage mais suffit à distinguer les URLs.
+  const query = contentVersion === undefined ? '' : `?version=${contentVersion}`;
+  const endpoint = `${baseUrl}/storage/v1/object/authenticated/${BUCKET}/${path}${query}`;
 
   const response = await fetch(endpoint, {
+    cache: 'no-store',
     headers: {
       apikey: apiKey,
       Authorization: `Bearer ${accessToken}`,
