@@ -7,7 +7,6 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
 import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -83,6 +82,78 @@ function ModifierValueBadge({ value }: { value: number }) {
     >
       {sign}
       {value}
+    </Box>
+  );
+}
+
+/**
+ * Colonne latérale illustrée de la Card détail (remplace l'ancienne bannière paysage) : un portrait
+ * au format vertical qui défile en boucle infinie de droite à gauche (retour utilisateur explicite,
+ * PER-403 annulé). Une seule illustration existe par peuple (`public/ancestries/*.webp`) — le
+ * « carrousel » répète cette même image en continu plutôt que d'alterner plusieurs portraits.
+ *
+ * Technique du bandeau sans fin : la piste (`display:flex`) contient l'image DEUX fois et anime
+ * `translateX(0) → translateX(-50%)` — la translation vaut alors exactement la largeur d'un
+ * exemplaire, donc la jointure entre la fin du premier et le début du second est invisible (pixels
+ * identiques), quel que soit le rendu réel des images. Pas besoin de connaître leur largeur en px.
+ */
+function AncestryPortraitCarousel({ ancestryId, name }: { ancestryId: string; name: string }) {
+  const src = `/ancestries/${ancestryId}.webp`;
+  return (
+    <Box sx={{ position: 'relative', width: { xs: '100%', sm: 170 }, flexShrink: 0 }}>
+      <Box sx={{ position: 'relative', height: { xs: 220, sm: 420 }, overflow: 'hidden', borderRadius: 2 }}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            display: 'flex',
+            height: '100%',
+            width: 'max-content',
+            '@keyframes ancestry-portrait-scroll': {
+              from: { transform: 'translateX(0)' },
+              to: { transform: 'translateX(-50%)' },
+            },
+            animation: 'ancestry-portrait-scroll 14s linear infinite',
+            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          }}
+        >
+          {[0, 1].map((i) => (
+            <Box
+              key={i}
+              component="img"
+              src={src}
+              alt={i === 0 ? `Illustration du peuple ${name}` : ''}
+              aria-hidden={i !== 0}
+              sx={{
+                height: '100%',
+                width: 'auto',
+                aspectRatio: '2 / 3',
+                objectFit: 'cover',
+                objectPosition: 'center',
+                flexShrink: 0,
+              }}
+            />
+          ))}
+        </Box>
+      </Box>
+      {/* Filigrane « homme de vitruve » du peuple, décalé hors du coin bas-droite */}
+      <Box
+        component="img"
+        src={`/ancestries/${ancestryId}-vitruve.webp`}
+        alt=""
+        aria-hidden
+        sx={{
+          position: 'absolute',
+          bottom: -14,
+          right: -14,
+          width: 96,
+          opacity: 0.8,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          zIndex: 1,
+        }}
+      />
     </Box>
   );
 }
@@ -165,166 +236,143 @@ export function AncestryStep({ draft, patch }: StepProps) {
       </FormControl>
 
       {ancestry && (
-        <Card variant="outlined" sx={{ position: 'relative' }}>
-          <CardMedia
-            component="img"
-            image={`/ancestries/${ancestry.id}.webp`}
-            alt={`Illustration du peuple ${ancestry.name}`}
-            sx={{ maxHeight: 320, objectFit: 'cover', objectPosition: 'center' }}
-          />
-          {/* Filigrane « homme de vitruve » du peuple, décalé hors du coin bas-droite */}
-          <Box
-            component="img"
-            src={`/ancestries/${ancestry.id}-vitruve.webp`}
-            alt=""
-            aria-hidden
-            sx={{
-              position: 'absolute',
-              bottom: -24,
-              right: -24,
-              width: { xs: 160, sm: 220 },
-              opacity: 0.75,
-              pointerEvents: 'none',
-              userSelect: 'none',
-              zIndex: 0,
-            }}
-          />
-          <CardContent
-            sx={{
-              position: 'relative',
-              zIndex: 1,
-              '&:last-child': { pb: { xs: 15, sm: 21 } },
-            }}
-          >
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
-              <Typography variant="subtitle1">{ancestry.name}</Typography>
-              <SourceRef page={ancestry.sourcePage} term={ancestry.name} />
-            </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
-              {desc?.intro}
-            </Typography>
+        <Card variant="outlined">
+          <CardContent>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5} sx={{ alignItems: 'flex-start' }}>
+              <AncestryPortraitCarousel ancestryId={ancestry.id} name={ancestry.name} />
 
-            {desc?.interpretationTitle && (
-              <Accordion
-                disableGutters
-                elevation={0}
-                sx={{ mb: 2, border: 1, borderColor: 'divider', '&::before': { display: 'none' } }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="subtitle2">{desc.interpretationTitle}</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ whiteSpace: 'pre-line' }}
-                  >
-                    {desc.interpretationBody}
-                  </Typography>
-                </AccordionDetails>
-              </Accordion>
-            )}
-
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Modificateurs de caractéristiques
-              </Typography>
-              <Stack spacing={1}>
-                {ancestry.abilityModifiers.map((mod, i) => (
-                  <AncestryModifier key={i} mod={mod} />
-                ))}
-              </Stack>
-            </Box>
-
-            {/* Choix d'identité du peuple type option (PER-401) — ex. type de souffle du drakonide
-                (PER-326) : posé dès la création, hors des rangs de voie, réédité ensuite en Identité. */}
-            {choicePreview && identityChoiceIds.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Choix du peuple
-                </Typography>
-                <Stack spacing={1}>
-                  {identityChoiceIds.map((fid) => (
-                    <FeatureChoiceField
-                      key={fid}
-                      character={choicePreview}
-                      featureId={fid}
-                      mode="edit"
-                      onChange={(id, index, value) =>
-                        patch({ featureChoices: setFeatureChoice(choicePreview, id, index, value) })
-                      }
-                    />
-                  ))}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+                  <Typography variant="subtitle1">{ancestry.name}</Typography>
+                  <SourceRef page={ancestry.sourcePage} term={ancestry.name} />
                 </Stack>
-              </Box>
-            )}
-
-            {/* Sélecteur de voie culturelle standard — masqué en mode Compagnon (la voie devient
-                `demi-elfe`, absente de cette liste). */}
-            {ancestry.ancestryPathIds.length > 1 && !companionPathActive && (
-              <FormControl sx={{ mt: 1, minWidth: { xs: '100%', sm: 260 } }} size="small">
-                <InputLabel>Voie de peuple</InputLabel>
-                <Select
-                  label="Voie de peuple"
-                  value={
-                    draft.ancestryPathId && ancestry.ancestryPathIds.includes(draft.ancestryPathId)
-                      ? draft.ancestryPathId
-                      : ''
-                  }
-                  onChange={(e) => patch({ ancestryPathId: e.target.value })}
-                >
-                  {ancestry.ancestryPathIds.map((vid) => (
-                    <MenuItem key={vid} value={vid}>
-                      {pathById.get(vid)?.name ?? vid}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-
-            {/* Voie du demi-elfe optionnelle (Le Compagnon, PER-324). */}
-            {companionDemiElfe && (
-              <Box sx={{ mt: 1.5 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={companionPathActive}
-                      onChange={(e) =>
-                        patch(
-                          e.target.checked
-                            ? {
-                                ancestryPathId: 'demi-elfe',
-                                demiElfeElfAncestry: draft.demiElfeElfAncestry ?? 'elfe-haut',
-                              }
-                            : { ancestryPathId: null, demiElfeElfAncestry: undefined },
-                        )
-                      }
-                    />
-                  }
-                  label={pathById.get('demi-elfe')?.name ?? 'Voie du demi-elfe'}
-                />
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: companionPathActive ? 1.5 : 0 }}>
-                  Voie optionnelle pour un demi-elfe qui ne s’est assimilé à aucune de ses deux cultures.
-                  Elle remplace le choix de voie culturelle ; l’ascendance elfe reste et détermine le sort
-                  de « Sang féerique » (rang 4).
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
+                  {desc?.intro}
                 </Typography>
-                {companionPathActive && (
-                  <FormControl>
-                    <FormLabel>Ascendance elfique</FormLabel>
-                    <RadioGroup
-                      row
-                      value={draft.demiElfeElfAncestry ?? 'elfe-haut'}
-                      onChange={(e) =>
-                        patch({ demiElfeElfAncestry: e.target.value as 'elfe-haut' | 'elfe-sylvain' })
+
+                {desc?.interpretationTitle && (
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    sx={{ mb: 2, border: 1, borderColor: 'divider', '&::before': { display: 'none' } }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle2">{desc.interpretationTitle}</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ whiteSpace: 'pre-line' }}
+                      >
+                        {desc.interpretationBody}
+                      </Typography>
+                    </AccordionDetails>
+                  </Accordion>
+                )}
+
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Modificateurs de caractéristiques
+                  </Typography>
+                  <Stack spacing={1}>
+                    {ancestry.abilityModifiers.map((mod, i) => (
+                      <AncestryModifier key={i} mod={mod} />
+                    ))}
+                  </Stack>
+                </Box>
+
+                {/* Choix d'identité du peuple type option (PER-401) — ex. type de souffle du drakonide
+                    (PER-326) : posé dès la création, hors des rangs de voie, réédité ensuite en Identité. */}
+                {choicePreview && identityChoiceIds.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Choix du peuple
+                    </Typography>
+                    <Stack spacing={1}>
+                      {identityChoiceIds.map((fid) => (
+                        <FeatureChoiceField
+                          key={fid}
+                          character={choicePreview}
+                          featureId={fid}
+                          mode="edit"
+                          onChange={(id, index, value) =>
+                            patch({ featureChoices: setFeatureChoice(choicePreview, id, index, value) })
+                          }
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+
+                {/* Sélecteur de voie culturelle standard — masqué en mode Compagnon (la voie devient
+                    `demi-elfe`, absente de cette liste). */}
+                {ancestry.ancestryPathIds.length > 1 && !companionPathActive && (
+                  <FormControl sx={{ mt: 1, minWidth: { xs: '100%', sm: 260 } }} size="small">
+                    <InputLabel>Voie de peuple</InputLabel>
+                    <Select
+                      label="Voie de peuple"
+                      value={
+                        draft.ancestryPathId && ancestry.ancestryPathIds.includes(draft.ancestryPathId)
+                          ? draft.ancestryPathId
+                          : ''
                       }
+                      onChange={(e) => patch({ ancestryPathId: e.target.value })}
                     >
-                      <FormControlLabel value="elfe-haut" control={<Radio />} label="Elfe haut (sorts d’ensorceleur)" />
-                      <FormControlLabel value="elfe-sylvain" control={<Radio />} label="Elfe sylvain (sorts de druide)" />
-                    </RadioGroup>
+                      {ancestry.ancestryPathIds.map((vid) => (
+                        <MenuItem key={vid} value={vid}>
+                          {pathById.get(vid)?.name ?? vid}
+                        </MenuItem>
+                      ))}
+                    </Select>
                   </FormControl>
                 )}
+
+                {/* Voie du demi-elfe optionnelle (Le Compagnon, PER-324). */}
+                {companionDemiElfe && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={companionPathActive}
+                          onChange={(e) =>
+                            patch(
+                              e.target.checked
+                                ? {
+                                    ancestryPathId: 'demi-elfe',
+                                    demiElfeElfAncestry: draft.demiElfeElfAncestry ?? 'elfe-haut',
+                                  }
+                                : { ancestryPathId: null, demiElfeElfAncestry: undefined },
+                            )
+                          }
+                        />
+                      }
+                      label={pathById.get('demi-elfe')?.name ?? 'Voie du demi-elfe'}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: companionPathActive ? 1.5 : 0 }}>
+                      Voie optionnelle pour un demi-elfe qui ne s’est assimilé à aucune de ses deux cultures.
+                      Elle remplace le choix de voie culturelle ; l’ascendance elfe reste et détermine le sort
+                      de « Sang féerique » (rang 4).
+                    </Typography>
+                    {companionPathActive && (
+                      <FormControl>
+                        <FormLabel>Ascendance elfique</FormLabel>
+                        <RadioGroup
+                          row
+                          value={draft.demiElfeElfAncestry ?? 'elfe-haut'}
+                          onChange={(e) =>
+                            patch({ demiElfeElfAncestry: e.target.value as 'elfe-haut' | 'elfe-sylvain' })
+                          }
+                        >
+                          <FormControlLabel value="elfe-haut" control={<Radio />} label="Elfe haut (sorts d’ensorceleur)" />
+                          <FormControlLabel value="elfe-sylvain" control={<Radio />} label="Elfe sylvain (sorts de druide)" />
+                        </RadioGroup>
+                      </FormControl>
+                    )}
+                  </Box>
+                )}
               </Box>
-            )}
+            </Stack>
           </CardContent>
         </Card>
       )}
