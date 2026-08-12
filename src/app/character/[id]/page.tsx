@@ -898,6 +898,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               initiative={stickyInitiative}
               meleeAttack={stickyMeleeAttack}
               rangedAttack={stickyRangedAttack}
+              testBonuses={display.testBonuses}
+              abilityTestBonus={display.abilityTestBonus}
+              statusTestBonus={display.statusTestBonus}
+              perAbilityTestBonus={display.perAbilityTestBonus}
+              magicTestBonuses={display.magicTestBonuses}
+              bonusDice={display.bonusDieSources}
+              armorPenalty={display.armorPenalty}
             />
           ) : undefined
         }

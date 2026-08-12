@@ -11,15 +11,27 @@ import Popover from '@mui/material/Popover';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
+import { testDomains } from '@/data';
 import { ABILITY_IDS, type AbilityId } from '@/data/schema';
 import type { Depletion } from '@/lib/character/types';
 import { currentHp, currentLuck, currentMana, hpHealthState } from '@/lib/character/gauges';
+import {
+  freelyStackingAbilityTestBonuses,
+  resolveTestBonus,
+  type AbilityTestBonusSource,
+  type MagicTestSource,
+  type TestDomainBonus,
+} from '@/lib/character/effects';
 import type { DerivedStatId } from '@/lib/ui/derivedStats';
 import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { AppTooltip } from '@/components/AppTooltip';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { GaugeBar } from './GaugeBar';
+
+/** Modificateur signé (« +3 », « +0 », « −2 »), même écriture que `TestDomainsPanel`. */
+const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
 
 /** Hauteur d'une seule ligne de la barre (un groupe peut en faire moins, jamais plus). */
 const ROW_HEIGHT = 36;
@@ -70,6 +82,25 @@ export interface StickySheetStatusBarProps {
   meleeAttack: number | null;
   /** Touche à distance EFFECTIVE (surcharge manuelle incluse), `null` si profil incomplet. */
   rangedAttack: number | null;
+  /**
+   * Bonus de compétence par domaine (même donnée que `TestDomainsPanel`, cf. `display.testBonuses`)
+   * — sert au panneau condensé « Compétences & tests » qui se déplie au survol du groupe
+   * Statistiques dérivées (aperçu, PER-??? : pas de bonus de magie/état/armure ici, juste le
+   * bonus de compétence brut, éventuellement additionné de la carac gouvernante).
+   */
+  testBonuses: TestDomainBonus[];
+  /** Buff actif uniforme sur tous les tests de carac (ex. Bénédiction) — même donnée que `TestDomainsPanel`. */
+  abilityTestBonus?: AbilityTestBonusSource[];
+  /** Modificateurs des états de combat posés par le MJ sur tous les tests de carac (PER-104). */
+  statusTestBonus?: { value: number }[];
+  /** Bonus chiffrés propres à UNE carac (ex. Tatouages, PER-125), par carac. */
+  perAbilityTestBonus?: Partial<Record<AbilityId, AbilityTestBonusSource[]>>;
+  /** Sources de magie aux tests (PER-275), pour le bonus de portée carac. */
+  magicTestBonuses?: MagicTestSource[];
+  /** Carac bénéficiant d'un dé bonus permanent (badge double-d20). */
+  bonusDice?: Partial<Record<AbilityId, string[]>>;
+  /** Malus d'armure appliqué aux tests d'AGI (p. 188, PER-209), plancher 0. */
+  armorPenalty?: number;
 }
 
 /** Mini-jauge condensée : icône cerclée + barre fine + `courant/max`, sans les contrôles de `GaugeRow`. */
@@ -134,7 +165,20 @@ function AbilityChip({ ability, value }: { ability: AbilityId; value: number }) 
  * `onClick` (retour propriétaire) : présent sur les groupes de CONTENU (caracs/stats/jauges), absent
  * sur les séparateurs — un clic ramène à la section source sur la fiche (cf. `scrollToSection`).
  */
-function RevealGroup({ show, onClick, children }: { show: boolean; onClick?: () => void; children: ReactNode }) {
+function RevealGroup({
+  show,
+  onClick,
+  onMouseEnter,
+  onMouseLeave,
+  children,
+}: {
+  show: boolean;
+  onClick?: () => void;
+  /** Survol du groupe (retour propriétaire) : ouvre le panneau condensé « Compétences & tests » sous la barre, sur le groupe Statistiques dérivées uniquement. */
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+  children: ReactNode;
+}) {
   const [mounted, setMounted] = useState(show);
   const [entered, setEntered] = useState(show);
   useEffect(() => {
@@ -154,6 +198,8 @@ function RevealGroup({ show, onClick, children }: { show: boolean; onClick?: () 
       direction="row"
       spacing={1.5}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={
@@ -300,6 +346,13 @@ export function StickySheetStatusBar({
   initiative,
   meleeAttack,
   rangedAttack,
+  testBonuses,
+  abilityTestBonus,
+  statusTestBonus,
+  perAbilityTestBonus,
+  magicTestBonuses,
+  bonusDice,
+  armorPenalty,
 }: StickySheetStatusBarProps) {
   const theme = useTheme();
   const visible = showAbilities || showDerivedStats || showStatusGauges;
@@ -313,6 +366,46 @@ export function StickySheetStatusBar({
         : theme.palette.error.main;
 
   const [overflowAnchor, setOverflowAnchor] = useState<HTMLElement | null>(null);
+
+  // Panneau condensé « aperçu tests » : 7 colonnes (une par carac). Chaque colonne liste les SEULS
+  // domaines à bonus de compétence non nul (`bonus.total`) rangés sous cette carac (la plus haute
+  // des caracs éligibles du domaine) — jamais la carac elle-même dans ces lignes, qui vivent déjà
+  // dans le groupe Caractéristiques de la barre. L'EN-TÊTE de colonne, elle, porte le bonus/malus
+  // qui s'ajoute au TEST de cette carac (buff actif, bonus propre, magie, malus d'armure sur AGI)
+  // + son éventuel dé bonus permanent — même calcul que la ligne « test de [CARAC] » de
+  // `TestDomainsPanel`, minus la valeur brute de la carac (déjà affichée ailleurs dans la barre).
+  const [derivedHovered, setDerivedHovered] = useState(false);
+  const buffSources = abilityTestBonus ?? [];
+  const statusSources = statusTestBonus ?? [];
+  const testBuff =
+    buffSources.reduce((sum, s) => sum + s.value, 0) + statusSources.reduce((sum, s) => sum + s.value, 0);
+  const magicSources = magicTestBonuses ?? [];
+  const agiArmorPenalty = armorPenalty ?? 0;
+
+  const abilityColumns = ABILITY_IDS.map((ability) => {
+    const perCaracSources = freelyStackingAbilityTestBonuses(perAbilityTestBonus?.[ability]);
+    const perCaracBonus = perCaracSources.reduce((sum, s) => sum + s.value, 0);
+    const caracMagic = resolveTestBonus({ magic: magicSources, ability }).abilityMagic;
+    const agiPenalty = ability === 'AGI' ? agiArmorPenalty : 0;
+    const mod = testBuff + perCaracBonus + caracMagic - agiPenalty;
+    return { ability, mod, dice: bonusDice?.[ability] ?? [] };
+  });
+
+  const domainRows = testBonuses
+    .filter((b) => b.total !== 0)
+    .map((b) => {
+      const d = testDomains.find((dom) => dom.id === b.domain);
+      const governingAbility = (d?.abilities ?? []).reduce(
+        (best, a) => (abilities[a] > abilities[best] ? a : best),
+        d?.abilities[0] ?? ABILITY_IDS[0],
+      );
+      return { key: b.domain, label: d?.label ?? b.domain, ability: governingAbility, value: b.total };
+    })
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'fr'));
+  const domainRowsByAbility = new Map<AbilityId, typeof domainRows>();
+  for (const row of domainRows) {
+    domainRowsByAbility.set(row.ability, [...(domainRowsByAbility.get(row.ability) ?? []), row]);
+  }
 
   // Trois groupes de contenu, décrits une seule fois : réutilisés à l'identique par le rendu réel
   // (animé, cf. `RevealGroup`), par le jumeau de mesure hors flux (cf. `useGroupWidths`) et par le
@@ -432,7 +525,12 @@ export function StickySheetStatusBar({
           <RevealGroup show={showAbilities && isVisible('abilities') && (showDerivedStats || showStatusGauges) && (isVisible('derived') || isVisible('gauges'))}>
             <Divider orientation="vertical" flexItem sx={{ borderColor: SEPARATOR_COLOR }} />
           </RevealGroup>
-          <RevealGroup show={showDerivedStats && isVisible('derived')} onClick={onJumpToDerivedStats}>
+          <RevealGroup
+            show={showDerivedStats && isVisible('derived')}
+            onClick={onJumpToDerivedStats}
+            onMouseEnter={() => setDerivedHovered(true)}
+            onMouseLeave={() => setDerivedHovered(false)}
+          >
             {groups[1].node}
           </RevealGroup>
           <RevealGroup show={showDerivedStats && isVisible('derived') && showStatusGauges && isVisible('gauges')}>
@@ -455,6 +553,61 @@ export function StickySheetStatusBar({
             </IconButton>
           )}
         </Stack>
+
+        {/* Panneau condensé « aperçu tests » : se déplie SOUS la barre au survol du groupe
+            Statistiques dérivées, reste ouvert tant que la souris est dessus (permet de lire la
+            grille sans qu'elle se referme dès qu'on quitte le groupe). 7 colonnes (une par carac,
+            cf. `abilityColumns`) — une colonne sans aucun domaine à bonus reste vide. */}
+        <Collapse in={derivedHovered && domainRows.length > 0}>
+          <Box
+            onMouseEnter={() => setDerivedHovered(true)}
+            onMouseLeave={() => setDerivedHovered(false)}
+            sx={{ borderTop: `1px solid ${SEPARATOR_COLOR}`, px: 1.5, py: 1 }}
+          >
+            <Stack direction="row" spacing={1}>
+              {abilityColumns.map(({ ability, mod, dice }) => (
+                <Stack key={ability} sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    sx={{
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      pb: 0.5,
+                      borderBottom: `1px solid ${SEPARATOR_COLOR}`,
+                    }}
+                  >
+                    <AbilityIcon ability={ability} size={16} />
+                    {mod !== 0 && (
+                      <Typography
+                        variant="caption"
+                        sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: mod > 0 ? 'success.main' : 'error.main' }}
+                      >
+                        {signed(mod)}
+                      </Typography>
+                    )}
+                    {dice.length > 0 && <BonusDieBadge ability={ability} sources={dice} size={14} />}
+                  </Stack>
+                  <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                    {(domainRowsByAbility.get(ability) ?? []).map((r) => (
+                      <Stack key={r.key} direction="row" spacing={0.5} sx={{ justifyContent: 'space-between' }}>
+                        <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+                          {r.label}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}
+                        >
+                          {signed(r.value)}
+                        </Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Stack>
+              ))}
+            </Stack>
+          </Box>
+        </Collapse>
 
         <Popover
           open={overflowGroups.length > 0 && Boolean(overflowAnchor)}
