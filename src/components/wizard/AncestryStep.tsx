@@ -30,7 +30,6 @@ import { setFeatureChoice } from '@/lib/character/choices';
 import { AbilityBadge } from '@/components/AbilityBadge';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { SourceRef } from '@/components/SourceRef';
-import { SelectableThumbnail } from './SelectableThumbnail';
 import type { StepProps } from './types';
 
 function splitDescription(desc: string): {
@@ -153,23 +152,16 @@ export function AncestryStep({ draft, patch }: StepProps) {
   return (
     <Stack spacing={3}>
       <FormControl>
-        <FormLabel id="ancestry-picker-label">Peuple</FormLabel>
-        <Box role="radiogroup" aria-labelledby="ancestry-picker-label" sx={{ mt: 1 }}>
-          <Grid container spacing={1.5}>
+        <FormLabel>Peuple</FormLabel>
+        <RadioGroup value={draft.ancestryId} onChange={(e) => chooseAncestry(e.target.value)}>
+          <Grid container spacing={1}>
             {ancestries.map((p) => (
-              <Grid key={p.id} size={{ xs: 6, sm: 4, md: 3 }}>
-                <SelectableThumbnail
-                  groupName="ancestry"
-                  value={p.id}
-                  name={p.name}
-                  image={`/ancestries/${p.id}.webp`}
-                  selected={draft.ancestryId === p.id}
-                  onSelect={() => chooseAncestry(p.id)}
-                />
+              <Grid key={p.id} size={{ xs: 12, sm: 6 }}>
+                <FormControlLabel value={p.id} control={<Radio />} label={p.name} />
               </Grid>
             ))}
           </Grid>
-        </Box>
+        </RadioGroup>
       </FormControl>
 
       {ancestry && (
