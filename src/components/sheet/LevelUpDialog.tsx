@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
@@ -30,9 +30,9 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { alpha, type Theme } from '@mui/material/styles';
+import { alpha, lighten, type Theme } from '@mui/material/styles';
 import { classById, families, featureById, pathById, progression } from '@/data';
-import { FAMILY_IDS } from '@/data/schema';
+import { FAMILY_IDS, PRESTIGE_CATEGORIES } from '@/data/schema';
 import type { Family, Feature } from '@/data/schema';
 import { featureCost, maxHp, minLevelForRank } from '@/lib/engine';
 import { familyHpGains } from '@/lib/character/hp';
@@ -68,7 +68,7 @@ import {
   setFeatureChoice,
   type PendingDivine,
 } from '@/lib/character/choices';
-import { classColor } from '@/lib/ui/classColors';
+import { classColor, prestigeCategoryColor } from '@/lib/ui/classColors';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PathCard } from '@/components/PathCard';
@@ -86,7 +86,10 @@ import { ClassIcon } from '@/components/ClassIcon';
  * Custom property + keyframes pour la bordure animée du cadre des capacités
  * sélectionnées. `@property` (typé `<angle>`) rend le `conic-gradient(from …)`
  * animable de façon fluide : la bordure reste PLEINE, seule sa couleur tourne.
- * Injecté globalement (dédupliqué par MUI) — impossible à déclarer dans un `sx`.
+ * Regroupe aussi les keyframes de l'ouverture du wizard (fondu + rebond + étoiles
+ * d'entrée, cf. `LevelUpEntranceStars`) et du pulse du badge de niveau (cf.
+ * `LevelBadge`). Injecté globalement (dédupliqué par MUI) — impossible à
+ * déclarer dans un `sx`.
  */
 /** Familles indexées par id — pour retrouver le dé de récupération à lancer (PER-87). */
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -99,6 +102,42 @@ const BORDER_ANGLE_STYLES = `
   }
   @keyframes pathBorderRotate {
     to { --pathBorderAngle: 360deg; }
+  }
+  @keyframes levelUpDialogFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes levelUpDialogPop {
+    from { transform: translateY(36px) scale(0.9); }
+    to { transform: translateY(0) scale(1); }
+  }
+  @keyframes levelUpStarPop {
+    0% { transform: scale(0) rotate(0deg); opacity: 0; }
+    35% { opacity: 1; }
+    60% { transform: scale(1.15) rotate(140deg); opacity: 1; }
+    100% { transform: scale(0.4) rotate(200deg); opacity: 0; }
+  }
+  @keyframes levelBadgePulseRing {
+    0% { transform: scale(1); opacity: 0.65; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  @keyframes levelBadgeStarTwinkle {
+    0% { transform: scale(0) rotate(0deg); opacity: 0; }
+    30% { opacity: 1; }
+    50% { transform: scale(1) rotate(120deg); opacity: 1; }
+    100% { transform: scale(0) rotate(200deg); opacity: 0; }
+  }
+  @keyframes selectedFrameGrow {
+    from { opacity: 0; transform: scaleY(0.85); }
+    to { opacity: 1; transform: scaleY(1); }
+  }
+  @keyframes selectedTitleFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes selectedRowFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 `;
 
@@ -165,6 +204,15 @@ function AvailablePathGroup({
   abilities: Character['abilities'];
   level: number;
 }) {
+  // Habillage « précieux » des blocs de voie de PRESTIGE (liseré + fond en dégradé, teinté
+  // par famille — vert/rouge/bleu/violet — or tuné par défaut pour les génériques). Reprend
+  // exactement la teinte/le dégradé de la carte de rang en lecture seule (`FeaturesByPath`).
+  const isPrestigePath = group.path?.type === 'prestige';
+  const prestigeTint =
+    group.path?.type === 'prestige' && group.path.category !== 'generic'
+      ? prestigeCategoryColor(group.path.category)
+      : undefined;
+
   // Capacités acquérables + le rang sauté (grisé), intercalés dans l'ordre des rangs.
   const rows: { feature: Feature; kind: 'acquirable' | 'skipped' }[] = group.features.map(
     (feature) => ({ feature, kind: 'acquirable' as const }),
@@ -217,6 +265,8 @@ function AvailablePathGroup({
                 }
                 term={feature.name}
                 color={color ?? undefined}
+                prestige={isPrestigePath}
+                prestigeTint={prestigeTint}
                 checked={false}
                 selectable={false}
                 repeatFeatureName={false}
@@ -252,6 +302,8 @@ function AvailablePathGroup({
                   }
                   term={feature.name}
                   color={color ?? undefined}
+                  prestige={isPrestigePath}
+                  prestigeTint={prestigeTint}
                   checked={false}
                   disabled={disabled}
                   repeatFeatureName={false}
@@ -468,6 +520,181 @@ function FeaturePointsBadge({
       </Box>
     </AppTooltip>
   );
+}
+
+/**
+ * Étoile décorative à 4 branches (même forme que le scintillement des jetons de
+ * la bourse, `PurseField`) : apparaît, tourne, s'estompe. `iterationCount` fixe
+ * sa durée totale — utilisée aussi bien pour le « pop » d'entrée du wizard (une
+ * fois) que pour le pulse du badge de niveau (5 fois, cf. `LevelBadge`).
+ */
+function DecorativeStar({
+  top,
+  left,
+  size,
+  color,
+  delay,
+  duration,
+  animationName,
+  iterationCount = 1,
+}: {
+  top: string | number;
+  left: string | number;
+  size: number;
+  color: string;
+  delay: string;
+  duration: string;
+  animationName: string;
+  iterationCount?: number | 'infinite';
+}) {
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        top,
+        left,
+        width: size,
+        height: size,
+        pointerEvents: 'none',
+        opacity: 0,
+        zIndex: 1,
+        background: `radial-gradient(circle, ${lighten(color, 0.55)} 0%, ${color} 55%, transparent 74%)`,
+        filter: `drop-shadow(0 0 2px ${color})`,
+        clipPath:
+          'polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%)',
+        animationName,
+        animationDuration: duration,
+        animationDelay: delay,
+        animationTimingFunction: 'ease-out',
+        animationIterationCount: iterationCount,
+        animationFillMode: 'forwards',
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+      }}
+    />
+  );
+}
+
+/** Position des étoiles qui « pop » autour de l'en-tête à l'ouverture du wizard (une seule fois). */
+const ENTRANCE_STAR_POSITIONS: readonly { top: string; left: string; size: number; delay: string }[] = [
+  { top: '-10px', left: '6%', size: 12, delay: '0.05s' },
+  { top: '-6px', left: '46%', size: 9, delay: '0.22s' },
+  { top: '2px', left: '92%', size: 13, delay: '0.1s' },
+  { top: '28px', left: '-8px', size: 10, delay: '0.3s' },
+  { top: '30px', left: '102%', size: 11, delay: '0.16s' },
+  { top: '-8px', left: '70%', size: 8, delay: '0.38s' },
+];
+
+/** Étoiles d'entrée du wizard (fondu + rebond, cf. `levelUpDialogPop` sur le `Paper`). */
+function LevelUpEntranceStars() {
+  return (
+    <>
+      {ENTRANCE_STAR_POSITIONS.map((s, i) => (
+        <DecorativeStar
+          key={i}
+          top={s.top}
+          left={s.left}
+          size={s.size}
+          color="#ffd75e"
+          delay={s.delay}
+          duration="0.75s"
+          animationName="levelUpStarPop"
+        />
+      ))}
+    </>
+  );
+}
+
+/** Étoiles autour du badge carré de niveau, calées sur les 5 pulses (5 × 1 s). */
+const BADGE_STAR_POSITIONS: readonly { top: string; left: string; size: number; delay: string }[] = [
+  { top: '-8px', left: '-6px', size: 8, delay: '0s' },
+  { top: '-10px', left: '60%', size: 7, delay: '0.25s' },
+  { top: '55%', left: '104%', size: 8, delay: '0.5s' },
+  { top: '100%', left: '55%', size: 7, delay: '0.75s' },
+  { top: '40%', left: '-14px', size: 6, delay: '0.4s' },
+];
+
+/**
+ * Badge carré du niveau ATTEINT (custom, ≠ Chip MUI). À l'ouverture du wizard :
+ * anneau de pulsation + étoiles pendant 5 s (5 cycles d'1 s), puis fige (fill
+ * mode `forwards`) — pas de boucle infinie.
+ */
+function LevelBadge({ level }: { level: number }) {
+  return (
+    <Box sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+      <Box
+        sx={(theme) => ({
+          position: 'absolute',
+          inset: 0,
+          borderRadius: 1,
+          border: `2px solid ${theme.palette.warning.main}`,
+          animation: 'levelBadgePulseRing 1s ease-out 5 forwards',
+          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+        })}
+      />
+      <Box
+        sx={(theme) => ({
+          position: 'relative',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 32,
+          height: 32,
+          borderRadius: 1,
+          fontSize: '1.05rem',
+          fontWeight: 800,
+          fontVariantNumeric: 'tabular-nums',
+          color: theme.palette.getContrastText(theme.palette.warning.main),
+          bgcolor: theme.palette.warning.main,
+          boxShadow: `0 0 0 1px ${alpha(theme.palette.warning.main, 0.6)}`,
+        })}
+      >
+        {level}
+      </Box>
+      {BADGE_STAR_POSITIONS.map((s, i) => (
+        <DecorativeStar
+          key={i}
+          top={s.top}
+          left={s.left}
+          size={s.size}
+          color="#fff3c4"
+          delay={s.delay}
+          duration="1s"
+          animationName="levelBadgeStarTwinkle"
+          iterationCount={5}
+        />
+      ))}
+    </Box>
+  );
+}
+
+/** Accélère puis ralentit (« ease in/out ») — effet « roulette » du gain de PV. */
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+
+/**
+ * Effet « roulette » : anime un nombre de 0 jusqu'à `target` (courbe ease-in-out),
+ * rejoué à chaque changement de cible (recalcul du gain de PV — famille, dé de vie
+ * lancé…). `null` = rien à afficher (profil incomplet). Respecte `prefers-reduced-motion`.
+ */
+function useCountUp(target: number | null, duration = 900): number | null {
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const [display, setDisplay] = useState<number | null>(target);
+  useEffect(() => {
+    // Rien à animer (pas de gain, ou mouvement réduit) : pas de setState ici, la
+    // valeur instantanée est directement retournée plus bas.
+    if (target === null || reducedMotion) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      setDisplay(Math.round(target * easeInOutCubic(t)));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, reducedMotion]);
+  return target === null || reducedMotion ? target : display;
 }
 
 /**
@@ -703,10 +930,26 @@ export function LevelUpDialog({
 
   // Voies de prestige (catégorie 3) réunies dans un accordéon dédié, comme les
   // voies d'autres profils en hybride — un choix délibéré qu'on ne déploie qu'au
-  // besoin pour ne pas noyer la montée de niveau classique.
+  // besoin pour ne pas noyer la montée de niveau classique. Ordre du livre (table
+  // récapitulative p. 128) : générique, aventurier, combattant, mage, mystique,
+  // puis alphabétique au sein d'une même catégorie.
+  const prestigeCategoryOrder = (g: FeatureGroup) => {
+    const category = g.path?.type === 'prestige' ? g.path.category : undefined;
+    return category ? PRESTIGE_CATEGORIES.indexOf(category) : PRESTIGE_CATEGORIES.length;
+  };
+  // Alphabétique sur le nom SIGNIFICATIF de la voie : l'article de tête (« Voie de/du/des/de
+  // l'/de la ») est ignoré, sans quoi le tri se ferait sur cet article commun à toutes plutôt
+  // que sur ce qui les distingue (ex. « Voie du colosse » devant « Voie de l'écorcheur »,
+  // proprio confirmé — vérifié que le tableau récapitulatif p. 128 n'est PAS un ordre
+  // alphabétique strict à reproduire à l'identique, ex. « l'ours » y précède « combat du mal »).
+  const voieSortKey = (name: string) => name.replace(/^Voie (de l['’]|de la |du |des |d['’])/i, '').trim();
   const prestigeGroups = availableGroups
     .filter((g) => groupCategory(g) === 3)
-    .sort((a, b) => groupName(a).localeCompare(groupName(b)));
+    .sort(
+      (a, b) =>
+        prestigeCategoryOrder(a) - prestigeCategoryOrder(b) ||
+        voieSortKey(groupName(a)).localeCompare(voieSortKey(groupName(b)), 'fr'),
+    );
 
   // Voies hybrides (catégorie 4) regroupées par profil, pour les accordéons.
   const hybridByProfile = new Map<string, { classId: string; name: string; groups: FeatureGroup[] }>();
@@ -759,6 +1002,8 @@ export function LevelUpDialog({
   const rolling = hitDieOnLevelUp && hpMode === 'rolled';
   // Le jet remplace la part « famille » ; la CON s'ajoute par-dessus (Option A, cf. ticket).
   const shownGain = rolling && rolledValid ? rolledNum + con : hpGain;
+  // Effet « roulette » (0 → gain) rejoué à chaque recalcul du gain affiché.
+  const animatedGain = useCountUp(shownGain);
   // Bloquant : « dé de vie » choisi sans résultat valide saisi.
   const rolledPending = rolling && !rolledValid;
 
@@ -951,60 +1196,85 @@ export function LevelUpDialog({
   return (
     <>
       <GlobalStyles styles={BORDER_ANGLE_STYLES} />
-      <Dialog open={open} onClose={close} maxWidth="sm" fullWidth fullScreen={fullScreen}>
-        <DialogTitle>Montée au niveau {newLevel}</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={3}>
-          <Box>
-            <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
+      <Dialog
+        open={open}
+        onClose={close}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={fullScreen}
+        slotProps={{
+          paper: {
+            sx: {
+              animation:
+                'levelUpDialogFadeIn 0.3s ease-out both, ' +
+                'levelUpDialogPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+              '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+            },
+          },
+        }}
+      >
+        <DialogTitle component="div">
+          <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
+            <Box
+              sx={(theme) => ({
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+                height: 36,
+                pl: 1.75,
+                pr: 1,
+                borderRadius: 1.5,
+                fontSize: '1rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                color: theme.palette.primary.main,
+                bgcolor: alpha(theme.palette.primary.main, 0.14),
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.45)}`,
+              })}
+            >
+              Niveau {character.level} →
+              <LevelBadge level={newLevel} />
+              {/* Positionnées ici (et non sur toute la largeur de l'en-tête) : les
+                  pourcentages de `LevelUpEntranceStars` restent relatifs à ce petit
+                  pilule, pas à toute la largeur de la modale (sinon débord = scrollbar
+                  horizontale parasite). */}
+              <LevelUpEntranceStars />
+            </Box>
+            {shownGain !== null && (
               <Box
-                sx={(theme) => ({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  height: 36,
-                  px: 1.75,
-                  borderRadius: 1.5,
-                  fontSize: '1rem',
-                  fontWeight: 700,
-                  whiteSpace: 'nowrap',
-                  color: theme.palette.primary.main,
-                  bgcolor: alpha(theme.palette.primary.main, 0.14),
-                  border: `1px solid ${alpha(theme.palette.primary.main, 0.45)}`,
-                })}
+                sx={(theme) => {
+                  const tone =
+                    rolling && rolledValid
+                      ? theme.palette.secondary.main
+                      : theme.palette.text.secondary;
+                  return {
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    height: 36,
+                    px: 1.75,
+                    borderRadius: 1.5,
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: tone,
+                    bgcolor: alpha(tone, 0.12),
+                    border: `1px solid ${alpha(tone, 0.4)}`,
+                  };
+                }}
               >
-                Niveau {character.level} → {newLevel}
+                +{animatedGain ?? 0} PV max
               </Box>
-              {shownGain !== null && (
-                <Box
-                  sx={(theme) => {
-                    const tone =
-                      rolling && rolledValid
-                        ? theme.palette.secondary.main
-                        : theme.palette.text.secondary;
-                    return {
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      height: 36,
-                      px: 1.75,
-                      borderRadius: 1.5,
-                      fontSize: '1rem',
-                      fontWeight: 700,
-                      whiteSpace: 'nowrap',
-                      color: tone,
-                      bgcolor: alpha(tone, 0.12),
-                      border: `1px solid ${alpha(tone, 0.4)}`,
-                    };
-                  }}
-                >
-                  +{shownGain} PV max
-                </Box>
-              )}
-            </Stack>
-
-            {/* Règle maison « dé de vie » (PER-87) : choix PV fixes / lancer le DR, avec
-                la saisie du jet À DROITE du choix pour gagner de la place. */}
-            {hitDieOnLevelUp && family && hitDie && (
-              <Box sx={{ mt: 1.5 }}>
+            )}
+          </Stack>
+        </DialogTitle>
+      <DialogContent dividers sx={{ overflowX: 'hidden' }}>
+        <Stack spacing={3}>
+          {/* Règle maison « dé de vie » (PER-87) : choix PV fixes / lancer le DR, avec
+              la saisie du jet À DROITE du choix pour gagner de la place. */}
+          {hitDieOnLevelUp && family && hitDie && (
+            <Box>
                 <Stack
                   direction="row"
                   spacing={1.5}
@@ -1074,7 +1344,6 @@ export function LevelUpDialog({
                 )}
               </Box>
             )}
-          </Box>
 
           <Box>
             {pendingDivine && divineAccessible && (
@@ -1105,86 +1374,115 @@ export function LevelUpDialog({
                   borderRadius: 1.5,
                   border: '2px solid transparent',
                   background: `linear-gradient(${theme.palette.background.paper}, ${theme.palette.background.paper}) padding-box, conic-gradient(from var(--pathBorderAngle), #ffffff, #6b7280, #ffffff) border-box`,
-                  animation: 'pathBorderRotate 30s linear infinite',
+                  transformOrigin: 'top',
+                  animation:
+                    'selectedFrameGrow 0.35s ease-out both, pathBorderRotate 30s linear infinite',
                   '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
                 })}
               >
                 <Typography
                   variant="overline"
                   color="text.secondary"
-                  sx={{ display: 'block', lineHeight: 1.4, mb: 0.5 }}
+                  sx={{
+                    display: 'block',
+                    lineHeight: 1.4,
+                    mb: 0.5,
+                    animation: 'selectedTitleFadeIn 0.3s ease-out 0.15s both',
+                    '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                  }}
                 >
                   Capacités sélectionnées
                 </Typography>
-                <Stack spacing={1}>
+                <Stack spacing={1.5}>
                     {pickedGroups.flatMap((group) => {
                       const color = pathColor(group.path);
-                      return group.features.map((feature) => (
-                        <Box key={feature.id}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            sx={{ alignItems: 'center', flexWrap: 'wrap' }}
-                          >
-                            <Chip label={`Rang ${feature.rank}`} size="small" variant="outlined" />
-                            <Chip
-                              label={`${featureCost(feature, progression)} pt${featureCost(feature, progression) > 1 ? 's' : ''}`}
-                              size="small"
-                            />
-                            {/* Capacité retenue mise en avant, teintée de la couleur de sa voie. */}
+                      return group.features.map((feature) => {
+                        const cost = featureCost(feature, progression);
+                        const reducedMotionOff = {
+                          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                        } as const;
+                        return (
+                          <Box key={feature.id}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.75 }}
+                            >
+                              <Chip
+                                label={`Rang ${feature.rank}`}
+                                size="small"
+                                variant="outlined"
+                                sx={{ animation: 'selectedRowFadeUp 0.3s ease-out both', ...reducedMotionOff }}
+                              />
+                              <Chip
+                                label={`${cost} pt${cost > 1 ? 's' : ''}`}
+                                size="small"
+                                sx={{
+                                  animation: 'selectedRowFadeUp 0.3s ease-out 0.1s both',
+                                  ...reducedMotionOff,
+                                }}
+                              />
+                            </Stack>
+                            {/* Même patron de carte que les capacités acquérables
+                                (`AvailablePathGroup`) — sans case à cocher : la sélection
+                                est déjà acquise ici, seule la corbeille la retire. */}
                             <Box
-                              component="span"
                               sx={{
-                                flexGrow: 1,
-                                display: 'inline-flex',
-                                alignItems: 'baseline',
-                                gap: 0.5,
-                                px: 1,
-                                py: 0.375,
-                                borderRadius: 1,
-                                border: 1,
-                                borderColor: color ?? 'divider',
-                                bgcolor: color ? alpha(color, 0.14) : 'action.hover',
+                                animation: 'selectedRowFadeUp 0.3s ease-out 0.2s both',
+                                ...reducedMotionOff,
                               }}
                             >
-                              <Box
-                                component="span"
-                                sx={{ color: 'text.secondary', fontSize: '0.72rem' }}
-                              >
-                                {group.path?.name ?? group.pathId} —
-                              </Box>
-                              <Box
-                                component="span"
-                                sx={{ color: color ?? 'text.primary', fontWeight: 700 }}
-                              >
-                                <FeatureLabel feature={feature} />
-                              </Box>
-                            </Box>
-                            <AppTooltip title="Retirer ce choix">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => remove(feature.id)}
-                              >
-                                <DeleteOutlineIcon fontSize="small" />
-                              </IconButton>
-                            </AppTooltip>
-                          </Stack>
-                          {/* Choix porté par la capacité : à résoudre (bloquant). Masqué tant
-                              qu'aucun choix n'est actionnable (ex. répétable sans palier). */}
-                          {hasActionableChoice(working, feature.id) && (
-                            <Box sx={{ mt: 1, pl: 1 }}>
-                              <FeatureChoiceField
-                                character={working}
-                                featureId={feature.id}
-                                mode="edit"
-                                blocking
-                                onChange={setChoice}
+                              <PathCard
+                                name={<DeclinedFeatureName feature={feature} />}
+                                nameAdornment={
+                                  <FeatureMarkerHexes
+                                    feature={feature}
+                                    color={color ?? undefined}
+                                    pathRank={feature.rank}
+                                    size={18}
+                                  />
+                                }
+                                term={feature.name}
+                                color={color ?? undefined}
+                                checked
+                                selectable={false}
+                                repeatFeatureName={false}
+                                rankLabel={`Rang ${feature.rank} — ${cost} point${cost > 1 ? 's' : ''}`}
+                                feature={feature}
+                                abilities={character.abilities}
+                                level={newLevel}
+                                endAdornment={
+                                  <AppTooltip title="Retirer ce choix">
+                                    <IconButton
+                                      size="small"
+                                      color="error"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        remove(feature.id);
+                                      }}
+                                    >
+                                      <DeleteOutlineIcon fontSize="small" />
+                                    </IconButton>
+                                  </AppTooltip>
+                                }
                               />
                             </Box>
-                          )}
-                        </Box>
-                      ));
+                            {/* Choix porté par la capacité : à résoudre (bloquant). Masqué tant
+                                qu'aucun choix n'est actionnable (ex. répétable sans palier). */}
+                            {hasActionableChoice(working, feature.id) && (
+                              <Box sx={{ mt: 1, pl: 1 }}>
+                                <FeatureChoiceField
+                                  character={working}
+                                  featureId={feature.id}
+                                  mode="edit"
+                                  blocking
+                                  onChange={setChoice}
+                                />
+                              </Box>
+                            )}
+                          </Box>
+                        );
+                      });
                     })}
                   </Stack>
               </Box>
