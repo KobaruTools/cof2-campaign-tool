@@ -2,8 +2,7 @@
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
+import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import Grid from '@mui/material/Grid';
 import InputLabel from '@mui/material/InputLabel';
@@ -19,6 +18,7 @@ import { modifierDeltas, lowestAbilities } from '@/lib/character/ancestry';
 import { distributeValueSet, valueSets } from './helpers';
 import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { AppAlert } from '@/components/AppAlert';
 import { SignedNumberField } from '@/components/SignedNumberField';
@@ -70,9 +70,14 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
           Reportez les valeurs déterminées à la table (saisie libre). Les séries du livre sont
           proposées comme point de départ.
         </Typography>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
           {valueSets.map((s) => (
-            <Button key={s.id} size="small" variant="outlined" onClick={() => applyValueSet(s.values)}>
+            <Button
+              key={s.id}
+              variant="outlined"
+              onClick={() => applyValueSet(s.values)}
+              sx={(theme) => ({ flex: 1, ...glassButtonSx(theme, 'info') })}
+            >
               {s.name} ({s.values.join(', ')})
             </Button>
           ))}
@@ -81,8 +86,9 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
 
       {/* Résolution des modificateurs de peuple à choix */}
       {ancestry.abilityModifiers.some((m) => m.abilities.length > 1) && (
-        <Card variant="outlined">
-          <CardContent>
+        <Box>
+          <Divider sx={{ mb: 2 }} />
+          <Box>
             <Typography variant="subtitle2" gutterBottom>
               Modificateurs de {ancestry.name}
             </Typography>
@@ -153,8 +159,9 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
                 );
               })}
             </Stack>
-          </CardContent>
-        </Card>
+          </Box>
+          <Divider sx={{ mt: 2 }} />
+        </Box>
       )}
 
       <Grid container spacing={2}>

@@ -52,7 +52,7 @@ import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { alpha, type Theme } from '@mui/material/styles';
+import { type Theme } from '@mui/material/styles';
 import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
@@ -73,6 +73,7 @@ import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBe
 import { HomeBackground } from '@/components/HomeBackground';
 import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIndicator';
 import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
+import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { usePersistedState } from '@/lib/ui/usePersistedState';
 import { customCreatureBlob } from '@/lib/session/customCreature';
@@ -90,26 +91,6 @@ import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
  * Gabarit de colonnes commun aux trois grilles (joueurs / alliés / adversaires) : 3
  * colonnes sur grand écran, palier tablette à 2, repli mobile à 1.
  */
-/**
- * Style « verre teinté » des boutons d'action de l'écran de MJ (Outils du MJ, Ajouter une
- * créature, Réinitialiser le combat) : fond translucide + flou d'arrière-plan, teinté par
- * la tonalité MUI (`info` = bleu, `error` = rouge). Remplace le simple `outlined`/`text`,
- * trop peu lisible sur le fond illustré de la page (`HomeBackground`).
- */
-function glassButtonSx(theme: Theme, tone: 'info' | 'error') {
-  return {
-    color: theme.palette[tone].light,
-    bgcolor: alpha(theme.palette[tone].main, 0.18),
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
-    border: `1px solid ${alpha(theme.palette[tone].main, 0.5)}`,
-    '&:hover': {
-      bgcolor: alpha(theme.palette[tone].main, 0.28),
-      borderColor: theme.palette[tone].light,
-    },
-  } as const;
-}
-
 /**
  * Hauteur de l'en-tête global (`AppHeader`, lui-même `position: sticky`) sous laquelle cale la barre
  * d'actions collée ci-dessous — même constante que celle redite par `ReferenceBrowser` pour empiler sa

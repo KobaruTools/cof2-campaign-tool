@@ -44,6 +44,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
 import { HomeBackground } from '@/components/HomeBackground';
+import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { insertPlayer } from '@/lib/player/repo';
 import { joinLinkUrl } from '@/lib/player/types';
 import { useCampaignsStore } from '@/stores/campaigns';
@@ -182,7 +183,12 @@ export default function CampaignCreatePage() {
 
   const navButtons = (
     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-      <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
+      <Button
+        variant="outlined"
+        disabled={step === 0}
+        onClick={() => setStep(step - 1)}
+        sx={(theme) => glassButtonSx(theme, 'info')}
+      >
         Précédent
       </Button>
       {isLast ? (

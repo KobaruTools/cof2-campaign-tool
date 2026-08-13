@@ -484,6 +484,7 @@ export function ClassStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
               <Typography variant="subtitle1" sx={{ color: classColor(characterClass.id) }}>
                 {classDisplayName(characterClass, firearmsAllowed)}
               </Typography>
+              <SourceRef page={characterClass.sourcePage} term={characterClass.name} />
             </Stack>
             <Box sx={{ mb: 1.5, pr: { xs: 13, sm: 17 } }}>
               <Typography
@@ -605,6 +606,7 @@ function PriestVocationPanel({ draft, patch }: StepProps) {
                   selectable={false}
                   defaultExpanded
                   feature={divineFeature}
+                  sourcePage={divinePath?.sourcePage}
                   rankLabel={`Rang ${divineFeature.rank} — capacité divine${
                     divineClass ? ` (${divineClass.name})` : ''
                   }`}
@@ -671,6 +673,7 @@ function PathCard({
   checked,
   disabled = false,
   feature,
+  sourcePage,
   rankLabel = 'Rang 1 — acquis gratuitement',
   note,
   control = 'checkbox',
@@ -686,6 +689,8 @@ function PathCard({
   checked: boolean;
   disabled?: boolean;
   feature?: Feature;
+  /** Page de la VOIE elle-même (pas du rang affiché) : renvoi affiché en haut à droite du bloc. */
+  sourcePage?: number | string;
   /** Libellé au-dessus de la capacité (ex. « Rang 1 — acquis gratuitement »). */
   rankLabel?: string;
   /** Précision en italique sous le libellé de rang (ex. règle de remplacement). */
@@ -755,6 +760,7 @@ function PathCard({
         >
           {name}
         </Typography>
+        {sourcePage != null && <SourceRef page={sourcePage} term={name} />}
         {classId ? (
           <ClassIcon classId={classId} size={20} sx={{ color, flexShrink: 0 }} />
         ) : (
@@ -909,6 +915,7 @@ export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
               checked={checked}
               disabled={disabled}
               feature={pathFeatureAtRank(vid, 1)}
+              sourcePage={path?.sourcePage}
               onToggle={() => togglePath(vid)}
             />
           </Grid>
@@ -1055,6 +1062,9 @@ export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
                     feature={
                       draft.ancestryPathId ? pathFeatureAtRank(draft.ancestryPathId, 1) : undefined
                     }
+                    sourcePage={
+                      draft.ancestryPathId ? pathById.get(draft.ancestryPathId)?.sourcePage : undefined
+                    }
                     rankLabel="Rang 1 — voie de peuple"
                     control="radio"
                     onToggle={() => {
@@ -1071,6 +1081,7 @@ export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
                     classId={characterClass.id}
                     checked={draft.magePathSlot}
                     feature={pathFeatureAtRank(MAGE_PATH_ID, 1)}
+                    sourcePage={pathById.get(MAGE_PATH_ID)?.sourcePage}
                     rankLabel="Rang 1 — remplace la voie de peuple"
                     note={<>Le rang 1 de la voie de peuple reste acquis <SourceRef page={60} />.</>}
                     control="radio"
@@ -1109,6 +1120,7 @@ export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
                             draft.mageBonus.pathId === vid
                           }
                           feature={pathFeatureAtRank(vid, 2)}
+                          sourcePage={path?.sourcePage}
                           rankLabel="Rang 2 — capacité supplémentaire"
                           control="radio"
                           onToggle={() => patch({ mageBonus: { type: 'class-rank2', pathId: vid } })}
@@ -1124,6 +1136,7 @@ export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
                         classId={characterClass.id}
                         checked={draft.mageBonus?.type === 'mage-rank2'}
                         feature={pathFeatureAtRank(MAGE_PATH_ID, 2)}
+                        sourcePage={pathById.get(MAGE_PATH_ID)?.sourcePage}
                         rankLabel="Rang 2 — capacité supplémentaire"
                         control="radio"
                         onToggle={() => patch({ mageBonus: { type: 'mage-rank2' } })}

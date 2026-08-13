@@ -13,6 +13,7 @@ import Stepper from '@mui/material/Stepper';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
+import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { ancestryById, classById, priestGods } from '@/data';
 import { choicesComplete } from '@/lib/character/ancestry';
 import { featuresWithUnmadeChoices } from '@/lib/character/choices';
@@ -260,7 +261,12 @@ export default function CreatePage() {
   // en bas de l'étape pour éviter d'avoir à faire défiler sur les longues étapes.
   const navButtons = (
     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-      <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
+      <Button
+        variant="outlined"
+        disabled={step === 0}
+        onClick={() => setStep(step - 1)}
+        sx={(theme) => glassButtonSx(theme, 'info')}
+      >
         Précédent
       </Button>
       {isLast ? (
