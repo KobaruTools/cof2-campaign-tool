@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per328-elfe-profondeurs-agi",
+  "name": "Recette PER-328 — Elfe des profondeurs (AGI, voie complète)",
+  "identity": {
+    "description": "ATTENDU (voie r1→r5) : caracs +1 AGI (choix)/−1 FOR + r5 → AGI 4, VOL 2, FOR 1 ; r1 → interrupteur « Dans le noir complet ou la pénombre » (+3 Init., 13 ON / 10 OFF) ; r2 → 2 emprunts feature-from-path (rang 1 = Ténèbres/sombre-magie-r1, rang 2 débloqué au rang 4 = sombre-magie-r2) ; r3 → capacité Droite - gauche octroyée ; r4 → puce critique 19-20 sur l’arbalète légère portée."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-des-profondeurs",
+  "classId": "guerrier",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 0,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 0,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-des-profondeurs",
+  "featureIds": [
+    "elfe-des-profondeurs-r1",
+    "elfe-des-profondeurs-r2",
+    "elfe-des-profondeurs-r3",
+    "elfe-des-profondeurs-r4",
+    "elfe-des-profondeurs-r5"
+  ],
+  "featureChoices": {
+    "elfe-des-profondeurs-r2": [
+      "sombre-magie-r1",
+      "sombre-magie-r2"
+    ]
+  },
+  "effectToggles": {
+    "elfe-des-profondeurs-r1": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arbalete-legere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-328 — recette voie complète elfe des profondeurs (choix AGI, emprunts sombre-magie r1+r2).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

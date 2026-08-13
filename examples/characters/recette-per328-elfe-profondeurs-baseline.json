@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per328-elfe-profondeurs-baseline",
+  "name": "Recette PER-328 — Elfe des profondeurs (contrôle négatif, aucun rang)",
+  "identity": {
+    "description": "CONTRÔLE NÉGATIF : elfe des profondeurs SANS voie de peuple. ATTENDU : aucun octroi (pas de Droite - gauche), aucune puce critique élargi sur l’arbalète, aucun interrupteur d’Init."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-des-profondeurs",
+  "classId": "guerrier",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 0,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 0,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": null,
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arbalete-legere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-328 — contrôle négatif (aucun rang de voie).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
