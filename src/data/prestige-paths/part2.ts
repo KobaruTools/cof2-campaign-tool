@@ -3572,8 +3572,30 @@ export const prestigeFeatures2: Feature[] = [
     pathId: 'prestige-armure-sacree',
     rank: 4,
     isSpell: false,
-    actionTypes: [],
+    // PER-370 : le déploiement de l'armure est explicitement une action de MOUVEMENT (« sur un simple
+    // mot de commande », verbatim ci-dessous) — hexagone (M) même si le nom de la capacité ne le dit pas.
+    actionTypes: ['M'],
     text:
+      "Le personnage acquiert son armure de bronze. Celle-ci se présente sous la forme d'un cube de métal d'environ 50 cm d'arête pour 10 kg, portant son symbole. Sur un simple mot de commande (action de mouvement), l'armure se déploie et recouvre son corps. L'armure confère une RD égale à 3 et n'inflige aucune pénalité d'encombrement.",
+    // PER-137/PER-370 : RD −3 sur tous les DM. Les 3 rangs SE REMPLACENT (patron Grand félin,
+    // `replacesFeatures` sur r6/r8) : jamais de cumul, seule la version la plus haute possédée compte.
+    // EN PLUS (retour propriétaire 2026-08-14) : interrupteur « déployée/rangée » propre à CE rang — la
+    // RD ne suit le toggle QUE si le rang n'est pas déjà supplanté par une version supérieure (une
+    // capacité remplacée est grisée + son interrupteur rendu non-interactif, `disabledFeatureReasons`) ;
+    // pour le rang le plus haut possédé, elle reflète si l'armure est effectivement portée ou rangée.
+    damageReduction: { kind: 'flat', value: 3 },
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Armure de bronze déployée', activeByDefault: true },
+        // Hygiène d'état (retour propriétaire 2026-08-14) : en plus du grisage structurel
+        // (`replacesFeatures`), l'activation d'un AUTRE rang éteint explicitement CE toggle — évite
+        // qu'un état ON obsolète ne traîne dans `effectToggles` derrière le grisage.
+        mutuallyExclusiveWith: ['prestige-armure-sacree-r6', 'prestige-armure-sacree-r8'],
+      },
+    ],
+    richText:
       "Le personnage acquiert son armure de bronze. Celle-ci se présente sous la forme d'un cube de métal d'environ 50 cm d'arête pour 10 kg, portant son symbole. Sur un simple mot de commande (action de mouvement), l'armure se déploie et recouvre son corps. L'armure confère une RD égale à 3 et n'inflige aucune pénalité d'encombrement.",
     sourcePage: 166,
   },
@@ -3586,6 +3608,21 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage associe à son armure un sort de son choix de rang 1 à 4 de n'importe quelle voie. Il peut utiliser ce sort plus souvent s'il est moins puissant :\n- Rang 1, 4 fois par combat ;\n- Rang 2, 3 fois par combat ;\n- Rang 3, 2 fois par combat ;\n- Rang 4, 1 fois par combat.",
+    // PER-370 : choix d'un sort de rang 1 à 4 de N'IMPORTE QUELLE voie (aucune restriction de profil/
+    // famille) — patron `feature-from-path` déjà existant (`spellsOnly`, sans `classIds`/`pathIds`/
+    // `familyScope`). Compteur d'usage variable selon le rang choisi : moteur `armureSacreeMinorPowerUsageMax`
+    // (effects.ts), affiché en compteur synthétique par-combat sur la carte, sans coût en mana (arbitrage
+    // propriétaire 2026-08-13, même traitement que le sort appris du familier PER-74).
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Sort associé à l’armure (rang 1 à 4, n’importe quelle voie)',
+        allowedRanks: [1, 2, 3, 4],
+        spellsOnly: true,
+      },
+    ],
+    richText:
+      "Le personnage associe à son armure un sort de son choix de rang 1 à 4 de n'importe quelle voie. Il peut utiliser ce sort plus souvent s'il est moins puissant :\n- Rang 1, 4 fois par combat ;\n- Rang 2, 3 fois par combat ;\n- Rang 3, 2 fois par combat ;\n- Rang 4, 1 fois par combat.",
     sourcePage: 166,
   },
   {
@@ -3594,11 +3631,24 @@ export const prestigeFeatures2: Feature[] = [
     pathId: 'prestige-armure-sacree',
     rank: 6,
     isSpell: false,
-    actionTypes: [],
+    // PER-370 : même déploiement (M) que r4/r8 — l'armure d'argent reste la MÊME armure, déployée
+    // sur le même mot de commande.
+    actionTypes: ['M'],
     text: "L'armure acquiert la couleur de l'argent. Elle octroie une RD 5.",
-    // PER-137 : RD −5 sur tous les DM, octroyée par l'armure sacrée propre à la voie (toujours portée
-    // par définition du personnage de prestige) → traitée comme permanente.
+    // PER-137/PER-370 : RD −5. Remplacement INCONDITIONNEL (patron Grand félin) : supplante l'armure de
+    // bronze (r4) dès son acquisition — pas de cumul de RD. Interrupteur « déployée/rangée » propre
+    // (retour propriétaire 2026-08-14), sans effet tant qu'une version supérieure (r8) la remplace à son tour.
     damageReduction: { kind: 'flat', value: 5 },
+    replacesFeatures: ['prestige-armure-sacree-r4'],
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: "Armure d'argent déployée", activeByDefault: true },
+        mutuallyExclusiveWith: ['prestige-armure-sacree-r4', 'prestige-armure-sacree-r8'],
+      },
+    ],
+    richText: "L'armure acquiert la couleur de l'argent. Elle octroie une RD 5.",
     sourcePage: 166,
   },
   {
@@ -3610,6 +3660,22 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage associe à son armure un sort de son choix de rang 5 à 7 de n'importe quelle voie. Il peut utiliser ce sort plus souvent s'il est moins puissant, mais dans tous les cas pas plus d'une fois par combat :\n- Rang 5, 3 fois par jour ;\n- Rang 6, 2 fois par jour ;\n- Rang 7, 1 fois par jour.",
+    // PER-370 : même patron que r5 (choix + compteur variable selon rang), pool QUOTIDIEN cette fois
+    // (`armureSacreeMajorPowerUsageMax`). Le plafond « pas plus d'une fois par combat » reste DESCRIPTIF
+    // dans le texte, non appliqué par le moteur (arbitrage propriétaire 2026-08-13 : pool quotidien seul).
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Sort associé à l’armure (rang 5 à 7, n’importe quelle voie)',
+        allowedRanks: [5, 6, 7],
+        spellsOnly: true,
+        // PER-370 : les rangs 6/7 n'existent que dans des voies de PRESTIGE (voies de profil
+        // plafonnées à 5) — domaine étendu pour que « n'importe quelle voie » soit respecté.
+        includePrestigePaths: true,
+      },
+    ],
+    richText:
+      "Le personnage associe à son armure un sort de son choix de rang 5 à 7 de n'importe quelle voie. Il peut utiliser ce sort plus souvent s'il est moins puissant, mais dans tous les cas pas plus d'une fois par combat :\n- Rang 5, 3 fois par jour ;\n- Rang 6, 2 fois par jour ;\n- Rang 7, 1 fois par jour.",
     sourcePage: 166,
   },
   {
@@ -3618,10 +3684,23 @@ export const prestigeFeatures2: Feature[] = [
     pathId: 'prestige-armure-sacree',
     rank: 8,
     isSpell: false,
-    actionTypes: [],
+    // PER-370 : même déploiement (M) que r4/r6.
+    actionTypes: ['M'],
     text: "L'armure acquiert la couleur de l'or et elle octroie une RD 7.",
-    // PER-137 : RD −7 sur tous les DM (armure sacrée de la voie, toujours portée) → permanente.
+    // PER-137/PER-370 : RD −7. Remplacement INCONDITIONNEL (patron Grand félin) : supplante le bronze
+    // (r4) ET l'argent (r6) dès son acquisition. Interrupteur « déployée/rangée » propre (retour
+    // propriétaire 2026-08-14) — au sommet de la voie, c'est TOUJOURS lui qui décide si la RD compte.
     damageReduction: { kind: 'flat', value: 7 },
+    replacesFeatures: ['prestige-armure-sacree-r4', 'prestige-armure-sacree-r6'],
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: "Armure d'or déployée", activeByDefault: true },
+        mutuallyExclusiveWith: ['prestige-armure-sacree-r4', 'prestige-armure-sacree-r6'],
+      },
+    ],
+    richText: "L'armure acquiert la couleur de l'or et elle octroie une RD 7.",
     sourcePage: 167,
   },
 

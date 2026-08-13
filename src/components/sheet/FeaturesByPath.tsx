@@ -87,6 +87,13 @@ import {
   demiElfeFeyBloodUsageMax,
   DEMI_ELFE_FEY_BLOOD_HOST,
   DEMI_ELFE_FEY_BLOOD_USAGE_KEY,
+  armureSacreeMinorPowerUsageMax,
+  ARMURE_SACREE_MINOR_POWER_HOST,
+  ARMURE_SACREE_MINOR_POWER_USAGE_KEY,
+  armureSacreeMajorPowerUsageMax,
+  ARMURE_SACREE_MAJOR_POWER_HOST,
+  ARMURE_SACREE_MAJOR_POWER_USAGE_KEY,
+  mysticBorrowedSpellSubstitutions,
   shortRestLockKey,
   usageCounterMaximum,
   isUsageCounterHidden,
@@ -569,6 +576,7 @@ function BorrowedFeatureBlock({
   actionTypesOverride,
   suppressTextMarker,
   suppressedBonusNote,
+  abilitySubstitutions,
 }: {
   feature: Feature;
   /**
@@ -645,6 +653,12 @@ function BorrowedFeatureBlock({
    * Absent = types natifs inchangés.
    */
   actionTypesOverride?: ActionType[];
+  /**
+   * PER-370 — substitutions de caractéristique appliquées au rendu des formules de cette capacité
+   * empruntée (voies de mystique : le sort associé se lance TOUJOURS avec la carac de la voie hôte,
+   * cf. `mysticBorrowedSpellSubstitutions`). Absent = rendu normal (carac d'origine du sort).
+   */
+  abilitySubstitutions?: AbilitySubstitution[];
 }) {
   const path = pathById.get(feature.pathId);
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
@@ -744,7 +758,7 @@ function BorrowedFeatureBlock({
             };
             return (
               <>
-                <FeatureText feature={headFeature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} />
+                <FeatureText feature={headFeature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} abilitySubstitutions={abilitySubstitutions} />
                 <Typography
                   variant="body2"
                   component="div"
@@ -761,7 +775,7 @@ function BorrowedFeatureBlock({
             );
           })()
         ) : (
-          <FeatureText feature={feature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} />
+          <FeatureText feature={feature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} abilitySubstitutions={abilitySubstitutions} />
         )}
       </Box>
       {/* PER-324 — notice de sort emprunté FOURNIE par l'appelant (« Sang féerique ») : remplace les
@@ -3074,6 +3088,41 @@ function PathBlock({
     };
   };
 
+  /**
+   * PER-370 — compteur d'usage SYNTHÉTIQUE du sort associé à l'armure sacrée au rang 5 « Pouvoir
+   * unique » (« il peut utiliser ce sort 4/3/2/1 fois par combat selon le rang choisi », p. 166). Porté
+   * par la capacité hôte (r5), clé dédiée, rechargé à chaque combat. `undefined` si ce n'est pas le r5
+   * ou si aucun sort n'a encore été choisi.
+   */
+  const synthArmorMinorPowerCounter = (feature: Feature): UsageCounter | undefined => {
+    if (feature.id !== ARMURE_SACREE_MINOR_POWER_HOST || !character) return undefined;
+    const max = armureSacreeMinorPowerUsageMax(character);
+    if (max === undefined) return undefined;
+    return {
+      max,
+      sharedKey: ARMURE_SACREE_MINOR_POWER_USAGE_KEY,
+      resetOn: 'combat',
+      label: 'Usages restants (par combat)',
+    };
+  };
+
+  /**
+   * PER-370 — compteur d'usage SYNTHÉTIQUE du sort associé à l'armure sacrée au rang 7 « Pouvoir
+   * puissant » (« il peut utiliser ce sort 3/2/1 fois par jour selon le rang choisi », p. 166). Même
+   * patron que le r5 mais pool QUOTIDIEN.
+   */
+  const synthArmorMajorPowerCounter = (feature: Feature): UsageCounter | undefined => {
+    if (feature.id !== ARMURE_SACREE_MAJOR_POWER_HOST || !character) return undefined;
+    const max = armureSacreeMajorPowerUsageMax(character);
+    if (max === undefined) return undefined;
+    return {
+      max,
+      sharedKey: ARMURE_SACREE_MAJOR_POWER_USAGE_KEY,
+      resetOn: 'day',
+      label: 'Usages restants (par jour)',
+    };
+  };
+
   /** Message « inutilisable avec l'armure portée » de la capacité (`null` si non gênée). */
   const armorRestrictedMessage = (feature: Feature): string | null =>
     armorRestrictedReasons?.get(feature.id) ?? null;
@@ -3453,7 +3502,10 @@ function PathBlock({
                 staffGrantedPrimary ||
                 // PER-324 : « Sang féerique » — goutte de PM masquée seulement pour un NON-lanceur
                 // (incantations gratuites sans PM) ; un LANCEUR voit le coût (rang du sort) pour payer.
-                (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)))
+                (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)) ||
+                // PER-370 : sort associé à l'armure sacrée (r5/r7) — conféré sans coût en mana.
+                feature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
+                feature.id === ARMURE_SACREE_MAJOR_POWER_HOST)
             ) && (
               <SpellManaBadge
                 feature={ghostShipManaCostFeature(character, borrowed ?? feature)}
@@ -3571,6 +3623,15 @@ function PathBlock({
                 feature={borrowed}
                 character={character}
                 counterOverride={synthFeyBloodCounter(feature)}
+              />
+            )}
+            {/* PER-370 : compteur d'usage du sort associé à l'armure sacrée (r5/r7), en pastille
+                compacte sur la carte de l'emprunt en mode COLONNE — édition dans la modale. */}
+            {borrowed && character && (synthArmorMinorPowerCounter(feature) || synthArmorMajorPowerCounter(feature)) && (
+              <CompactUsageIndicator
+                feature={borrowed}
+                character={character}
+                counterOverride={synthArmorMinorPowerCounter(feature) ?? synthArmorMajorPowerCounter(feature)}
               />
             )}
             {feature.inflictableStates && character && (
@@ -4171,7 +4232,15 @@ function PathBlock({
                             dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                             armorRestricted={isArmorRestricted(borrowed)}
                             armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                            noMana={openFeature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana || (borrowedNoMana && !caster)}
+                            abilitySubstitutions={character ? mysticBorrowedSpellSubstitutions(character, openFeature.id, borrowed) : undefined}
+                            noMana={
+                              openFeature.id === FAMILIAR_LEARNED_SPELL_HOST ||
+                              staffGranted ||
+                              !!grant?.noMana ||
+                              (borrowedNoMana && !caster) ||
+                              openFeature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
+                              openFeature.id === ARMURE_SACREE_MAJOR_POWER_HOST
+                            }
                             noManaNote={
                               staffGranted ? (
                                 <>
@@ -4180,6 +4249,12 @@ function PathBlock({
                                 </>
                               ) : grant?.noMana ? (
                                 CAMBION_NO_MANA_NOTE
+                              ) : openFeature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
+                                openFeature.id === ARMURE_SACREE_MAJOR_POWER_HOST ? (
+                                <>
+                                  Sort associé à l’armure sacrée : utilisé sans dépenser de mana, dans la
+                                  limite du compteur ci-dessous (<SourceRef page={166} />).
+                                </>
                               ) : undefined
                             }
                             spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
@@ -4266,6 +4341,22 @@ function PathBlock({
                         character={character}
                         onSet={onSetUsageCounter}
                         counterOverride={learned}
+                      />
+                    </>
+                  ) : null;
+                })()}
+                {/* PER-370 : compteur d'usage du sort associé à l'armure sacrée (r5/r7), sous le bloc de
+                    l'emprunt — sans coût en mana. */}
+                {(() => {
+                  const armorPower = synthArmorMinorPowerCounter(openFeature) ?? synthArmorMajorPowerCounter(openFeature);
+                  return armorPower && character ? (
+                    <>
+                      <Divider sx={{ my: 1.5 }} />
+                      <UsageCounterField
+                        feature={openFeature}
+                        character={character}
+                        onSet={onSetUsageCounter}
+                        counterOverride={armorPower}
                       />
                     </>
                   ) : null;
@@ -4728,7 +4819,15 @@ function PathBlock({
                           dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                           armorRestricted={isArmorRestricted(borrowed)}
                           armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                          noMana={feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana || (borrowedNoMana && !caster)}
+                          abilitySubstitutions={character ? mysticBorrowedSpellSubstitutions(character, feature.id, borrowed) : undefined}
+                          noMana={
+                            feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
+                            staffGranted ||
+                            !!grant?.noMana ||
+                            (borrowedNoMana && !caster) ||
+                            feature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
+                            feature.id === ARMURE_SACREE_MAJOR_POWER_HOST
+                          }
                           noManaNote={
                             staffGranted ? (
                               <>
@@ -4737,6 +4836,12 @@ function PathBlock({
                               </>
                             ) : grant?.noMana ? (
                               CAMBION_NO_MANA_NOTE
+                            ) : feature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
+                              feature.id === ARMURE_SACREE_MAJOR_POWER_HOST ? (
+                              <>
+                                Sort associé à l’armure sacrée : utilisé sans dépenser de mana, dans la
+                                limite du compteur ci-dessous (<SourceRef page={166} />).
+                              </>
                             ) : undefined
                           }
                           spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
@@ -4806,6 +4911,22 @@ function PathBlock({
                       character={character}
                       onSet={onSetUsageCounter}
                       counterOverride={learned}
+                    />
+                  </>
+                ) : null;
+              })()}
+              {/* PER-370 : compteur d'usage du sort associé à l'armure sacrée (r5/r7), en vue liste sous
+                  le bloc de l'emprunt — sans coût en mana. */}
+              {(() => {
+                const armorPower = synthArmorMinorPowerCounter(feature) ?? synthArmorMajorPowerCounter(feature);
+                return armorPower && character ? (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <UsageCounterField
+                      feature={feature}
+                      character={character}
+                      onSet={onSetUsageCounter}
+                      counterOverride={armorPower}
                     />
                   </>
                 ) : null;

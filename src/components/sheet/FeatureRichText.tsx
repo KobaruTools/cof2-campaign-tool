@@ -1035,8 +1035,8 @@ function SubstitutionWarningPanel({
           Caractéristique remplacée
         </Box>
         <Box component="span" sx={{ display: 'block', mb: 0.5 }}>
-          {ABILITY_NAMES[to]} ({to}) remplace {ABILITY_NAMES[from]} ({from}) : le forgesort lance ce sort
-          avec sa caractéristique de magie.
+          {ABILITY_NAMES[to]} ({to}) remplace {ABILITY_NAMES[from]} ({from}) : ce sort est lancé avec la
+          caractéristique de magie du lanceur effectif.
         </Box>
         {derivation}
       </Box>

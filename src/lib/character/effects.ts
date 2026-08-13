@@ -3165,10 +3165,13 @@ export function damageReductionSources(character: Character): DamageReductionSou
   // de zone, Défense au bouclier) ne compte plus tant qu'aucun bouclier n'est porté. Cet agrégateur
   // lit `character` directement (hors `activeFeatureIdsForMods`), d'où le filtrage explicite ici.
   const shieldDisabled = shieldDisabledFeatureIds(character, rulesContext);
+  // PER-370 : capacité grisée par exclusion mutuelle OU remplacement inconditionnel (`replacesFeatures`,
+  // patron Grand félin/armure sacrée : l'armure d'argent supplante le bronze, sa RD cesse de compter).
+  const disabled = disabledFeatureIds(character);
   // Capacités acquises ET empruntées : une capacité empruntée fonctionne comme une capacité normale,
   // sa RD comprise (PER-73). Son rang se résout sur la VOIE A (cf. `borrowedHostPaths`).
   for (const id of effectiveFeatureIdsForMods(character)) {
-    if (shieldDisabled.has(id)) continue;
+    if (shieldDisabled.has(id) || disabled.has(id)) continue;
     const feature = featureById.get(id);
     if (!feature?.damageReduction) continue;
     const rankPathId = ctx.borrowedHostPaths?.get(id) ?? feature.pathId;

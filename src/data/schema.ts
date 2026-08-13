@@ -490,6 +490,15 @@ export interface PrestigePath extends PathBase {
   category: PrestigeCategory;
   /** Prérequis en texte verbatim (ex. voie de l'expert — p. 129). */
   prerequisites: string;
+  /**
+   * PER-370 — override RAW de la caractéristique de sort d'une voie de MYSTIQUE (p. 166 : « certaines
+   * voies utilisent la VOL ou la PER : cela est voulu et, dans ce cas, un prêtre aura l'obligation
+   * d'utiliser la caractéristique indiquée »). Verbatim de CETTE voie, remplace le CHA par défaut pour
+   * TOUTES les classes (y compris druide/moine, dont le repli structurel est déjà PER). Absent = règle
+   * générale (CHA, PER pour druide/moine). Sans effet hors `category: 'mystic'`. Résolu par
+   * `mysticSpellAbility` (effects.ts).
+   */
+  mysticSpellAbility?: 'PER' | 'VOL';
 }
 
 export type Path = ClassPath | AncestryPath | MagePath | PrestigePath;
@@ -2837,6 +2846,15 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    */
   spellsOnly?: boolean;
   /**
+   * Étend le domaine aux voies de PRESTIGE en plus des voies de profil (PER-370, armure sacrée r7
+   * « Pouvoir puissant » : sort de rang 5 à 7 « de n'importe quelle voie » — les voies de profil
+   * plafonnant à 5, les rangs 6-7 n'existent que dans des voies de prestige). Les voies de prestige
+   * ajoutées ne sont pas filtrées par `classIds`/`familyScope` (ces contraintes ne s'appliquent qu'aux
+   * voies de profil) ; la voie hôte reste exclue (`f.pathId !== hostPathId`, comme toujours). Absent =
+   * domaine restreint aux voies de profil (comportement historique). Résolu par `featuresInChoiceDomain`.
+   */
+  includePrestigePaths?: boolean;
+  /**
    * Le SORT emprunté par ce choix ne rapporte PAS le +1 PM d'un sort connu (PER-324, demi-elfe « Sang
    * féerique » : « il ne reçoit pas de PM pour ce sort »). Symétrique du `noMana` des octrois FIXES
    * (`grantedFeatures`, PER-323) mais porté par un choix `feature-from-path`. La capacité reste connue
@@ -3931,12 +3949,16 @@ export interface PoisonWeaponLoadout {
 /**
  * SUBSTITUTION de caractéristique (PER-163) : remplacer `from` par `to` dans les formules d'un sort
  * REPRODUIT/EMPRUNTÉ, quand le lanceur effectif utilise une autre caractéristique de magie (forgesort →
- * INT). Voir `Feature.reproducedAbilitySubstitutions`. La substitution n'est effective que si `to` est
- * strictement plus avantageuse ; elle est alors signalée à l'affichage.
+ * INT). Voir `Feature.reproducedAbilitySubstitutions`. Par défaut, la substitution n'est effective que
+ * si `to` est strictement plus avantageuse ; elle est alors signalée à l'affichage. `unconditional`
+ * (PER-370, voies de mystique, p. 166 : « les sorts des voies de mystique sont tous indexés sur le
+ * CHA ») FORCE la substitution quel que soit l'écart entre les deux caractéristiques — la règle n'est
+ * pas « la plus avantageuse », elle est impérative — et la marque de substitution reste affichée.
  */
 export interface AbilitySubstitution {
   from: AbilityId;
   to: AbilityId;
+  unconditional?: boolean;
 }
 
 /**

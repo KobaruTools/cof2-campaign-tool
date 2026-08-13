@@ -472,6 +472,14 @@ function featuresInChoiceDomain(
   }
 
   const hostPathId = featureById.get(hostFeatureId)?.pathId;
+  // PER-370 : voies de PRESTIGE ajoutées au domaine (armure sacrée r7 « Pouvoir puissant », rangs 6-7 —
+  // les voies de profil plafonnant à 5, ces rangs n'existent que là). Non filtrées par classIds/
+  // familyScope (réservés aux voies de profil) ; la voie hôte reste exclue par le filtre commun ci-dessous.
+  if (choice.includePrestigePaths) {
+    for (const path of paths) {
+      if (path.type === 'prestige' && path.id !== hostPathId) classPathIds.add(path.id);
+    }
+  }
   return [...featureById.values()]
     .filter(
       (f) =>

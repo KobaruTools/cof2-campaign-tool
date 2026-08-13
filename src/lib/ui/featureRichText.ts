@@ -746,17 +746,21 @@ export function withCoeff(base: string, coeff?: number): string {
 
 /**
  * Applique une éventuelle SUBSTITUTION de caractéristique (PER-163) à `ability` : s'il existe une
- * règle `from → to` pour cette carac ET que `to` est STRICTEMENT plus avantageuse (`abilities[to] >
- * abilities[from]`), retourne `to` marquée comme substituée ; sinon la carac d'origine sans marque.
- * Sert au forgesort qui reproduit un sort d'une autre voie en lançant avec son INT (Artefact étrange,
- * Élixirs majeurs) : la substitution n'a lieu que si elle est bénéfique, et reste signalée à l'affichage.
+ * règle `from → to` pour cette carac, retourne `to` marquée comme substituée ; sinon la carac d'origine
+ * sans marque. Par défaut la substitution n'a lieu que si `to` est STRICTEMENT plus avantageuse
+ * (`abilities[to] > abilities[from]`) — sert au forgesort qui reproduit un sort d'une autre voie en
+ * lançant avec son INT (Artefact étrange, Élixirs majeurs) seulement quand c'est bénéfique. `unconditional`
+ * (PER-370, voies de mystique) FORCE la substitution quel que soit l'écart. Dans les deux cas la
+ * substitution reste signalée à l'affichage.
  */
 function applyAbilitySubstitution(
   ability: AbilityId,
   abilities: Abilities,
   substitutions?: AbilitySubstitution[],
 ): { ability: AbilityId; substituted?: { from: AbilityId; to: AbilityId } } {
-  const sub = substitutions?.find((s) => s.from === ability && abilities[s.to] > abilities[ability]);
+  const sub = substitutions?.find(
+    (s) => s.from === ability && (s.unconditional || abilities[s.to] > abilities[ability]),
+  );
   return sub ? { ability: sub.to, substituted: { from: ability, to: sub.to } } : { ability };
 }
 
