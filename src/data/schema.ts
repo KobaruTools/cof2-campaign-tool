@@ -1531,6 +1531,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'imprisoned',
   'mind-controlled',
   'time-displaced',
+  'hypnotized',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1690,6 +1691,17 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Devient une image transparente, immatérielle et immobile, hors de portée, jusqu'à son retour (durée choisie par le lanceur, 1d4° minutes au maximum). Reprend consistance et son activité normale à la fin. Si un obstacle occupe sa position à son retour, elle réapparaît au plus près et subit des DM.",
     sourcePage: 164,
+  },
+  // « Motif hypnotique » (voie de la vision, r6, p. 165). Entièrement comportemental (cesse toute
+  // activité pour contempler, riposte si attaquée puis reprend sa contemplation) : NON réductible
+  // à Paralysé (qui interdit toute action, y compris riposter) ni à un autre état de base → mécanique
+  // PROPRE, admissible (PER-288). La difficulté [12 + INT], la durée d'INT min et le plafond de NC
+  // restent dans le verbatim/richText de la capacité source.
+  hypnotized: {
+    label: 'Hypnotisé',
+    effect:
+      "Cesse toute activité pour contempler intensément un motif hypnotique. Riposte si elle est attaquée, mais reprend immédiatement sa contemplation dès son adversaire vaincu ou en fuite.",
+    sourcePage: 165,
   },
 };
 

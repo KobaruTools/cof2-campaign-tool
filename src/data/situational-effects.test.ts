@@ -130,6 +130,16 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     expect(r3?.situationalEffectIds).toEqual(['burning']);
   });
 
+  it('« Hypnotisé » est catalogué (voie de la vision r6, p. 165) : comportemental pur, référencé', () => {
+    const entry = SITUATIONAL_EFFECTS['hypnotized'];
+    expect(entry.label).toBe('Hypnotisé');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(165);
+    expect(entry.modifiers).toBeUndefined();
+    const r6 = featureById.get('prestige-vision-r6');
+    expect(r6?.situationalEffectIds).toEqual(['hypnotized']);
+  });
+
   it('tout situationalEffectIds posé sur une capacité pointe une entrée connue du catalogue', () => {
     const known = new Set<string>(SITUATIONAL_EFFECT_IDS);
     for (const f of featureById.values()) {

@@ -3457,6 +3457,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage doit emporter un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de succès la cible est aveuglée (-5 en Init., Att et DEF, -10 en attaque à distance). La durée du sort est de 1d6 rounds si la cible est d'un NC inférieur au niveau personnage, sinon elle est d'un round seulement.",
+    // Rendu enrichi (PER-369, retour propriétaire) : durée {1d6} rounds ; parenthèse des malus
+    // chiffrés RETIRÉE (déjà couverte par l'info-bulle de l'état Aveuglé, StatusEffectChip).
+    richText:
+      "Le personnage doit emporter un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de succès la cible est aveuglée. La durée du sort est de {1d6} rounds si la cible est d'un NC inférieur au niveau personnage, sinon elle est d'un round seulement.",
     // PER-290 : inflige l'état Aveuglé mais sort RÉPÉTABLE (aucun cap « 1×/combat par état ») → PAS de
     // `inflictableStates` (réservé au toggle 1×/combat, patron spadassin-r5). Le nom d'état dans le
     // verbatim est déjà auto-glosé (StatusEffectChip, PER-208).
@@ -3471,6 +3475,27 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage détache son œil et l'envoie explorer son environnement. Il voit par cet œil et le déplace en volant de 10 m par action de mouvement pour une durée d'INT min. L'œil possède une DEF 20 et 1 PV. S'il est réduit à 0 PV, l'œil est détruit et le mage perd 1d6 PV (son œil repousse immédiatement).",
+    // Rendu enrichi (PER-369, retour propriétaire) : durée d'[#INT] min ; le contrecoup {1d6} PV.
+    // Le STATBLOCK (DEF 20, 1 PV) est RETIRÉ du richText (conservé dans `text` verbatim, patron
+    // PER-140 monture de chevalier, fighters.ts) et devient une mini-fiche `creatureProfile` —
+    // compagnon `summon` sans attaque (l'œil ne combat pas), avec interrupteur ON/OFF de présence
+    // (patron « Démon invoqué », mages.ts demon-r5).
+    richText:
+      "Le personnage détache son œil et l'envoie explorer son environnement. Il voit par cet œil et le déplace en volant de 10 m par action de mouvement pour une durée d'[#INT] min. S'il est réduit à 0 PV, l'œil est détruit et le mage perd {1d6} PV (son œil repousse immédiatement).",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Œil magique invoqué', activeByDefault: false },
+      },
+    ],
+    creatureProfile: {
+      name: 'Œil magique',
+      companionType: 'summon',
+      defense: '20',
+      hitPoints: '1',
+      note: 'Vole à 10 m par action de mouvement ; détruit à 0 PV (le mage perd alors 1d6 PV).',
+    },
     sourcePage: 165,
   },
   {
@@ -3482,6 +3507,15 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage crée dans le ciel un tableau coloré hypnotique dans lequel chacun voit une scène différente qui le touche au plus profond de son être. Chaque créature à portée (20 m) doit réussir un test d'INT difficulté [12 + INT du magicien] ou cesser ce qu'elle faisait pour regarder intensément le tableau. Elle ne prête plus du tout attention à son environnement, toutefois, si elle est attaquée, elle riposte bien qu'elle reprenne immédiatement sa contemplation dès son adversaire vaincu ou en fuite. Le sort a une durée d'INT min et il n'affecte que les créatures dont le NC est inférieur au rang atteint dans la voie.",
+    // Rendu enrichi (PER-369) : difficulté [12 + INT] (suffixe « du magicien » implicite, patron
+    // divination-r3) ; durée d'[#INT] min.
+    richText:
+      "Le personnage crée dans le ciel un tableau coloré hypnotique dans lequel chacun voit une scène différente qui le touche au plus profond de son être. Chaque créature à portée (20 m) doit réussir un test d'INT difficulté [12 + INT] ou cesser ce qu'elle faisait pour regarder intensément le tableau. Elle ne prête plus du tout attention à son environnement, toutefois, si elle est attaquée, elle riposte bien qu'elle reprenne immédiatement sa contemplation dès son adversaire vaincu ou en fuite. Le sort a une durée d'[#INT] min et il n'affecte que les créatures dont le NC est inférieur au rang atteint dans la voie.",
+    // Effet situationnel (PER-369, retour propriétaire) : la « contemplation » (cesse toute
+    // activité, riposte si attaquée puis reprend) n'est réductible à AUCUN des 10 états de base
+    // (ni Paralysé ni Étourdi, qui interdisent la riposte) → mécanique PROPRE, admissible PER-288.
+    // Nouvelle entrée catalogue `hypnotized` (schema.ts), suivie au Combat Tracker du MJ.
+    situationalEffectIds: ['hypnotized'],
     sourcePage: 165,
   },
   {
@@ -3493,6 +3527,20 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Pendant INT min, le personnage voit à travers les illusions et les déguisements, même magiques, comme s'ils n'existaient pas. Il voit aussi les créatures invisibles. Au prix d'une action de mouvement, il peut se concentrer sur l'aura d'une créature à moins de 20 m, et s'il réussit un test opposé d'attaque magique, il apprend son niveau approximatif, ses PV et ses pouvoirs particuliers.",
+    // Rendu enrichi (PER-369) : durée Pendant [=INT] min (patron divination-r2, « Pendant CHA
+    // minutes »). Détection passive pure, aucun bonus chiffré à part le sort opposé lui-même.
+    richText:
+      "Pendant [=INT] min, le personnage voit à travers les illusions et les déguisements, même magiques, comme s'ils n'existaient pas. Il voit aussi les créatures invisibles. Au prix d'une action de mouvement, il peut se concentrer sur l'aura d'une créature à moins de 20 m, et s'il réussit un test opposé d'attaque magique, il apprend son niveau approximatif, ses PV et ses pouvoirs particuliers.",
+    // Interrupteur INDICATIF (PER-369, retour propriétaire) : aucun bonus chiffré (la détection
+    // n'affecte aucune stat), juste un marqueur on/off pour suivre si le sort est actif (patron
+    // « Démon invoqué »/« Masque mortuaire actif », mages.ts).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Vision de la vérité active', activeByDefault: false },
+      },
+    ],
     sourcePage: 165,
   },
   {
@@ -3504,6 +3552,16 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Au choix, le personnage peut lancer invisibilité (rang 3 de la voie de la magie universelle) sur lui-même plus un nombre d'alliés égal à son INT (durée [1d4° + INT] minutes) ou il lance invisibilité supérieure seulement sur lui-même. Dans ce cas, il reste invisible même s'il utilise des actions offensives, mais la durée est exprimée en rounds. Ses adversaires l'attaquent comme s'ils étaient aveuglés (-5 en Att et en DEF, -10 aux attaques à distance, ne peut être ciblé par les sorts).",
+    // Rendu enrichi (PER-369, retour propriétaire) : référence de capacité
+    // [&magie-universelle-r3|invisibilité] (patron [&magie-universelle-r5|Téléportation], mages.ts)
+    // au lieu de redéfinir le sort de rang 3 — reproduit sans que le sort soit réellement acquis,
+    // donc `referencedFeatures` (accordéon). « égal à son INT » → [INT] (encadré de formule résolu,
+    // patron « une FOR égale au [CHA] de l'ensorceleur », Serviteur invisible). Parenthèse des
+    // malus chiffrés après « aveuglés » RETIRÉE (même retour que r4, déjà couverte par l'info-bulle
+    // de l'état Aveuglé).
+    richText:
+      "Au choix, le personnage peut lancer [&magie-universelle-r3|invisibilité] sur lui-même plus un nombre d'alliés égal à son [INT] (durée [1d4° + INT] minutes) ou il lance invisibilité supérieure seulement sur lui-même. Dans ce cas, il reste invisible même s'il utilise des actions offensives, mais la durée est exprimée en rounds. Ses adversaires l'attaquent comme s'ils étaient aveuglés.",
+    referencedFeatures: ['magie-universelle-r3'],
     sourcePage: 165,
   },
 

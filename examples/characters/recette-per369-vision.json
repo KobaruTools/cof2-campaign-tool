@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per369-vision",
+  "name": "Recette PER-369 — Magicien (voie de la vision)",
+  "identity": {
+    "description": "ATTENDU : magicien niveau 13 avec la voie de la magie universelle (r1-r3, prérequis d'accès) ET la voie de prestige de la vision (r4→r8) acquise. Vérifier sur la fiche (onglet Voies/Capacités) : Cécité (durée 1d6 rounds, SANS la parenthèse de malus chiffrés) ; Œil magique (compagnon 'summon' DEF 20/1 PV avec toggle ON/OFF « Œil magique invoqué ») ; Motif hypnotique (difficulté 12+INT, durée INT min, badge d'état 'Hypnotisé' disponible côté écran MJ) ; Vision de la vérité (toggle ON/OFF indicatif « Vision de la vérité active ») ; Invisibilité supérieure (INT affiché en encadré de formule résolu, renvoi cliquable vers Invisibilité rang 3 de la magie universelle dépliable en accordéon, SANS la parenthèse de malus chiffrés après « aveuglés »)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 13,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "magie-universelle-r1",
+    "magie-universelle-r2",
+    "magie-universelle-r3",
+    "prestige-vision-r4",
+    "prestige-vision-r5",
+    "prestige-vision-r6",
+    "prestige-vision-r7",
+    "prestige-vision-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-369 — voie de la vision (p. 165), recette des 5 rangs.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
