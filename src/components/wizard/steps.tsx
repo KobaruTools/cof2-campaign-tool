@@ -13,14 +13,11 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Checkbox from '@mui/material/Checkbox';
-import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import Grid from '@mui/material/Grid';
-import IconButton from '@mui/material/IconButton';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';
@@ -63,13 +60,12 @@ import {
   reskinnedItemName,
 } from '@/lib/character/classDisplay';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
-import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { initialEquipment } from './helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { AbilityBadgeList } from '@/components/AbilityBadge';
 import { SourceRef } from '@/components/SourceRef';
 import { ClassIcon } from '@/components/ClassIcon';
-import { AncestryIcon } from '@/components/AncestryIcon';
+import { PathCard } from '@/components/PathCard';
 import { DamageValue } from '@/components/DamageValue';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { isFirearmItem } from '@/lib/character/firearms';
@@ -665,169 +661,6 @@ function pathFeatureAtRank(pathId: string, rank: number): Feature | undefined {
  * `control` choisit l'indicateur : case à cocher pour les voies (multi-sélection),
  * bouton radio pour les choix exclusifs des options de mage.
  */
-function PathCard({
-  name,
-  color = '#90a4ae',
-  classId,
-  ancestryId,
-  checked,
-  disabled = false,
-  feature,
-  sourcePage,
-  rankLabel = 'Rang 1 — acquis gratuitement',
-  note,
-  control = 'checkbox',
-  selectable = true,
-  defaultExpanded = false,
-  onToggle,
-}: {
-  name: string;
-  color?: string;
-  classId?: string;
-  /** Voie de peuple : id pour l'icône neutre (à défaut de `classId`/teinte de profil). */
-  ancestryId?: string;
-  checked: boolean;
-  disabled?: boolean;
-  feature?: Feature;
-  /** Page de la VOIE elle-même (pas du rang affiché) : renvoi affiché en haut à droite du bloc. */
-  sourcePage?: number | string;
-  /** Libellé au-dessus de la capacité (ex. « Rang 1 — acquis gratuitement »). */
-  rankLabel?: string;
-  /** Précision en italique sous le libellé de rang (ex. règle de remplacement). */
-  note?: React.ReactNode;
-  control?: 'checkbox' | 'radio';
-  /**
-   * Carte sélectionnable (défaut) : indicateur visible, le clic (dé)sélectionne.
-   * `false` → affichage seul (pas d'indicateur) : le clic plie/déplie le détail,
-   * utile pour présenter une capacité figée (ex. capacité divine du prêtre).
-   */
-  selectable?: boolean;
-  /** Détail déplié dès le montage (ex. pour aider à décider). */
-  defaultExpanded?: boolean;
-  onToggle?: () => void;
-}) {
-  const ControlComp = control === 'radio' ? Radio : Checkbox;
-  // Détail repliable (texte verbatim de la capacité), replié par défaut — pas de
-  // persistance, c'est uniquement un confort de lecture dans le créateur (PER).
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  return (
-    <Box
-      onClick={() => {
-        if (disabled) return;
-        if (selectable) onToggle?.();
-        else setExpanded((v) => !v);
-      }}
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        border: 2,
-        borderColor: checked ? color : 'divider',
-        borderRadius: 1,
-        bgcolor: checked ? alpha(color, 0.06) : 'transparent',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        transition: 'border-color .15s, background-color .15s',
-        '&:hover': disabled
-          ? undefined
-          : {
-              borderColor: checked ? color : alpha(color, 0.5),
-              bgcolor: checked ? alpha(color, 0.1) : alpha(color, 0.03),
-            },
-      }}
-    >
-      {/* En-tête : indicateur + nom (coloré quand sélectionné) + icône de profil + chevron. */}
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', p: 1 }}>
-        {selectable && (
-          <ControlComp
-            checked={checked}
-            disabled={disabled}
-            size="small"
-            onClick={(e) => e.stopPropagation()}
-            onChange={() => onToggle?.()}
-            sx={{ p: 0.5, color, '&.Mui-checked': { color } }}
-          />
-        )}
-        <Typography
-          variant="subtitle2"
-          sx={{
-            fontWeight: 700,
-            color: checked ? color : 'text.primary',
-            flexGrow: 1,
-            lineHeight: 1.2,
-            wordBreak: 'break-word',
-          }}
-        >
-          {name}
-        </Typography>
-        {sourcePage != null && <SourceRef page={sourcePage} term={name} />}
-        {classId ? (
-          <ClassIcon classId={classId} size={20} sx={{ color, flexShrink: 0 }} />
-        ) : (
-          ancestryId && (
-            <AncestryIcon ancestryId={ancestryId} size={20} sx={{ color: 'text.secondary', flexShrink: 0 }} />
-          )
-        )}
-        {/* Chevron de repli (indépendant de la sélection) : ouvre/ferme le détail. */}
-        <IconButton
-          size="small"
-          aria-label={expanded ? 'Replier le détail' : 'Déplier le détail'}
-          aria-expanded={expanded}
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpanded((v) => !v);
-          }}
-          sx={{ flexShrink: 0 }}
-        >
-          <ExpandMoreIcon
-            fontSize="small"
-            sx={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}
-          />
-        </IconButton>
-      </Stack>
-
-      {/* Corps repliable : capacité concernée + son texte verbatim. */}
-      <Collapse in={expanded} unmountOnExit>
-        <Box sx={{ p: 1, borderTop: 1, borderColor: 'divider' }} onClick={(e) => e.stopPropagation()}>
-          {feature ? (
-            <>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mb: note ? 0 : 0.25 }}
-              >
-                {rankLabel}
-              </Typography>
-              {note && (
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: 'block', mb: 0.25, fontStyle: 'italic' }}
-                >
-                  {note}
-                </Typography>
-              )}
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                <FeatureLabel feature={feature} />
-              </Typography>
-              <FeatureText feature={feature} />
-              {/* Renvoi cliquable vers la page du rang dans le livre (PER-246). Le nom de la
-                  capacité sert de terme à cibler/surligner dans le visualiseur (PER-59/61). */}
-              <Box sx={{ mt: 1 }}>
-                <SourceRef page={feature.sourcePage} term={feature.name} />
-              </Box>
-            </>
-          ) : (
-            <Typography variant="caption" color="text.secondary">
-              Capacité indisponible.
-            </Typography>
-          )}
-        </Box>
-      </Collapse>
-    </Box>
-  );
-}
-
 export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
   const characterClass = classById.get(draft.classId);
   if (!characterClass) return <AppAlert severity="warning">Choisissez d’abord un profil.</AppAlert>;

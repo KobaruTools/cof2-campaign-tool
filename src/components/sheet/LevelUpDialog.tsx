@@ -5,6 +5,8 @@ import AddIcon from '@mui/icons-material/Add';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -16,16 +18,13 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
-import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -33,6 +32,7 @@ import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { alpha, type Theme } from '@mui/material/styles';
 import { classById, families, featureById, pathById, progression } from '@/data';
+import { FAMILY_IDS } from '@/data/schema';
 import type { Family, Feature } from '@/data/schema';
 import { featureCost, maxHp, minLevelForRank } from '@/lib/engine';
 import { familyHpGains } from '@/lib/character/hp';
@@ -69,13 +69,17 @@ import {
   type PendingDivine,
 } from '@/lib/character/choices';
 import { classColor } from '@/lib/ui/classColors';
+import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { AppTooltip } from '@/components/AppTooltip';
+import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
-import { RichInline } from '@/components/sheet/FeatureRichText';
+import { RichInline, FeatureText } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureLabel } from '@/components/FeatureLabel';
+import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
+import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
 import { ClassIcon } from '@/components/ClassIcon';
 
 /**
@@ -137,6 +141,8 @@ function AvailablePathGroup({
   lockAll,
   skipped,
   onAdd,
+  abilities,
+  level,
 }: {
   group: FeatureGroup;
   /** Teinte de la voie (profil), ou null pour une voie neutre (peuple/prestige). */
@@ -155,6 +161,9 @@ function AvailablePathGroup({
    */
   skipped?: SkippedRank;
   onAdd: (featureId: string) => void;
+  /** Caractéristiques + niveau du personnage : pour l'enrichissement des descriptions (dés/formules). */
+  abilities: Character['abilities'];
+  level: number;
 }) {
   // Capacités acquérables + le rang sauté (grisé), intercalés dans l'ordre des rangs.
   const rows: { feature: Feature; kind: 'acquirable' | 'skipped' }[] = group.features.map(
@@ -167,58 +176,60 @@ function AvailablePathGroup({
 
   return (
     <Box>
-      <Typography
-        variant="subtitle2"
+      <Stack
+        direction="row"
+        spacing={0.5}
         sx={{
-          fontWeight: 600,
-          color: color ?? 'text.primary',
+          alignItems: 'center',
           borderLeft: 3,
           borderColor: color ?? 'divider',
           pl: 1.5,
           mb: 0.5,
         }}
       >
-        {group.path?.name ?? group.pathId}
-      </Typography>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: color ?? 'text.primary' }}>
+          {group.path?.name ?? group.pathId}
+        </Typography>
+        {group.path && (
+          <AppTooltip
+            title={
+              <Box sx={{ maxWidth: 320 }}>
+                {group.path.note && (
+                  <Box sx={{ whiteSpace: 'pre-line', mb: 0.75 }}>{group.path.note}</Box>
+                )}
+                <SourceRef page={group.path.sourcePage} />
+              </Box>
+            }
+          >
+            <InfoOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help', flexShrink: 0 }} />
+          </AppTooltip>
+        )}
+      </Stack>
       <Stack spacing={0.5}>
         {rows.map(({ feature, kind }) => {
           if (kind === 'skipped') {
             return (
-              <Box
+              <PathCard
                 key={feature.id}
-                sx={{
-                  border: 1,
-                  borderColor: 'divider',
-                  borderStyle: 'dashed',
-                  borderRadius: 1,
-                  px: 1.5,
-                  py: 1,
-                  opacity: 0.55,
-                  filter: 'grayscale(0.4)',
-                }}
-              >
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Chip
-                    label={`Rang ${feature.rank}`}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontWeight: 600 }}
-                  />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    <FeatureLabel feature={feature} />
-                  </Typography>
-                  <AppTooltip
-                    page={122}
-                    title={
-                      skipped?.hostPathName
-                        ? `Détenue via la capacité divine (logée dans « ${skipped.hostPathName} ») — rang sauté`
-                        : 'Détenue via la capacité divine — rang sauté'
-                    }
-                  >
-                    <Chip label="✦ Détenu (capacité divine) — rang sauté" size="small" />
-                  </AppTooltip>
-                </Stack>
-              </Box>
+                name={<DeclinedFeatureName feature={feature} />}
+                nameAdornment={
+                  <FeatureMarkerHexes feature={feature} color={color ?? undefined} pathRank={feature.rank} size={18} />
+                }
+                term={feature.name}
+                color={color ?? undefined}
+                checked={false}
+                selectable={false}
+                repeatFeatureName={false}
+                rankLabel={`Rang ${feature.rank} — détenu via la capacité divine`}
+                note={
+                  skipped?.hostPathName
+                    ? `Détenue via la capacité divine (logée dans « ${skipped.hostPathName} ») — rang sauté.`
+                    : 'Détenue via la capacité divine — rang sauté.'
+                }
+                feature={feature}
+                abilities={abilities}
+                level={level}
+              />
             );
           }
           const cost = featureCost(feature, progression);
@@ -226,82 +237,37 @@ function AvailablePathGroup({
           const locked = lockAll;
           const disabled = tooExpensive || locked;
           const afterSkip = !!skipped && feature.rank === skipped.rank + 1;
+          const disabledReason = locked
+            ? 'Capacité divine à choisir d’abord (priorité absolue)'
+            : tooExpensive
+              ? `Coût ${cost} points — il vous reste ${remaining} point${remaining > 1 ? 's' : ''}`
+              : '';
           return (
-            <Accordion
-              key={feature.id}
-              disableGutters
-              elevation={0}
-              sx={{
-                border: 1,
-                borderColor: 'divider',
-                bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
-                opacity: locked ? 0.5 : 1,
-                '&::before': { display: 'none' },
-              }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{ alignItems: 'center', flexWrap: 'wrap', flexGrow: 1 }}
-                >
-                  <Chip
-                    label={`Rang ${feature.rank}`}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontWeight: 600 }}
-                  />
-                  <Chip label={`${cost} point${cost > 1 ? 's' : ''}`} size="small" color="default" />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    <FeatureLabel feature={feature} />
-                  </Typography>
-                  {afterSkip && (
-                    <AppTooltip
-                      page={122}
-                      title={`Rang ${skipped!.rank} détenu via la capacité divine : ce rang est accessible directement (skip)`}
-                    >
-                      <Chip
-                        label={`Après saut du rang ${skipped!.rank}`}
-                        size="small"
-                        color="secondary"
-                        variant="outlined"
-                      />
-                    </AppTooltip>
-                  )}
-                </Stack>
-                <AppTooltip
-                  page={locked ? 122 : undefined}
-                  title={
-                    locked
-                      ? 'Capacité divine à choisir d’abord (priorité absolue)'
-                      : tooExpensive
-                        ? `Coût ${cost} points — il vous reste ${remaining} point${remaining > 1 ? 's' : ''}`
-                        : ''
+            <AppTooltip key={feature.id} page={locked ? 122 : undefined} title={disabledReason}>
+              <Box>
+                <PathCard
+                  name={<DeclinedFeatureName feature={feature} />}
+                  nameAdornment={
+                    <FeatureMarkerHexes feature={feature} color={color ?? undefined} pathRank={feature.rank} size={18} />
                   }
-                >
-                  <Box component="span" sx={{ mr: 1, flexShrink: 0 }}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      component="span"
-                      disabled={disabled}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAdd(feature.id);
-                      }}
-                    >
-                      Choisir
-                    </Button>
-                  </Box>
-                </AppTooltip>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-                  {feature.text}
-                </Typography>
-              </AccordionDetails>
-            </Accordion>
+                  term={feature.name}
+                  color={color ?? undefined}
+                  checked={false}
+                  disabled={disabled}
+                  repeatFeatureName={false}
+                  rankLabel={`Rang ${feature.rank} — ${cost} point${cost > 1 ? 's' : ''}`}
+                  note={
+                    afterSkip
+                      ? `Après saut du rang ${skipped!.rank} : ce rang est accessible directement.`
+                      : undefined
+                  }
+                  feature={feature}
+                  abilities={abilities}
+                  level={level}
+                  onToggle={() => onAdd(feature.id)}
+                />
+              </Box>
+            </AppTooltip>
           );
         })}
       </Stack>
@@ -325,6 +291,8 @@ function DivineAcquisitionCard({
   onHostChange,
   onAdd,
   onRemove,
+  abilities,
+  level,
 }: {
   pending: PendingDivine;
   hosts: { id: string; name: string }[];
@@ -334,6 +302,9 @@ function DivineAcquisitionCard({
   onHostChange: (pathId: string) => void;
   onAdd: () => void;
   onRemove: () => void;
+  /** Caractéristiques + niveau du personnage : pour l'enrichissement de la description (dés/formules). */
+  abilities: Character['abilities'];
+  level: number;
 }) {
   const divine = pending.feature;
   const cost = featureCost(divine, progression);
@@ -370,8 +341,9 @@ function DivineAcquisitionCard({
         <Chip label={`${cost} point${cost > 1 ? 's' : ''}`} size="small" />
         {originClassId && <ClassIcon classId={originClassId} size={20} />}
         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-          <FeatureLabel feature={divine} />
+          <DeclinedFeatureName feature={divine} />
         </Typography>
+        <FeatureMarkerHexes feature={divine} color={accent} size={18} pathRank={divine.rank} />
         {originClassName && (
           <Typography variant="caption" sx={{ color: originColor ?? 'text.secondary' }}>
             ({originClassName})
@@ -379,9 +351,12 @@ function DivineAcquisitionCard({
         )}
       </Stack>
 
-      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', mt: 1 }}>
-        {divine.text}
-      </Typography>
+      <Box sx={{ mt: 1 }}>
+        <FeatureText feature={divine} abilities={abilities} level={level} pathRank={divine.rank} />
+        <Box sx={{ mt: 1 }}>
+          <SourceRef page={divine.sourcePage} term={divine.name} />
+        </Box>
+      </Box>
 
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}>
         <FormControl
@@ -420,11 +395,11 @@ function DivineAcquisitionCard({
             <Box component="span">
               <Button
                 size="small"
-                variant="contained"
+                variant="outlined"
                 startIcon={<AddIcon />}
                 disabled={!canAdd}
                 onClick={onAdd}
-                sx={{ bgcolor: accent, '&:hover': { bgcolor: accent } }}
+                sx={(theme) => glassButtonSx(theme, 'info')}
               >
                 Choisir
               </Button>
@@ -746,9 +721,17 @@ export function LevelUpDialog({
     entry.groups.push(g);
     hybridByProfile.set(classId, entry);
   }
-  const hybridProfiles = [...hybridByProfile.values()].sort((a, b) => a.name.localeCompare(b.name));
+  // Ordre du livre pour l'hybridation : famille (aventuriers, combattants, mages,
+  // mystiques, p. 30-31) puis alphabétique au sein d'une même famille.
+  const hybridProfiles = [...hybridByProfile.values()].sort((a, b) => {
+    const orderOf = (classId: string) => {
+      const familyId = classById.get(classId)?.familyId;
+      return familyId ? FAMILY_IDS.indexOf(familyId) : FAMILY_IDS.length;
+    };
+    return orderOf(a.classId) - orderOf(b.classId) || a.name.localeCompare(b.name);
+  });
   const hasAnyAvailable =
-    flatGroups.length > 0 || prestigeGroups.length > 0 || hybridProfiles.length > 0;
+    flatGroups.length > 0 || prestigeGroups.length > 0 || hybridProfiles.length > 0 || hasHybridOption;
 
   // Gain de PV du niveau : pour un profil hybride, il dépend de la famille des
   // capacités choisies ce niveau (moyenne des familles, p. 177). On simule
@@ -973,18 +956,48 @@ export function LevelUpDialog({
       <DialogContent dividers>
         <Stack spacing={3}>
           <Box>
-            <Typography variant="subtitle2" gutterBottom>
-              Gains automatiques
-            </Typography>
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
-              <Chip label={`Niveau ${character.level} → ${newLevel}`} color="primary" size="small" />
+            <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
+              <Box
+                sx={(theme) => ({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  height: 36,
+                  px: 1.75,
+                  borderRadius: 1.5,
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  color: theme.palette.primary.main,
+                  bgcolor: alpha(theme.palette.primary.main, 0.14),
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.45)}`,
+                })}
+              >
+                Niveau {character.level} → {newLevel}
+              </Box>
               {shownGain !== null && (
-                <Chip
-                  label={`+${shownGain} PV max`}
-                  size="small"
-                  variant="outlined"
-                  color={rolling && rolledValid ? 'secondary' : 'default'}
-                />
+                <Box
+                  sx={(theme) => {
+                    const tone =
+                      rolling && rolledValid
+                        ? theme.palette.secondary.main
+                        : theme.palette.text.secondary;
+                    return {
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      height: 36,
+                      px: 1.75,
+                      borderRadius: 1.5,
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      color: tone,
+                      bgcolor: alpha(tone, 0.12),
+                      border: `1px solid ${alpha(tone, 0.4)}`,
+                    };
+                  }}
+                >
+                  +{shownGain} PV max
+                </Box>
               )}
             </Stack>
 
@@ -1063,13 +1076,7 @@ export function LevelUpDialog({
             )}
           </Box>
 
-          <Divider />
-
           <Box>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Nouvelles capacités
-            </Typography>
-
             {pendingDivine && divineAccessible && (
               <DivineAcquisitionCard
                 pending={pendingDivine}
@@ -1080,24 +1087,8 @@ export function LevelUpDialog({
                 onHostChange={setDivineHost}
                 onAdd={addDivine}
                 onRemove={removeDivine}
-              />
-            )}
-
-            {hasHybridOption && (
-              <FormControlLabel
-                sx={{ mb: 1 }}
-                control={
-                  <Switch
-                    size="small"
-                    checked={showHybrid}
-                    onChange={(e) => setShowHybrid(e.target.checked)}
-                  />
-                }
-                label={
-                  <Typography variant="body2" color="text.secondary">
-                    Voies d’autres profils (profil hybride — accord du MJ, <SourceRef page={176} />)
-                  </Typography>
-                }
+                abilities={character.abilities}
+                level={newLevel}
               />
             )}
 
@@ -1199,8 +1190,6 @@ export function LevelUpDialog({
               </Box>
             )}
 
-            <Divider sx={{ my: 2 }} />
-
             {remaining > 0 && (
               <Accordion
                 disableGutters
@@ -1219,7 +1208,7 @@ export function LevelUpDialog({
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      Point de capacité orphelin (<SourceRef page={40} />)
+                      Point de capacité orphelin <SourceRef page={40} />
                     </Typography>
                     {forcedOrphan && !orphanReward && (
                       <Chip
@@ -1422,6 +1411,8 @@ export function LevelUpDialog({
                     lockAll={divineLock}
                     skipped={skippedFor(group)}
                     onAdd={add}
+                    abilities={character.abilities}
+                    level={newLevel}
                   />
                 ))}
 
@@ -1457,6 +1448,8 @@ export function LevelUpDialog({
                             lockAll={divineLock}
                             skipped={skippedFor(group)}
                             onAdd={add}
+                            abilities={character.abilities}
+                            level={newLevel}
                           />
                         ))}
                       </Stack>
@@ -1464,12 +1457,29 @@ export function LevelUpDialog({
                   </Accordion>
                 )}
 
-                {hybridProfiles.length > 0 && (
+                {hasHybridOption && (
                   <Box>
-                    <Typography variant="overline" color="text.secondary">
-                      Autres profils (profil hybride)
-                    </Typography>
-                    <Stack spacing={1}>
+                    <Box sx={{ mb: hybridProfiles.length > 0 ? 1.5 : 0 }}>
+                      <PathCard
+                        name="Profil hybride"
+                        checked={showHybrid}
+                        sourcePage={176}
+                        nameAdornment={
+                          <AppTooltip title="Nécessite l’accord du MJ à la table.">
+                            <WarningAmberOutlinedIcon
+                              sx={{ fontSize: 18, color: 'warning.main', cursor: 'help', flexShrink: 0 }}
+                            />
+                          </AppTooltip>
+                        }
+                        onToggle={() => setShowHybrid((v) => !v)}
+                      />
+                    </Box>
+                    {hybridProfiles.length > 0 && (
+                      <>
+                        <Typography variant="overline" color="text.secondary">
+                          Autres profils (profil hybride)
+                        </Typography>
+                        <Stack spacing={1}>
                       {hybridProfiles.map((profile) => {
                         const color = classColor(profile.classId);
                         return (
@@ -1491,6 +1501,12 @@ export function LevelUpDialog({
                                 <Typography variant="subtitle2" sx={{ fontWeight: 600, color }}>
                                   {profile.name}
                                 </Typography>
+                                {(() => {
+                                  const sourcePage = classById.get(profile.classId)?.sourcePage;
+                                  return sourcePage != null ? (
+                                    <SourceRef page={sourcePage} term={profile.name} />
+                                  ) : null;
+                                })()}
                               </Stack>
                             </AccordionSummary>
                             <AccordionDetails>
@@ -1504,6 +1520,8 @@ export function LevelUpDialog({
                                     lockAll={divineLock}
                                     skipped={skippedFor(group)}
                                     onAdd={add}
+                                    abilities={character.abilities}
+                                    level={newLevel}
                                   />
                                 ))}
                               </Stack>
@@ -1511,7 +1529,9 @@ export function LevelUpDialog({
                           </Accordion>
                         );
                       })}
-                    </Stack>
+                        </Stack>
+                      </>
+                    )}
                   </Box>
                 )}
               </Stack>
