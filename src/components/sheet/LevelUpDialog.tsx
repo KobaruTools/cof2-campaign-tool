@@ -108,7 +108,7 @@ const BORDER_ANGLE_STYLES = `
     to { opacity: 1; }
   }
   @keyframes levelUpDialogPop {
-    from { transform: translateY(36px) scale(0.9); }
+    from { transform: translateY(120px) scale(0.9); }
     to { transform: translateY(0) scale(1); }
   }
   @keyframes levelUpStarPop {
@@ -212,6 +212,10 @@ function AvailablePathGroup({
     group.path?.type === 'prestige' && group.path.category !== 'generic'
       ? prestigeCategoryColor(group.path.category)
       : undefined;
+  // Titre de la voie : même teinte que les blocs (famille, or pour les génériques) — `prestigeTint`
+  // reste `undefined` pour les génériques (repli sur le dégradé or TUNÉ des blocs, cf. ci-dessus),
+  // mais le titre veut une couleur PLEINE même générique : `prestigeCategoryColor` la fournit déjà.
+  const titleColor = group.path?.type === 'prestige' ? prestigeCategoryColor(group.path.category) : color;
 
   // Capacités acquérables + le rang sauté (grisé), intercalés dans l'ordre des rangs.
   const rows: { feature: Feature; kind: 'acquirable' | 'skipped' }[] = group.features.map(
@@ -230,12 +234,12 @@ function AvailablePathGroup({
         sx={{
           alignItems: 'center',
           borderLeft: 3,
-          borderColor: color ?? 'divider',
+          borderColor: titleColor ?? 'divider',
           pl: 1.5,
           mb: 0.5,
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: color ?? 'text.primary' }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: titleColor ?? 'text.primary' }}>
           {group.path?.name ?? group.pathId}
         </Typography>
         {group.path && (
