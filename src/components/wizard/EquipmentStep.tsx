@@ -29,7 +29,7 @@ export function EquipmentStep({ draft, patch, campaignAllowsFirearms }: StepProp
     patch({ equipment: setWornAt(draft.equipment, index, worn) });
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={3}>
       <Typography variant="body2" color="text.secondary">
         Équipement de départ du profil + sac d’aventurier. Ajustez librement, puis
         indiquez ce que le personnage porte (armure, bouclier, arme en main).

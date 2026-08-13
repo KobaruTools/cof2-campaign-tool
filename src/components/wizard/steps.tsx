@@ -1266,7 +1266,7 @@ export function IdentityStep({
       : classPortraitPath(draft.classId, draft.portraitVariant === 'alt' ? 'alt' : 'default');
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={3}>
       {characterClass && (
         <Stack spacing={1}>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
