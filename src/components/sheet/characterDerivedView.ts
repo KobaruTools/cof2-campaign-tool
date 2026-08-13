@@ -64,7 +64,7 @@ import {
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { unarmedStrike, type UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import { rangedReplacingFormAttack, type FormAttackView } from '@/lib/character/formAttack';
-import type { AbilityId, Weapon } from '@/data/schema';
+import type { AbilityId, ResistibleDamageType, Weapon } from '@/data/schema';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponIconKindForWeapon, type WeaponIconKind } from '@/lib/ui/weaponKind';
@@ -373,6 +373,18 @@ export interface CharacterDerivedView {
 }
 
 /**
+ * Domaines de test à DÉ BONUS (`test-die`) qui méritent un RAPPEL SITUATIONNEL dans la carte
+ * « Défense » : puce ambre (icône du type résisté + double d20). Le dé bonus « chiffré » reste porté
+ * par la ligne du domaine dans « Compétences & tests » ; cette puce n'en est que le rappel défensif
+ * (retour propriétaire, elfe pâle r2 « Résistance au poison »). Seuls les domaines mappés à un TYPE
+ * DE DÉGÂT (donc une icône dédiée) y figurent ; les autres (ex. « Résister à la peur ») n'ont pas
+ * d'icône et restent uniquement sur la ligne de test.
+ */
+const SITUATIONAL_TEST_DIE_BADGE: Record<string, { scope: ResistibleDamageType; title: string }> = {
+  'poison-resistance': { scope: 'poison', title: 'Dé bonus pour résister aux poisons' },
+};
+
+/**
  * Construit la vue des statistiques dérivées d'un personnage (entrée moteur +
  * badges), à l'identique de la fiche. Fonction pure : aucun effet, aucune
  * dépendance à React.
@@ -536,6 +548,32 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         },
       ]
     : [];
+  // Dé bonus SITUATIONNEL aux tests d'une résistance TYPÉE (elfe pâle r2 « Résistance au poison ») :
+  // puce ambre (icône du type résisté + double d20) DANS la carte Défense (retour propriétaire — plutôt
+  // que sur la carte de la capacité). Pilotée par la map `SITUATIONAL_TEST_DIE_BADGE` depuis les effets
+  // `test-die` des capacités acquises. Le dé bonus « chiffré » reste porté par la ligne du domaine.
+  const situationalTestDieBadges: DefenseBadgeData[] = modFeatureIds.flatMap((id) => {
+    const feature = featureById.get(id);
+    if (!feature?.effects) return [];
+    return feature.effects.flatMap((e) =>
+      e.kind === 'test-die'
+        ? e.domains.flatMap((domain) => {
+            const spec = SITUATIONAL_TEST_DIE_BADGE[domain];
+            return spec
+              ? [
+                  {
+                    key: `std-${id}-${domain}`,
+                    variant: 'situational-test-die' as const,
+                    scope: spec.scope,
+                    title: spec.title,
+                    sources: [{ name: feature.name, featureId: id }],
+                  },
+                ]
+              : [];
+          })
+        : [],
+    );
+  });
   // Ordre voulu : immunités d'abord, réductions, puis effets défensifs situationnels (dé malus, riposte).
   const defenseBadges: DefenseBadgeData[] = [
     ...statusImmunityBadges,
@@ -546,6 +584,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ...elementalRetaliationBadges,
     ...frostRetaliationBadges,
     ...deflectionBadges,
+    ...situationalTestDieBadges,
   ];
 
   // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')

@@ -551,6 +551,7 @@ export type DerivedStatId = (typeof DERIVED_STAT_IDS)[number];
  */
 export type FeatureEffect =
   | StatBonusEffect
+  | StatBonusFromAbilityChoiceEffect
   | ConditionalStatBonusEffect
   | AbilityBonusEffect
   | AbilityBonusFromChoiceEffect
@@ -741,6 +742,26 @@ export interface StatBonusEffect {
   stat: DerivedStatId;
   /** Valeur ajoutée (signée) : constante ou scalante. */
   value: EffectValue;
+}
+
+/**
+ * Bonus PERMANENT à une stat DÉRIVÉE dont la VALEUR est la valeur (effective) d'une CARACTÉRISTIQUE
+ * CHOISIE par le joueur sur la même capacité (choix `ability`). Ex. Provoquer la chance (elfe pâle,
+ * Le Compagnon, r4) : « il ajoute sa PER ou sa VOL (au choix) à son nombre de PC » →
+ * `{ kind: 'stat-bonus-from-ability-choice', stat: 'luckPoints', choiceIndex: 0 }` avec un choix
+ * `ability` restreint à `['PER', 'VOL']`. Distinct d'`ability-bonus-from-choice` (qui ajoute une
+ * CONSTANTE à la carac choisie) : ici on lit la VALEUR de la carac choisie et on l'ajoute à une stat
+ * dérivée. Résolu depuis `Character.featureChoices` (carac choisie) + les caractéristiques effectives
+ * du contexte (`ctx.abilities`). Sans sélection / sans contexte : aucune contribution.
+ */
+export interface StatBonusFromAbilityChoiceEffect {
+  kind: 'stat-bonus-from-ability-choice';
+  /** Stat dérivée visée (cf. `DERIVED_STAT_IDS`). */
+  stat: DerivedStatId;
+  /** Index du choix `ability` dans `Feature.choices` qui détermine la carac lue. En général 0. */
+  choiceIndex: number;
+  /** Multiplicateur appliqué à la valeur de la carac choisie (défaut 1). */
+  factor?: number;
 }
 
 /**

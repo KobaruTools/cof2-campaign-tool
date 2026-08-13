@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { featureById } from '@/data';
-import type { AbilityId } from '@/data/schema';
+import type { AbilityId, Feature } from '@/data/schema';
 import type { Character, EquipmentLine } from './types';
 import { createBlankCharacter } from './factory';
 import { effectiveFeatureIdsForMods } from './choices';
@@ -2784,4 +2784,60 @@ describe('PER-74 — voie du chevalier dragon (p. 147-148)', () => {
     expect(damageReductionSources(c).find((s) => s.featureId === 'prestige-chevalier-dragon-r5')).toBeUndefined();
   });
 
+});
+
+// PER-327 — Provoquer la chance (elfe pâle r4) : PC += valeur de la carac choisie (PER ou VOL).
+// Le contenu réel vit dans le bundle payant `private/companion-content.ts` (gitignoré, absent en CI) :
+// on exerce donc la primitive `stat-bonus-from-ability-choice` sur une capacité SYNTHÉTIQUE injectée
+// dans `featureById`, sans dépendre du contenu privé.
+describe('modsFromFeatures — stat-bonus-from-ability-choice (PER-327)', () => {
+  const HOST = 'test-luck-from-ability-choice';
+  const synthetic: Feature = {
+    id: HOST,
+    name: 'Provoquer la chance (test)',
+    pathId: 'test-path',
+    rank: 4,
+    isSpell: false,
+    actionTypes: [],
+    text: '',
+    choices: [{ kind: 'ability', prompt: 'Carac ajoutée aux PC', allowed: ['PER', 'VOL'] }],
+    effects: [{ kind: 'stat-bonus-from-ability-choice', stat: 'luckPoints', choiceIndex: 0 }],
+    sourcePage: 16,
+  };
+
+  beforeAll(() => {
+    featureById.set(HOST, synthetic);
+  });
+  afterAll(() => {
+    featureById.delete(HOST);
+  });
+
+  const abilities = { AGI: 0, CON: 0, FOR: 0, PER: 2, CHA: 0, INT: 0, VOL: 4 } as Record<AbilityId, number>;
+
+  it('sans contexte : non résoluble → aucune contribution', () => {
+    expect(modsFromFeatures([HOST])).toEqual({});
+  });
+
+  it('sans sélection : aucune contribution (la carac n’est pas choisie)', () => {
+    expect(modsFromFeatures([HOST], ctx({ abilities }))).toEqual({});
+  });
+
+  it('PER choisie : PC += valeur EFFECTIVE de PER', () => {
+    expect(modsFromFeatures([HOST], ctx({ abilities, featureChoices: { [HOST]: ['PER'] } }))).toEqual({
+      luckPoints: 2,
+    });
+  });
+
+  it('VOL choisie : PC += valeur EFFECTIVE de VOL', () => {
+    expect(modsFromFeatures([HOST], ctx({ abilities, featureChoices: { [HOST]: ['VOL'] } }))).toEqual({
+      luckPoints: 4,
+    });
+  });
+
+  it('carac choisie négative : le PC baisse (aucun plancher au niveau de l’effet)', () => {
+    const low = { ...abilities, VOL: -1 };
+    expect(modsFromFeatures([HOST], ctx({ abilities: low, featureChoices: { [HOST]: ['VOL'] } }))).toEqual({
+      luckPoints: -1,
+    });
+  });
 });

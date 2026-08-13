@@ -13,6 +13,7 @@ import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { CapabilityChip, RichInline } from '@/components/sheet/FeatureRichText';
 import { MalusDieBadge } from '@/components/MalusDieBadge';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 import { DEFENSE_BADGE_ICON_PATHS } from '@/lib/ui/defenseBadgeIcons';
 
@@ -25,7 +26,8 @@ export type DefenseBadgeVariant =
   | 'ranged-malus'
   | 'retaliation'
   | 'elemental-retaliation'
-  | 'arcane-deflection';
+  | 'arcane-deflection'
+  | 'situational-test-die';
 
 /**
  * Donnée d'un BADGE de carte de statistique dérivée (PER-137) : IMMUNITÉ (vert, bouclier),
@@ -102,6 +104,11 @@ const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary' | 'w
   // discrétion du joueur — AMBRE (situationnel), comme l'immunité situationnelle ci-dessus. Ne
   // modifie aucune stat calculée (le joueur gère lui-même sa dépense de PM).
   'arcane-deflection': 'warning',
+  // Dé bonus SITUATIONNEL aux tests d'une résistance typée (ex. elfe pâle r2 « Résistance au
+  // poison » : dé bonus aux jets pour résister aux poisons). AMBRE, comme les autres effets qui ne
+  // jouent que dans une situation précise — le dé bonus « chiffré » est déjà porté par la ligne du
+  // domaine dans « Compétences & tests » (`test-die`) ; cette puce n'est qu'un rappel sur la carte.
+  'situational-test-die': 'warning',
 };
 
 /**
@@ -252,6 +259,9 @@ export function DefenseBadge({
           </>
         )}
         {scope && <DamageTypeIcon type={scope} size={iconSize} />}
+        {/* Dé bonus situationnel (elfe pâle r2) : l'icône du type résisté (poison…) suivie du double
+            d20 « dé bonus ». Aucun texte — les deux icônes suffisent (retour propriétaire). */}
+        {variant === 'situational-test-die' && <BonusDieBadge ability="" size={iconSize} noTooltip />}
         {!scope && variant === 'reduction' && <Box component="span">RD</Box>}
         {/* Dé rendu par le parser (face résolue au niveau + marqueur « ° ») quand l'hôte fournit de
             quoi le résoudre ; sinon on retombe sur le texte court. */}

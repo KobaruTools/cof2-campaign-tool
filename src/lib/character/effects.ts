@@ -891,6 +891,16 @@ function effectContributions(
     }
     return out;
   }
+  // Bonus PERMANENT à une stat dérivée dont la VALEUR est la carac CHOISIE sur la capacité (choix
+  // `ability`) — ex. Provoquer la chance (elfe pâle r4) : PC += PER ou VOL au choix. Non résoluble
+  // sans contexte (caracs effectives inconnues) ni sans sélection.
+  if (effect.kind === 'stat-bonus-from-ability-choice') {
+    if (!ctx) return [];
+    const chosen = ctx.featureChoices?.[featureId]?.[effect.choiceIndex];
+    if (typeof chosen !== 'string' || !(ABILITY_IDS as readonly string[]).includes(chosen)) return [];
+    const value = ctx.abilities[chosen as AbilityId] * (effect.factor ?? 1);
+    return [{ stat: effect.stat, value }];
+  }
   // Bonus de DEF conditionné à l'armure RÉELLEMENT portée (PER-132) — résolu automatiquement
   // depuis `ctx.armorWorn`, sans interrupteur manuel. Non résoluble sans contexte (catalogue seul).
   if (effect.kind === 'armor-def-bonus') {
