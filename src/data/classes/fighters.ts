@@ -13,6 +13,42 @@
 import { dragonColorOptions } from '../dragon-elements';
 import type { CharacterClass, ClassPath, Feature } from '../schema';
 
+// Note « RAGE ET AUTRES CAPACITÉS » (p. 82, voie de la rage) : capacités des voies suivantes
+// non cumulables avec la rage/furie du berserk. Câblé sur `disablesFeatures` des interrupteurs
+// rage-r3/rage-r5 (griffe/désactive ces capacités tant que la rage ou la furie est active).
+const RAGE_INCOMPATIBLE_FEATURE_IDS = [
+  'maitre-d-armes-r1',
+  'maitre-d-armes-r2',
+  'maitre-d-armes-r3',
+  'maitre-d-armes-r4',
+  'maitre-d-armes-r5',
+  'escrime-r1',
+  'escrime-r2',
+  'escrime-r3',
+  'escrime-r4',
+  'escrime-r5',
+  'maitrise-r1',
+  'maitrise-r2',
+  'maitrise-r3',
+  'maitrise-r4',
+  'maitrise-r5',
+  'meditation-r1',
+  'meditation-r2',
+  'meditation-r3',
+  'meditation-r4',
+  'meditation-r5',
+  'spadassin-r1',
+  'spadassin-r2',
+  'spadassin-r3',
+  'spadassin-r4',
+  'spadassin-r5',
+  'assassin-r1',
+  'assassin-r2',
+  'assassin-r3',
+  'assassin-r4',
+  'assassin-r5',
+];
+
 // ---------------------------------------------------------------------------
 // Profils
 // ---------------------------------------------------------------------------
@@ -808,6 +844,9 @@ export const fighterFeatures: Feature[] = [
         activation: { kind: 'temporary', label: 'pendant la rage berserk', activeByDefault: false },
         // Exclusif de la Furie du berserk (rage-r5) : activer l'un éteint l'autre, sans le désactiver.
         mutuallyExclusiveWith: ['rage-r5'],
+        // Note « RAGE ET AUTRES CAPACITÉS » (p. 82) : désactive/grise les capacités des voies non
+        // cumulables tant que la rage est active.
+        disablesFeatures: RAGE_INCOMPATIBLE_FEATURE_IDS,
       },
       // PER-129/PER-236 : le +1d4° DM au CONTACT est conditionnel à l'état de rage → `weapon-damage-bonus`
       // en dé SITUATIONNEL (badge sous la carte d'attaque au contact), gaté sur l'interrupteur de rage
@@ -865,6 +904,9 @@ export const fighterFeatures: Feature[] = [
         activation: { kind: 'temporary', label: 'pendant la furie du berserk', activeByDefault: false },
         // Exclusif de la Rage du berserk (rage-r3) : activer l'un éteint l'autre, sans le désactiver.
         mutuallyExclusiveWith: ['rage-r3'],
+        // Note « RAGE ET AUTRES CAPACITÉS » (p. 82) : désactive/grise les capacités des voies non
+        // cumulables tant que la furie est active.
+        disablesFeatures: RAGE_INCOMPATIBLE_FEATURE_IDS,
       },
       // PER-129/PER-236 : le +2d4° DM au CONTACT est conditionnel à l'état de furie → `weapon-damage-bonus`
       // en dé SITUATIONNEL, gaté sur l'interrupteur de furie ci-dessus (`requiresActiveEffectIndex: 0`),

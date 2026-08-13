@@ -22,6 +22,7 @@ import { featureById, pathById, progression, testDomains } from '@/data';
 import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import type {
   AbilityId,
+  AbilitySubstitution,
   ConditionalStatBonusEffect,
   CriticalRange,
   DamageReduction,
@@ -214,6 +215,10 @@ export function activeFeatureIdsForMods(character: Character): string[] {
   // PER-74 — capacités de voie de PROFIL désactivées par une transformation ACTIVE qui prive de leur
   // usage (Métamorphose de l'ours, p. 152 : « ne peut plus utiliser ses capacités de profil »).
   for (const id of profileFeaturesDisabledByTransformation(character).keys()) disabled.add(id);
+  // Exclusion générale par `disablesFeatures`/`mutuallyExclusiveWith` d'un interrupteur ACTIF (ex.
+  // rage/furie du berserk, p. 82 : les capacités des voies non cumulables ne comptent plus tant que
+  // la rage ou la furie est active).
+  for (const id of disabledFeatureIds(character)) disabled.add(id);
   return disabled.size ? ids.filter((id) => !disabled.has(id)) : ids;
 }
 
@@ -1856,6 +1861,114 @@ export function demiElfeFeyBloodUsageMax(character: Character): number | undefin
 }
 
 /**
+ * PER-370 — Hôte du sort associé à l'armure sacrée au rang 5 « Pouvoir unique (L) » (voie de l'armure
+ * sacrée, p. 166) : sort de rang 1 à 4 de N'IMPORTE QUELLE voie, choisi via `feature-from-path`
+ * (`spellsOnly`, sans restriction de profil/famille). Lancé SANS coût en mana (arbitrage propriétaire
+ * 2026-08-13, même traitement que le sort appris du familier PER-74) : le compteur EST la contrainte,
+ * rechargé à chaque combat (récupération rapide, donc aussi repos long).
+ */
+export const ARMURE_SACREE_MINOR_POWER_HOST = 'prestige-armure-sacree-r5';
+
+/** Clé d'état du compteur du pouvoir unique de l'armure sacrée (PER-370). Convention « absence = plein ». */
+export const ARMURE_SACREE_MINOR_POWER_USAGE_KEY = 'prestige-armure-sacree-r5::sacred-armor-power';
+
+/**
+ * Id du sort associé à l'armure sacrée au rang 5 (sélection `feature-from-path` de
+ * `ARMURE_SACREE_MINOR_POWER_HOST`). `undefined` si le rang 5 n'est pas acquis ou si aucun sort n'a
+ * encore été choisi.
+ */
+export function armureSacreeMinorPowerSpellId(character: Character): string | undefined {
+  if (!character.featureIds.includes(ARMURE_SACREE_MINOR_POWER_HOST)) return undefined;
+  const sel = character.featureChoices?.[ARMURE_SACREE_MINOR_POWER_HOST]?.[0];
+  return typeof sel === 'string' ? sel : undefined;
+}
+
+/**
+ * Usages PAR COMBAT du pouvoir unique (r5) : 4 si le sort choisi est de rang 1, 3 si rang 2, 2 si
+ * rang 3, 1 si rang 4 (« il peut utiliser ce sort plus souvent s'il est moins puissant », p. 166).
+ * `undefined` si le rang 5 n'est pas acquis ou si aucun sort n'a encore été choisi.
+ */
+export function armureSacreeMinorPowerUsageMax(character: Character): number | undefined {
+  const spellId = armureSacreeMinorPowerSpellId(character);
+  if (!spellId) return undefined;
+  const rank = featureById.get(spellId)?.rank;
+  if (rank === undefined) return undefined;
+  if (rank <= 1) return 4;
+  if (rank === 2) return 3;
+  if (rank === 3) return 2;
+  return 1;
+}
+
+/**
+ * PER-370 — Hôte du sort associé à l'armure sacrée au rang 7 « Pouvoir puissant (L) » : même mécanique
+ * que le rang 5 (sort de son choix, N'IMPORTE QUELLE voie, sans coût en mana) mais pool QUOTIDIEN. Le
+ * plafond RAW « pas plus d'une fois par combat » (p. 166) reste DESCRIPTIF dans le texte, non appliqué
+ * par le moteur (arbitrage propriétaire 2026-08-13 : pool quotidien seul).
+ */
+export const ARMURE_SACREE_MAJOR_POWER_HOST = 'prestige-armure-sacree-r7';
+
+/** Clé d'état du compteur du pouvoir puissant de l'armure sacrée (PER-370). Convention « absence = plein ». */
+export const ARMURE_SACREE_MAJOR_POWER_USAGE_KEY = 'prestige-armure-sacree-r7::sacred-armor-power';
+
+/**
+ * Id du sort associé à l'armure sacrée au rang 7 (sélection `feature-from-path` de
+ * `ARMURE_SACREE_MAJOR_POWER_HOST`). `undefined` si le rang 7 n'est pas acquis ou si aucun sort n'a
+ * encore été choisi.
+ */
+export function armureSacreeMajorPowerSpellId(character: Character): string | undefined {
+  if (!character.featureIds.includes(ARMURE_SACREE_MAJOR_POWER_HOST)) return undefined;
+  const sel = character.featureChoices?.[ARMURE_SACREE_MAJOR_POWER_HOST]?.[0];
+  return typeof sel === 'string' ? sel : undefined;
+}
+
+/**
+ * Usages QUOTIDIENS du pouvoir puissant (r7) : 3 si le sort choisi est de rang 5, 2 si rang 6, 1 si
+ * rang 7 (p. 166). `undefined` si le rang 7 n'est pas acquis ou si aucun sort n'a encore été choisi.
+ */
+export function armureSacreeMajorPowerUsageMax(character: Character): number | undefined {
+  const spellId = armureSacreeMajorPowerSpellId(character);
+  if (!spellId) return undefined;
+  const rank = featureById.get(spellId)?.rank;
+  if (rank === undefined) return undefined;
+  if (rank <= 5) return 3;
+  if (rank === 6) return 2;
+  return 1;
+}
+
+/**
+ * PER-370 — caractéristique de MAGIE effective d'une voie de MYSTIQUE (p. 166 : « les sorts des voies
+ * de mystique sont tous indexés sur le CHA. Toutefois, si un druide (ou un moine) choisit une de ces
+ * voies, il utilisera sa PER. […] certaines voies utilisent la VOL ou la PER : […] un prêtre aura
+ * l'obligation d'utiliser la caractéristique indiquée »). Ordre de résolution : override VERBATIM de
+ * LA VOIE (`PrestigePath.mysticSpellAbility`, rare) > repli structurel druide/moine (PER) > CHA par
+ * défaut. Général à TOUTE voie `category: 'mystic'`, pas seulement l'armure sacrée.
+ */
+export function mysticSpellAbility(character: Character, path: { mysticSpellAbility?: 'PER' | 'VOL' }): AbilityId {
+  if (path.mysticSpellAbility) return path.mysticSpellAbility;
+  return character.classId === 'druide' || character.classId === 'moine' ? 'PER' : 'CHA';
+}
+
+/**
+ * PER-370 — substitutions de caractéristique à appliquer au rendu d'un SORT emprunté/associé via une
+ * voie de MYSTIQUE (r5/r7 de l'armure sacrée, et toute voie mystique future avec un sort associé) :
+ * le sort se lance TOUJOURS avec la caractéristique de la voie mystique (`mysticSpellAbility`), quelle
+ * que soit sa caractéristique d'origine — substitutions `unconditional` (contrairement au forgesort,
+ * PER-163, qui ne substitue que si c'est avantageux). `undefined` si la capacité empruntée n'est pas un
+ * sort, ou si la voie hôte n'est pas de catégorie mystique (aucun effet hors ce contexte).
+ */
+export function mysticBorrowedSpellSubstitutions(
+  character: Character,
+  hostFeatureId: string,
+  borrowedFeature: Feature,
+): AbilitySubstitution[] | undefined {
+  if (!borrowedFeature.isSpell) return undefined;
+  const hostPath = pathById.get(featureById.get(hostFeatureId)?.pathId ?? '');
+  if (!hostPath || hostPath.type !== 'prestige' || hostPath.category !== 'mystic') return undefined;
+  const target = mysticSpellAbility(character, hostPath);
+  return ABILITY_IDS.filter((a) => a !== target).map((from) => ({ from, to: target, unconditional: true }));
+}
+
+/**
  * PER-161 — la RÉACTIVATION de l'interrupteur du i-ème effet TEMPORAIRE d'une capacité est-elle
  * verrouillée jusqu'au prochain repos court ? Vrai quand l'effet est un `conditional-stat-bonus`
  * temporaire dont le compteur porteur a `oncePerShortRest` ET dont le verrou de repos court est posé
@@ -1933,6 +2046,10 @@ export function pruneUsageCounters(
     // PER-324 : compteur d'incantations gratuites de « Sang féerique » — clé dédiée, valide tant que
     // le rang 4 est acquis (le sort choisi peut changer sans invalider la clé).
     if (id === DEMI_ELFE_FEY_BLOOD_HOST) validKeys.add(DEMI_ELFE_FEY_BLOOD_USAGE_KEY);
+    // PER-370 : compteurs d'usage du pouvoir associé à l'armure sacrée (r5/r7) — clés dédiées, valides
+    // tant que le rang correspondant est acquis (le sort choisi peut changer sans invalider la clé).
+    if (id === ARMURE_SACREE_MINOR_POWER_HOST) validKeys.add(ARMURE_SACREE_MINOR_POWER_USAGE_KEY);
+    if (id === ARMURE_SACREE_MAJOR_POWER_HOST) validKeys.add(ARMURE_SACREE_MAJOR_POWER_USAGE_KEY);
   }
   // PER-162 : le surcoût croissant stocke ses lancements sous l'id de la capacité — déjà couvert par
   // `owned`, donc rien à ajouter ici (mentionné pour mémoire ; la clé survit à l'élagage).
@@ -2109,6 +2226,10 @@ export function resetUsageCounters(
     // PER-324 : incantations gratuites de « Sang féerique » (demi-elfe r4) — compteur QUOTIDIEN
     // (3/2/1 selon le rang du sort), rechargé au repos long (`'day'`).
     if (id === DEMI_ELFE_FEY_BLOOD_HOST && triggers.has('day')) toReset.add(DEMI_ELFE_FEY_BLOOD_USAGE_KEY);
+    // PER-370 : pouvoir unique de l'armure sacrée (r5) — pool PAR COMBAT (récupération rapide, donc
+    // aussi repos long) ; pouvoir puissant (r7) — pool QUOTIDIEN.
+    if (id === ARMURE_SACREE_MINOR_POWER_HOST && triggers.has('combat')) toReset.add(ARMURE_SACREE_MINOR_POWER_USAGE_KEY);
+    if (id === ARMURE_SACREE_MAJOR_POWER_HOST && triggers.has('day')) toReset.add(ARMURE_SACREE_MAJOR_POWER_USAGE_KEY);
   }
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {
@@ -3297,9 +3418,13 @@ export function criticalRangeSources(
   const meleeWeapon =
     options?.meleeWeapon !== undefined ? options.meleeWeapon : wornMeleeWeapon(character.equipment ?? []);
   const rangedWeapon = wornRangedWeapon(character.equipment ?? []);
+  // Capacités DÉSACTIVÉES par un interrupteur actif (ex. rage/furie du berserk, p. 82) : leur plage
+  // de critique ne compte plus non plus.
+  const disabledIds = disabledFeatureIds(character);
   // Capacités acquises ET empruntées : une capacité empruntée fonctionne comme une capacité normale,
   // sa plage de critique comprise (PER-73). Son rang se résout sur la VOIE A (cf. `borrowedHostPaths`).
   for (const id of effectiveFeatureIdsForMods(character)) {
+    if (disabledIds.has(id)) continue;
     const feature = featureById.get(id);
     if (!feature?.criticalRange) continue;
     const crit = feature.criticalRange;

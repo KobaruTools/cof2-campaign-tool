@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-rage-cumul-voies",
+  "name": "Recette — non-cumul rage/furie vs 6 voies (p. 82)",
+  "identity": {
+    "description": "ATTENDU (fixture moteur, PAS un perso RAW-légal — cumule volontairement barbare + capacités empruntées de guerrier/barde/moine/voleur pour recetter le non-cumul rage/furie, p. 82) : 1) Rage ET Furie éteintes → les 30 capacités des voies maître d'armes/escrime/maîtrise/méditation/spadassin/assassin sont normales (non grisées), leurs bonus comptent (dague en main principale → Frappe chirurgicale/spadassin-r3 affiche sa plage de critique élargie). 2) Activer Rage du berserk (rage-r3) → les 30 capacités se grisent, leurs bonus (DEF, tests, DM d'arme, plage de critique, finesse) disparaissent des stats dérivées (Frappe chirurgicale disparaît de la plage de critique). 3) Basculer sur Furie du berserk (rage-r5) au lieu de Rage → même résultat, et Rage/Furie restent mutuellement exclusives entre elles."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 1,
+    "INT": 1,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 1,
+    "INT": 1,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "rage-r1",
+    "rage-r2",
+    "rage-r3",
+    "rage-r4",
+    "rage-r5",
+    "maitre-d-armes-r1",
+    "maitre-d-armes-r2",
+    "maitre-d-armes-r3",
+    "maitre-d-armes-r4",
+    "maitre-d-armes-r5",
+    "escrime-r1",
+    "escrime-r2",
+    "escrime-r3",
+    "escrime-r4",
+    "escrime-r5",
+    "maitrise-r1",
+    "maitrise-r2",
+    "maitrise-r3",
+    "maitrise-r4",
+    "maitrise-r5",
+    "meditation-r1",
+    "meditation-r2",
+    "meditation-r3",
+    "meditation-r4",
+    "meditation-r5",
+    "spadassin-r1",
+    "spadassin-r2",
+    "spadassin-r3",
+    "spadassin-r4",
+    "spadassin-r5",
+    "assassin-r1",
+    "assassin-r2",
+    "assassin-r3",
+    "assassin-r4",
+    "assassin-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "dague",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "Fixture moteur recette non-cumul rage/furie (p. 82). Non RAW-légal par construction : voir identity.description pour le protocole de vérification (3 états à observer dans la fiche).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
