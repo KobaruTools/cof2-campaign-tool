@@ -25,7 +25,6 @@ import {
 import type { DerivedStatId } from '@/lib/ui/derivedStats';
 import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { AbilityIcon } from '@/components/AbilityIcon';
-import { AppTooltip } from '@/components/AppTooltip';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { GaugeBar } from './GaugeBar';
@@ -243,7 +242,7 @@ function RevealGroup({
       {children}
     </Stack>
   );
-  return onClick ? <AppTooltip title="Aller à la section">{content}</AppTooltip> : content;
+  return content;
 }
 
 /** Couleur commune des traits séparateurs verticaux entre deux groupes (barre condensée + mesure). */
