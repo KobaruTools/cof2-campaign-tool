@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
@@ -92,6 +92,17 @@ export interface SheetSectionProps {
 
 const storageKey = (key: string) => `sheet-section-collapsed:${key}`;
 
+// `useLayoutEffect` no-op côté serveur (avertissement React) : bascule sur `useEffect` hors navigateur.
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
+/**
+ * Distance (px) au-delà de laquelle un bloc doit avoir pénétré le viewport pour se révéler
+ * (fondu + translation vers le haut). Un bloc déjà visible de ce montant au montage ne s'anime
+ * pas. Déclenchement UNE SEULE FOIS (« once ») : dès révélé, l'observer se déconnecte — le bloc
+ * reste visible même en sortant du viewport ensuite.
+ */
+const REVEAL_OFFSET_PX = 30;
+
 /**
  * Cadre titré commun aux sections de la fiche de personnage (identité,
  * caractéristiques, stats, voies, équipement). Centralise l'espacement et la
@@ -118,6 +129,34 @@ export function SheetSection({
   const isCollapsed = collapsible && collapsed;
   const resolvedAction = typeof action === 'function' ? action(isCollapsed) : action;
   const hasTabs = tabs != null && tabs.length > 0;
+
+  // Apparition au défilement : `true` par défaut (visible, sans animation) pour ne rien casser
+  // avant hydratation ; corrigé de façon SYNCHRONE (avant peinture) si le bloc n'a pas encore
+  // atteint le seuil au montage, pour éviter tout flash. Ensuite, l'IntersectionObserver ne sert
+  // qu'à détecter la PREMIÈRE entrée dans le viewport (« once ») : dès révélé, il se déconnecte —
+  // pas de retour à l'état masqué si le bloc ressort du viewport.
+  const paperRef = useRef<HTMLDivElement | null>(null);
+  const [revealed, setRevealed] = useState(true);
+  useIsomorphicLayoutEffect(() => {
+    const el = paperRef.current;
+    if (!el) return;
+    setRevealed(el.getBoundingClientRect().top <= window.innerHeight - REVEAL_OFFSET_PX);
+  }, []);
+  useEffect(() => {
+    const el = paperRef.current;
+    if (!el || revealed) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRevealed(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: `0px 0px -${REVEAL_OFFSET_PX}px 0px`, threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [revealed]);
 
   // PER-116 — dépliage forcé (`expandSignal`) : un ref (et non un state) pour ne réagir QU'AU
   // CHANGEMENT du signal, jamais à une variation de `collapsed` par ailleurs (un simple clic de
@@ -164,6 +203,7 @@ export function SheetSection({
   return (
     <Paper
       id={id}
+      ref={paperRef}
       variant="outlined"
       // Replié : un clic n'importe où dans le bloc le rouvre (meilleure UX). Déplié : seul le
       // bouton en bas peut le replier (pas de clic sur le corps, qui contient du contenu interactif).
@@ -172,6 +212,14 @@ export function SheetSection({
         (theme) => ({
           p: { xs: 2, sm: 3 },
           cursor: isCollapsed ? 'pointer' : undefined,
+          // Apparition au défilement (cf. état `revealed` ci-dessus) : fondu + translation
+          // depuis le bas. La transition est toujours posée ; elle ne joue que quand `revealed`
+          // change après le premier rendu (jamais au montage d'un bloc déjà visible).
+          opacity: revealed ? 1 : 0,
+          transform: revealed ? 'none' : `translateY(${REVEAL_OFFSET_PX}px)`,
+          transition: theme.transitions.create(['opacity', 'transform'], {
+            duration: theme.transitions.duration.standard,
+          }),
           // Verre dépoli commun à toutes les sections : même teinte de fond
           // semi-transparente + flou de l'illustration de couverture en arrière-plan
           // (même idiome que les infobulles, cf. `theme.ts`). Fond uniforme d'une
