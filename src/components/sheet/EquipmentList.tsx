@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
@@ -99,6 +99,7 @@ import { WeaponCriticalRangeBadge } from '@/components/sheet/WeaponCriticalRange
 import { BoundWeaponBadge } from '@/components/sheet/BoundWeaponBadge';
 import type { WeaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
 import { EquipmentCatalogAutocomplete } from '@/components/sheet/EquipmentCatalogAutocomplete';
+import { WeldedBarPinButton, WELDED_BUTTON_HEIGHT } from '@/components/sheet/WeldedBarPinButton';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
@@ -771,6 +772,22 @@ export interface EquipmentListProps {
    * personnage) → la bascule reste locale à la session, non persistée.
    */
   characterId?: string;
+  /**
+   * Ouvre la modale « Objet personnalisé » depuis L'EXTÉRIEUR (bouton carré de la barre condensée,
+   * `StickySheetStatusBar`) : toute INCRÉMENTATION (comme `equipmentJumpNonce` de la fiche) rouvre la
+   * modale de création — même mécanisme nonce, `itemEdit` reste sinon un état interne. Absent/inchangé
+   * → aucun effet.
+   */
+  openCustomItemSignal?: number;
+  /**
+   * PIN individuel (retour propriétaire) du bouton « Objet personnalisé » vers la barre condensée —
+   * même recette que les boutons de repos (`WeldedBarPinButton`) : n'apparaît QUE si la section
+   * Inventaire y est elle-même épinglée (`barSectionPinned`). Absent (récap du wizard, écran de MJ)
+   * → aucun pin affiché.
+   */
+  onToggleBarPin?: () => void;
+  barPinned?: boolean;
+  barSectionPinned?: boolean;
 }
 
 /**
@@ -905,10 +922,35 @@ export function EquipmentList({
   resolveCriticalRange,
   resolveBoundWeapon,
   characterId,
+  openCustomItemSignal,
+  onToggleBarPin,
+  barPinned = false,
+  barSectionPinned = false,
 }: EquipmentListProps) {
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
   const [itemEdit, setItemEdit] = useState<'new' | number | null>(null);
+  // Ouverture externe (bouton carré de la barre condensée) : même mécanisme nonce que
+  // `equipmentJumpNonce` de la fiche — un `ref` (pas un state) pour ne réagir QU'AU CHANGEMENT,
+  // jamais à la valeur elle-même (sinon la modale se rouvrirait à chaque rendu).
+  const prevOpenCustomItemSignal = useRef(openCustomItemSignal);
+  useEffect(() => {
+    if (openCustomItemSignal === undefined || openCustomItemSignal === prevOpenCustomItemSignal.current) return;
+    prevOpenCustomItemSignal.current = openCustomItemSignal;
+    setItemEdit('new');
+  }, [openCustomItemSignal]);
+  // Garde anti-clic fantôme (retour propriétaire, retour bug rapporté) : le bouton « Objet
+  // personnalisé » (+ son pin) n'existe PAS avant l'édition et APPARAÎT à l'instant même où
+  // `onChange` devient défini — un clic qui atterrirait là dans l'instant qui suit l'activation
+  // du mode édition est ignoré, au cas où un second geste (double-clic sur le crayon, tap
+  // fantôme d'un pavé tactile) tomberait sur ce bouton flambant neuf avant que l'œil ne l'ait vu
+  // apparaître.
+  const editModeEnteredAt = useRef(0);
+  const editable = !!onChange;
+  useEffect(() => {
+    if (editable) editModeEnteredAt.current = Date.now();
+  }, [editable]);
+  const justEnteredEditMode = () => Date.now() - editModeEnteredAt.current < 300;
   // Descriptions ÉPINGLÉES sous le titre (bascule œil) : persistées par PERSONNAGE
   // (clé stable par objet, pas par index — fragile au réordonnancement/suppression).
   // Sans `characterId` (wizard, catalogue hors personnage) : reste local à la session.
@@ -1780,9 +1822,34 @@ export function EquipmentList({
             onSelect={addCatalog}
             sx={{ flexGrow: 1, minWidth: 240 }}
           />
-          <Button startIcon={<AddIcon />} onClick={() => setItemEdit('new')} size="small">
-            Objet personnalisé
-          </Button>
+          <Box sx={{ display: 'flex' }}>
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                if (justEnteredEditMode()) return;
+                setItemEdit('new');
+              }}
+              size="small"
+              sx={
+                barSectionPinned && onToggleBarPin
+                  ? { height: WELDED_BUTTON_HEIGHT, borderTopRightRadius: 0, borderBottomRightRadius: 0 }
+                  : { height: WELDED_BUTTON_HEIGHT }
+              }
+            >
+              Objet personnalisé
+            </Button>
+            {barSectionPinned && onToggleBarPin && (
+              <WeldedBarPinButton
+                pinned={barPinned}
+                onToggle={() => {
+                  if (justEnteredEditMode()) return;
+                  onToggleBarPin();
+                }}
+                label="Objet personnalisé"
+              />
+            )}
+          </Box>
         </Stack>
       )}
 

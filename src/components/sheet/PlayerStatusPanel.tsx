@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import HotelIcon from '@mui/icons-material/Hotel';
 import TimerIcon from '@mui/icons-material/Timer';
 import Box from '@mui/material/Box';
@@ -23,9 +23,13 @@ import { LongRestDialog } from './LongRestDialog';
 import { RecoveryDicePips } from './RecoveryDicePips';
 import { ShortRestDialog } from './ShortRestDialog';
 import { ViolencePointsBar } from './ViolencePointsBar';
+import { WeldedBarPinButton, WELDED_BUTTON_HEIGHT as REST_BUTTON_HEIGHT } from './WeldedBarPinButton';
 
 /** Teinte des réserves ACCUMULATEUR (points de violence, PER-325) : orange proche du rouge berserker. */
 const ACCUMULATOR_COLOR = '#e2571e';
+
+/** Les deux boutons de repos, seuls épinglables individuellement à la barre condensée. */
+export type RestBarItemId = 'shortRest' | 'longRest';
 
 /**
  * Icône de profil dans un cercle blanc (même présentation cerclée que les icônes de
@@ -118,6 +122,24 @@ export interface PlayerStatusPanelProps {
    * plutôt qu'en propriétés dédiées — ce bloc n'a pas à connaître le canal de session.
    */
   restSlot?: ReactNode;
+  /**
+   * Ouverture des modales de repos, CONTRÔLÉE par la fiche (au lieu d'un état interne) : la barre
+   * condensée (`StickySheetStatusBar`) porte désormais ses propres boutons de repos (icônes carrées)
+   * qui doivent ouvrir CES MÊMES modales — deux points d'entrée, un seul état, possédé par la fiche.
+   */
+  shortRestOpen: boolean;
+  onShortRestOpenChange: (open: boolean) => void;
+  longRestOpen: boolean;
+  onLongRestOpenChange: (open: boolean) => void;
+  /**
+   * PIN individuel (retour propriétaire) des boutons de repos vers la barre condensée — n'apparaît
+   * QUE si la section « État du personnage » y est elle-même épinglée (`barSectionPinned`). Absent
+   * (récap du wizard, écran de MJ) → aucun pin affiché, comportement inchangé.
+   */
+  onToggleBarPin?: (id: RestBarItemId) => void;
+  /** Ensemble courant des boutons de repos épinglés à la barre condensée — colore l'icône du pin. */
+  barPinnedIds?: ReadonlySet<RestBarItemId>;
+  barSectionPinned?: boolean;
 }
 
 /**
@@ -156,10 +178,15 @@ export function PlayerStatusPanel({
   recoveryHealBonuses = [],
   elixirDosesToLose = 0,
   restSlot,
+  shortRestOpen,
+  onShortRestOpenChange,
+  longRestOpen,
+  onLongRestOpenChange,
+  onToggleBarPin,
+  barPinnedIds,
+  barSectionPinned = false,
 }: PlayerStatusPanelProps) {
   const theme = useTheme();
-  const [shortRestOpen, setShortRestOpen] = useState(false);
-  const [longRestOpen, setLongRestOpen] = useState(false);
   // Couleurs CONCRÈTES (résolues) pour les caps assombris : mana en bleu.
   const manaColor = theme.palette.info.main;
   // Chance en violet (secondary) : distinct du vert PV, du bleu mana et de l'ambre des capacités.
@@ -257,24 +284,64 @@ export function PlayerStatusPanel({
         onReset={onResetLuck}
       />
 
-      {/* Repos (PER-151) : récupération selon les règles CO2 ; matrice des DR à droite. */}
+      {/* Repos (PER-151) : récupération selon les règles CO2 ; matrice des DR à droite. Le pin (retour
+          propriétaire) n'apparaît que si la section elle-même est épinglée à la barre condensée —
+          soudé au bouton (coins carrés à la jonction), même recette que `ClearStatusButton`. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1, pt: 0.5 }}>
-        <AppTooltip
-          title="Récupération rapide (30 min) : régénère les dégâts temporaires, réinitialise les capacités « par combat », et permet de consommer un dé de récupération pour se soigner de [dé + ½ niveau] PV."
-          page={221}
-        >
-          <Button size="small" variant="outlined" startIcon={<TimerIcon />} onClick={() => setShortRestOpen(true)}>
-            Repos court
-          </Button>
-        </AppTooltip>
-        <AppTooltip
-          title="Récupération complète (8 h, 1/jour) : mana plein, +1 dé de récupération, dégâts temporaires régénérés, capacités quotidiennes réinitialisées."
-          page="221-222, 229"
-        >
-          <Button size="small" variant="outlined" startIcon={<HotelIcon />} onClick={() => setLongRestOpen(true)}>
-            Repos long
-          </Button>
-        </AppTooltip>
+        <Box sx={{ display: 'flex' }}>
+          <AppTooltip
+            title="Récupération rapide (30 min) : régénère les dégâts temporaires, réinitialise les capacités « par combat », et permet de consommer un dé de récupération pour se soigner de [dé + ½ niveau] PV."
+            page={221}
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<TimerIcon />}
+              onClick={() => onShortRestOpenChange(true)}
+              sx={
+                barSectionPinned && onToggleBarPin
+                  ? { height: REST_BUTTON_HEIGHT, borderTopRightRadius: 0, borderBottomRightRadius: 0 }
+                  : { height: REST_BUTTON_HEIGHT }
+              }
+            >
+              Repos court
+            </Button>
+          </AppTooltip>
+          {barSectionPinned && onToggleBarPin && (
+            <WeldedBarPinButton
+              pinned={barPinnedIds?.has('shortRest') ?? false}
+              onToggle={() => onToggleBarPin('shortRest')}
+              label="Repos court"
+            />
+          )}
+        </Box>
+        <Box sx={{ display: 'flex' }}>
+          <AppTooltip
+            title="Récupération complète (8 h, 1/jour) : mana plein, +1 dé de récupération, dégâts temporaires régénérés, capacités quotidiennes réinitialisées."
+            page="221-222, 229"
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<HotelIcon />}
+              onClick={() => onLongRestOpenChange(true)}
+              sx={
+                barSectionPinned && onToggleBarPin
+                  ? { height: REST_BUTTON_HEIGHT, borderTopRightRadius: 0, borderBottomRightRadius: 0 }
+                  : { height: REST_BUTTON_HEIGHT }
+              }
+            >
+              Repos long
+            </Button>
+          </AppTooltip>
+          {barSectionPinned && onToggleBarPin && (
+            <WeldedBarPinButton
+              pinned={barPinnedIds?.has('longRest') ?? false}
+              onToggle={() => onToggleBarPin('longRest')}
+              label="Repos long"
+            />
+          )}
+        </Box>
         {/* Repos de GROUPE (PER-313) : demander une pause à toute la table. Rendu par la fiche,
             qui seule connaît la session — le bloc reste ignorant du canal. */}
         {restSlot}
@@ -312,20 +379,20 @@ export function PlayerStatusPanel({
 
       <ShortRestDialog
         open={shortRestOpen}
-        onClose={() => setShortRestOpen(false)}
+        onClose={() => onShortRestOpenChange(false)}
         recoveryDiceCurrent={currentRecoveryDice(recoveryDiceMax, depletion)}
         recoveryDie={recoveryDie}
         level={level}
         healBonuses={recoveryHealBonuses}
         onConfirm={(recoveryDieRoll, extraHeal) => {
           onShortRest(recoveryDieRoll, extraHeal);
-          setShortRestOpen(false);
+          onShortRestOpenChange(false);
         }}
       />
 
       <LongRestDialog
         open={longRestOpen}
-        onClose={() => setLongRestOpen(false)}
+        onClose={() => onLongRestOpenChange(false)}
         recoveryDie={recoveryDie}
         recoveryDiceMax={recoveryDiceMax}
         level={level}
@@ -334,7 +401,7 @@ export function PlayerStatusPanel({
         healBonuses={recoveryHealBonuses}
         onConfirm={(heal, extraHeal) => {
           onLongRest(heal, extraHeal);
-          setLongRestOpen(false);
+          onLongRestOpenChange(false);
         }}
       />
     </Stack>

@@ -65,7 +65,12 @@ export function AddMountButton({ onAdd }: { onAdd: (catalogId: string) => void }
   const byKind = (kind: 'mount' | 'vehicle') => mountCatalog.filter((m) => m.kind === kind);
   return (
     <>
-      <Button size="small" startIcon={<AddIcon />} onClick={(e) => setAnchor(e.currentTarget)}>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<AddIcon />}
+        onClick={(e) => setAnchor(e.currentTarget)}
+      >
         Ajouter une monture
       </Button>
       <Menu anchorEl={anchor} open={!!anchor} onClose={close}>

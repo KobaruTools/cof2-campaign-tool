@@ -151,6 +151,11 @@ export function GmSheetDrawer({
   const game = useCharacterGameState(character, { sessionStatusIds });
   // Modales ouvertes DEPUIS le panneau : « Utiliser » un objet renvoie une intention, c'est
   // l'appelant qui ouvre la bonne modale (même câblage que la fiche).
+  // État local des modales de repos (`PlayerStatusPanel` les prend désormais en CONTRÔLÉ, pour que la
+  // barre condensée de la vraie fiche puisse aussi les ouvrir — ce panneau MJ n'a pas de barre
+  // condensée, donc son propre état suffit).
+  const [shortRestOpen, setShortRestOpen] = useState(false);
+  const [longRestOpen, setLongRestOpen] = useState(false);
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
   const [choiceIndex, setChoiceIndex] = useState<number | null>(null);
   // Voies en « lignes » sur écran étroit (PER-229) : en colonnes, la grille défile
@@ -209,6 +214,10 @@ export function GmSheetDrawer({
           onCoinPouchIndexChange={setCoinPouchIndex}
           choiceIndex={choiceIndex}
           onChoiceIndexChange={setChoiceIndex}
+          shortRestOpen={shortRestOpen}
+          onShortRestOpenChange={setShortRestOpen}
+          longRestOpen={longRestOpen}
+          onLongRestOpenChange={setLongRestOpen}
         />
       ) : (
         <GmSheetDrawerSkeleton onClose={onClose} />
@@ -262,6 +271,10 @@ interface GmSheetDrawerContentProps {
   onCoinPouchIndexChange: (index: number | null) => void;
   choiceIndex: number | null;
   onChoiceIndexChange: (index: number | null) => void;
+  shortRestOpen: boolean;
+  onShortRestOpenChange: (open: boolean) => void;
+  longRestOpen: boolean;
+  onLongRestOpenChange: (open: boolean) => void;
 }
 
 /**
@@ -291,6 +304,10 @@ function GmSheetDrawerContent({
   onCoinPouchIndexChange,
   choiceIndex,
   onChoiceIndexChange,
+  shortRestOpen,
+  onShortRestOpenChange,
+  longRestOpen,
+  onLongRestOpenChange,
 }: GmSheetDrawerContentProps) {
   const characterClass = classById.get(character.classId);
   const ancestry = ancestryById.get(character.ancestryId);
@@ -579,6 +596,10 @@ function GmSheetDrawerContent({
                 onLongRest={game.doLongRest}
                 recoveryHealBonuses={game.recoveryHealBonuses}
                 elixirDosesToLose={elixirDosesToLose}
+                shortRestOpen={shortRestOpen}
+                onShortRestOpenChange={onShortRestOpenChange}
+                longRestOpen={longRestOpen}
+                onLongRestOpenChange={onLongRestOpenChange}
               />
             </SheetSection>
           )}

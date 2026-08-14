@@ -1,7 +1,10 @@
 'use client';
 
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import AddIcon from '@mui/icons-material/Add';
+import HotelIcon from '@mui/icons-material/Hotel';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import TimerIcon from '@mui/icons-material/Timer';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
@@ -10,10 +13,11 @@ import IconButton from '@mui/material/IconButton';
 import Popover from '@mui/material/Popover';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
+import { lighten, useTheme } from '@mui/material/styles';
 import { testDomains } from '@/data';
-import { ABILITY_IDS, type AbilityId } from '@/data/schema';
-import type { Depletion } from '@/lib/character/types';
+import { ABILITY_IDS, type AbilityId, type Die } from '@/data/schema';
+import type { Depletion, Purse } from '@/lib/character/types';
+import { CURRENCY_COLOR, type CoinCurrency } from '@/lib/character/coinPouch';
 import { currentHp, currentLuck, currentMana, hpHealthState } from '@/lib/character/gauges';
 import {
   freelyStackingAbilityTestBonuses,
@@ -25,8 +29,12 @@ import {
 import type { DerivedStatId } from '@/lib/ui/derivedStats';
 import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { AppTooltip } from '@/components/AppTooltip';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
+import { DieIcon } from '@/components/DieIcon';
+import { SectionIcon } from '@/components/SectionIcon';
+import type { RestBarItemId } from './PlayerStatusPanel';
 import { GaugeBar } from './GaugeBar';
 
 /** Modificateur signé (« +3 », « +0 », « −2 »), même écriture que `TestDomainsPanel`. */
@@ -65,6 +73,30 @@ export interface StickySheetStatusBarProps {
   showStatusGauges: boolean;
   /** Clic sur le groupe PV/mana/chance : défile jusqu'à sa section source. */
   onJumpToStatusGauges: () => void;
+  /**
+   * Révèle le condensé Inventaire (icône + décompte, + bourse en option) — piloté par le PIN de la
+   * section « Inventaire » (`PinSectionButton`, cf. la fiche), pas par le défilement.
+   */
+  showInventory: boolean;
+  /** Clic sur le groupe Inventaire : défile jusqu'à sa section source. */
+  onJumpToInventory: () => void;
+  /** Nombre d'objets possédés (lignes d'équipement, même décompte que les en-têtes de groupe). */
+  inventoryItemCount: number;
+  /** Bourse courante — condensée en option (PIN soudé sur le bloc « Bourse » de la fiche). */
+  purse: Purse;
+  /**
+   * La bourse fait-elle partie du condensé Inventaire ? PIN individuel côté fiche (bloc « Bourse »,
+   * `PurseField`), lui-même sans effet si la section Inventaire n'est pas épinglée (`showInventory`).
+   */
+  showPurse: boolean;
+  /**
+   * Le bouton « Objet personnalisé » fait-il partie du condensé Inventaire ? PIN individuel côté
+   * fiche (`WeldedBarPinButton`, `EquipmentList`), sans effet si la section Inventaire n'est pas
+   * épinglée. En icône carrée ici (retour propriétaire) — pas le libellé complet, trop large.
+   */
+  showCustomItemButton: boolean;
+  /** Ouvre la modale « Objet personnalisé » (`ItemDialog`, portée par `EquipmentList`). */
+  onOpenCustomItem: () => void;
   /** PV maximum EFFECTIF (surcharge manuelle incluse), comme `PlayerStatusPanel`. */
   maxHp: number;
   /** Dépletion transitoire courante du personnage. */
@@ -73,6 +105,22 @@ export interface StickySheetStatusBarProps {
   manaMax: number | null;
   /** Réserve de points de chance maximale (universelle, PER-155). */
   luckMax: number;
+  /** Réserve de dés de récupération (stat dérivée `recoveryDiceCount`) ; 0 → pas de puce ici (PER-151). */
+  recoveryDiceMax: number;
+  /** Dés de récupération encore disponibles (déjà bornés par l'appelant, comme `PlayerStatusPanel`). */
+  recoveryDiceCurrent: number;
+  /** Type du dé de récupération du profil (ex. `d8`). */
+  recoveryDie: Die;
+  /** Ouvre la modale de repos court (`ShortRestDialog`, portée par `PlayerStatusPanel`). */
+  onOpenShortRest: () => void;
+  /** Ouvre la modale de repos long (`LongRestDialog`, portée par `PlayerStatusPanel`). */
+  onOpenLongRest: () => void;
+  /**
+   * Boutons de repos (court/long) à afficher ici, en icône carrée — PIN individuel soudé à chaque
+   * bouton de repos sur la fiche (`WeldedBarPinButton`, `PlayerStatusPanel`), lui-même sans effet si
+   * la section n'est pas épinglée (`showStatusGauges`).
+   */
+  pinnedRestItems: ReadonlySet<RestBarItemId>;
   /** Défense EFFECTIVE (surcharge manuelle incluse), `null` si profil incomplet. */
   defense: number | null;
   /** Initiative EFFECTIVE (surcharge manuelle incluse), `null` si profil incomplet. */
@@ -81,6 +129,15 @@ export interface StickySheetStatusBarProps {
   meleeAttack: number | null;
   /** Touche à distance EFFECTIVE (surcharge manuelle incluse), `null` si profil incomplet. */
   rangedAttack: number | null;
+  /** Touche magique EFFECTIVE (surcharge manuelle incluse), `null` si profil incomplet. */
+  magicAttack: number | null;
+  /**
+   * Sous-ensemble des 5 stats du groupe « Statistiques dérivées » (défense/init/contact/distance/
+   * magie) à condenser ici — PIN individuel de chaque bloc de la section fiche (`DerivedStatsGrid`),
+   * lui-même sans effet si la section n'est pas épinglée (`showDerivedStats`). Une stat absente de
+   * l'ensemble n'affiche jamais sa puce, même section épinglée.
+   */
+  pinnedDerivedStatIds: ReadonlySet<DerivedStatId>;
   /**
    * Bonus de compétence par domaine (même donnée que `TestDomainsPanel`, cf. `display.testBonuses`)
    * — sert au panneau condensé « Compétences & tests » qui se déplie au survol du groupe
@@ -116,6 +173,83 @@ function MiniGauge({ icon, current, max, color }: { icon: ReactNode; current: nu
       >
         {current}/{max}
       </Typography>
+    </Stack>
+  );
+}
+
+/** Puce condensée de la réserve de dés de récupération : icône + `courant/max` + le dé du profil. */
+function MiniRecoveryDice({ current, max, die }: { current: number; max: number; die: Die }) {
+  return (
+    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
+      <DerivedStatIcon statId="recoveryDice" title size={22} />
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+      >
+        {current}/{max}
+      </Typography>
+      <DieIcon die={die} size={18} />
+    </Stack>
+  );
+}
+
+/**
+ * Action CONDENSÉE : icône seule dans un carré (retour propriétaire — pas le libellé du vrai bouton,
+ * trop large pour la barre). Déclenche le MÊME geste que son homologue de la fiche (ouvrir « Repos
+ * court »/« Repos long », « Objet personnalisé »…) ; `stopPropagation` : sans ça le clic remonterait
+ * au groupe parent (`RevealGroup`) et déclencherait AUSSI le défilement vers la section source.
+ */
+function MiniSquareAction({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <AppTooltip title={label}>
+      <IconButton
+        size="small"
+        aria-label={label}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        sx={{ border: 1, borderColor: 'divider', borderRadius: 1, flexShrink: 0 }}
+      >
+        {icon}
+      </IconButton>
+    </AppTooltip>
+  );
+}
+
+/** Ordre d'affichage des unités monétaires, même ordre que `PurseField.COINS`. */
+const CURRENCY_ORDER: readonly CoinCurrency[] = ['platinum', 'gold', 'silver', 'copper'];
+
+/**
+ * Puce condensée d'une pièce : un simple rond plein de SA couleur, suivi du chiffre dans la même
+ * couleur mais plus claire — pas le jeton riche de `PurseField` (code, dégradé, brillance…), cette
+ * puce reste minimale pour la barre. Les 4 unités s'affichent TOUJOURS, même à 0 (comme les 4 champs
+ * de `PurseField`) : les masquer à 0 rendait le pin invisible sur une bourse encore vide — silence
+ * pris pour un pin cassé plutôt que pour une bourse vide.
+ */
+function MiniPurse({ purse }: { purse: Purse }) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+      {CURRENCY_ORDER.map((c) => (
+        <Stack key={c} direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
+          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: CURRENCY_COLOR[c], flexShrink: 0 }} />
+          <Typography
+            variant="body2"
+            // `lineHeight: 1` : sans ça, la boîte de ligne du chiffre (≈ 1.43× sa taille de police)
+            // dépasse largement les 8 px du rond, et le centrage flex se cale sur cette boîte, pas
+            // sur le glyphe — le rond paraissait plus haut que le chiffre. Ramenée à 1, la boîte
+            // colle au corps du chiffre et les deux se centrent enfin l'un sur l'autre.
+            sx={{
+              fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1,
+              color: lighten(CURRENCY_COLOR[c], 0.35),
+            }}
+          >
+            {purse[c]}
+          </Typography>
+        </Stack>
+      ))}
     </Stack>
   );
 }
@@ -304,8 +438,8 @@ function useGroupWidths(keys: string[]) {
 }
 
 /**
- * Version CONDENSÉE de « Caractéristiques » + « Statistiques dérivées » + « État du personnage »,
- * rattachée à l'en-tête global (`AppHeader.extraRow`, SANS wrapper propre — ni fond, ni bordure, ni
+ * Version CONDENSÉE de « Caractéristiques » + « Statistiques dérivées » + « État du personnage » +
+ * « Inventaire », rattachée à l'en-tête global (`AppHeader.extraRow`, SANS wrapper propre — ni fond, ni bordure, ni
  * ombre : elle hérite du verre dépoli de l'`AppBar`) pour garder ces valeurs sous les yeux sans
  * devoir remonter en haut de la fiche — utile en combat, où elles sont consultées en continu.
  *
@@ -326,8 +460,10 @@ function useGroupWidths(keys: string[]) {
  * `showStatusGauges` reflètent le PIN de la section correspondante (`PinSectionButton`, à côté de
  * son crayon d'édition), pas une détection de défilement — épinglé, le groupe reste affiché ici EN
  * PERMANENCE (pas seulement une fois son bloc source scrollé) ; non épinglé, il n'apparaît jamais.
- * Sans AUCUN pin actif, la barre entière n'apparaît pas (`visible` ci-dessous). Purement AFFICHAGE :
- * lecture seule, aucune action (les contrôles de jeu restent dans « État du personnage » plus bas).
+ * Sans AUCUN pin actif, la barre entière n'apparaît pas (`visible` ci-dessous). Majoritairement de
+ * l'AFFICHAGE (lecture seule) — à l'exception des boutons de repos et « Objet personnalisé » (icônes
+ * carrées, PIN individuel côté fiche), seules actions réelles de la barre : ouvrir les MÊMES modales
+ * que celles de « État du personnage »/« Inventaire » plus bas, sans y défiler.
  */
 export function StickySheetStatusBar({
   showAbilities,
@@ -337,14 +473,29 @@ export function StickySheetStatusBar({
   onJumpToDerivedStats,
   showStatusGauges,
   onJumpToStatusGauges,
+  showInventory,
+  onJumpToInventory,
+  inventoryItemCount,
+  purse,
+  showPurse,
+  showCustomItemButton,
+  onOpenCustomItem,
   maxHp,
   depletion,
   manaMax,
   luckMax,
+  recoveryDiceMax,
+  recoveryDiceCurrent,
+  recoveryDie,
+  onOpenShortRest,
+  onOpenLongRest,
+  pinnedRestItems,
   defense,
   initiative,
   meleeAttack,
   rangedAttack,
+  magicAttack,
+  pinnedDerivedStatIds,
   testBonuses,
   abilityTestBonus,
   statusTestBonus,
@@ -354,7 +505,7 @@ export function StickySheetStatusBar({
   armorPenalty,
 }: StickySheetStatusBarProps) {
   const theme = useTheme();
-  const visible = showAbilities || showDerivedStats || showStatusGauges;
+  const visible = showAbilities || showDerivedStats || showStatusGauges || showInventory;
 
   const hpState = hpHealthState(maxHp, depletion);
   const hpColor =
@@ -430,10 +581,11 @@ export function StickySheetStatusBar({
       onClick: onJumpToDerivedStats,
       node: (
         <>
-          <StatChip statId="defense" value={defense} />
-          <StatChip statId="initiative" value={initiative} />
-          <StatChip statId="meleeAttack" value={meleeAttack} />
-          <StatChip statId="rangedAttack" value={rangedAttack} />
+          {pinnedDerivedStatIds.has('defense') && <StatChip statId="defense" value={defense} />}
+          {pinnedDerivedStatIds.has('initiative') && <StatChip statId="initiative" value={initiative} />}
+          {pinnedDerivedStatIds.has('meleeAttack') && <StatChip statId="meleeAttack" value={meleeAttack} />}
+          {pinnedDerivedStatIds.has('rangedAttack') && <StatChip statId="rangedAttack" value={rangedAttack} />}
+          {pinnedDerivedStatIds.has('magicAttack') && <StatChip statId="magicAttack" value={magicAttack} />}
         </>
       ),
     },
@@ -459,6 +611,39 @@ export function StickySheetStatusBar({
             max={luckMax}
             color={theme.palette.secondary.main}
           />
+          {recoveryDiceMax > 0 && (
+            <MiniRecoveryDice current={recoveryDiceCurrent} max={recoveryDiceMax} die={recoveryDie} />
+          )}
+          {pinnedRestItems.has('shortRest') && (
+            <MiniSquareAction icon={<TimerIcon sx={{ fontSize: 18 }} />} label="Repos court" onClick={onOpenShortRest} />
+          )}
+          {pinnedRestItems.has('longRest') && (
+            <MiniSquareAction icon={<HotelIcon sx={{ fontSize: 18 }} />} label="Repos long" onClick={onOpenLongRest} />
+          )}
+        </>
+      ),
+    },
+    {
+      key: 'inventory',
+      label: 'Inventaire',
+      show: showInventory,
+      onClick: onJumpToInventory,
+      node: (
+        <>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
+            <SectionIcon name="inventory" size={22} sx={{ color: 'text.secondary' }} />
+            <Typography variant="body2" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {inventoryItemCount}
+            </Typography>
+          </Stack>
+          {showPurse && <MiniPurse purse={purse} />}
+          {showCustomItemButton && (
+            <MiniSquareAction
+              icon={<AddIcon sx={{ fontSize: 18 }} />}
+              label="Objet personnalisé"
+              onClick={onOpenCustomItem}
+            />
+          )}
         </>
       ),
     },
@@ -518,26 +703,33 @@ export function StickySheetStatusBar({
         </Box>
 
         <Stack ref={containerRef} direction="row" sx={{ alignItems: 'center', flexWrap: 'nowrap', overflow: 'hidden' }}>
-          <RevealGroup show={showAbilities && isVisible('abilities')} onClick={onJumpToAbilities}>
-            {groups[0].node}
-          </RevealGroup>
-          <RevealGroup show={showAbilities && isVisible('abilities') && (showDerivedStats || showStatusGauges) && (isVisible('derived') || isVisible('gauges'))}>
-            <Divider orientation="vertical" flexItem sx={{ borderColor: SEPARATOR_COLOR }} />
-          </RevealGroup>
-          <RevealGroup
-            show={showDerivedStats && isVisible('derived')}
-            onClick={onJumpToDerivedStats}
-            onMouseEnter={() => setDerivedHovered(true)}
-            onMouseLeave={() => setDerivedHovered(false)}
-          >
-            {groups[1].node}
-          </RevealGroup>
-          <RevealGroup show={showDerivedStats && isVisible('derived') && showStatusGauges && isVisible('gauges')}>
-            <Divider orientation="vertical" flexItem sx={{ borderColor: SEPARATOR_COLOR }} />
-          </RevealGroup>
-          <RevealGroup show={showStatusGauges && isVisible('gauges')} onClick={onJumpToStatusGauges}>
-            {groups[2].node}
-          </RevealGroup>
+          {groups.map((g, i) => {
+            const shown = g.show && isVisible(g.key);
+            // Un seul trait séparateur PAR ÉCART entre deux groupes VISIBLES consécutifs (les groupes
+            // masqués entre eux ne comptent pour rien, largeur nulle) : le trait qui précède CE groupe
+            // ne s'allume que si CE groupe est visible ET qu'un groupe PRÉCÉDENT (n'importe lequel,
+            // même masqué depuis) l'est aussi — jamais deux traits pour le même écart.
+            const showDividerBefore = shown && groups.slice(0, i).some((pg) => pg.show && isVisible(pg.key));
+            return (
+              <Fragment key={g.key}>
+                {/* Toujours monté (retour propriétaire) : seul `show` bascule, pour que `RevealGroup`
+                    anime lui-même l'apparition/disparition du trait au lieu de le monter/démonter net
+                    (sinon aucune transition — le composant changerait d'identité à chaque bascule). */}
+                <RevealGroup show={showDividerBefore}>
+                  <Divider orientation="vertical" flexItem sx={{ borderColor: SEPARATOR_COLOR }} />
+                </RevealGroup>
+                <RevealGroup
+                  show={shown}
+                  onClick={g.onClick}
+                  {...(g.key === 'derived'
+                    ? { onMouseEnter: () => setDerivedHovered(true), onMouseLeave: () => setDerivedHovered(false) }
+                    : {})}
+                >
+                  {g.node}
+                </RevealGroup>
+              </Fragment>
+            );
+          })}
 
           {overflowGroups.length > 0 && (
             <IconButton

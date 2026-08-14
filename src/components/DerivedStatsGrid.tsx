@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
@@ -57,6 +58,20 @@ export const OVERRIDE_KEY: Record<DerivedStatId, OverrideKey> = {
  * les AUTRES stats passent en grille compacte à 2 colonnes (PER-230, suite responsive).
  */
 const FULL_WIDTH_ON_MOBILE = new Set<DerivedStatId>(['meleeAttack', 'rangedAttack', 'magicAttack']);
+
+/**
+ * Sous-ensemble éligible au PIN individuel « barre condensée » (`StickySheetStatusBar`) — les seules
+ * stats que ce condensé sait afficher (défense/init/contact/distance/magie). Les autres blocs (PV,
+ * mana, chance, dés de récup) vivent déjà dans le groupe « État du personnage » de la barre, en bloc
+ * entier plutôt qu'individuellement : pas de pin ici pour eux.
+ */
+const BAR_PINNABLE_STAT_IDS = new Set<DerivedStatId>([
+  'defense',
+  'initiative',
+  'meleeAttack',
+  'rangedAttack',
+  'magicAttack',
+]);
 
 export interface DerivedStatsGridProps {
   /** Entrées du moteur — sert au calcul des stats et au détail des infobulles. */
@@ -185,6 +200,22 @@ export interface DerivedStatsGridProps {
    * en badge sous la carte « Attaque à distance ». Vide ou absent = aucune.
    */
   rangedAttackNotes?: FeatureEffectNote[];
+  /**
+   * Épingle de bloc individuelle (retour propriétaire) vers la barre condensée (`StickySheetStatusBar`) :
+   * n'a de sens que pour les 5 stats du groupe « Statistiques dérivées » de la barre (défense/init/
+   * contact/distance/magie, cf. `BAR_PINNABLE_STAT_IDS`) — les autres blocs (PV, mana, chance, dés de
+   * récup) n'affichent jamais ce contrôle. Présent seulement sur la fiche réelle (absent du récap du
+   * wizard et de l'écran de MJ, où le pin de bloc n'a pas de sens).
+   */
+  onToggleBarPin?: (id: DerivedStatId) => void;
+  /** Ensemble courant des stats épinglées à la barre condensée — sert à colorer l'icône du pin. */
+  barPinnedIds?: ReadonlySet<DerivedStatId>;
+  /**
+   * Section « Statistiques dérivées » elle-même épinglée à la barre condensée (`PinSectionButton`) :
+   * les pins individuels de bloc n'apparaissent QUE si elle l'est — sans ça, épingler un bloc n'aurait
+   * aucun effet visible.
+   */
+  barSectionPinned?: boolean;
 }
 
 interface StatLine {
@@ -234,8 +265,49 @@ export function DerivedStatsGrid({
   attackMalusDie = [],
   meleeAttackNotes,
   rangedAttackNotes,
+  onToggleBarPin,
+  barPinnedIds,
+  barSectionPinned = false,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
+
+  /**
+   * Superpose le pin de bloc (haut-droit) au contenu d'une carte quand ce bloc est éligible
+   * (`BAR_PINNABLE_STAT_IDS`), que la section est épinglée, et qu'un gestionnaire est fourni — sinon
+   * renvoie le contenu tel quel (récap du wizard, écran de MJ, section non épinglée).
+   */
+  const withBarPin = (id: DerivedStatId, content: ReactNode): ReactNode => {
+    if (!onToggleBarPin || !barSectionPinned || !BAR_PINNABLE_STAT_IDS.has(id)) return content;
+    const pinned = barPinnedIds?.has(id) ?? false;
+    return (
+      <Box sx={{ position: 'relative', height: '100%' }}>
+        {content}
+        <AppTooltip title={pinned ? 'Retirer de la barre condensée' : 'Ajouter à la barre condensée'}>
+          <IconButton
+            size="small"
+            onClick={() => onToggleBarPin(id)}
+            aria-label={pinned ? `Retirer de la barre condensée : ${DERIVED_STAT_NAMES[id]}` : `Ajouter à la barre condensée : ${DERIVED_STAT_NAMES[id]}`}
+            sx={{
+              position: 'absolute',
+              top: 2,
+              right: 2,
+              zIndex: 4,
+              bgcolor: 'background.paper',
+              border: 1,
+              borderColor: 'divider',
+              '&:hover': { bgcolor: 'background.paper' },
+            }}
+          >
+            {pinned ? (
+              <PushPinIcon sx={{ fontSize: 16 }} color="primary" />
+            ) : (
+              <PushPinOutlinedIcon sx={{ fontSize: 16 }} />
+            )}
+          </IconButton>
+        </AppTooltip>
+      </Box>
+    );
+  };
 
   /**
    * Dés bonus à afficher sur la carte d'attaque d'un MODE : les dés généraux (valables sur toutes
@@ -312,29 +384,32 @@ export function DerivedStatsGrid({
         if (id === 'meleeAttack' && unarmedStrike && !onOverride) {
           return (
             <Grid key={id} size={cardSize}>
-              <MeleeAttackCard
-                touch={display}
-                forced={forced}
-                wrapTouch={(child) => (
-                  <DerivedStatBreakdownTooltip {...breakdownProps}>{child}</DerivedStatBreakdownTooltip>
-                )}
-                abilities={input.abilities}
-                unarmed={unarmedStrike}
-                meleeWeaponDamage={meleeWeaponDamage ?? null}
-                offHandMeleeWeaponDamage={offHandMeleeWeaponDamage ?? null}
-                weaponCriticalRanges={meleeCriticalRanges ?? []}
-                offHandCriticalRanges={offHandCriticalRanges ?? []}
-                offHandTouchDelta={offHandTouchDelta}
-                twoWeaponPenaltyDie={twoWeaponPenaltyDie}
-                onScrollToWeapon={onScrollToWeapon}
-                unarmedCriticalRanges={unarmedCriticalRanges ?? []}
-                situationalBonuses={meleeSituationalDamage ?? []}
-                offHandSituationalBonuses={offHandMeleeSituationalDamage ?? []}
-                attackBonusDie={attackDiceFor('melee')}
-                attackMalusDie={attackMalusDie}
-                meleeAttackNotes={meleeAttackNotes ?? []}
-                level={input.level}
-              />
+              {withBarPin(
+                id,
+                <MeleeAttackCard
+                  touch={display}
+                  forced={forced}
+                  wrapTouch={(child) => (
+                    <DerivedStatBreakdownTooltip {...breakdownProps}>{child}</DerivedStatBreakdownTooltip>
+                  )}
+                  abilities={input.abilities}
+                  unarmed={unarmedStrike}
+                  meleeWeaponDamage={meleeWeaponDamage ?? null}
+                  offHandMeleeWeaponDamage={offHandMeleeWeaponDamage ?? null}
+                  weaponCriticalRanges={meleeCriticalRanges ?? []}
+                  offHandCriticalRanges={offHandCriticalRanges ?? []}
+                  offHandTouchDelta={offHandTouchDelta}
+                  twoWeaponPenaltyDie={twoWeaponPenaltyDie}
+                  onScrollToWeapon={onScrollToWeapon}
+                  unarmedCriticalRanges={unarmedCriticalRanges ?? []}
+                  situationalBonuses={meleeSituationalDamage ?? []}
+                  offHandSituationalBonuses={offHandMeleeSituationalDamage ?? []}
+                  attackBonusDie={attackDiceFor('melee')}
+                  attackMalusDie={attackMalusDie}
+                  meleeAttackNotes={meleeAttackNotes ?? []}
+                  level={input.level}
+                />,
+              )}
             </Grid>
           );
         }
@@ -350,18 +425,21 @@ export function DerivedStatsGrid({
           const attackTouch = attackForced ? (overrides![attackKey] ?? 0) : stats[attackStatId];
           return (
             <Grid key={id} size={cardSize}>
-              <FormAttackCard
-                attack={rangedReplacingFormAttack}
-                touch={attackTouch}
-                forced={attackForced}
-                wrapTouch={(child) => (
-                  <DerivedStatBreakdownTooltip {...breakdownProps} statId={attackStatId}>
-                    {child}
-                  </DerivedStatBreakdownTooltip>
-                )}
-                abilities={input.abilities}
-                attackMalusDie={attackMalusDie}
-              />
+              {withBarPin(
+                id,
+                <FormAttackCard
+                  attack={rangedReplacingFormAttack}
+                  touch={attackTouch}
+                  forced={attackForced}
+                  wrapTouch={(child) => (
+                    <DerivedStatBreakdownTooltip {...breakdownProps} statId={attackStatId}>
+                      {child}
+                    </DerivedStatBreakdownTooltip>
+                  )}
+                  abilities={input.abilities}
+                  attackMalusDie={attackMalusDie}
+                />,
+              )}
             </Grid>
           );
         }
@@ -372,188 +450,194 @@ export function DerivedStatsGrid({
         if (id === 'rangedAttack' && rangedWeaponDamage !== undefined && !onOverride) {
           return (
             <Grid key={id} size={cardSize}>
-              <RangedAttackCard
-                touch={display}
-                forced={forced}
-                wrapTouch={(child) => (
-                  <DerivedStatBreakdownTooltip {...breakdownProps}>{child}</DerivedStatBreakdownTooltip>
-                )}
-                abilities={input.abilities}
-                rangedWeaponDamage={rangedWeaponDamage}
-                criticalRanges={rangedCriticalRanges ?? []}
-                situationalBonuses={rangedSituationalDamage ?? []}
-                magicalSourceId={rangedAttackMagicalSourceId}
-                elemental={rangedAttackElement}
-                attackBonusDie={attackDiceFor('ranged')}
-                attackMalusDie={attackMalusDie}
-                notes={rangedAttackNotes ?? []}
-                level={input.level}
-              />
+              {withBarPin(
+                id,
+                <RangedAttackCard
+                  touch={display}
+                  forced={forced}
+                  wrapTouch={(child) => (
+                    <DerivedStatBreakdownTooltip {...breakdownProps}>{child}</DerivedStatBreakdownTooltip>
+                  )}
+                  abilities={input.abilities}
+                  rangedWeaponDamage={rangedWeaponDamage}
+                  criticalRanges={rangedCriticalRanges ?? []}
+                  situationalBonuses={rangedSituationalDamage ?? []}
+                  magicalSourceId={rangedAttackMagicalSourceId}
+                  elemental={rangedAttackElement}
+                  attackBonusDie={attackDiceFor('ranged')}
+                  attackMalusDie={attackMalusDie}
+                  notes={rangedAttackNotes ?? []}
+                  level={input.level}
+                />,
+              )}
             </Grid>
           );
         }
 
         return (
           <Grid key={id} size={cardSize}>
-            <Card
-              variant="outlined"
-              sx={{
-                height: '100%',
-                transition: 'border-color 120ms ease',
-                // Bordure très légèrement éclaircie au survol / focus clavier de la carte.
-                // Le détail du calcul est désormais accessible en survolant le chiffre (curseur « ? »).
-                '&:hover, &:focus-within': {
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                },
-              }}
-            >
-              <CardContent
+            {withBarPin(
+              id,
+              <Card
+                variant="outlined"
                 sx={{
-                  py: 1,
                   height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  '&:last-child': { pb: 1 },
+                  transition: 'border-color 120ms ease',
+                  // Bordure très légèrement éclaircie au survol / focus clavier de la carte.
+                  // Le détail du calcul est désormais accessible en survolant le chiffre (curseur « ? »).
+                  '&:hover, &:focus-within': {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                  },
                 }}
               >
-                {/* Ligne du haut : icône + libellé + valeur, alignée EN HAUT du bloc. Le détail du
-                    calcul s'ouvre au survol du CHIFFRE (curseur « ? ») ; en édition, où le chiffre
-                    devient un champ de saisie, il est porté par le LIBELLÉ à la place. */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: compact ? 1 : 1.5, sm: 1.5 }, width: '100%' }}>
-                  {/* Icône réduite sur mobile dans la vue compacte (PER-230, suite) ; taille
-                      pleine (40) sur tablette+ et pour les cartes pleine largeur / l'édition. */}
-                  <DerivedStatIcon
-                    statId={id}
-                    title
-                    size={40}
-                    sx={compact ? { width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } } : undefined}
-                  />
-                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                    {onOverride ? (
-                      <DerivedStatBreakdownTooltip {...breakdownProps}>
+                <CardContent
+                  sx={{
+                    py: 1,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    '&:last-child': { pb: 1 },
+                  }}
+                >
+                  {/* Ligne du haut : icône + libellé + valeur, alignée EN HAUT du bloc. Le détail du
+                      calcul s'ouvre au survol du CHIFFRE (curseur « ? ») ; en édition, où le chiffre
+                      devient un champ de saisie, il est porté par le LIBELLÉ à la place. */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: compact ? 1 : 1.5, sm: 1.5 }, width: '100%' }}>
+                    {/* Icône réduite sur mobile dans la vue compacte (PER-230, suite) ; taille
+                        pleine (40) sur tablette+ et pour les cartes pleine largeur / l'édition. */}
+                    <DerivedStatIcon
+                      statId={id}
+                      title
+                      size={40}
+                      sx={compact ? { width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } } : undefined}
+                    />
+                    <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                      {onOverride ? (
+                        <DerivedStatBreakdownTooltip {...breakdownProps}>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: 'inline-block', lineHeight: 1.2, cursor: 'help' }}
+                          >
+                            {DERIVED_STAT_NAMES[id]}
+                          </Typography>
+                        </DerivedStatBreakdownTooltip>
+                      ) : (
                         <Typography
                           variant="caption"
                           color="text.secondary"
-                          sx={{ display: 'inline-block', lineHeight: 1.2, cursor: 'help' }}
+                          // Titre masqué sur mobile dans la vue compacte (PER-230, suite) :
+                          // l'icône + le chiffre suffisent à identifier la stat, le détail au survol
+                          // porte le nom. Réaffiché dès « sm » et pour les cartes pleine largeur.
+                          sx={{ display: compact ? { xs: 'none', sm: 'block' } : 'block', lineHeight: 1.2 }}
                         >
                           {DERIVED_STAT_NAMES[id]}
                         </Typography>
-                      </DerivedStatBreakdownTooltip>
-                    ) : (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        // Titre masqué sur mobile dans la vue compacte (PER-230, suite) :
-                        // l'icône + le chiffre suffisent à identifier la stat, le détail au survol
-                        // porte le nom. Réaffiché dès « sm » et pour les cartes pleine largeur.
-                        sx={{ display: compact ? { xs: 'none', sm: 'block' } : 'block', lineHeight: 1.2 }}
-                      >
-                        {DERIVED_STAT_NAMES[id]}
-                      </Typography>
-                    )}
+                      )}
 
-                    {onOverride ? (
-                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
-                        <SignedNumberField
-                          size="small"
-                          value={display ?? 0}
-                          disabled={!forced}
-                          onChange={(v) => onOverride(key, v)}
-                          slotProps={{
-                            htmlInput: {
-                              style: { textAlign: 'center', fontWeight: 700, padding: '4px 6px' },
-                            },
-                          }}
-                          sx={{ width: 56, flexGrow: 0 }}
-                        />
-                        {suffix}
-                        <AppTooltip
-                          title={forced ? 'Revenir au calcul automatique' : 'Forcer cette valeur'}
-                        >
-                          <IconButton
+                      {onOverride ? (
+                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
+                          <SignedNumberField
                             size="small"
-                            color={forced ? 'warning' : 'default'}
-                            onClick={() => onOverride(key, forced ? null : (computed ?? 0))}
-                          >
-                            {forced ? (
-                              <RestartAltIcon fontSize="small" />
-                            ) : (
-                              <PushPinOutlinedIcon fontSize="small" />
-                            )}
-                          </IconButton>
-                        </AppTooltip>
-                      </Stack>
-                    ) : (
-                      <DerivedStatBreakdownTooltip {...breakdownProps}>
-                        <Typography
-                          variant="h5"
-                          sx={{
-                            fontWeight: 600,
-                            color: forced ? 'warning.main' : undefined,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 0.75,
-                            cursor: 'help',
-                          }}
-                        >
-                          {display === null ? '—' : display}
+                            value={display ?? 0}
+                            disabled={!forced}
+                            onChange={(v) => onOverride(key, v)}
+                            slotProps={{
+                              htmlInput: {
+                                style: { textAlign: 'center', fontWeight: 700, padding: '4px 6px' },
+                              },
+                            }}
+                            sx={{ width: 56, flexGrow: 0 }}
+                          />
                           {suffix}
-                          {forced && (
-                            <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
-                              <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
-                            </AppTooltip>
-                          )}
-                          {/* Dé bonus à toutes les attaques (flibustier r8, PV bas) — porté aussi par l'attaque MAGIQUE. */}
-                          {id === 'magicAttack' && attackBonusDie.length > 0 && (
-                            <BonusDieBadge
-                              ability="attaque magique"
-                              size={18}
-                              noTooltip
-                              tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
-                            />
-                          )}
-                          {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
-                          {id === 'magicAttack' && attackMalusDie.length > 0 && (
-                            <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} noTooltip />
-                          )}
-                        </Typography>
-                      </DerivedStatBreakdownTooltip>
-                    )}
+                          <AppTooltip
+                            title={forced ? 'Revenir au calcul automatique' : 'Forcer cette valeur'}
+                          >
+                            <IconButton
+                              size="small"
+                              color={forced ? 'warning' : 'default'}
+                              onClick={() => onOverride(key, forced ? null : (computed ?? 0))}
+                            >
+                              {forced ? (
+                                <RestartAltIcon fontSize="small" />
+                              ) : (
+                                <PushPinOutlinedIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </AppTooltip>
+                        </Stack>
+                      ) : (
+                        <DerivedStatBreakdownTooltip {...breakdownProps}>
+                          <Typography
+                            variant="h5"
+                            sx={{
+                              fontWeight: 600,
+                              color: forced ? 'warning.main' : undefined,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.75,
+                              cursor: 'help',
+                            }}
+                          >
+                            {display === null ? '—' : display}
+                            {suffix}
+                            {forced && (
+                              <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
+                                <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+                              </AppTooltip>
+                            )}
+                            {/* Dé bonus à toutes les attaques (flibustier r8, PV bas) — porté aussi par l'attaque MAGIQUE. */}
+                            {id === 'magicAttack' && attackBonusDie.length > 0 && (
+                              <BonusDieBadge
+                                ability="attaque magique"
+                                size={18}
+                                noTooltip
+                                tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
+                              />
+                            )}
+                            {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
+                            {id === 'magicAttack' && attackMalusDie.length > 0 && (
+                              <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} noTooltip />
+                            )}
+                          </Typography>
+                        </DerivedStatBreakdownTooltip>
+                      )}
+                    </Box>
                   </Box>
-                </Box>
 
-                {/* Badges alignés EN BAS du bloc (mt: auto). Les IMMUNITÉS ont leur PROPRE grille,
-                    placée AVANT celle des réductions / plages de critique. Grilles à 3 colonnes
-                    ÉGALES pour une empreinte uniforme. */}
-                {badges && badges.length > 0 && (
-                  <Box sx={{ mt: 'auto', pt: 0.75, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {(['immunity', 'other'] as const).map((group) => {
-                      const items = badges.filter((b) =>
-                        group === 'immunity' ? b.variant === 'immunity' : b.variant !== 'immunity',
-                      );
-                      if (items.length === 0) return null;
-                      return (
-                        <Box
-                          key={group}
-                          sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 0.5 }}
-                        >
-                          {items.map(({ key, ...rest }) => (
-                            // `abilities`/`level` : de quoi RÉSOUDRE un dé de badge (riposte) par le
-                            // parser plutôt que de l'écrire en littéral (cf. `DefenseBadge.dice`).
-                            <DefenseBadge
-                              key={key}
-                              {...rest}
-                              abilities={input.abilities}
-                              level={input.level}
-                            />
-                          ))}
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
+                  {/* Badges alignés EN BAS du bloc (mt: auto). Les IMMUNITÉS ont leur PROPRE grille,
+                      placée AVANT celle des réductions / plages de critique. Grilles à 3 colonnes
+                      ÉGALES pour une empreinte uniforme. */}
+                  {badges && badges.length > 0 && (
+                    <Box sx={{ mt: 'auto', pt: 0.75, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {(['immunity', 'other'] as const).map((group) => {
+                        const items = badges.filter((b) =>
+                          group === 'immunity' ? b.variant === 'immunity' : b.variant !== 'immunity',
+                        );
+                        if (items.length === 0) return null;
+                        return (
+                          <Box
+                            key={group}
+                            sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 0.5 }}
+                          >
+                            {items.map(({ key, ...rest }) => (
+                              // `abilities`/`level` : de quoi RÉSOUDRE un dé de badge (riposte) par le
+                              // parser plutôt que de l'écrire en littéral (cf. `DefenseBadge.dice`).
+                              <DefenseBadge
+                                key={key}
+                                {...rest}
+                                abilities={input.abilities}
+                                level={input.level}
+                              />
+                            ))}
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>,
+            )}
           </Grid>
         );
       })}

@@ -4,6 +4,8 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import AddIcon from '@mui/icons-material/Add';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import RemoveIcon from '@mui/icons-material/Remove';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
@@ -13,6 +15,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha, darken, lighten } from '@mui/material/styles';
 import type { Purse } from '@/lib/character/types';
+import { CURRENCY_COLOR } from '@/lib/character/coinPouch';
 import { COPPER_PER_SILVER, GOLD_PER_PLATINUM, SILVER_PER_GOLD } from '@/lib/character/purse';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PurseIcon } from '@/components/PurseIcon';
@@ -109,7 +112,7 @@ const COINS: CoinMeta[] = [
     name: 'Pièce de platine',
     // Teal profond très saturé : tranche volontairement sur les tons chauds
     // (or/argent/cuivre) pour signaler l'unité la plus précieuse d'un coup d'œil.
-    color: '#0d8a7a',
+    color: CURRENCY_COLOR.platinum,
     // Reflet en dégradé vert/bleu → vert/bleu plus clair (métal froid et éclatant),
     // et SEULE pièce à double passage de la barre (statut le plus précieux).
     shine: { from: 'rgba(28, 190, 178, 0.85)', to: 'rgba(196, 255, 248, 0.96)' },
@@ -124,7 +127,7 @@ const COINS: CoinMeta[] = [
     key: 'gold',
     code: 'po',
     name: 'Pièce d’or',
-    color: '#d4af37',
+    color: CURRENCY_COLOR.gold,
     // Reflet en dégradé jaune → jaune-orangé (au lieu de la barre blanche), passage unique.
     shine: { from: 'rgba(255, 228, 130, 0.92)', to: 'rgba(255, 160, 66, 0.85)' },
     sparkle: { positions: SPARKLES_GOLD, duration: '2s' },
@@ -136,7 +139,7 @@ const COINS: CoinMeta[] = [
     key: 'silver',
     code: 'pa',
     name: 'Pièce d’argent',
-    color: '#b7bcc4',
+    color: CURRENCY_COLOR.silver,
     rule:
       'Tous les prix sont exprimés en pièces d’argent (pa) et pièces de cuivre (pc). ' +
       'Unité de référence des prix d’équipement. 1 pa = 10 pc.',
@@ -145,7 +148,7 @@ const COINS: CoinMeta[] = [
     key: 'copper',
     code: 'pc',
     name: 'Pièce de cuivre',
-    color: '#c07a4b',
+    color: CURRENCY_COLOR.copper,
     // Cuivre = métal humble : brillance plus terne et grisée que l'or/argent.
     shine: 'rgba(205, 205, 210, 0.4)',
     rule:
@@ -657,6 +660,14 @@ export interface PurseFieldProps {
    * que dans ce mode (les montants restent éditables en permanence — état de jeu transitoire).
    */
   editing?: boolean;
+  /**
+   * PIN individuel (retour propriétaire) de la bourse vers la barre condensée (`StickySheetStatusBar`,
+   * `MiniPurse`) — n'apparaît QUE si la section « Inventaire » y est elle-même épinglée
+   * (`barSectionPinned`). Absent (récap du wizard, écran de MJ) → aucun pin affiché.
+   */
+  onToggleBarPin?: () => void;
+  barPinned?: boolean;
+  barSectionPinned?: boolean;
 }
 
 /**
@@ -673,7 +684,14 @@ export interface PurseFieldProps {
  *   qui n'a de sens qu'en ligne unique ou en 1 colonne → on bascule directement rangée → colonne
  *   (champs en pleine largeur, flèches recentrées entre les blocs empilés).
  */
-export function PurseField({ purse, onChange, editing = false }: PurseFieldProps) {
+export function PurseField({
+  purse,
+  onChange,
+  editing = false,
+  onToggleBarPin,
+  barPinned = false,
+  barSectionPinned = false,
+}: PurseFieldProps) {
   // En-tête (icône + titre « Bourse ») partagé. `titleQuery` : largeur de container sous
   // laquelle le titre s'affiche (quand la bourse n'est plus sur une seule ligne) et où
   // l'en-tête se recentre au-dessus des blocs empilés.
@@ -699,6 +717,20 @@ export function PurseField({ purse, onChange, editing = false }: PurseFieldProps
       >
         Bourse
       </Typography>
+      {barSectionPinned && onToggleBarPin && (
+        <AppTooltip
+          title={barPinned ? 'Retirer de la barre condensée : Bourse' : 'Ajouter à la barre condensée : Bourse'}
+        >
+          <IconButton
+            size="small"
+            onClick={onToggleBarPin}
+            color={barPinned ? 'primary' : 'default'}
+            aria-label={barPinned ? 'Retirer de la barre condensée : Bourse' : 'Ajouter à la barre condensée : Bourse'}
+          >
+            {barPinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+          </IconButton>
+        </AppTooltip>
+      )}
     </Box>
   );
 

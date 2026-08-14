@@ -27,6 +27,17 @@ export const CURRENCY_LABEL: Record<CoinCurrency, string> = {
   copper: 'pièces de cuivre (pc)',
 };
 
+/**
+ * Couleur de teinte de chaque unité (jeton de `PurseField`, puce condensée de la barre collée) —
+ * SOURCE UNIQUE pour ne pas dupliquer ces hex ailleurs (`PurseField.COINS` s'y réfère).
+ */
+export const CURRENCY_COLOR: Record<CoinCurrency, string> = {
+  platinum: '#0d8a7a',
+  gold: '#d4af37',
+  silver: '#b7bcc4',
+  copper: '#c07a4b',
+};
+
 const CURRENCY_BY_ABBREV: Record<string, CoinCurrency> = {
   pp: 'platinum',
   po: 'gold',
