@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -2202,7 +2204,11 @@ export function LevelUpDialog({
         >
           <FeaturePointsBadge spent={spent} budget={budget} satisfied={!pointsUnspent} />
           <Stack direction="row" spacing={1}>
-            <Button onClick={close}>Annuler</Button>
+            <AppTooltip title={fullScreen ? 'Annuler' : ''}>
+              <Button onClick={close} sx={fullScreen ? { minWidth: 0, px: 1 } : undefined}>
+                {fullScreen ? <CloseIcon fontSize="small" /> : 'Annuler'}
+              </Button>
+            </AppTooltip>
             <AppTooltip
               title={
                 choicesPending
@@ -2211,7 +2217,9 @@ export function LevelUpDialog({
                     ? `Dépensez vos points de capacité (${remaining} restant${remaining > 1 ? 's' : ''})`
                     : rolledPending
                       ? 'Saisissez le résultat du dé de vie'
-                      : ''
+                      : fullScreen
+                        ? `Valider le niveau ${newLevel}`
+                        : ''
               }
             >
               <Box component="span">
@@ -2219,8 +2227,9 @@ export function LevelUpDialog({
                   variant="contained"
                   onClick={confirm}
                   disabled={choicesPending || pointsUnspent || rolledPending}
+                  sx={fullScreen ? { minWidth: 0, px: 1 } : undefined}
                 >
-                  Valider le niveau {newLevel}
+                  {fullScreen ? <CheckIcon fontSize="small" /> : `Valider le niveau ${newLevel}`}
                 </Button>
               </Box>
             </AppTooltip>
