@@ -1535,82 +1535,96 @@ export function LevelUpDialog({
       <DialogContent dividers sx={{ overflowX: 'hidden' }}>
         <Stack spacing={3}>
           {/* Règle maison « dé de vie » (PER-87) : choix PV fixes / lancer le DR, avec
-              la saisie du jet À DROITE du choix pour gagner de la place. */}
-          {hitDieOnLevelUp && family && hitDie && (
-            <Box>
-                <Stack
-                  direction="row"
-                  spacing={1.5}
-                  // `minHeight` fixe (= hauteur du `TextField` small, seul élément plus
-                  // haut que le `ToggleButtonGroup`) : sans ça, la rangée grandissait de
-                  // 1-2px quand le TextField apparaissait (mode « Dé de vie »), décalant
-                  // tout le contenu en dessous.
-                  sx={{ alignItems: 'center', flexWrap: 'wrap', minHeight: 40 }}
-                >
-                  <ToggleButtonGroup
-                    size="small"
-                    exclusive
-                    value={hpMode}
-                    onChange={(_, v) => v && setHpMode(v)}
-                    aria-label="Mode de gain de PV à ce niveau"
-                  >
-                    <ToggleButton value="fixed">
-                      PV fixes{hpGain !== null ? ` (+${hpGain})` : ''}
-                    </ToggleButton>
-                    <ToggleButton
-                      value="rolled"
-                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                    >
-                      Dé de vie <DieIcon die={hitDie} size={18} noTooltip />
-                      <AppTooltip
-                        title={
-                          'Règle maison : lancez votre dé de récupération à la table et saisissez le ' +
-                          'résultat ; la Constitution s’ajoute au jet. Les valeurs d’attaque, la défense ' +
-                          'et les autres statistiques dérivées sont recalculées automatiquement à partir ' +
-                          'du niveau.'
-                        }
-                      >
-                        <InfoOutlinedIcon
-                          sx={{ fontSize: 18, color: 'text.secondary', cursor: 'help', flexShrink: 0 }}
-                        />
-                      </AppTooltip>
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                  {rolling && (
-                    <TextField
+              la saisie du jet À DROITE du choix pour gagner de la place. Bascule mode
+              simplifié/avancé sur la MÊME ligne, poussée à droite (`ml: auto`) — cette
+              ligne existe TOUJOURS (même sans la règle maison) pour lui servir d'ancrage. */}
+          <Box>
+              <Stack
+                direction="row"
+                // `minHeight` fixe (= hauteur du `TextField` small, seul élément plus
+                // haut que le `ToggleButtonGroup`) : sans ça, la rangée grandissait de
+                // 1-2px quand le TextField apparaissait (mode « Dé de vie »), décalant
+                // tout le contenu en dessous. `gap` (pas `spacing`, qui pousse une marge
+                // sur TOUS les enfants y compris le dernier) pour laisser le `ml: auto`
+                // du groupe simplifié/avancé pousser réellement vers la droite. `nowrap` :
+                // le champ « Résultat du dX » est FLEXIBLE (rétrécit sur mobile) pour que
+                // la bascule simplifié/avancé ne soit jamais poussée à la ligne suivante.
+                sx={{ alignItems: 'center', flexWrap: 'nowrap', minHeight: 40, width: '100%', gap: 1.5 }}
+              >
+                {hitDieOnLevelUp && family && hitDie && (
+                  <>
+                    <ToggleButtonGroup
                       size="small"
-                      type="number"
-                      label={`Résultat du ${hitDie}`}
-                      value={rolledValue}
-                      onChange={(e) => setRolledValue(e.target.value)}
-                      slotProps={{
-                        htmlInput: {
-                          min: 1,
-                          max: dieMax,
-                          inputMode: 'numeric',
-                          'aria-label': 'Résultat du dé de vie',
-                        },
-                      }}
-                      sx={{ width: 150 }}
-                    />
-                  )}
-                </Stack>
-
-                {/* Hors-plage : affiché UNIQUEMENT en mode « Dé de vie » — le rappel de la
-                    règle maison est passé en info-bulle (icône « i » ci-dessus). */}
-                {rolling && rolledOutOfRange && (
-                  <Typography
-                    variant="caption"
-                    component="div"
-                    color="warning.main"
-                    sx={{ mt: 1 }}
-                  >
-                    Un {hitDie} ne dépasse pas {dieMax} — valeur conservée telle quelle (les dés
-                    se lancent à la table).
-                  </Typography>
+                      exclusive
+                      value={hpMode}
+                      onChange={(_, v) => v && setHpMode(v)}
+                      aria-label="Mode de gain de PV à ce niveau"
+                      sx={{ flexShrink: 0 }}
+                    >
+                      <ToggleButton value="fixed">
+                        PV fixes{hpGain !== null ? ` (+${hpGain})` : ''}
+                      </ToggleButton>
+                      <ToggleButton
+                        value="rolled"
+                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                      >
+                        Dé de vie <DieIcon die={hitDie} size={18} noTooltip />
+                        <AppTooltip
+                          title={
+                            'Règle maison : lancez votre dé de récupération à la table et saisissez le ' +
+                            'résultat ; la Constitution s’ajoute au jet. Les valeurs d’attaque, la défense ' +
+                            'et les autres statistiques dérivées sont recalculées automatiquement à partir ' +
+                            'du niveau.'
+                          }
+                        >
+                          <InfoOutlinedIcon
+                            sx={{ fontSize: 18, color: 'text.secondary', cursor: 'help', flexShrink: 0 }}
+                          />
+                        </AppTooltip>
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                    {rolling && (
+                      <TextField
+                        size="small"
+                        type="number"
+                        label={`Résultat du ${hitDie}`}
+                        value={rolledValue}
+                        onChange={(e) => setRolledValue(e.target.value)}
+                        slotProps={{
+                          htmlInput: {
+                            min: 1,
+                            max: dieMax,
+                            inputMode: 'numeric',
+                            'aria-label': 'Résultat du dé de vie',
+                          },
+                        }}
+                        // Flexible plutôt que largeur fixe : rétrécit sur mobile (jusqu'à
+                        // `minWidth`) pour ne jamais forcer la bascule simplifié/avancé à
+                        // passer à la ligne — `maxWidth` garde la largeur d'origine ailleurs.
+                        sx={{ flex: '1 1 80px', minWidth: 80, maxWidth: 150 }}
+                      />
+                    )}
+                  </>
                 )}
-              </Box>
-            )}
+                <Box sx={{ ml: 'auto', flexShrink: 0 }}>
+                  <LevelUpViewToggle value={simplifiedView} onChange={setSimplifiedView} />
+                </Box>
+              </Stack>
+
+              {/* Hors-plage : affiché UNIQUEMENT en mode « Dé de vie » — le rappel de la
+                  règle maison est passé en info-bulle (icône « i » ci-dessus). */}
+              {rolling && rolledOutOfRange && (
+                <Typography
+                  variant="caption"
+                  component="div"
+                  color="warning.main"
+                  sx={{ mt: 1 }}
+                >
+                  Un {hitDie} ne dépasse pas {dieMax} — valeur conservée telle quelle (les dés
+                  se lancent à la table).
+                </Typography>
+              )}
+            </Box>
 
           <Box>
             {pendingDivine && divineAccessible && (
@@ -1661,8 +1675,11 @@ export function LevelUpDialog({
                   Capacités sélectionnées
                 </Typography>
                 <Stack spacing={1.5}>
-                    {pickedGroups.flatMap((group) => {
+                    {pickedGroups.map((group) => {
                       const color = pathColor(group.path);
+                      const isPrestigePath = group.path?.type === 'prestige';
+                      const titleColor =
+                        group.path?.type === 'prestige' ? prestigeCategoryColor(group.path.category) : color;
                       // Icône de profil/peuple de la voie du groupe — même repli que
                       // `FeaturesByPath` (mage → clé 'mage', prestige → clé 'prestige').
                       const classId =
@@ -1673,101 +1690,139 @@ export function LevelUpDialog({
                           : undefined;
                       const rawAncestryId = group.path?.type === 'ancestry' ? group.path.id : undefined;
                       const ancestryId =
-                        rawAncestryId ??
-                        (group.path?.type === 'mage'
-                          ? 'mage'
-                          : group.path?.type === 'prestige'
-                            ? 'prestige'
-                            : undefined);
+                        rawAncestryId ?? (isPrestigePath ? 'prestige' : group.path?.type === 'mage' ? 'mage' : undefined);
                       const pathName = group.path?.name ?? group.pathId;
-                      return group.features.map((feature) => {
-                        const cost = featureCost(feature, progression);
-                        const reducedMotionOff = {
-                          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-                        } as const;
-                        return (
-                          <Box key={feature.id}>
-                            {/* Même patron de carte que les capacités acquérables
-                                (`AvailablePathGroup`) — sans case à cocher : la sélection
-                                est déjà acquise ici, seule la corbeille la retire. En-tête
-                                composite (rang · icône de profil · nom de la voie · nom de
-                                la capacité) à gauche, coût + corbeille poussés à droite. */}
-                            <Box
-                              sx={{
-                                animation: 'selectedRowFadeUp 0.3s ease-out 0.2s both',
-                                ...reducedMotionOff,
-                              }}
-                            >
-                              <PathCard
-                                name={
-                                  <Stack
-                                    direction="row"
-                                    spacing={0.75}
-                                    sx={{ alignItems: 'center', flexWrap: 'wrap' }}
-                                  >
-                                    <MetaPill>{`Rang ${feature.rank}`}</MetaPill>
-                                    {classId && <ClassIcon classId={classId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />}
-                                    {!classId && ancestryId && (
-                                      <AncestryIcon ancestryId={ancestryId} size={18} sx={{ color: 'text.secondary', flexShrink: 0 }} />
-                                    )}
-                                    <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
-                                      {pathName}
-                                    </Typography>
-                                    <DeclinedFeatureName feature={feature} />
-                                  </Stack>
-                                }
-                                nameAdornment={
-                                  <FeatureMarkerHexes
-                                    feature={feature}
-                                    color={color ?? undefined}
-                                    pathRank={feature.rank}
-                                    size={18}
-                                  />
-                                }
-                                term={feature.name}
-                                color={color ?? undefined}
-                                checked
-                                selectable={false}
-                                repeatFeatureName={false}
-                                rankLabel={`Rang ${feature.rank} — ${cost} point${cost > 1 ? 's' : ''}`}
-                                feature={feature}
-                                abilities={character.abilities}
-                                level={newLevel}
-                                endAdornment={
-                                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                                    <MetaPill>{`${cost} pt${cost > 1 ? 's' : ''}`}</MetaPill>
-                                    <AppTooltip title="Retirer ce choix">
-                                      <IconButton
-                                        size="small"
-                                        color="error"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          remove(feature.id);
-                                        }}
-                                      >
-                                        <DeleteOutlineIcon fontSize="small" />
-                                      </IconButton>
-                                    </AppTooltip>
-                                  </Stack>
-                                }
-                              />
-                            </Box>
-                            {/* Choix porté par la capacité : à résoudre (bloquant). Masqué tant
-                                qu'aucun choix n'est actionnable (ex. répétable sans palier). */}
-                            {hasActionableChoice(working, feature.id) && (
-                              <Box sx={{ mt: 1, pl: 1 }}>
-                                <FeatureChoiceField
-                                  character={working}
-                                  featureId={feature.id}
-                                  mode="edit"
-                                  blocking
-                                  onChange={setChoice}
-                                />
-                              </Box>
+                      const reducedMotionOff = {
+                        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                      } as const;
+                      return (
+                        <Box key={group.pathId}>
+                          {/* En-tête de voie UNIQUE pour tout le groupe (harmonisé avec
+                              `AvailablePathGroup`, la vue liste détaillée) — pas répété
+                              par capacité, même si plusieurs rangs de la même voie sont
+                              sélectionnés ce niveau. */}
+                          <Stack
+                            direction="row"
+                            spacing={0.75}
+                            sx={{
+                              alignItems: 'center',
+                              borderLeft: 3,
+                              borderColor: titleColor ?? 'divider',
+                              pl: 1.5,
+                              mb: 0.75,
+                            }}
+                          >
+                            {classId && (
+                              <ClassIcon classId={classId} size={18} sx={{ color: titleColor ?? undefined, flexShrink: 0 }} />
                             )}
-                          </Box>
-                        );
-                      });
+                            {!classId && ancestryId && (
+                              <AncestryIcon ancestryId={ancestryId} size={18} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+                            )}
+                            <Typography
+                              variant="subtitle2"
+                              sx={{ fontWeight: 600, color: titleColor ?? 'text.primary' }}
+                            >
+                              {pathName}
+                            </Typography>
+                          </Stack>
+                          <Stack spacing="4px">
+                            {group.features.map((feature) => {
+                              const cost = featureCost(feature, progression);
+                              return (
+                                <Box key={feature.id}>
+                                  <Stack direction="row" spacing="4px">
+                                    {/* Même patron de carte que les capacités acquérables
+                                        (`AvailablePathGroup`) — sans case à cocher : la
+                                        sélection est déjà acquise ici. Hexagones collés au
+                                        nom, comme dans la liste détaillée. */}
+                                    <Box
+                                      sx={{
+                                        flexGrow: 1,
+                                        minWidth: 0,
+                                        animation: 'selectedRowFadeUp 0.3s ease-out 0.2s both',
+                                        ...reducedMotionOff,
+                                      }}
+                                    >
+                                      <PathCard
+                                        name={
+                                          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                                            <DeclinedFeatureName feature={feature} />
+                                            <FeatureMarkerHexes
+                                              feature={feature}
+                                              color={color ?? undefined}
+                                              pathRank={feature.rank}
+                                              size={18}
+                                            />
+                                          </Stack>
+                                        }
+                                        term={feature.name}
+                                        color={color ?? undefined}
+                                        checked
+                                        selectable={false}
+                                        repeatFeatureName={false}
+                                        rankLabel=""
+                                        borderWidth={1}
+                                        feature={feature}
+                                        abilities={character.abilities}
+                                        level={newLevel}
+                                      />
+                                    </Box>
+                                    {/* Coût + corbeille : EN DEHORS du bloc de la carte, sur la droite —
+                                        empilés sur exactement la hauteur du bloc (rang collapsé),
+                                        4px d'écart entre eux et avec le bloc. La corbeille (flexGrow,
+                                        min-height 0) se réduit pour ne jamais dépasser cette hauteur. */}
+                                    <Stack
+                                      spacing="4px"
+                                      sx={{ alignItems: 'stretch', justifyContent: 'space-between', flexShrink: 0 }}
+                                    >
+                                      <MetaPill>{`${cost} pt${cost > 1 ? 's' : ''}`}</MetaPill>
+                                      <AppTooltip title="Retirer ce choix">
+                                        <Box
+                                          component="button"
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            remove(feature.id);
+                                          }}
+                                          sx={(theme) => ({
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0,
+                                            px: 1,
+                                            py: 0.25,
+                                            borderRadius: 1,
+                                            border: `1px solid ${alpha(theme.palette.error.main, 0.5)}`,
+                                            bgcolor: alpha(theme.palette.error.main, 0.08),
+                                            color: 'error.main',
+                                            cursor: 'pointer',
+                                            '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.16) },
+                                          })}
+                                        >
+                                          <DeleteOutlineIcon fontSize="small" />
+                                        </Box>
+                                      </AppTooltip>
+                                    </Stack>
+                                  </Stack>
+                                  {/* Choix porté par la capacité : à résoudre (bloquant). Masqué tant
+                                      qu'aucun choix n'est actionnable (ex. répétable sans palier). */}
+                                  {hasActionableChoice(working, feature.id) && (
+                                    <Box sx={{ mt: 1, pl: 1 }}>
+                                      <FeatureChoiceField
+                                        character={working}
+                                        featureId={feature.id}
+                                        mode="edit"
+                                        blocking
+                                        onChange={setChoice}
+                                      />
+                                    </Box>
+                                  )}
+                                </Box>
+                              );
+                            })}
+                          </Stack>
+                        </Box>
+                      );
                     })}
                   </Stack>
               </Box>
@@ -1982,10 +2037,6 @@ export function LevelUpDialog({
                 </AccordionDetails>
               </Accordion>
             )}
-
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-              <LevelUpViewToggle value={simplifiedView} onChange={setSimplifiedView} />
-            </Box>
 
             {simplifiedView ? (
               <LevelUpPathsGrid
