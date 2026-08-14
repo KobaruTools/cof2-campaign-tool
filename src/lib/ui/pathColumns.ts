@@ -3,8 +3,9 @@
  * un rang par ligne — logique partagée entre la micro-grille de `CharacterPreviewCard`
  * et le graphe des voies du wizard de montée de niveau (`LevelUpPathsGrid`).
  */
-import { featureById, pathById } from '@/data';
+import { classById, featureById, pathById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
+import { effectiveClassPathIds } from '@/lib/character/classDisplay';
 import type { Character } from '@/lib/character/types';
 import { ANCESTRY_COLOR, MAGE_PATH_COLOR, classColor, prestigeCategoryColor } from '@/lib/ui/classColors';
 import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
@@ -146,10 +147,26 @@ export function pathColumns(character: Character): (PathColumn | undefined)[] {
   // colonne du milieu — cf. recettes PER-175).
   const slots: (PathColumn | undefined)[] = new Array(PATH_COLUMN_COUNT).fill(undefined);
   let classSlot = 1;
+  // Voies de profil (col. 1-5) : même priorité que la liste avancée du wizard de montée
+  // de niveau (PER-186) — profil principal avant profils hybrides engagés, puis ordre
+  // alphabétique — plutôt que l'ordre d'acquisition brut.
+  const characterClass = classById.get(character.classId);
+  const mainPathIds = new Set(
+    characterClass ? effectiveClassPathIds(characterClass, character.firearmsAllowed) : [],
+  );
+  const isMainClassPath = (path: Path | undefined) =>
+    !!path && path.type === 'class' && mainPathIds.has(path.id);
   const entries = [...byPath.values()].sort((a, b) => {
     const ta = a.path ? PATH_TYPE_ORDER[a.path.type] : 99;
     const tb = b.path ? PATH_TYPE_ORDER[b.path.type] : 99;
-    return ta - tb || a.order - b.order;
+    if (ta !== tb) return ta - tb;
+    if (ta === PATH_TYPE_ORDER.class) {
+      const mainA = isMainClassPath(a.path) ? 0 : 1;
+      const mainB = isMainClassPath(b.path) ? 0 : 1;
+      if (mainA !== mainB) return mainA - mainB;
+      return (a.path?.name ?? '').localeCompare(b.path?.name ?? '');
+    }
+    return a.order - b.order;
   });
   for (const entry of entries) {
     const column = buildColumn(entry);

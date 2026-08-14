@@ -86,7 +86,9 @@ import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
 import { ClassIcon } from '@/components/ClassIcon';
+import { AncestryIcon } from '@/components/AncestryIcon';
 import { DieIcon } from '@/components/DieIcon';
+import { MetaPill } from '@/components/MetaPill';
 
 /**
  * Custom property + keyframes pour la bordure animée du cadre des capacités
@@ -588,42 +590,29 @@ function FeaturePointsBadge({
  * Bascule mode simplifié (graphe des voies, `LevelUpPathsGrid`) / mode avancé (liste
  * détaillée `AvailablePathGroup`) — même patron que `FeaturesLayoutToggle` (voies &
  * capacités de la fiche), mais ORDRE INVERSÉ : simplifié (colonnes) en premier ici,
- * puisque c'est le mode PAR DÉFAUT (contre lignes en premier côté fiche).
+ * puisque c'est le mode PAR DÉFAUT (contre lignes en premier côté fiche). Le profil
+ * hybride est maintenant géré PAR le graphe (nouvelles voies hybrides incluses dans
+ * `newPathOptions` quand `showHybrid` est coché) : plus de forçage vers la liste ni
+ * de grisage de ce bouton.
  */
 function LevelUpViewToggle({
   value,
   onChange,
-  simplifiedDisabledReason,
 }: {
   value: boolean;
   onChange: (simplified: boolean) => void;
-  /**
-   * Grise le bouton « simplifié » et explique pourquoi en infobulle (ex. profil
-   * hybride coché — le graphe ne montre jamais de voie hors profil). PAS de vrai
-   * `disabled` MUI : un bouton réellement désactivé bloque le survol lui-même
-   * (suppression navigateur des événements pointeur sur les éléments désactivés,
-   * cf. la remarque de la doc Tooltip) — l'infobulle « pourquoi c'est grisé » ne
-   * s'afficherait alors jamais. Le clic est neutralisé dans `onChange` ci-dessous.
-   */
-  simplifiedDisabledReason?: string;
 }) {
-  const simplifiedDisabled = !!simplifiedDisabledReason;
   return (
     <ToggleButtonGroup
       value={value ? 'simplified' : 'advanced'}
       exclusive
       size="small"
       onChange={(_, next) => {
-        if (next && !(next === 'simplified' && simplifiedDisabled)) onChange(next === 'simplified');
+        if (next) onChange(next === 'simplified');
       }}
     >
-      <ToggleButton
-        value="simplified"
-        aria-label="Mode simplifié"
-        aria-disabled={simplifiedDisabled}
-        sx={simplifiedDisabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-      >
-        <AppTooltip title={simplifiedDisabled ? simplifiedDisabledReason : 'Mode simplifié — graphe des voies'}>
+      <ToggleButton value="simplified" aria-label="Mode simplifié">
+        <AppTooltip title="Mode simplifié — graphe des voies">
           <ViewColumnIcon fontSize="small" />
         </AppTooltip>
       </ToggleButton>
@@ -1138,11 +1127,54 @@ export function LevelUpDialog({
 
   // Rangs 1 des voies de profil pas encore entamées, parmi les catégories affichées
   // À PLAT (profil principal + profils déjà engagés) — candidates du popover « nouvelle
-  // voie » de la grille (`LevelUpPathsGrid`). Une voie hybride encore masquée derrière
-  // l'accordéon n'y figure pas : cohérent avec le choix de ne pas pousser l'hybridation.
-  const newPathOptions = flatGroups
-    .filter((g) => g.path?.type === 'class' && !startedPaths.has(g.path.id))
-    .flatMap((g) => g.features.filter((f) => f.rank === 1).map((f) => f.id));
+  // voie » de la grille (`LevelUpPathsGrid`). Profil hybride coché : les voies de profils
+  // encore vierges (catégorie 4) rejoignent la liste, pour pouvoir en démarrer une depuis
+  // le graphe sans repasser en liste — hybridation gérée PAR le graphe désormais.
+  const newPathOptions = [
+    ...flatGroups
+      .filter((g) => g.path?.type === 'class' && !startedPaths.has(g.path.id))
+      .flatMap((g) => g.features.filter((f) => f.rank === 1).map((f) => f.id)),
+    ...(showHybrid
+      ? availableGroups
+          .filter((g) => groupCategory(g) === 4 && g.path?.type === 'class')
+          .flatMap((g) => g.features.filter((f) => f.rank === 1).map((f) => f.id))
+      : []),
+  ];
+
+  // Ordre de la liste « nouvelle voie de profil » (popover, `LevelUpPathsGrid`) : même
+  // priorité que la liste avancée (PER-186) — profil principal, puis profils déjà
+  // engagés, puis (profil hybride coché) profils vierges par ordre de FAMILLE
+  // (aventuriers, combattants, mages, mystiques, p. 30-31) — PROFIL groupé (toutes ses
+  // voies contiguës) avant l'alphabétique sur le nom de la voie : un profil hybride
+  // vierge propose souvent plusieurs voies (rangs 1 pas encore entamés), qui doivent
+  // rester ensemble pour que la ligne d'en-tête « profil » du sélecteur ait un sens.
+  const classIdOf = (g: FeatureGroup) => (g.path?.type === 'class' ? g.path.classIds[0] : undefined);
+  const profileNameOf = (g: FeatureGroup) => {
+    const classId = classIdOf(g);
+    return classId ? (classById.get(classId)?.name ?? classId) : '';
+  };
+  const newPathOrder = [
+    ...flatGroups,
+    ...(showHybrid ? availableGroups.filter((g) => groupCategory(g) === 4) : []),
+  ]
+    .filter((g) => g.path?.type === 'class')
+    .sort((a, b) => {
+      const catA = groupCategory(a);
+      const catB = groupCategory(b);
+      if (catA !== catB) return catA - catB;
+      if (catA === 4) {
+        const familyIndex = (g: FeatureGroup) => {
+          const classId = classIdOf(g);
+          const familyId = classId ? classById.get(classId)?.familyId : undefined;
+          const idx = familyId ? FAMILY_IDS.indexOf(familyId) : -1;
+          return idx === -1 ? FAMILY_IDS.length : idx;
+        };
+        const diff = familyIndex(a) - familyIndex(b);
+        if (diff !== 0) return diff;
+      }
+      return profileNameOf(a).localeCompare(profileNameOf(b)) || groupName(a).localeCompare(groupName(b));
+    })
+    .map((g) => g.pathId);
 
   // Voies de prestige (catégorie 3) réunies dans un accordéon dédié, comme les
   // voies d'autres profils en hybride — un choix délibéré qu'on ne déploie qu'au
@@ -1631,6 +1663,23 @@ export function LevelUpDialog({
                 <Stack spacing={1.5}>
                     {pickedGroups.flatMap((group) => {
                       const color = pathColor(group.path);
+                      // Icône de profil/peuple de la voie du groupe — même repli que
+                      // `FeaturesByPath` (mage → clé 'mage', prestige → clé 'prestige').
+                      const classId =
+                        group.path?.type === 'class'
+                          ? mainPathIds.has(group.path.id)
+                            ? character.classId
+                            : group.path.classIds[0]
+                          : undefined;
+                      const rawAncestryId = group.path?.type === 'ancestry' ? group.path.id : undefined;
+                      const ancestryId =
+                        rawAncestryId ??
+                        (group.path?.type === 'mage'
+                          ? 'mage'
+                          : group.path?.type === 'prestige'
+                            ? 'prestige'
+                            : undefined);
+                      const pathName = group.path?.name ?? group.pathId;
                       return group.features.map((feature) => {
                         const cost = featureCost(feature, progression);
                         const reducedMotionOff = {
@@ -1638,29 +1687,11 @@ export function LevelUpDialog({
                         } as const;
                         return (
                           <Box key={feature.id}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.75 }}
-                            >
-                              <Chip
-                                label={`Rang ${feature.rank}`}
-                                size="small"
-                                variant="outlined"
-                                sx={{ animation: 'selectedRowFadeUp 0.3s ease-out both', ...reducedMotionOff }}
-                              />
-                              <Chip
-                                label={`${cost} pt${cost > 1 ? 's' : ''}`}
-                                size="small"
-                                sx={{
-                                  animation: 'selectedRowFadeUp 0.3s ease-out 0.1s both',
-                                  ...reducedMotionOff,
-                                }}
-                              />
-                            </Stack>
                             {/* Même patron de carte que les capacités acquérables
                                 (`AvailablePathGroup`) — sans case à cocher : la sélection
-                                est déjà acquise ici, seule la corbeille la retire. */}
+                                est déjà acquise ici, seule la corbeille la retire. En-tête
+                                composite (rang · icône de profil · nom de la voie · nom de
+                                la capacité) à gauche, coût + corbeille poussés à droite. */}
                             <Box
                               sx={{
                                 animation: 'selectedRowFadeUp 0.3s ease-out 0.2s both',
@@ -1668,7 +1699,23 @@ export function LevelUpDialog({
                               }}
                             >
                               <PathCard
-                                name={<DeclinedFeatureName feature={feature} />}
+                                name={
+                                  <Stack
+                                    direction="row"
+                                    spacing={0.75}
+                                    sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                                  >
+                                    <MetaPill>{`Rang ${feature.rank}`}</MetaPill>
+                                    {classId && <ClassIcon classId={classId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />}
+                                    {!classId && ancestryId && (
+                                      <AncestryIcon ancestryId={ancestryId} size={18} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+                                    )}
+                                    <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
+                                      {pathName}
+                                    </Typography>
+                                    <DeclinedFeatureName feature={feature} />
+                                  </Stack>
+                                }
                                 nameAdornment={
                                   <FeatureMarkerHexes
                                     feature={feature}
@@ -1687,18 +1734,21 @@ export function LevelUpDialog({
                                 abilities={character.abilities}
                                 level={newLevel}
                                 endAdornment={
-                                  <AppTooltip title="Retirer ce choix">
-                                    <IconButton
-                                      size="small"
-                                      color="error"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        remove(feature.id);
-                                      }}
-                                    >
-                                      <DeleteOutlineIcon fontSize="small" />
-                                    </IconButton>
-                                  </AppTooltip>
+                                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                                    <MetaPill>{`${cost} pt${cost > 1 ? 's' : ''}`}</MetaPill>
+                                    <AppTooltip title="Retirer ce choix">
+                                      <IconButton
+                                        size="small"
+                                        color="error"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          remove(feature.id);
+                                        }}
+                                      >
+                                        <DeleteOutlineIcon fontSize="small" />
+                                      </IconButton>
+                                    </AppTooltip>
+                                  </Stack>
                                 }
                               />
                             </Box>
@@ -1934,27 +1984,17 @@ export function LevelUpDialog({
             )}
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-              <LevelUpViewToggle
-                value={simplifiedView && !showHybrid}
-                onChange={setSimplifiedView}
-                simplifiedDisabledReason={
-                  showHybrid
-                    ? 'Le graphe ne montre pas les voies hors profil — décochez « Profil hybride » pour y revenir'
-                    : undefined
-                }
-              />
+              <LevelUpViewToggle value={simplifiedView} onChange={setSimplifiedView} />
             </Box>
 
-            {/* Profil hybride coché : le graphe ne montre jamais de voie hors profil
-                (choix délibéré, cf. `LevelUpPathsGrid`) — bascule forcée sur la liste
-                complète, seule à pouvoir les afficher, quel que soit le mode retenu. */}
-            {simplifiedView && !showHybrid ? (
+            {simplifiedView ? (
               <LevelUpPathsGrid
                 character={working}
                 available={available}
                 remaining={remaining}
                 locked={divineLock}
                 newPathOptions={newPathOptions}
+                newPathOrder={newPathOrder}
                 onSelect={add}
               />
             ) : !hasAnyAvailable ? (

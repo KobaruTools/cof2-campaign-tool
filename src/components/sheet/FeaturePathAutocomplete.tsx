@@ -33,6 +33,7 @@ import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { classById, featureById, pathById } from '@/data';
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
+import { normalizeSearchText } from '@/lib/ui/searchText';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SourceRef } from '@/components/SourceRef';
@@ -113,6 +114,19 @@ export function featurePathLabel(id: string): string {
   return `${name} — Rang ${f.rank} — ${f.name}${f.isSpell ? '*' : ''}`;
 }
 
+/**
+ * Texte comparable d'une option pour la recherche : libellé complet (voie, rang, nom)
+ * + nom du PROFIL (ex. « Prêtre ») quand la voie appartient à une classe — le joueur
+ * doit pouvoir taper le nom d'un profil et retrouver ses voies, pas seulement le nom
+ * exact de la voie. Recherche large, insensible aux accents (`normalizeSearchText`).
+ */
+function searchTextFor(id: string): string {
+  const feature = featureById.get(id);
+  const path = feature ? pathById.get(feature.pathId) : undefined;
+  const profileName = path?.type === 'class' ? classById.get(path.classIds[0])?.name : undefined;
+  return normalizeSearchText([featurePathLabel(id), profileName].filter(Boolean).join(' '));
+}
+
 export interface FeaturePathAutocompleteProps {
   /** Ids de capacités ; le composant les regroupe et les trie par voie (ou profil) puis rang. */
   options: string[];
@@ -128,6 +142,13 @@ export interface FeaturePathAutocompleteProps {
   groupMode?: FeatureGroupMode;
   /** Ids grisés (non sélectionnables), ex. capacités « emprunteuses » (poupées russes, p. 41). */
   disabledIds?: ReadonlySet<string>;
+  /**
+   * Ordre explicite des GROUPES en mode `'path'` (ids de voie, priorité décroissante) —
+   * ex. profil principal → profils déjà engagés → profils hybrides pas encore engagés
+   * par ordre de famille (PER-186), plutôt que l'alphabétique brut sur l'id de voie.
+   * Une voie absente de la liste passe en dernier. Ignoré en mode `'profile'`.
+   */
+  pathOrder?: string[];
   /** Suffixe explicatif accolé au libellé d'une option (ex. raison du grisage). */
   optionSuffix?: (id: string) => string | undefined;
   error?: boolean;
@@ -148,6 +169,7 @@ export function FeaturePathAutocomplete({
   label,
   groupMode = 'path',
   disabledIds,
+  pathOrder,
   optionSuffix,
   error,
   helperText,
@@ -156,6 +178,27 @@ export function FeaturePathAutocomplete({
   sx,
 }: FeaturePathAutocompleteProps) {
   const byProfile = groupMode === 'profile';
+  const pathIndex = useMemo(() => {
+    if (!pathOrder) return null;
+    return new Map(pathOrder.map((id, i) => [id, i]));
+  }, [pathOrder]);
+  // Ligne de catégorisation par PROFIL au-dessus de la première voie de chaque bloc de
+  // `pathOrder` (mode `'path'` uniquement) : marque « Prêtre », « Voleur »… quand
+  // `pathOrder` groupe les voies par profil (cf. `newPathOrder` du wizard de montée de
+  // niveau). `undefined` = pas de ligne profil pour cette voie (profil déjà annoncé par
+  // la voie précédente, ou voie hors classe).
+  const profileHeaderFor = useMemo(() => {
+    if (!pathOrder) return null;
+    const map = new Map<string, string>();
+    let prevClassId: string | undefined;
+    for (const pathId of pathOrder) {
+      const path = pathById.get(pathId);
+      const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+      if (classId && classId !== prevClassId) map.set(pathId, classId);
+      prevClassId = classId;
+    }
+    return map;
+  }, [pathOrder]);
   // Méta-groupes repliés par défaut (ensemble des groupes DÉPLIÉS, vide au départ) et suivi
   // de la saisie : une recherche texte déplie tout (sinon les correspondances resteraient cachées).
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
@@ -183,11 +226,18 @@ export function FeaturePathAutocomplete({
       arr.sort((a, b) => {
         const fa = featureById.get(a);
         const fb = featureById.get(b);
-        return (fa?.pathId ?? '').localeCompare(fb?.pathId ?? '') || (fa?.rank ?? 0) - (fb?.rank ?? 0);
+        const pa = fa?.pathId ?? '';
+        const pb = fb?.pathId ?? '';
+        if (pathIndex) {
+          const ia = pathIndex.get(pa) ?? Number.MAX_SAFE_INTEGER;
+          const ib = pathIndex.get(pb) ?? Number.MAX_SAFE_INTEGER;
+          if (ia !== ib) return ia - ib;
+        }
+        return pa.localeCompare(pb) || (fa?.rank ?? 0) - (fb?.rank ?? 0);
       });
     }
     return arr;
-  }, [options, byProfile]);
+  }, [options, byProfile, pathIndex]);
 
   // Décompte par méta-groupe (rappelé dans l'en-tête replié), calculé sur le catalogue COMPLET.
   const groupCounts = useMemo(() => {
@@ -218,6 +268,10 @@ export function FeaturePathAutocomplete({
       value={value}
       blurOnSelect={clearOnSelect}
       onInputChange={(_, v) => setQuery(v)}
+      filterOptions={(opts, state) => {
+        const q = normalizeSearchText(state.inputValue.trim());
+        return q ? opts.filter((id) => searchTextFor(id).includes(q)) : opts;
+      }}
       groupBy={(id) =>
         byProfile
           ? metaGroupOf(featureById.get(id)?.pathId ?? '').key
@@ -298,8 +352,44 @@ export function FeaturePathAutocomplete({
         }
         const { name, classId, color } = pathProfile(params.group);
         const sourcePage = pathById.get(params.group)?.sourcePage;
+        const profileClassId = profileHeaderFor?.get(params.group);
+        const profileColor = profileClassId ? classColor(profileClassId) : undefined;
+        // Groupement par PROFIL (`pathOrder` fourni, ex. popover « nouvelle voie ») : une
+        // seule voie par rang possible ici, sticky la voie n'apporterait rien — c'est la
+        // ligne de PROFIL qui reste épinglée au défilement ; la voie redevient un simple
+        // sous-en-tête statique. Sans `pathOrder` (usages historiques, ex. changement
+        // d'orientation) : comportement inchangé, la voie elle-même reste sticky.
+        const groupedByProfile = !!profileHeaderFor;
         return (
           <li key={params.key}>
+            {profileClassId && (
+              <Box
+                sx={(theme) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  px: 1.25,
+                  py: 0.5,
+                  position: 'sticky',
+                  top: -8,
+                  zIndex: 1,
+                  backgroundColor: alpha(theme.palette.background.paper, 0.92),
+                  backgroundImage: `linear-gradient(0deg, ${
+                    profileColor ? alpha(profileColor, 0.18) : theme.palette.action.hover
+                  }, ${profileColor ? alpha(profileColor, 0.18) : theme.palette.action.hover})`,
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  borderLeft: `3px solid ${profileColor ?? theme.palette.divider}`,
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                  color: profileColor ?? theme.palette.text.secondary,
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                })}
+              >
+                <ClassIcon classId={profileClassId} size={18} color={profileColor} />
+                <span>{classById.get(profileClassId)?.name ?? profileClassId}</span>
+              </Box>
+            )}
             <Box
               sx={(theme) => ({
                 display: 'flex',
@@ -307,19 +397,23 @@ export function FeaturePathAutocomplete({
                 gap: 0.75,
                 px: 1.25,
                 py: 0.5,
-                position: 'sticky',
-                top: -8,
-                zIndex: 1,
-                // Fond OPAQUE (papier + teinte de profil) + flou d'arrière-plan, comme la
-                // branche « par profil » : lisibilité de l'en-tête sticky au défilement.
-                backgroundColor: alpha(theme.palette.background.paper, 0.92),
-                backgroundImage: `linear-gradient(0deg, ${
-                  color ? alpha(color, 0.18) : theme.palette.action.hover
-                }, ${color ? alpha(color, 0.18) : theme.palette.action.hover})`,
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
+                ...(groupedByProfile
+                  ? { pl: 2.5 }
+                  : {
+                      position: 'sticky',
+                      top: -8,
+                      zIndex: 1,
+                      // Fond OPAQUE (papier + teinte de profil) + flou d'arrière-plan, comme la
+                      // branche « par profil » : lisibilité de l'en-tête sticky au défilement.
+                      backgroundColor: alpha(theme.palette.background.paper, 0.92),
+                      backgroundImage: `linear-gradient(0deg, ${
+                        color ? alpha(color, 0.18) : theme.palette.action.hover
+                      }, ${color ? alpha(color, 0.18) : theme.palette.action.hover})`,
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      borderBottom: `1px solid ${theme.palette.divider}`,
+                    }),
                 borderLeft: `3px solid ${color ?? theme.palette.divider}`,
-                borderBottom: `1px solid ${theme.palette.divider}`,
                 color: color ?? theme.palette.text.secondary,
                 fontWeight: 700,
                 fontSize: '0.75rem',

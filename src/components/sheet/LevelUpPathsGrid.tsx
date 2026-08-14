@@ -85,6 +85,8 @@ export interface LevelUpPathsGridProps {
   locked: boolean;
   /** Rangs 1 des voies de profil pas encore entamées — candidates du popover « nouvelle voie ». */
   newPathOptions: string[];
+  /** Ordre de priorité (ids de voie) du popover — profil principal → engagés → hybrides par famille. */
+  newPathOrder: string[];
   /** Achète le rang suivant d'une voie entamée, ou le rang 1 d'une voie nouvellement choisie. */
   onSelect: (featureId: string) => void;
 }
@@ -95,6 +97,7 @@ export function LevelUpPathsGrid({
   remaining,
   locked,
   newPathOptions,
+  newPathOrder,
   onSelect,
 }: LevelUpPathsGridProps) {
   const columns = pathColumns(character);
@@ -204,6 +207,7 @@ export function LevelUpPathsGrid({
         <Box sx={{ p: 1.5, width: 320 }}>
           <FeaturePathAutocomplete
             options={newPathOptions}
+            pathOrder={newPathOrder}
             value={null}
             onChange={(id) => {
               if (id) onSelect(id);
