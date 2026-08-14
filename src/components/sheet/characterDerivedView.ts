@@ -33,7 +33,11 @@ import {
   stackedDamageReductions,
   type EffectContext,
 } from '@/lib/character/effects';
-import { grantedNoManaFeatureIds, borrowedNoManaFeatureIds } from '@/lib/character/choices';
+import {
+  grantedNoManaFeatureIds,
+  borrowedNoManaFeatureIds,
+  effectiveFeatureIdsForMods,
+} from '@/lib/character/choices';
 import { mergeMods, orphanMods } from '@/lib/character/orphanPoints';
 import { crystalStatBonuses } from '@/lib/character/crystals';
 import {
@@ -398,6 +402,11 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // le port d'armure (PER-83) : base de l'agrégation des bonus plats et du détail des
   // stats dérivées (PER-66). Une capacité gênée par l'armure ne compte plus nulle part.
   const modFeatureIds = activeFeatureIdsForMods(character);
+  // PER-328 — Capacités CONNUES (acquises + empruntées + octroyées), SANS retirer les désactivées : le
+  // réservoir de PM d'un sort vient du fait de le CONNAÎTRE, pas de pouvoir le lancer maintenant. Une
+  // capacité désactivée (interrupteur « pas en plein soleil », gêne d'armure, exclusion mutuelle…) reste
+  // inutilisable pour ses AUTRES effets (d'où `modFeatureIds` ailleurs), mais conserve son +1 PM.
+  const knownFeatureIds = effectiveFeatureIdsForMods(character);
   // Sorts sans +1 PM : octrois fixes `noMana` (cambion « La belle et la bête », PER-323) ∪ sorts
   // empruntés par un choix `feature-from-path` marqué `noManaCost` (demi-elfe « Sang féerique », PER-324).
   // Exclus du compte des sorts connus, même si aussi possédés par la voie d'origine (ex. voie du démon).
@@ -785,7 +794,9 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         meleeAttackAbilitySourceId,
         // Sorts connus = acquis ET EMPRUNTÉS (encadré « Appel à une autre capacité », p. 60). PER-73.
         // Un sort octroyé `noMana` (cambion « La belle et la bête », PER-323) NE donne PAS le +1 PM.
-        spellCount: modFeatureIds.filter(
+        // PER-328 — compté sur les sorts CONNUS (`knownFeatureIds`), pas sur les actifs : un sort
+        // désactivé (soleil, armure, exclusion) reste connu et alimente donc toujours le réservoir de PM.
+        spellCount: knownFeatureIds.filter(
           (fid) => featureById.get(fid)?.isSpell && !noManaFeatureIds.has(fid),
         ).length,
         manaAbility: manaCast.ability,
