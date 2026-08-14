@@ -825,6 +825,22 @@ export interface EffectActivation {
    * aucun forçage (interrupteur purement manuel). Résolu par `ridingQualifyingMount`.
    */
   autoActiveWhenRidingOptionIds?: string[];
+  /**
+   * L'interrupteur est FORCÉ ACTIF tant qu'un AUTRE effet `conditional-stat-bonus` (d'une autre
+   * capacité, éventuellement) est actif (PER-328bis, elfe des profondeurs : « Enfant des ténèbres »
+   * (r1, « dans le noir complet ou la pénombre ») → « Lames et sorcellerie » (r2, « à l'abri du plein
+   * soleil ») — être dans le noir implique être à l'abri du soleil). Même patron OU-À-LA-LECTURE que
+   * `autoActiveWhenRidingOptionIds` : `isEffectActive`/`isConditionalActive` renvoient `true` dès que
+   * la source visée est active, SANS jamais écrire dans `effectToggles` — l'interrupteur propre de CET
+   * effet garde sa valeur. Conséquence VOULUE, À SENS UNIQUE :
+   *  - activer la source force cet effet actif (même s'il était éteint) ;
+   *  - désactiver la source retombe sur la valeur PROPRE de cet effet : s'il n'avait jamais été activé
+   *    indépendamment, il redevient inactif ; s'il avait été activé indépendamment (avant même que la
+   *    source ne le force), il RESTE actif (son propre interrupteur n'a jamais été touché) ;
+   *  - la RÉCIPROQUE est fausse : activer/désactiver CET effet ne touche jamais la source.
+   * Absent = aucun forçage (interrupteur purement manuel). Résolu par `linkedFeatureEffectForcesActivation`.
+   */
+  autoActiveWhenFeatureEffectActive?: { featureId: string; effectIndex: number };
 }
 
 /**
@@ -3326,6 +3342,12 @@ export interface FreeTextFeatureChoice extends FeatureChoiceBase {
  */
 export interface MasterStatRef {
   fromMaster: DerivedStatId;
+  /**
+   * Décalage constant ajouté à la stat recopiée (ex. « Initiative [mystique + 3] »,
+   * élémentaire d'air p. 169 — premier cas où le livre ajoute un bonus fixe à la stat
+   * du maître plutôt que de la recopier telle quelle). Absent = 0 (recopie exacte).
+   */
+  offset?: number;
 }
 
 /**

@@ -852,6 +852,15 @@ function isConditionalActive(
     if (!met) return false;
   }
   if (ridingForcesActivation(effect, ctx?.ridingOptionIds)) return true;
+  // PER-328bis — second déclencheur déduit d'un AUTRE effet (« dans le noir » → « à l'abri du soleil »).
+  if (
+    linkedFeatureEffectForcesActivation(effect, (fid, i) => {
+      const sourceEffect = featureById.get(fid)?.effects?.[i];
+      return sourceEffect?.kind === 'conditional-stat-bonus' && isConditionalActive(sourceEffect, fid, i, ctx);
+    })
+  ) {
+    return true;
+  }
   const toggled = ctx?.toggles[featureId]?.[index];
   return toggled ?? effect.activation.activeByDefault ?? false;
 }
@@ -871,6 +880,24 @@ function ridingForcesActivation(
   const required = effect.activation.autoActiveWhenRidingOptionIds;
   if (!required?.length || !ridingOptionIds?.length) return false;
   return ridingOptionIds.some((id) => required.includes(id));
+}
+
+/**
+ * PER-328bis — l'interrupteur est-il FORCÉ ACTIF par un AUTRE effet (`autoActiveWhenFeatureEffectActive`),
+ * lui-même actif ? Même patron OU-À-LA-LECTURE que `ridingForcesActivation`, mais la source est un effet
+ * conditionnel quelconque (potentiellement d'une autre capacité) plutôt qu'une monture chevauchée.
+ * `isSourceActive` délègue la résolution à l'appelant (`isEffectActive` ou `isConditionalActive`), qui
+ * seul sait comment interroger la source dans son propre contexte (`Character` complet vs `EffectContext`).
+ * À SENS UNIQUE : ne modifie jamais `effectToggles`, donc n'affecte que la LECTURE — désactiver la
+ * source laisse l'interrupteur propre de cet effet reprendre sa valeur (cf. doc du champ, schema.ts).
+ */
+function linkedFeatureEffectForcesActivation(
+  effect: ConditionalStatBonusEffect,
+  isSourceActive: (featureId: string, effectIndex: number) => boolean,
+): boolean {
+  const link = effect.activation.autoActiveWhenFeatureEffectActive;
+  if (!link) return false;
+  return isSourceActive(link.featureId, link.effectIndex);
 }
 
 /**
@@ -1435,6 +1462,8 @@ export function isEffectActive(character: Character, featureId: string, index: n
   if (!conditionalOptionGateMet(character, featureId, effect)) return false;
   // PER-74 — second déclencheur déduit de l'état de jeu (« … ou chevauche son drake »).
   if (ridingForcesActivation(effect, ridingMountOptionIds(character))) return true;
+  // PER-328bis — second déclencheur déduit d'un AUTRE effet (« dans le noir » → « à l'abri du soleil »).
+  if (linkedFeatureEffectForcesActivation(effect, (fid, i) => isEffectActive(character, fid, i))) return true;
   const toggled = character.effectToggles[featureId]?.[index];
   return toggled ?? effect.activation.activeByDefault ?? false;
 }
