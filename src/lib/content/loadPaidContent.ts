@@ -138,21 +138,9 @@ function mergeBundles(
   return { registered, added };
 }
 
-// ── Robustesse DÉVELOPPEMENT / Fast Refresh ─────────────────────────────────────
-// En dev, un Fast Refresh peut ré-évaluer le module `@/data` et RÉINITIALISER ses registres
-// mutables (`ancestries`/`paths`/`features` + `*ById`) : le contenu payant déjà fusionné
-// (peuples/voies gatés) est alors perdu. Comme le boot (`PaidContentBoot`, `useEffect([])`)
-// n'est pas rejoué et que `loadPromise` est mémoïsé, rien ne re-fusionne → la fiche affiche
-// « Aucune capacité acquise. ». On accepte donc la mise à jour à chaud de `@/data` : on
-// invalide le singleton et on relance le chargement (fusion INSTANTANÉE depuis le cache
-// IndexedDB pour les versions inchangées). La re-fusion bumpe la version de contenu, donc les
-// vues abonnées à `useContentVersion` se re-rendent. AUCUN effet en production (pas de HMR).
-const webpackHot = (
-  import.meta as unknown as { webpackHot?: { accept(dep: string, cb: () => void): void } }
-).webpackHot;
-if (webpackHot) {
-  webpackHot.accept('@/data', () => {
-    loadPromise = null;
-    void loadPaidContent();
-  });
-}
+// Note dev/Fast Refresh : la survie du contenu payant fusionné à travers la
+// ré-exécution de `@/data` par HMR est traitée directement dans `src/data/index.ts`
+// (stash sur `globalThis`, rejoué de façon synchrone à l'init du module) — ce fichier
+// n'a plus besoin de s'y accrocher. L'ancienne tentative ici utilisait
+// `import.meta.webpackHot`, une API webpack absente sous Turbopack (bundler par
+// défaut depuis Next 16) : le garde ne s'exécutait donc jamais.

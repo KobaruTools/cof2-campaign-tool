@@ -184,8 +184,45 @@ export function registerContentBundle(bundle: ContentBundle): MergeReport {
   const linksAdded = mergeAncestryPathLinks(ancestryById, bundle.ancestryPathLinks);
   const added = reports.reduce((sum, r) => sum + r.added, 0) + linksAdded;
   const skipped = reports.flatMap((r) => r.skipped);
-  if (added > 0) bumpContentVersion();
+  if (added > 0) {
+    bumpContentVersion();
+    stashBundleForHotReload(bundle);
+  }
   return { added, skipped };
+}
+
+// ── Robustesse DÉVELOPPEMENT / Fast Refresh ─────────────────────────────────────
+// Turbopack (bundler par défaut depuis Next 16) réexécute ce module dès qu'un
+// fichier qu'il importe transitivement change (schéma, peuples, équipement...), ce
+// qui réinitialise `ancestries`/`paths`/`features`/`equipment` à leur valeur de
+// base : le contenu payant déjà fusionné (peuples/voies gatés) disparaît alors, et
+// comme le boot (`PaidContentBoot`, `useEffect([])`) n'est pas rejoué, rien ne le
+// re-fusionne → la fiche affiche « Aucune capacité acquise. ».
+//
+// On stashe donc chaque bundle réellement fusionné sur `globalThis`, qui — contrairement
+// aux `let`/`const` de ce module — SURVIT à la ré-exécution du module par HMR (même
+// onglet de navigateur). Au (re)chargement du module, on rejoue immédiatement le stash :
+// la fusion réapparaît de façon SYNCHRONE, avant même le premier rendu qui suit le Fast
+// Refresh. Idempotent (politique « base gagne » de `mergeEntries`) donc sans risque de
+// doublon. AUCUN effet en production (pas de HMR, le stash reste vide).
+declare global {
+  // eslint-disable-next-line no-var -- `var` requis pour une déclaration `global`.
+  var __cof2PaidContentBundles: ContentBundle[] | undefined;
+}
+
+let isReplayingStash = false;
+
+function stashBundleForHotReload(bundle: ContentBundle): void {
+  if (process.env.NODE_ENV === 'production' || isReplayingStash) return;
+  (globalThis.__cof2PaidContentBundles ??= []).push(bundle);
+}
+
+if (process.env.NODE_ENV !== 'production') {
+  isReplayingStash = true;
+  for (const bundle of globalThis.__cof2PaidContentBundles ?? []) {
+    registerContentBundle(bundle);
+  }
+  isReplayingStash = false;
 }
 
 export {
