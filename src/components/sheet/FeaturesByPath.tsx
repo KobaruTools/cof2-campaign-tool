@@ -40,7 +40,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha, lighten, type Theme } from '@mui/material/styles';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
 import type { AbilityId, AbilitySubstitution, ActionType, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import { FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
@@ -142,7 +142,7 @@ import {
   classColor,
   prestigeCategoryColor,
 } from '@/lib/ui/classColors';
-import { prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
+import { prestigeGemStops, prestigeMetalGradient, prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PoisonWeaponLoadoutField } from '@/components/sheet/PoisonWeaponLoadoutField';
@@ -2675,6 +2675,102 @@ function SummonInstanceBadge({
   );
 }
 
+/**
+ * Mesure en direct (ResizeObserver) la position du titre et de l'icône « prestige » à l'intérieur de
+ * l'en-tête de voie (dont le bord gauche du conteneur = la barre), pour qu'un SEUL dégradé horizontal
+ * (barre → titre → icône) les traverse tous les trois — plutôt que 3 dégradés indépendants qui se
+ * répètent chacun de leur côté. `null` tant que non mesuré (ou si `active` est faux) : les appelants
+ * retombent alors sur le dégradé indépendant par élément (déjà correct visuellement, juste répété).
+ * Nécessairement JS : `border-image` (barre), `background-clip:text` (titre) et le `fill` en dégradé
+ * SVG (icône) sont 3 mécanismes CSS distincts, sans repère de position commun sans mesure du DOM.
+ */
+function usePrestigeGradientSpan(active: boolean) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const titleRef = useRef<HTMLElement | null>(null);
+  const iconRef = useRef<SVGSVGElement | null>(null);
+  const [span, setSpan] = useState<{
+    width: number;
+    titleOffset: number;
+    iconOffset: number;
+    iconWidth: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!active) {
+      setSpan(null);
+      return;
+    }
+    const container = containerRef.current;
+    if (!container) return;
+    const measure = () => {
+      const c = container.getBoundingClientRect();
+      if (c.width === 0) return;
+      const t = titleRef.current?.getBoundingClientRect();
+      const i = iconRef.current?.getBoundingClientRect();
+      setSpan({
+        width: c.width,
+        titleOffset: t ? t.left - c.left : 0,
+        iconOffset: i ? i.left - c.left : c.width,
+        iconWidth: i && i.width > 0 ? i.width : 0,
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    if (titleRef.current) observer.observe(titleRef.current);
+    if (iconRef.current) observer.observe(iconRef.current);
+    return () => observer.disconnect();
+  }, [active]);
+
+  return { containerRef, titleRef, iconRef, span };
+}
+
+/**
+ * Anime en boucle PARFAITE de 20s (glissement lent gauche→droite) le dégradé partagé barre→titre→
+ * icône mesuré par `usePrestigeGradientSpan`. Mutation DIRECTE du DOM à chaque frame (pas de
+ * re-render React — 20s est bien trop lent pour justifier une passe de rendu par frame) :
+ * `background-position-x` pour la barre/le titre (CSS), `gradientTransform` du `<linearGradient>`
+ * SVG pour l'icône. Le dégradé est un triangle clair→sombre→clair RÉPÉTÉ d'une période `cyclePx`
+ * (fournie par l'appelant — DOIT être la même valeur que celle utilisée pour construire le CSS/SVG
+ * du dégradé, sinon le décalage d'un cycle ne correspond plus à une période exacte et la boucle
+ * laisse un à-coup visible) : décaler d'exactement une période boucle sans à-coup, quel que soit
+ * l'instant où l'animation démarre/reprend (calé sur l'horloge `requestAnimationFrame`, partagée
+ * par tous les en-têtes de la page — pas de dérive entre colonnes). Respecte
+ * `prefers-reduced-motion` (immobile).
+ */
+function usePrestigeGradientAnimation(
+  active: boolean,
+  span: { width: number; titleOffset: number; iconOffset: number; iconWidth: number } | null,
+  cyclePx: number,
+  barRef: { current: HTMLElement | null },
+  titleRef: { current: HTMLElement | null },
+  iconRef: { current: SVGSVGElement | null },
+) {
+  useEffect(() => {
+    if (!active || !span || cyclePx <= 0) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const DURATION_MS = 20000;
+    let raf = 0;
+    let lastShift = -1;
+    const tick = (now: number) => {
+      const phase = (now % DURATION_MS) / DURATION_MS;
+      const shiftPx = Math.round(phase * cyclePx);
+      if (shiftPx !== lastShift) {
+        lastShift = shiftPx;
+        if (barRef.current) barRef.current.style.backgroundPositionX = `${-shiftPx}px`;
+        if (titleRef.current) titleRef.current.style.backgroundPositionX = `${-(span.titleOffset + shiftPx)}px`;
+        if (span.iconWidth > 0) {
+          const gradientNode = iconRef.current?.querySelector('linearGradient');
+          gradientNode?.setAttribute('gradientTransform', `translate(${-(shiftPx / span.iconWidth)} 0)`);
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active, span, cyclePx, barRef, titleRef, iconRef]);
+}
+
 /** Une voie et ses capacités acquises, chaque capacité dépliable (texte complet). */
 function PathBlock({
   group,
@@ -3192,25 +3288,114 @@ function PathBlock({
       </AppTooltip>
     ) : null;
 
+  // Titre de voie : teinte de PROFIL pour une voie de classe (`color`), teinte de FAMILLE (or pour
+  // les génériques) pour une voie de PRESTIGE — cohérence graphique avec les blocs de rang eux-mêmes
+  // (`prestigeCardSx` ci-dessus) et avec le titre du wizard de montée de niveau (`AvailablePathGroup`).
+  const titleColor = path?.type === 'prestige' ? prestigeCategoryColor(path.category) : color;
+  // Prestige : titre + ligne d'en-tête en DÉGRADÉ (comme les blocs de rang, `prestigeCardSx`), pas en
+  // teinte pleine. HORIZONTAL (90°, gauche→droite) sur les deux : la ligne est le tout DÉBUT du
+  // dégradé continu barre→titre→icône (ci-dessous) — sur 2-3px de large elle affiche presque
+  // uniquement la couleur claire de départ, ce qui EST l'effet recherché.
+  const titleTextGradient = isPrestigePath ? prestigeMetalGradient(prestigeTint, '90deg') : undefined;
+  const titleBarGradient = isPrestigePath ? prestigeMetalGradient(prestigeTint, '90deg') : undefined;
+  // Icône neutre « prestige » (étoile) : même dégradé que le titre/la ligne, plutôt qu'une teinte pleine.
+  const prestigeIconGradient = isPrestigePath ? prestigeGemStops(prestigeTint) : undefined;
+  // Un SEUL dégradé horizontal traverse barre → titre → icône (au lieu de 3 dégradés indépendants qui
+  // se répètent chacun), via mesure live des positions réelles (`usePrestigeGradientSpan`). Tant que
+  // non mesuré (1er rendu), chaque élément garde son dégradé indépendant ci-dessus — dégradation
+  // propre, jamais de flash de couleur fausse.
+  const { containerRef: prestigeSpanRef, titleRef: prestigeTitleRef, iconRef: prestigeIconRef, span: prestigeSpan } =
+    usePrestigeGradientSpan(isPrestigePath);
+  // Référence directe (mutation DOM, pas de state) pour l'animation de glissement — la barre n'a pas
+  // besoin d'être mesurée (elle est TOUJOURS au bord gauche du conteneur, décalage 0).
+  const prestigeBarRef = useRef<HTMLDivElement | null>(null);
+  const [gemLight, gemDark] = prestigeGemStops(prestigeTint);
+  // Dégradé RÉPÉTÉ (triangle clair→sombre→clair) d'une période = 3× la largeur mesurée de l'en-tête
+  // (retour proprio : transition plus douce, moins de contraste visible dans l'empan bar→icône à un
+  // instant donné). Un décalage d'exactement une période boucle sans à-coup (glissement animé,
+  // `usePrestigeGradientAnimation`, à qui `cyclePx` est passé tel quel pour rester en phase).
+  const cyclePx = prestigeSpan ? prestigeSpan.width * 3 : 0;
+  const spanGradientCss =
+    cyclePx > 0
+      ? `repeating-linear-gradient(90deg, ${gemLight} 0px, ${gemDark} ${cyclePx / 2}px, ${gemLight} ${cyclePx}px)`
+      : undefined;
+  const spanTitleSx =
+    isPrestigePath && prestigeSpan && spanGradientCss
+      ? {
+          backgroundImage: spanGradientCss,
+          backgroundSize: `${cyclePx}px 100%`,
+          backgroundPositionX: `-${prestigeSpan.titleOffset}px`,
+          backgroundPositionY: '0px',
+        }
+      : undefined;
+  // Vecteur en fractions de la PÉRIODE `cyclePx` (pas de la largeur brute de l'en-tête) : la barre,
+  // le titre et l'icône doivent tous les trois raisonner sur le MÊME cycle, sinon l'icône (dont la
+  // fraction se calcule par rapport à sa propre largeur, minuscule) tourne visiblement plus vite —
+  // c'était le bug (icône encore calée sur `prestigeSpan.width` alors que `cyclePx` avait été
+  // multiplié pour la barre/le titre, un cycle 4× plus court côté icône).
+  const spanIconVector =
+    isPrestigePath && prestigeSpan && prestigeSpan.iconWidth > 0
+      ? {
+          x1: -prestigeSpan.iconOffset / prestigeSpan.iconWidth,
+          y1: 0,
+          x2: (cyclePx - prestigeSpan.iconOffset) / prestigeSpan.iconWidth,
+          y2: 0,
+        }
+      : undefined;
+  usePrestigeGradientAnimation(
+    isPrestigePath,
+    prestigeSpan,
+    cyclePx,
+    prestigeBarRef,
+    prestigeTitleRef,
+    prestigeIconRef,
+  );
   const header = (
     <Box
+      ref={isPrestigePath ? prestigeSpanRef : undefined}
       sx={{
+        position: isPrestigePath ? 'relative' : undefined,
         mb: compact ? 0 : 1,
         pl: compact ? 1 : 1.5,
-        borderLeft: 3,
-        borderColor: color ?? 'divider',
+        borderLeft: isPrestigePath ? 0 : 3,
+        borderColor: isPrestigePath ? undefined : (titleColor ?? 'divider'),
       }}
     >
+      {isPrestigePath && (
+        <Box
+          ref={prestigeBarRef}
+          sx={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: '3px',
+            backgroundImage: spanGradientCss ?? titleBarGradient,
+            backgroundSize: cyclePx > 0 ? `${cyclePx}px 100%` : undefined,
+            backgroundPositionX: '0px',
+          }}
+        />
+      )}
     <Stack
       direction="row"
       spacing={0.5}
       sx={{ alignItems: compact ? 'flex-start' : 'center' }}
     >
       <Typography
+        ref={isPrestigePath ? prestigeTitleRef : undefined}
         variant={compact ? 'body2' : 'subtitle1'}
         sx={{
           fontWeight: 600,
-          color: color ?? 'text.primary',
+          ...(titleTextGradient
+            ? {
+                backgroundImage: titleTextGradient,
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                color: 'transparent',
+                WebkitTextFillColor: 'transparent',
+                ...spanTitleSx,
+              }
+            : { color: titleColor ?? 'text.primary' }),
           minWidth: 0,
           lineHeight: 1.2,
           wordBreak: 'break-word',
@@ -3233,9 +3418,12 @@ function PathBlock({
           ) : (
             iconAncestryId && (
               <AncestryIcon
+                ref={isPrestigePath ? prestigeIconRef : undefined}
                 ancestryId={iconAncestryId}
                 size={18}
-                sx={{ color: isMagePath ? MAGE_PATH_COLOR : (prestigeTint ?? 'text.secondary') }}
+                gradientStops={prestigeIconGradient}
+                gradientVector={spanIconVector}
+                sx={{ color: isMagePath ? MAGE_PATH_COLOR : 'text.secondary' }}
               />
             )
           )}
@@ -3253,9 +3441,12 @@ function PathBlock({
         ) : (
           iconAncestryId && (
             <AncestryIcon
+              ref={isPrestigePath ? prestigeIconRef : undefined}
               ancestryId={iconAncestryId}
               size={18}
-              sx={{ ml: 0.5, color: isMagePath ? MAGE_PATH_COLOR : (prestigeTint ?? 'text.secondary') }}
+              gradientStops={prestigeIconGradient}
+              gradientVector={spanIconVector}
+              sx={{ ml: 0.5, color: isMagePath ? MAGE_PATH_COLOR : 'text.secondary' }}
             />
           )
         )
@@ -3466,7 +3657,10 @@ function PathBlock({
               ...(armorRestrictedSx(armorRestrictedFeature) ?? {}),
               ...(isArmorRestricted(armorRestrictedFeature) ? ARMOR_RESTRICTED_BARS_SX : {}),
               // PER-74 — carte de rang de prestige : anneau dégradé + fond sombre (override en dernier).
-              // Pas sur une carte d'emprunt/slot divin (elles gardent la teinte de leur voie source).
+              // Pas sur un slot divin (`repl`) ni sur une carte D'EMPRUNT (`borrowed`, retour proprio :
+              // la carte de DEVANT garde la teinte de la voie EMPRUNTÉE — le dégradé prestige va sur le
+              // cadre décalé DERRIÈRE, cf. plus bas, pour un double liseré : emprunt devant, hôte
+              // prestige derrière).
               ...(!repl && !borrowed ? (prestigeCardSx ?? {}) : {}),
             }}
           >
@@ -3790,22 +3984,39 @@ function PathBlock({
                 display: 'flex',
                 flexDirection: 'column',
                 cursor: 'pointer',
+                // Réserve à DROITE la largeur du cadre décalé décoratif ci-dessous (5px) : le débord
+                // reste ainsi CONTENU dans l'empan du bloc (retour proprio — un bloc d'emprunt
+                // débordait de 5px à droite vs un bloc simple, tailles visiblement incohérentes
+                // dans une grille à colonnes serrées, 4px de gap). Le cadre garde son effet « pile
+                // de cartes » (visible dans cette marge), sans plus élargir le bloc lui-même.
+                pr: '5px',
               }}
             >
-              {/* Cadre décalé décoratif (offset bas-droite) DERRIÈRE le contenu — purement visuel. */}
+              {/* Cadre décalé décoratif (offset bas-droite) DERRIÈRE le contenu — purement visuel.
+                  CONTENU dans le bloc (cf. `pr` ci-dessus), pas de débord au-delà de son empan.
+                  Voie de PRESTIGE hôte : anneau dégradé + fond précieux (`prestigeCardSx`), comme les
+                  rangs non-empruntés de la même voie — double liseré voulu (devant = voie empruntée,
+                  derrière = voie de prestige hôte, retour proprio). */}
               <Box
                 aria-hidden
                 sx={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  right: -5,
+                  right: 0,
                   bottom: 0,
                   borderRadius: 1,
                   border: 1,
                   borderColor: 'divider',
                   bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
                   zIndex: 0,
+                  // `prestigeCardSx` porte son PROPRE `position:'relative'` (pour son `::before` en
+                  // dégradé) : le réappliquer en `absolute` + les 4 côtés APRÈS le spread, sinon il
+                  // écraserait le positionnement absolu de CE cadre (qui doit rester calé sur le
+                  // conteneur du bloc, pas dans le flux).
+                  ...(isPrestigePath
+                    ? { ...(prestigeCardSx ?? {}), position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }
+                    : {}),
                 }}
               />
               {/* Carte(s) de devant (capacité(s) empruntée(s)), au-dessus du cadre. PER-74 : Bâton
@@ -3892,7 +4103,8 @@ function PathBlock({
                 })}
               </Box>
               {/* Bande de l'hôte EN FLUX, alignée bas-droite sur le cadre décalé : son nom (et la
-                  carac retenue éventuelle) restent toujours entièrement visibles. */}
+                  carac retenue éventuelle) restent toujours entièrement visibles. Padding généreux
+                  (retour proprio : bande trop fine, cible de clic difficile à atteindre). */}
               <Box
                 sx={{
                   position: 'relative',
@@ -3902,9 +4114,9 @@ function PathBlock({
                   justifyContent: 'flex-end',
                   flexWrap: 'wrap',
                   gap: 0.5,
-                  px: 1,
-                  pt: 0.25,
-                  pb: 0.25,
+                  px: 1.25,
+                  pt: 0.75,
+                  pb: 0.75,
                 }}
               >
                 <Typography

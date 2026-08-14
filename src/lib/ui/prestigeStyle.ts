@@ -11,15 +11,25 @@ import { darken, lighten } from '@mui/material/styles';
 export const PRESTIGE_GRADIENT_STOPS = '#ffffff, #8c8c8c, #ffffff';
 
 /**
- * Dégradé « métal précieux » à 45° utilisé comme REMPLISSAGE (liseré de carte, petits carrés de la
- * mini-grille de progression). Par défaut (génériques, `color` absent) : le dégradé JAUNE → gris chaud
- * exactement tuné par le proprio. Pour une famille de prestige (`color` fourni) : reflet clair
- * (coin bas-gauche) → nuance sombre (coin haut-droit) dérivé de la teinte de famille. Source unique.
+ * Les deux arrêts (clair, sombre) du dégradé « métal précieux ». Par défaut (génériques, `color`
+ * absent) : le JAUNE → gris chaud exactement tuné par le proprio. Pour une famille de prestige
+ * (`color` fourni) : reflet clair → nuance sombre dérivé de la teinte de famille. Source unique des
+ * arrêts — `prestigeMetalGradient` (CSS) et le remplissage en dégradé de l'icône `prestige`
+ * (`AncestryIcon`, SVG) s'appuient tous deux dessus.
  */
-export function prestigeMetalGradient(color?: string): string {
-  return color
-    ? `linear-gradient(45deg, ${lighten(color, 0.72)}, ${darken(color, 0.32)})`
-    : 'linear-gradient(45deg, #fff2c2, #968f74)';
+export function prestigeGemStops(color?: string): [string, string] {
+  return color ? [lighten(color, 0.72), darken(color, 0.32)] : ['#fff2c2', '#968f74'];
+}
+
+/**
+ * Dégradé « métal précieux » utilisé comme REMPLISSAGE (liseré de carte, petits carrés de la
+ * mini-grille de progression, titre de voie + ligne d'en-tête). `angle` par défaut 45° (liseré de
+ * carte, cartouches) ; passer `180deg` pour un dégradé VERTICAL (ligne d'en-tête, où le sens
+ * horizontal du 45° ne se voit pas sur 2-3px de large). Source unique.
+ */
+export function prestigeMetalGradient(color?: string, angle = '45deg'): string {
+  const [light, dark] = prestigeGemStops(color);
+  return `linear-gradient(${angle}, ${light}, ${dark})`;
 }
 
 /**
