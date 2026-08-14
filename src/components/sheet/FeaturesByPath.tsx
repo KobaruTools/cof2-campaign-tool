@@ -3775,7 +3775,10 @@ function PathBlock({
             )}
             {/* Interrupteurs des effets conditionnels, compacts (état de jeu, libellé
                 en infobulle) ; le détail cliquable héberge la version étiquetée. */}
-            {hasEffectToggles(feature) && (
+            {/* Interrupteurs conditionnels de l'hôte (compact) — SAUF l'interrupteur d'autorisation des
+                emprunts (PER-328) quand une carte empruntée est en devant : il se rend alors dans la
+                bande de l'hôte (sous « Lames et sorcellerie »), pas sur la carte de l'emprunt. */}
+            {hasEffectToggles(feature) && !(hasBorrowAuthorizationToggle(feature) && borrowed) && (
               <Box sx={{ mt: 0.5, width: '100%' }}>{renderEffectToggles(feature, { compact: true })}</Box>
             )}
             {/* Interrupteur(s) d'effet conditionnel de la capacité EMPRUNTÉE (PER-324, ex. Survie « en
@@ -4162,6 +4165,13 @@ function PathBlock({
                     onlyUnmade: true,
                   })}
               </Box>
+              {/* PER-328 — interrupteur d'autorisation des emprunts (« À l'abri du plein soleil »), sous
+                  le nom de l'HÔTE et la bande hôte, pas sur la carte de devant qui montre l'emprunt. */}
+              {hasBorrowAuthorizationToggle(feature) && hasEffectToggles(feature) && (
+                <Box sx={{ px: 1.25, pb: 0.75, width: '100%' }} onClick={(e) => e.stopPropagation()}>
+                  {renderEffectToggles(feature, { compact: true })}
+                </Box>
+              )}
             </Box>
           ) : (
             cardInner
