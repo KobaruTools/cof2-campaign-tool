@@ -33,20 +33,48 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import TouchAppIcon from '@mui/icons-material/TouchApp';
 import Box from '@mui/material/Box';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import Popover from '@mui/material/Popover';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { featureById, progression } from '@/data';
-import type { Feature } from '@/data/schema';
+import { featureById, pathById, progression } from '@/data';
+import type { Feature, Path } from '@/data/schema';
 import { featureCost } from '@/lib/engine';
 import type { Character } from '@/lib/character/types';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { ClassIcon } from '@/components/ClassIcon';
+import { PathCard } from '@/components/PathCard';
+import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { prestigeCategoryColor } from '@/lib/ui/classColors';
 import { PATH_COLUMN_COUNT, PATH_RANK_COUNT, pathColor, pathColumns } from '@/lib/ui/pathColumns';
+
+/**
+ * Teinte + icône (profil/peuple/mage/prestige) d'une voie — même repli que la liste
+ * avancée (`AvailablePathGroup` / groupe « Capacités sélectionnées », `LevelUpDialog`) :
+ * `classId` prioritaire, sinon `ancestryId` (clés hors-peuple dédiées 'mage'/'prestige').
+ * Partagé entre l'en-tête de colonne survolée et la carte d'aperçu de rang ci-dessous.
+ */
+function pathVisuals(path: Path | undefined, characterClassId: string) {
+  const prestigePath = path?.type === 'prestige' ? path : undefined;
+  const color = prestigePath
+    ? prestigeCategoryColor(prestigePath.category)
+    : path
+      ? pathColor(path, characterClassId)
+      : undefined;
+  const classId =
+    path?.type === 'class'
+      ? path.classIds.includes(characterClassId)
+        ? characterClassId
+        : path.classIds[0]
+      : undefined;
+  const rawAncestryId = path?.type === 'ancestry' ? path.id : undefined;
+  const ancestryId = rawAncestryId ?? (prestigePath ? 'prestige' : path?.type === 'mage' ? 'mage' : undefined);
+  const prestigeTint = prestigePath && prestigePath.category !== 'generic' ? color : undefined;
+  return { color, classId, ancestryId, isPrestige: !!prestigePath, prestigeTint };
+}
 
 /** Écart entre les cases (px). */
 const CELL_GAP = 3;
@@ -74,7 +102,43 @@ const PATH_GRID_ANIMATIONS = `
     from { opacity: 0; transform: translateX(8px); }
     to { opacity: 1; transform: translateX(0); }
   }
+  @keyframes pathLongPressFill {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  @keyframes pathInteractiveCtaPulse {
+    /* 2 arrêts seulement (pas de palier à 50 %) : la boucle repart TOUJOURS de l'intérieur
+       vers l'extérieur, jamais un aller-retour (rebond) — le saut au redémarrage (100 % →
+       0 %, instantané) n'est pas perceptible car opacity y est déjà nulle. */
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45); }
+    100% { box-shadow: 0 0 0 5px rgba(255, 255, 255, 0); }
+  }
+  @keyframes pathTutorialFinger {
+    /* Centrage horizontal EXACT via translateX(-50%) — géré ici (pas par un décalage en px
+       deviné sur la largeur de l'icône), constant à chaque étape ; seuls translateY/scale
+       varient pour le mouvement de « pression ». */
+    0% { opacity: 0; transform: translate(-50%, -6px) scale(1); }
+    10% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    28% { opacity: 1; transform: translate(-50%, 2px) scale(0.88); }
+    40% { opacity: 1; transform: translate(-50%, 2px) scale(0.88); }
+    55% { opacity: 0; transform: translate(-50%, -6px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -6px) scale(1); }
+  }
+  @keyframes pathTutorialBarFill {
+    0%, 10% { transform: scaleX(0); opacity: 1; }
+    28%, 40% { transform: scaleX(1); opacity: 1; }
+    55%, 100% { transform: scaleX(1); opacity: 0; }
+  }
 `;
+
+/** Durée de l'appui long (tactile) pour sélectionner une case affordable, en ms. */
+const LONG_PRESS_MS = 500;
+/** Déplacement (px) au-delà duquel un appui tactile est traité comme un scroll, pas une tenue. */
+const LONG_PRESS_MOVE_CANCEL_PX = 10;
+/** Durée d'un cycle de la démo « doigt » (appui long) — boucle jusqu'à ce que le joueur le fasse lui-même. */
+const TUTORIAL_LOOP_MS = 2600;
+/** Clé localStorage : une fois l'appui long réussi une fois, la démo ne revient plus jamais. */
+const LONG_PRESS_TUTORIAL_KEY = 'sheet:levelup-longpress-tutorial-seen';
 
 export interface LevelUpPathsGridProps {
   character: Character;
@@ -115,6 +179,90 @@ export function LevelUpPathsGrid({
   // même à 0 point restant, d'où un dépassement de budget silencieux.
   const canPickNewPath = !locked && remaining > 0 && newPathOptions.length > 0;
   const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
+  // Aperçu déployé (mobile) : clic sur une case (acquise ou non) — réutilise `PathCard`
+  // en lecture seule (`selectable={false}`, pas de case à cocher). La case reste le SEUL
+  // moyen de sélectionner ; l'aperçu ne fait qu'informer. `color`/`gradient` capturent le
+  // rendu EXACT de la case cliquée (celui de `rankColors`, qui tient compte d'un éventuel
+  // emprunt de capacité — PER-120 — donc potentiellement différent de la teinte générique
+  // de la voie) ; `filled` distingue un rang déjà acquis (couleur figée à respecter tel
+  // quel) d'un rang pas encore acquis (aucune entrée dans `rankColors`, repli sur la teinte
+  // générique de la voie, prestige compris, au rendu).
+  const [preview, setPreview] = useState<
+    { featureId: string; filled: boolean; color?: string; gradient: boolean } | null
+  >(null);
+  // Appui long tactile (case affordable) : seul geste qui sélectionne au toucher, la souris
+  // continue de sélectionner au simple clic (le survol distingue déjà regarder/valider).
+  // `pointerTypeRef` mémorise le type du dernier pointeur pour que l'`onClick` (souris)
+  // s'efface quand la séquence vient du tactile (déjà traitée par les gestionnaires pointer).
+  const pointerTypeRef = useRef<'mouse' | 'touch' | 'pen'>('mouse');
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const longPressFiredRef = useRef(false);
+  const [pressedCell, setPressedCell] = useState<{ column: number; row: number } | null>(null);
+  const clearLongPress = () => {
+    if (longPressTimerRef.current != null) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+    longPressStartRef.current = null;
+    setPressedCell(null);
+  };
+  // Démo « doigt » de l'appui long tactile : tant que le joueur ne l'a jamais fait
+  // lui-même (flag localStorage), un doigt se pose en boucle sur la 1ère case
+  // sélectionnable et se remplit comme un vrai appui — seul indice que le geste existe.
+  // Lu après montage (pas au premier rendu serveur) pour éviter tout flash d'hydratation.
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  const [tutorialSeen, setTutorialSeen] = useState(true);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // Synchronisation ponctuelle depuis des systèmes externes (matchMedia/localStorage)
+    // après le montage, pour ne pas décaler le rendu SSR/CSR — pas une boucle de rendu
+    // (même patron que `usePersistentBoolean`).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsCoarsePointer(window.matchMedia('(pointer: coarse)').matches);
+    setTutorialSeen(window.localStorage.getItem(LONG_PRESS_TUTORIAL_KEY) != null);
+  }, []);
+  const markTutorialSeen = () => {
+    if (typeof window !== 'undefined') window.localStorage.setItem(LONG_PRESS_TUTORIAL_KEY, '1');
+    setTutorialSeen(true);
+  };
+  // Toutes les cases réellement cliquables ce niveau, colonne par colonne (au plus une
+  // par colonne — le prochain rang affordable, ou la case « + nouvelle voie » pour
+  // `firstEmptyClassSlot`) : la démo tourne entre elles plutôt que de figer toujours la
+  // même — même ordre gauche→droite que l'achat direct.
+  const interactiveCells = (() => {
+    const cells: { column: number; row: number }[] = [];
+    for (let c = 0; c < PATH_COLUMN_COUNT; c += 1) {
+      const column = columns[c];
+      if (column) {
+        const rowIndex = column.rankColors.length;
+        const feature = column.features[rowIndex];
+        if (feature && availableIds.has(feature.id) && !locked && featureCost(feature, progression) <= remaining) {
+          cells.push({ column: c, row: rowIndex });
+        }
+      } else if (canPickNewPath && c === firstEmptyClassSlot) {
+        cells.push({ column: c, row: 0 });
+      }
+    }
+    return cells;
+  })();
+  // Index (rotatif) de la case démontrée dans `interactiveCells` — avance tout seul en
+  // boucle, un cran par cycle de démo (`TUTORIAL_LOOP_MS`), tant que la démo est due.
+  const [demoCellIndex, setDemoCellIndex] = useState(0);
+  useEffect(() => {
+    if (!isCoarsePointer || tutorialSeen) return;
+    const id = setInterval(() => setDemoCellIndex((i) => i + 1), TUTORIAL_LOOP_MS);
+    return () => clearInterval(id);
+  }, [isCoarsePointer, tutorialSeen]);
+  const demoTargetCell =
+    interactiveCells.length > 0 ? interactiveCells[demoCellIndex % interactiveCells.length] : null;
+  // Reste affiché même colonne ouverte (tap qui étend) — seul le flag persisté (appui
+  // long déjà réussi une fois) l'arrête pour de bon. Coupé UNIQUEMENT le temps d'un vrai
+  // appui en cours sur cette case précise (sinon la barre réelle et celle de la démo se
+  // superposent visuellement sur la même case).
+  const showDemoTutorial =
+    isCoarsePointer &&
+    !tutorialSeen &&
+    !!demoTargetCell &&
+    !(pressedCell && pressedCell.column === demoTargetCell.column && pressedCell.row === demoTargetCell.row);
   // Hauteur de case FIGÉE (calculée sur la largeur totale de la grille, pas sur celle,
   // variable, de la colonne survolée) : le hover ne doit élargir que la largeur, jamais
   // la hauteur — un `aspectRatio` sur la case aurait fait grandir les deux de concert.
@@ -135,15 +283,16 @@ export function LevelUpPathsGrid({
   }, []);
 
   return (
-    <Box
-      ref={gridRef}
-      sx={{
-        display: 'flex',
-        gap: `${CELL_GAP}px`,
-        width: '100%',
-      }}
-    >
+    <Box sx={{ width: '100%' }}>
       <GlobalStyles styles={PATH_GRID_ANIMATIONS} />
+      <Box
+        ref={gridRef}
+        sx={{
+          display: 'flex',
+          gap: `${CELL_GAP}px`,
+          width: '100%',
+        }}
+      >
       {Array.from({ length: PATH_COLUMN_COUNT }, (_, columnIndex) => {
         const column = columns[columnIndex];
         const isHovered = hoveredColumn === columnIndex;
@@ -151,37 +300,43 @@ export function LevelUpPathsGrid({
         // liste avancée (`AvailablePathGroup` / groupe « Capacités sélectionnées » plus
         // haut dans ce fichier) — barre verticale à gauche + icône de profil/peuple/
         // prestige, teinte de famille (or pour les voies de prestige génériques).
-        const prestigePath = column?.path?.type === 'prestige' ? column.path : undefined;
-        const titleColor = prestigePath
-          ? prestigeCategoryColor(prestigePath.category)
-          : column
-            ? pathColor(column.path, character.classId)
-            : undefined;
-        // Icône de profil (classe) ou de peuple/mage/prestige — même repli que la liste
-        // avancée : `classId` prioritaire, sinon `ancestryId` (avec clés hors-peuple
-        // dédiées 'mage'/'prestige').
-        const classId =
-          column?.path?.type === 'class'
-            ? column.path.classIds.includes(character.classId)
-              ? character.classId
-              : column.path.classIds[0]
-            : undefined;
-        const rawAncestryId = column?.path?.type === 'ancestry' ? column.path.id : undefined;
-        const ancestryId =
-          rawAncestryId ?? (prestigePath ? 'prestige' : column?.path?.type === 'mage' ? 'mage' : undefined);
+        const { color: titleColor, classId, ancestryId } = pathVisuals(column?.path, character.classId);
+        // Colonne vide qui ne peut RIEN recevoir ce niveau (ni la « + nouvelle voie » —
+        // réservée à `firstEmptyClassSlot` — ni la voie de prestige, jamais choisissable
+        // depuis cette grille) : sur souris seulement (`isCoarsePointer`, au tactile
+        // l'expansion au tap reste le seul moyen de voir/agir), pas d'expansion au survol —
+        // rien à y faire, la souris ne doit pas s'y attarder pour rien.
+        const isReceivableEmptyColumn = !column && columnIndex === firstEmptyClassSlot && canPickNewPath;
+        // Colonne vide inerte (rien à y faire) : ni au survol souris (`isDesktopInert`), ni au
+        // tap tactile (`onPointerUp` ci-dessous) — même règle des deux côtés, juste déclenchée
+        // par des gestes différents.
+        const isInertColumn = !column && !isReceivableEmptyColumn;
+        const isDesktopInert = !isCoarsePointer && isInertColumn;
         return (
           <Box
             key={columnIndex}
-            onMouseEnter={() => setHoveredColumn(columnIndex)}
-            onMouseLeave={() => setHoveredColumn(null)}
+            onMouseEnter={() => {
+              if (isDesktopInert) return;
+              setHoveredColumn(columnIndex);
+            }}
+            onMouseLeave={() => {
+              // Popover « nouvelle voie » ouvert sur cette colonne (seule à pouvoir l'ouvrir,
+              // `firstEmptyClassSlot`) : ne PAS réduire la colonne pendant que le joueur
+              // choisit dans le popover, sinon la souris qui va vers le popover (hors de la
+              // grille) referme la colonne sous ses pieds.
+              if (pickerAnchor && columnIndex === firstEmptyClassSlot) return;
+              setHoveredColumn(null);
+            }}
             sx={{
+              position: 'relative',
               flex: isHovered ? '2.5 1 0' : '1 1 0',
               minWidth: 0,
               display: 'flex',
               flexDirection: 'column',
               gap: `${CELL_GAP}px`,
-              transition: 'flex 200ms ease',
+              transition: 'flex 200ms ease, opacity 200ms ease',
               zIndex: isHovered ? 1 : 0,
+              opacity: isDesktopInert ? 0.45 : 1,
             }}
           >
             <Box sx={{ position: 'relative', height: HEADER_HEIGHT, overflow: 'hidden' }}>
@@ -258,10 +413,16 @@ export function LevelUpPathsGrid({
               // l'atténuation de la teinte passent par une détection de préfixe plutôt qu'un helper
               // de couleur commun.
               const isGradientFill = filled && !!color && color.startsWith('linear-gradient');
+              // Case réellement cliquable ce niveau (achat direct OU « + nouvelle voie ») —
+              // seule cible du pulse d'incitation ci-dessous.
+              const isInteractiveCta = affordable || (isNewPathSlot && canPickNewPath);
               return (
                 <Box
                   key={rowIndex}
                   onClick={(e) => {
+                    // Séquence tactile : déjà traitée par les gestionnaires pointer ci-dessous
+                    // (sélection à l'appui long, jamais au clic synthétique qui suit le tap).
+                    if (pointerTypeRef.current === 'touch') return;
                     // Mobile (pas de hover) : le 1er tap dans la colonne l'étend seulement — il
                     // faut un 2ᵉ tap, sur la case déjà visible en grand, pour sélectionner. Sur
                     // desktop la souris a déjà survolé (donc étendu) avant le clic, donc invisible.
@@ -269,9 +430,64 @@ export function LevelUpPathsGrid({
                       setHoveredColumn(columnIndex);
                       return;
                     }
-                    if (affordable) onSelect(feature!.id);
-                    else if (isNewPathSlot && canPickNewPath) setPickerAnchor(e.currentTarget);
+                    if (feature) setPreview({ featureId: feature.id, filled, color, gradient: isGradientFill });
+                    if (affordable) {
+                      markTutorialSeen();
+                      onSelect(feature!.id);
+                    } else if (isNewPathSlot && canPickNewPath) setPickerAnchor(e.currentTarget);
                   }}
+                  onPointerDown={(e) => {
+                    pointerTypeRef.current = e.pointerType as 'mouse' | 'touch' | 'pen';
+                    if (e.pointerType !== 'touch') return;
+                    // Appelé ICI (pointerdown), pas juste sur `contextmenu` : c'est ce
+                    // `preventDefault` qui, selon le spec Pointer Events, supprime le menu
+                    // contextuel natif déclenché par le navigateur après un appui tenu — le
+                    // seul `onContextMenu` ne suffit pas à l'empêcher.
+                    e.preventDefault();
+                    longPressFiredRef.current = false;
+                    longPressStartRef.current = { x: e.clientX, y: e.clientY };
+                    const target = e.currentTarget;
+                    if (affordable) {
+                      setPressedCell({ column: columnIndex, row: rowIndex });
+                      longPressTimerRef.current = setTimeout(() => {
+                        longPressFiredRef.current = true;
+                        setPressedCell(null);
+                        markTutorialSeen();
+                        onSelect(feature!.id);
+                      }, LONG_PRESS_MS);
+                    } else if (isNewPathSlot && canPickNewPath) {
+                      // Même geste que l'achat d'un rang : la case « + nouvelle voie » ouvre le
+                      // popover à l'appui long au tactile aussi, pas au tap court (cohérence du
+                      // seul geste qui « valide » sur ce périphérique).
+                      setPressedCell({ column: columnIndex, row: rowIndex });
+                      longPressTimerRef.current = setTimeout(() => {
+                        longPressFiredRef.current = true;
+                        setPressedCell(null);
+                        markTutorialSeen();
+                        setPickerAnchor(target);
+                      }, LONG_PRESS_MS);
+                    }
+                  }}
+                  onPointerMove={(e) => {
+                    if (e.pointerType !== 'touch' || !longPressStartRef.current) return;
+                    const dx = e.clientX - longPressStartRef.current.x;
+                    const dy = e.clientY - longPressStartRef.current.y;
+                    if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_CANCEL_PX) clearLongPress();
+                  }}
+                  onPointerUp={(e) => {
+                    if (e.pointerType !== 'touch') return;
+                    const fired = longPressFiredRef.current;
+                    clearLongPress();
+                    if (fired) return;
+                    // Tap court (relâché avant la fin de l'appui long) : étend la colonne (si pas
+                    // déjà fait ET qu'il y a quelque chose à y voir/faire — `isInertColumn`, même
+                    // règle que le survol souris) et affiche l'aperçu — ne sélectionne/n'ouvre
+                    // JAMAIS le popover au tactile (réservé à l'appui long, cf. `onPointerDown`).
+                    if (!isHovered && !isInertColumn) setHoveredColumn(columnIndex);
+                    if (feature) setPreview({ featureId: feature.id, filled, color, gradient: isGradientFill });
+                  }}
+                  onPointerCancel={clearLongPress}
+                  onContextMenu={(e) => e.preventDefault()}
                   sx={{
                     position: 'relative',
                     overflow: 'hidden',
@@ -282,6 +498,9 @@ export function LevelUpPathsGrid({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    touchAction: 'manipulation',
+                    WebkitTouchCallout: 'none',
+                    userSelect: 'none',
                     background: filled && color ? undefined : 'rgba(255, 255, 255, 0.05)',
                     border: filled && color ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
                     ...(filled &&
@@ -309,16 +528,19 @@ export function LevelUpPathsGrid({
                     // tactile) ni le halo bleu par défaut du navigateur (`-webkit-tap-highlight-
                     // color`) — le 1er tap ne fait qu'étendre, il ne doit pas se donner l'air d'agir.
                     WebkitTapHighlightColor: 'transparent',
-                    ...((affordable || (isNewPathSlot && canPickNewPath)) && {
+                    ...(isInteractiveCta && {
                       border: '1px dashed rgba(255, 255, 255, 0.5)',
                       ...(isHovered && { '&:hover': { background: 'rgba(255, 255, 255, 0.16)' } }),
+                      // Pulse d'incitation : même gating que la démo « doigt » (`tutorialSeen`,
+                      // flag localStorage `LONG_PRESS_TUTORIAL_KEY`) — une fois qu'un joueur a
+                      // choisi au moins un rang (souris ou tactile, `markTutorialSeen` posé sur
+                      // les 3 chemins de sélection), plus besoin d'attirer l'œil, il a compris.
+                      ...(!tutorialSeen && {
+                        animation: 'pathInteractiveCtaPulse 2000ms ease-out infinite',
+                        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                      }),
                     }),
-                    cursor:
-                      affordable || (isNewPathSlot && canPickNewPath)
-                        ? 'pointer'
-                        : column
-                          ? 'help'
-                          : 'default',
+                    cursor: isInteractiveCta ? 'pointer' : column ? 'help' : 'default',
                     transition: 'background 150ms',
                   }}
                 >
@@ -327,6 +549,25 @@ export function LevelUpPathsGrid({
                     // au hover) — calque séparé plutôt qu'`alpha()` sur `color` pour rester valable
                     // aussi bien sur une teinte plate que sur le dégradé de prestige.
                     <Box sx={{ position: 'absolute', inset: 0, background: color, opacity: 0.5625 }} />
+                  )}
+                  {pressedCell?.column === columnIndex && pressedCell?.row === rowIndex && (
+                    // Feedback de remplissage progressif de l'appui long — seul indice que le geste
+                    // existe (sinon non découvrable) : barre qui se remplit de gauche à droite sur
+                    // la durée exacte de `LONG_PRESS_MS`, annulée (démontée) si le doigt bouge/relâche.
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: '100%',
+                        transformOrigin: 'left',
+                        background: 'rgba(255, 255, 255, 0.35)',
+                        animation: `pathLongPressFill ${LONG_PRESS_MS}ms linear forwards`,
+                        pointerEvents: 'none',
+                        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                      }}
+                    />
                   )}
                   {isNewPathSlot && canPickNewPath && (
                     <AddIcon sx={{ position: 'relative', zIndex: 1, fontSize: 14, color: 'rgba(255, 255, 255, 0.5)' }} />
@@ -340,12 +581,17 @@ export function LevelUpPathsGrid({
                         zIndex: 1,
                         fontSize: 12,
                         color: 'rgba(255, 255, 255, 0.5)',
-                        pl: 0.5,
+                        pl: isHovered ? 0.5 : 0,
+                        // `maxWidth: 0` hors hover plutôt que la seule opacité : le texte invisible
+                        // gardait sinon sa largeur pleine (ligne, pas de `noWrap` sur l'espace occupé),
+                        // ce qui décalait le « + » hors du centre de la case dès qu'il était monté.
+                        maxWidth: isHovered ? 160 : 0,
+                        overflow: 'hidden',
                         // Même stagger fondu + glissement que le nom de rang ci-dessous (case
                         // unique, delai nul) — cohérence de l'apparition/disparition au hover.
                         opacity: isHovered ? 1 : 0,
                         transform: isHovered ? 'translateX(0)' : 'translateX(6px)',
-                        transition: 'opacity 160ms ease, transform 160ms ease',
+                        transition: 'opacity 160ms ease, transform 160ms ease, max-width 160ms ease, padding-left 160ms ease',
                         '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
                       }}
                     >
@@ -354,14 +600,23 @@ export function LevelUpPathsGrid({
                   )}
                   {feature && (
                     <Typography
-                      noWrap
                       variant="caption"
                       sx={{
                         position: 'relative',
                         zIndex: 1,
                         fontWeight: 700,
                         fontSize: 12,
+                        lineHeight: 1.15,
                         color: '#fff',
+                        // Retour à la ligne (2 lignes max) plutôt que tronqué sur une seule — la
+                        // hauteur de la case est FIGÉE (`cellHeight`, mesurée sur la largeur totale
+                        // de la grille), donc ce wrap ne la fait jamais bouger.
+                        whiteSpace: 'normal',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                         // Rang ni acquis (`filled`) ni réellement sélectionnable ce niveau
                         // (`affordable` — légal ET coût couvert par les points restants) : nom
                         // à moitié effacé, pour ne pas concurrencer les rangs qui comptent.
@@ -385,9 +640,114 @@ export function LevelUpPathsGrid({
                 </Box>
               );
             })}
+            {showDemoTutorial && demoTargetCell?.column === columnIndex && cellHeight != null && (
+              // Rendu au niveau COLONNE (jamais dans la case, `overflow: hidden`) : seule la
+              // barre de remplissage reste bornée à la case, le doigt peut la déborder pour
+              // ressembler à un vrai doigt qui appuie dessus plutôt qu'une icône encastrée.
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: 0,
+                  width: '100%',
+                  top: HEADER_HEIGHT + CELL_GAP + demoTargetCell.row * (cellHeight + CELL_GAP),
+                  height: cellHeight,
+                  pointerEvents: 'none',
+                  zIndex: 3,
+                }}
+              >
+                <Box sx={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '2px' }}>
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '100%',
+                      transformOrigin: 'left',
+                      background: 'rgba(255, 255, 255, 0.35)',
+                      animation: `pathTutorialBarFill ${TUTORIAL_LOOP_MS}ms ease-in-out infinite`,
+                      '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                    }}
+                  />
+                </Box>
+                {/* Doigt qui appuie — dépasse la case vers le haut (`top` négatif) pour se
+                    voir même sur une case minuscule ; seul indice que le geste « maintenir »
+                    existe. */}
+                <TouchAppIcon
+                  sx={{
+                    position: 'absolute',
+                    top: '-40%',
+                    left: '50%',
+                    // Repli SANS animation (ci-dessous) : `transform` reste posé ici (jamais dans
+                    // le bloc reduced-motion, qui ne coupe QUE `animation`) — sinon le doigt perd
+                    // son centrage `translateX(-50%)` dès que l'animation est coupée.
+                    transform: 'translate(-50%, 0) scale(1)',
+                    opacity: 1,
+                    fontSize: 44,
+                    color: '#fff',
+                    filter: 'drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7))',
+                    animation: `pathTutorialFinger ${TUTORIAL_LOOP_MS}ms ease-in-out infinite`,
+                    '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                  }}
+                />
+              </Box>
+            )}
           </Box>
         );
       })}
+      </Box>
+
+      {showDemoTutorial && (
+        // Texte de la démo : hors de la case (`overflow: hidden`), sous la grille — le
+        // doigt anime QUEL rang, le texte explique CE QUE fait le geste.
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ alignItems: 'center', justifyContent: 'center', mt: 0.75 }}
+        >
+          <TouchAppIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+          <Typography variant="caption" color="text.secondary">
+            Rester appuyé pour choisir un rang
+          </Typography>
+        </Stack>
+      )}
+
+      {preview &&
+        (() => {
+          const feature = featureById.get(preview.featureId);
+          const path = feature ? pathById.get(feature.pathId) : undefined;
+          if (!feature) return null;
+          const visuals = pathVisuals(path, character.classId);
+          // Rang déjà acquis : couleur EXACTE de la case (celle de `rankColors`, qui prend en
+          // compte un éventuel emprunt de capacité) — jamais la teinte générique de la voie,
+          // qui se tromperait sur un rang emprunté. Rang pas encore acquis : aucune couleur de
+          // case n'existe, repli sur la teinte générique (dégradé prestige compris).
+          const isPrestigeCard = preview.filled ? preview.gradient : visuals.isPrestige;
+          const cardColor = preview.filled ? (preview.gradient ? undefined : preview.color) : visuals.color;
+          const cost = featureCost(feature, progression);
+          return (
+            <Box sx={{ width: '100%', mt: 1 }}>
+              <PathCard
+                name={<DeclinedFeatureName feature={feature} />}
+                term={feature.name}
+                color={cardColor}
+                classId={visuals.classId}
+                ancestryId={visuals.ancestryId}
+                prestige={isPrestigeCard}
+                prestigeTint={isPrestigeCard ? visuals.prestigeTint : undefined}
+                checked={false}
+                selectable={false}
+                defaultExpanded
+                repeatFeatureName={false}
+                rankLabel={`Rang ${feature.rank} — ${cost} point${cost > 1 ? 's' : ''}`}
+                sourcePage={path?.sourcePage}
+                feature={feature}
+                abilities={character.abilities}
+                level={character.level}
+              />
+            </Box>
+          );
+        })()}
 
       <Popover
         open={!!pickerAnchor}
@@ -405,7 +765,10 @@ export function LevelUpPathsGrid({
               // (`canPickNewPath`), mais il peut rester ouvert d'un rendu précédent pendant
               // qu'un autre clic vient d'épuiser `remaining` — recontrôlé ici avant d'ajouter.
               const feature = id ? featureById.get(id) : undefined;
-              if (feature && featureCost(feature, progression) <= remaining) onSelect(id!);
+              if (feature && featureCost(feature, progression) <= remaining) {
+                markTutorialSeen();
+                onSelect(id!);
+              }
               setPickerAnchor(null);
             }}
             label="Nouvelle voie de profil"
