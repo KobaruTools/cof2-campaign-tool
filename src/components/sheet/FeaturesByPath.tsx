@@ -583,6 +583,8 @@ function BorrowedFeatureBlock({
   footer,
   armorRestricted = false,
   armorRestrictedMessage = null,
+  disabled = false,
+  disabledMessage = null,
   noMana = false,
   noManaNote,
   spellNoteOverride,
@@ -639,6 +641,14 @@ function BorrowedFeatureBlock({
   /** Message français sourcé (p. 177) de l'interdiction d'armure, affiché en notice. `null` = aucun. */
   armorRestrictedMessage?: string | null;
   /**
+   * PER-328 — la capacité empruntée est DÉSACTIVÉE par un interrupteur d'AUTORISATION de l'hôte éteint
+   * (elfe des profondeurs r2 « Lames et sorcellerie » : « pas en plein soleil »). Carte grisée + notice,
+   * comme une capacité gênée par l'armure. Défaut `false`.
+   */
+  disabled?: boolean;
+  /** Message expliquant la désactivation (ex. « … inutilisable en plein soleil »). `null` = aucun. */
+  disabledMessage?: string | null;
+  /**
    * PER-74 — le sort emprunté est APPRIS via le rang 5 de la voie du familier : utilisé SANS coût en
    * mana (arbitrage proprio), plafonné par un compteur quotidien affiché à part. Masque la goutte de PM
    * et la notice « coût en PM au rang habituel ». Défaut `false` (emprunt ordinaire = mana natif).
@@ -688,6 +698,13 @@ function BorrowedFeatureBlock({
           <PageRefText>{armorRestrictedMessage}</PageRefText>
         </AppAlert>
       ) : null}
+      {/* PER-328 — désactivée par l'interrupteur d'autorisation de l'hôte (ex. « pas en plein soleil ») :
+          notice au-dessus de la carte grisée, même patron que l'interdiction d'armure. */}
+      {disabled && disabledMessage ? (
+        <AppAlert severity="info" sx={{ mb: 1 }}>
+          <PageRefText>{disabledMessage}</PageRefText>
+        </AppAlert>
+      ) : null}
       {/* Rappel de la PARTICULARITÉ de la voie source (`borrowedNote`) : quand une capacité est
           empruntée, le titre de sa voie d'origine — et donc l'infobulle `note` rendue à côté —
           n'apparaît pas. La règle qui suit la capacité (ex. envoûteur : immunité 24 h) serait
@@ -712,6 +729,8 @@ function BorrowedFeatureBlock({
           // Interdite par l'armure (PER-153) : désaturée + croix diagonale, comme une capacité native
           // gênée (PER-86). `position: relative` pour ancrer les barres du pseudo-élément.
           ...(armorRestricted ? { position: 'relative', filter: 'grayscale(0.75)', opacity: 0.72, ...ARMOR_RESTRICTED_BARS_SX } : {}),
+          // PER-328 — désactivée par l'interrupteur d'autorisation de l'hôte : grisée + semi-transparente.
+          ...(disabled ? { filter: 'grayscale(1)', opacity: 0.5 } : {}),
         }}
       >
       <Typography variant="caption" sx={{ color: color ?? 'text.secondary', fontWeight: 700, display: 'block', mb: 0.25 }}>
@@ -3667,6 +3686,9 @@ function PathBlock({
               // Désactivée par exclusion mutuelle : grisée + transparente, mais le
               // clic d'ouverture du détail reste actif.
               ...(disabledSx(feature) ?? {}),
+              // PER-328 — carte de DEVANT d'un emprunt désactivé (interrupteur d'autorisation de l'hôte
+              // éteint, ex. « pas en plein soleil ») : grisée comme une capacité désactivée.
+              ...(borrowed ? (disabledSx(borrowed) ?? {}) : {}),
               // Inutilisable avec l'armure portée (PER-86/153) : désaturée + croix diagonale, l'interrupteur
               // reste actif. Sur une carte d'emprunt, c'est la capacité EMPRUNTÉE qui est jugée (pas l'hôte).
               ...(armorRestrictedSx(armorRestrictedFeature) ?? {}),
@@ -4070,6 +4092,8 @@ function PathBlock({
                         ...(isArmorRestricted(item)
                           ? { filter: 'grayscale(0.75)', opacity: 0.72, ...ARMOR_RESTRICTED_BARS_SX }
                           : {}),
+                        // PER-328 — carte empruntée empilée désactivée (interrupteur d'autorisation éteint) : grisée.
+                        ...(disabledSx(item) ?? {}),
                       }}
                     >
                       <FeatureMarkerHexes
@@ -4477,6 +4501,8 @@ function PathBlock({
                             dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                             armorRestricted={isArmorRestricted(borrowed)}
                             armorRestrictedMessage={armorRestrictedMessage(borrowed)}
+                            disabled={isDisabled(borrowed)}
+                            disabledMessage={disabledMessage(borrowed)}
                             abilitySubstitutions={character ? mysticBorrowedSpellSubstitutions(character, openFeature.id, borrowed) : undefined}
                             noMana={
                               openFeature.id === FAMILIAR_LEARNED_SPELL_HOST ||
@@ -5074,6 +5100,8 @@ function PathBlock({
                           dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                           armorRestricted={isArmorRestricted(borrowed)}
                           armorRestrictedMessage={armorRestrictedMessage(borrowed)}
+                          disabled={isDisabled(borrowed)}
+                          disabledMessage={disabledMessage(borrowed)}
                           abilitySubstitutions={character ? mysticBorrowedSpellSubstitutions(character, feature.id, borrowed) : undefined}
                           noMana={
                             feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
