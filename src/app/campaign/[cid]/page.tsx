@@ -23,6 +23,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import HistoryIcon from '@mui/icons-material/History';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
@@ -305,14 +306,23 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           >
             Rattacher un personnage
           </Button>
-          {/* Réglages poussés tout à droite via la marge automatique. L'accès à l'écran
-              de MJ vit désormais dans l'en-tête (bouton « Écran de MJ »), plus ici. */}
+          {/* Réglages + historique poussés tout à droite via la marge automatique.
+              L'accès à l'écran de MJ vit désormais dans l'en-tête (bouton « Écran de
+              MJ »), plus ici. */}
+          <Button
+            variant="outlined"
+            startIcon={<HistoryIcon />}
+            component={Link}
+            href={`/campaign/${cid}/history`}
+            sx={{ ml: { sm: 'auto' } }}
+          >
+            Historique des parties
+          </Button>
           <Button
             variant="outlined"
             startIcon={<SettingsIcon />}
             component={Link}
             href={`/campaign/${cid}/settings`}
-            sx={{ ml: { sm: 'auto' } }}
           >
             Réglages de la campagne
           </Button>
