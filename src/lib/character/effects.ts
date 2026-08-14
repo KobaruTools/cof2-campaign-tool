@@ -18,7 +18,7 @@
  * Les deux derniers exigent un contexte (`EffectContext`). Sans contexte, seul le
  * cas plat constant est sommé (suffit aux appels « catalogue seul »).
  */
-import { featureById, pathById, progression, testDomains } from '@/data';
+import { classById, featureById, pathById, progression, testDomains } from '@/data';
 import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import type {
   AbilityId,
@@ -1998,6 +1998,28 @@ export function armureSacreeMajorPowerUsageMax(character: Character): number | u
 export function mysticSpellAbility(character: Character, path: { mysticSpellAbility?: 'PER' | 'VOL' }): AbilityId {
   if (path.mysticSpellAbility) return path.mysticSpellAbility;
   return character.classId === 'druide' || character.classId === 'moine' ? 'PER' : 'CHA';
+}
+
+/**
+ * PER-372 — substitution CHA→X annoncée par les prérequis d'une voie de MYSTIQUE ouverte en variante
+ * aux MAGES (`PrestigePath.mageAlternateAbility`, p. 167 : « Cette voie peut aussi être choisie par un
+ * mage… Remplacer le Charisme par l'Intelligence »). Contrairement à `mysticBorrowedSpellSubstitutions`
+ * (sorts EMPRUNTÉS d'ailleurs), ceci vise le rendu NATIF des capacités de la voie elle-même. Actif
+ * SEULEMENT si le personnage appartient à la famille `'mages'` (`CharacterClass.familyId`) — un
+ * mystique qui prend la voie normalement n'est pas concerné et garde CHA. `undefined` si la capacité
+ * n'appartient pas à une voie de prestige mystique, si la voie n'annonce aucune variante mage, ou si le
+ * personnage n'est pas un mage.
+ */
+export function mageAlternateAbilitySubstitutions(
+  character: Character,
+  feature: Feature,
+): AbilitySubstitution[] | undefined {
+  const path = pathById.get(feature.pathId);
+  if (!path || path.type !== 'prestige' || path.category !== 'mystic') return undefined;
+  const to = path.mageAlternateAbility;
+  if (!to) return undefined;
+  if (classById.get(character.classId)?.familyId !== 'mages') return undefined;
+  return [{ from: 'CHA', to, unconditional: true }];
 }
 
 /**

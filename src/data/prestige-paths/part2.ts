@@ -489,6 +489,9 @@ export const prestigePaths2: PrestigePath[] = [
     category: 'mystic',
     prerequisites:
       "Cette voie peut aussi être choisie par un mage qui maîtrise au moins deux sorts de feu. Remplacer le Charisme par l'Intelligence dans le texte des capacités.",
+    // PER-372 (rétro-fix) : remplacement CHA→INT mécanisé pour les personnages de famille 'mages'
+    // (cf. `mageAlternateAbilitySubstitutions`, effects.ts). Sans effet pour un mystique (CHA conservé).
+    mageAlternateAbility: 'INT',
     note: "Les voies élémentaires ont tendance à changer profondément ceux qui les suivent, tant physiquement que mentalement. Dans le cas du feu, les cheveux deviennent roux, les ongles noircissent, tandis que le tempérament devient plus explosif.",
     featureIds: [
       'prestige-elementaire-du-feu-r4',
@@ -506,6 +509,12 @@ export const prestigePaths2: PrestigePath[] = [
     category: 'mystic',
     prerequisites:
       "Cette voie peut aussi être choisie par un mage qui maîtrise au moins un sort de terre. Remplacer le Charisme par l'Intelligence dans le texte des capacités.",
+    // PER-372 : remplacement CHA→INT mécanisé pour les personnages de famille 'mages' (cf.
+    // `mageAlternateAbilitySubstitutions`, effects.ts). Sans effet pour un mystique (CHA conservé).
+    // Sur cette voie, seuls r6 (Pétrification, [10+CHA]) et r8 (Forme élémentaire, [=CHA] minutes)
+    // contiennent effectivement du CHA — r4/r5 sont déjà en INT nativement dans le livre (rien à
+    // substituer, cohérent avec le no-op attendu).
+    mageAlternateAbility: 'INT',
     note: "Les voies élémentaires ont tendance à changer profondément ceux qui les suivent, tant physiquement que mentalement. Dans le cas de la terre, les cheveux deviennent gris, la peau terreuse, tandis que le tempérament devient plus introverti.",
     featureIds: [
       'prestige-elementaire-de-la-terre-r4',
@@ -3842,6 +3851,19 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage invoque un mur de pierre de 20 m de long pour 4 m de haut (portée 20 m). Le mur est parfaitement rectiligne sur toute sa longueur. Il peut prendre attache sur un mur ou une paroi rocheuse et ainsi boucher complètement un passage. Le mur a une durée d'existence d'INT heures (Solidité 30, RD 20, 30 cm d'épaisseur).",
+    richText:
+      "Le personnage invoque un mur de pierre de 20 m de long pour 4 m de haut (portée 20 m). Le mur est parfaitement rectiligne sur toute sa longueur. Il peut prendre attache sur un mur ou une paroi rocheuse et ainsi boucher complètement un passage. Le mur a une durée d'existence d'[=INT] heures (Solidité 30, RD 20, 30 cm d'épaisseur).",
+    // Interrupteur de SUIVI (même patron que Mur de feu, retour propriétaire déjà obtenu sur le
+    // feu et appliqué d'emblée ici) : marqueur seul, aucune valeur chiffrée — permet au joueur de
+    // savoir si son mur est encore dressé. Contrairement au mur de feu, pas de DM au franchissement
+    // (mur purement défensif/bloquant, la Solidité/RD/épaisseur restent du texte descriptif du décor).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Mur de pierre actif', activeByDefault: false },
+      },
+    ],
     sourcePage: 167,
   },
   {
@@ -3853,6 +3875,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut modeler la pierre par sa simple volonté (portée 10 m). Il affecte un volume maximal de 1 m3 par niveau et lui donne la forme qu'il désire. Ainsi au niveau 10, il peut percer un tunnel de 1 m de côté pour environ 10 m de long ou au contraire créer une arche de pierre de 1 m de large pour 10 m de long afin de franchir un précipice. La transformation dure INT heures.",
+    // Pas d'interrupteur de suivi : sort utilitaire/exploration (façonne le décor, ne bloque ni ne
+    // protège en combat), même famille que Manoir d'outre-monde (invocation majeure r5) qui n'en a
+    // pas non plus malgré un effet persistant — réservé aux murs/zones à usage tactique.
+    richText:
+      "Le personnage peut modeler la pierre par sa simple volonté (portée 10 m). Il affecte un volume maximal de [=niveau] m3 et lui donne la forme qu'il désire. Ainsi au niveau 10, il peut percer un tunnel de 1 m de côté pour environ 10 m de long ou au contraire créer une arche de pierre de 1 m de large pour 10 m de long afin de franchir un précipice. La transformation dure [=INT] heures.",
     sourcePage: 168,
   },
   {
@@ -3864,6 +3891,13 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage effectue un test opposé d'attaque magique (portée 20 m) contre sa cible. En cas de réussite, la victime est changée en pierre (effet permanent). Sous cette forme, elle a une RD 30, mais un sort de litomorphose lui inflige 4d4° DM sans réduction. Si la victime est de niveau supérieur ou égal au lanceur du sort, elle peut faire un test de CON difficulté [10 + CHA] à la fin de chaque round pour mettre fin au sort.",
+    richText:
+      "Le personnage effectue un test opposé d'attaque magique (portée 20 m) contre sa cible. En cas de réussite, la victime est changée en pierre (effet permanent). Sous cette forme, elle a une RD 30, mais un sort de litomorphose lui inflige {4d4°} DM sans réduction. Si la victime est de niveau supérieur ou égal au lanceur du sort, elle peut faire un test de CON difficulté [10 + CHA] à la fin de chaque round pour mettre fin au sort.",
+    // Tag data-only pour le futur Combat Tracker (retour propriétaire, PER-372) : la cible pétrifiée
+    // doit pouvoir être suivie dans l'ordre d'initiative de l'écran MJ. Patron `unconscious`/
+    // `polymorphed` (voie du chaos) : catalogue `petrified` (schema.ts), AUCUN `modifiers` numérique
+    // (RD 30 + sensibilité litomorphose ne sont pas généralisables à `StatusModifiers`) — verbatim seul.
+    situationalEffectIds: ['petrified'],
     sourcePage: 168,
   },
   {
@@ -3875,6 +3909,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage déclenche un terrible tremblement de terre qui fait s'effondrer les bâtisses dans une zone de 100 m de rayon autour de lui. Les maisonnettes pauvres s'écroulent automatiquement, les villas ont 4 chances sur 6 de s'effondrer, les palais 2 chances sur 6 et les édifices fortifiés 1 chance sur 6. Toute créature présente dans un édifice qui s'effondre subit 4d6 DM (on considère qu'elle sort de l'édifice, sinon elle subit le double de DM). Les DM sont divisés par deux si la bâtisse a résisté. Sous terre, le sort inflige 4d6 DM dans toute la zone.",
+    richText:
+      "Le personnage déclenche un terrible tremblement de terre qui fait s'effondrer les bâtisses dans une zone de 100 m de rayon autour de lui. Les maisonnettes pauvres s'écroulent automatiquement, les villas ont 4 chances sur 6 de s'effondrer, les palais 2 chances sur 6 et les édifices fortifiés 1 chance sur 6. Toute créature présente dans un édifice qui s'effondre subit {4d6} DM (on considère qu'elle sort de l'édifice, sinon elle subit le double de DM). Les DM sont divisés par deux si la bâtisse a résisté. Sous terre, le sort inflige {4d6} DM dans toute la zone.",
     sourcePage: 168,
   },
   {
@@ -3886,6 +3922,38 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par jour, le personnage peut se transformer en élémentaire de terre (taille grand), pendant un maximum de CHA minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de terre et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.\n\nÉLÉMENTAIRE DE TERRE\nAGI +1 | CON +6 | FOR +6* | PER [mystique] | CHA [mystique] | INT [mystique] | VOL [mystique]\nDéfense 23 · Points de vigueur [Niv. × 5] · Initiative [mystique]\nCoup de poing [attaque magique] · DM 2d4°+6",
+    // Même patron que Forme élémentaire de feu (r8, feu) : bloc de stats SORTI du texte affiché vers
+    // creatureProfile, `text` verbatim conservé comme source. AGI/CON/FOR = valeurs ABSOLUES imprimées
+    // (« +1 »/« +6 »/« +6* ») → `abilityOverrides`. FOR porte l'astérisque → `bonusDieAbilities: ['FOR']`.
+    // PER/CHA/INT/VOL « [mystique] » = identiques au personnage → `abilitiesFromMaster` (delta 0).
+    // Défense 23 FIXE, même écart RAW assumé que le feu (DEF non recalculée par `abilityOverrides`).
+    // « ne peut plus utiliser ses capacités de profil » → `disablesProfileFeatures`. Pas de clause
+    // « profite en permanence de… » ici (contrairement au feu r7/r8) : aucun rang terre n'est un
+    // buff personnel permanent/à interrupteur combinable, donc pas de `note` ni de badge de riposte.
+    richText:
+      "Une fois par jour, le personnage peut se transformer en élémentaire de terre (taille grande), pendant un maximum de [=CHA] minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de terre et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Forme élémentaire de terre active', activeByDefault: false },
+        abilityOverrides: { AGI: 1, CON: 6, FOR: 6 },
+        disablesProfileFeatures: true,
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    creatureProfile: {
+      name: 'Élémentaire de terre',
+      transformation: true,
+      size: 'grande',
+      abilities: { AGI: 1, CON: 6, FOR: 6 },
+      bonusDieAbilities: ['FOR'],
+      abilitiesFromMaster: { PER: 0, CHA: 0, INT: 0, VOL: 0 },
+      defense: '23',
+      hitPoints: '[=niveau × 5]',
+      initiative: { fromMaster: 'initiative' },
+      attack: { label: 'Coup de poing', fromMaster: 'magicAttack', damage: '2d4° + 6' },
+    },
     sourcePage: 168,
   },
 

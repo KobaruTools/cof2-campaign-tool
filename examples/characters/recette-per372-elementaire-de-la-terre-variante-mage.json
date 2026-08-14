@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per372-elementaire-de-la-terre-variante-mage",
+  "name": "Recette PER-372 — Magicien (variante mage, voie élémentaire de la terre)",
+  "identity": {
+    "description": "ATTENDU : magicien niveau 16 prenant la voie de prestige élémentaire de la terre en variante MAGE (prérequis : « mage qui maîtrise au moins un sort de terre »). Vérifier sur la fiche : r6 Pétrification affiche la difficulté enrichie avec INTELLIGENCE (pas Charisme), marquée « remplace Charisme » ; r8 Forme élémentaire de terre affiche la durée [=INT] minutes (pas CHA) une fois activée. r4/r5 restent inchangés (déjà en INT nativement dans le livre, sans lien avec cette variante). CONTRASTE avec `recette-per372-elementaire-de-la-terre.json` (prêtre = mystique normal) où r6/r8 restent indexés sur CHA."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -2,
+    "AGI": 0,
+    "CON": 0,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 5,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": -2,
+    "AGI": 0,
+    "CON": 0,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 5,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "magie-elementaire-r1",
+    "prestige-elementaire-de-la-terre-r4",
+    "prestige-elementaire-de-la-terre-r5",
+    "prestige-elementaire-de-la-terre-r6",
+    "prestige-elementaire-de-la-terre-r7",
+    "prestige-elementaire-de-la-terre-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "prestige-elementaire-de-la-terre-r8": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-372 — variante mage de la voie élémentaire de la terre (CHA→INT), p. 167-168.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

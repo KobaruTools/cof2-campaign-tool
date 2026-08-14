@@ -499,6 +499,20 @@ export interface PrestigePath extends PathBase {
    * `mysticSpellAbility` (effects.ts).
    */
   mysticSpellAbility?: 'PER' | 'VOL';
+  /**
+   * PER-372 — remplacement VERBATIM de caractéristique annoncé par les prérequis d'une voie de
+   * MYSTIQUE ouverte en variante aux MAGES (p. 167 : « Cette voie peut aussi être choisie par un
+   * mage qui maîtrise au moins un sort de [élément]. Remplacer le Charisme par l'Intelligence dans
+   * le texte des capacités » — voies élémentaires du feu/de la terre, sans doute les 4 à terme).
+   * DISTINCT de `mysticSpellAbility` (qui change la carac par défaut de la voie POUR TOUT LE MONDE,
+   * verbatim de LA VOIE) : ici la substitution ne s'applique QUE si le personnage appartient à la
+   * famille `'mages'` (`CharacterClass.familyId`) — un mystique qui prend la voie normalement garde
+   * CHA (ou l'override `mysticSpellAbility` s'il y en a un). Résolu par
+   * `mageAlternateAbilitySubstitutions` (effects.ts), branché sur le rendu NATIF des capacités de la
+   * voie (pas seulement les sorts empruntés/reproduits, contrairement à `mysticSpellAbility`).
+   * Absent = aucune variante mage annoncée par cette voie.
+   */
+  mageAlternateAbility?: AbilityId;
 }
 
 export type Path = ClassPath | AncestryPath | MagePath | PrestigePath;
@@ -1553,6 +1567,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'mind-controlled',
   'time-displaced',
   'hypnotized',
+  'petrified',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1723,6 +1738,20 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Cesse toute activité pour contempler intensément un motif hypnotique. Riposte si elle est attaquée, mais reprend immédiatement sa contemplation dès son adversaire vaincu ou en fuite.",
     sourcePage: 165,
+  },
+  // « Pétrification » (voie élémentaire de la terre, r6, p. 167-168, PER-372). Aucun des 10 états du
+  // glossaire ne représente la transformation en pierre : RD 30 chiffrée, sensibilité SPÉCIFIQUE à un
+  // sort précis (litomorphose, 4d4° sans réduction) et condition d'évasion propre (test de CON contre
+  // [10 + CHA], réservée aux cibles de niveau ≥ au lanceur) → mécanique PROPRE, admissible (PER-288).
+  // PUREMENT comportemental ici (aucun `modifiers`) : la RD 30 et la vulnérabilité à la litomorphose ne
+  // sont pas des stats du personnage pétrifié généralisables à un `StatusModifiers` (elles ne visent
+  // qu'un seul sort nommé) — verbatim seul, tag data-only pour le futur Combat Tracker (patron
+  // `polymorphed`/`unconscious`, voie du chaos).
+  petrified: {
+    label: 'Pétrifié',
+    effect:
+      "Changé en pierre (effet permanent). RD 30, mais un sort de litomorphose inflige 4d4° DM sans réduction. Si la victime est de niveau supérieur ou égal au lanceur du sort, elle peut faire un test de CON difficulté [10 + CHA] à la fin de chaque round pour mettre fin à l'effet.",
+    sourcePage: 167,
   },
 };
 

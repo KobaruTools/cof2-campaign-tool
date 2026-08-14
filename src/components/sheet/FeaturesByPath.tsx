@@ -94,6 +94,7 @@ import {
   ARMURE_SACREE_MAJOR_POWER_HOST,
   ARMURE_SACREE_MAJOR_POWER_USAGE_KEY,
   mysticBorrowedSpellSubstitutions,
+  mageAlternateAbilitySubstitutions,
   shortRestLockKey,
   usageCounterMaximum,
   isUsageCounterHidden,
@@ -4336,7 +4337,7 @@ function PathBlock({
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} chosenDuration={chosenDurationFor(openFeature)} scalingTierBonus={scalingTierBonus} />
+                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} chosenDuration={chosenDurationFor(openFeature)} scalingTierBonus={scalingTierBonus} abilitySubstitutions={character ? mageAlternateAbilitySubstitutions(character, openFeature) : undefined} />
                 <FeatureSourcePage feature={openFeature} />
                 {openFeature.referencedFeatures && openFeature.referencedFeatures.length > 0 && (
                   <>
@@ -4970,7 +4971,7 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} chosenDuration={chosenDurationFor(feature)} scalingTierBonus={scalingTierBonus} />
+              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} chosenDuration={chosenDurationFor(feature)} scalingTierBonus={scalingTierBonus} abilitySubstitutions={character ? mageAlternateAbilitySubstitutions(character, feature) : undefined} />
               <FeatureSourcePage feature={feature} />
               {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
                 <>

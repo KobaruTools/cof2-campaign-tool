@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per372-elementaire-de-la-terre (forme active)",
+  "name": "Recette PER-372 — Prêtre (voie élémentaire de la terre) (forme active)",
+  "identity": {
+    "description": "ATTENDU : prêtre niveau 16 avec la voie de prestige élémentaire de la terre (r4→r8) acquise. Vérifier sur la fiche : r4 Mur de pierre affiche la formule enrichie ([=INT] heures) et porte un interrupteur « Mur de pierre actif » (marqueur seul, pas de DM au franchissement) ; r5 Litomorphose affiche [=niveau] m3 / [=INT] heures SANS interrupteur (sort utilitaire) ; r6 Pétrification affiche {4d4°} et [10 + CHA] enrichis ; r7 Séisme affiche les deux {4d6} enrichis ; r8 Forme élémentaire de terre a son propre interrupteur — activé : AGI/CON/FOR passent à 1/6/6 sur TOUTE la fiche (DEF/tests recalculés, dé bonus sur FOR), les capacités de profil (prêtre) sont grisées/inactives, une mini-fiche « Élémentaire de terre » (transformation, PAS un compagnon) apparaît avec DEF 23/PV niveau×5/Coup de poing."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "foi-r1",
+    "prestige-elementaire-de-la-terre-r4",
+    "prestige-elementaire-de-la-terre-r5",
+    "prestige-elementaire-de-la-terre-r6",
+    "prestige-elementaire-de-la-terre-r7",
+    "prestige-elementaire-de-la-terre-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "prestige-elementaire-de-la-terre-r8": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-372 — voie de prestige élémentaire de la terre (p. 167-168), catégorie mystique. (forme active)",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
