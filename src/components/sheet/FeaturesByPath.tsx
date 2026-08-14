@@ -3317,6 +3317,10 @@ function PathBlock({
             <SourceRef page={path.sourcePage} />
           </Box>
         }
+        // Laisse le temps d'atteindre la bulle (lien sourceRef cliquable) même si la souris frôle
+        // la goutte de coût en mana (SpellManaBadge) sur le trajet — MUI ferme sinon dès la sortie
+        // de l'icône (leaveDelay par défaut 0).
+        leaveDelay={300}
       >
         <InfoOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help', flexShrink: 0, ml }} />
       </AppTooltip>
