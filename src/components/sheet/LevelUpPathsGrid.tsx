@@ -303,20 +303,19 @@ export function LevelUpPathsGrid({
         const { color: titleColor, classId, ancestryId } = pathVisuals(column?.path, character.classId);
         // Colonne vide qui ne peut RIEN recevoir ce niveau (ni la « + nouvelle voie » —
         // réservée à `firstEmptyClassSlot` — ni la voie de prestige, jamais choisissable
-        // depuis cette grille) : sur souris seulement (`isCoarsePointer`, au tactile
-        // l'expansion au tap reste le seul moyen de voir/agir), pas d'expansion au survol —
-        // rien à y faire, la souris ne doit pas s'y attarder pour rien.
+        // depuis cette grille) : ni expansion au survol/tap, ni pulse, atténuée en permanence
+        // (opacité) — même règle et même style des deux côtés (souris ET tactile), rien à y
+        // faire ne doit pas attirer l'œil pour rien.
         const isReceivableEmptyColumn = !column && columnIndex === firstEmptyClassSlot && canPickNewPath;
-        // Colonne vide inerte (rien à y faire) : ni au survol souris (`isDesktopInert`), ni au
-        // tap tactile (`onPointerUp` ci-dessous) — même règle des deux côtés, juste déclenchée
-        // par des gestes différents.
         const isInertColumn = !column && !isReceivableEmptyColumn;
-        const isDesktopInert = !isCoarsePointer && isInertColumn;
         return (
           <Box
             key={columnIndex}
             onMouseEnter={() => {
-              if (isDesktopInert) return;
+              // Certains navigateurs/émulateurs tactiles synthétisent un `mouseenter` après le
+              // 1er tap — sans ce garde-fou, une colonne vide inerte s'ouvrirait quand même via
+              // ce `mouseenter` fantôme, en contournant le blocage posé côté `onPointerUp`.
+              if (isInertColumn) return;
               setHoveredColumn(columnIndex);
             }}
             onMouseLeave={() => {
@@ -336,7 +335,7 @@ export function LevelUpPathsGrid({
               gap: `${CELL_GAP}px`,
               transition: 'flex 200ms ease, opacity 200ms ease',
               zIndex: isHovered ? 1 : 0,
-              opacity: isDesktopInert ? 0.45 : 1,
+              opacity: isInertColumn ? 0.45 : 1,
             }}
           >
             <Box sx={{ position: 'relative', height: HEADER_HEIGHT, overflow: 'hidden' }}>
