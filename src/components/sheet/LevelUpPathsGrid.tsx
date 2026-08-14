@@ -711,9 +711,31 @@ export function LevelUpPathsGrid({
           // case n'existe, repli sur la teinte générique (dégradé prestige compris).
           const isPrestigeCard = preview.filled ? preview.gradient : visuals.isPrestige;
           const cardColor = preview.filled ? (preview.gradient ? undefined : preview.color) : visuals.color;
+          // Teinte de la bande titre (voie) : catégorie de prestige (comme le groupe « Capacités
+          // sélectionnées » de `LevelUpDialog`), sinon la même couleur que le cadre de la carte.
+          const bannerColor =
+            path?.type === 'prestige' ? prestigeCategoryColor(path.category) : cardColor;
           const cost = featureCost(feature, progression);
           return (
             <Box sx={{ width: '100%', mt: 1 }}>
+              {/* Bandeau de voie, même patron que l'en-tête de groupe « Capacités
+                  sélectionnées » (`LevelUpDialog`) — liseré gauche + icône + nom coloré. */}
+              <Stack
+                direction="row"
+                spacing={0.75}
+                sx={{ alignItems: 'center', borderLeft: 3, borderColor: bannerColor ?? 'divider', pl: 1.5, mb: 0.75 }}
+              >
+                {visuals.classId ? (
+                  <ClassIcon classId={visuals.classId} size={18} sx={{ color: bannerColor ?? undefined, flexShrink: 0 }} />
+                ) : (
+                  visuals.ancestryId && (
+                    <AncestryIcon ancestryId={visuals.ancestryId} size={18} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+                  )
+                )}
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: bannerColor ?? 'text.primary' }}>
+                  {path?.name ?? feature.pathId}
+                </Typography>
+              </Stack>
               <PathCard
                 name={<DeclinedFeatureName feature={feature} />}
                 term={feature.name}
@@ -722,7 +744,7 @@ export function LevelUpPathsGrid({
                 ancestryId={visuals.ancestryId}
                 prestige={isPrestigeCard}
                 prestigeTint={isPrestigeCard ? visuals.prestigeTint : undefined}
-                checked={false}
+                checked
                 selectable={false}
                 defaultExpanded
                 repeatFeatureName={false}
