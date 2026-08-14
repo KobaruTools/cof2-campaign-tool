@@ -2,11 +2,13 @@
 
 import { useRef, useState } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
-import type { PortraitVariant } from '@/lib/character/types';
+import type { PortraitVariant, StaticPortraitVariant } from '@/lib/character/types';
+import { classPortraitExtras } from '@/data/classPortraitOptions';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PortraitImportDialog } from '@/components/PortraitImportDialog';
 import {
@@ -18,7 +20,9 @@ import {
 export interface PortraitVariantMenuProps {
   /** Variante actuelle, pour cocher (`selected`) le choix courant dans le menu. */
   variant: PortraitVariant;
-  onSelectStatic: (variant: 'default' | 'alt') => void;
+  /** Profil du personnage — détermine les illustrations supplémentaires disponibles (au-delà d'Illustration 1/2). */
+  classId: string;
+  onSelectStatic: (variant: StaticPortraitVariant) => void;
   /**
    * Fichier CONFIRMÉ par l'utilisateur (après aperçu) — envoi/mise en attente restent à
    * l'appelant. `file` est TOUJOURS l'image d'origine (PER-394) ; `cropRect` porte le
@@ -36,9 +40,12 @@ export interface PortraitVariantMenuProps {
 }
 
 /**
- * Menu à 3 choix pour l'illustration de profil (PER-383) — UI pure, sans accès
- * réseau. Un fichier choisi est validé (`validatePortraitFile`) puis proposé en
- * aperçu dans `PortraitImportDialog` (PER-390) ; `onSelectFile` n'est appelé
+ * Menu de l'illustration de profil (PER-383) — « Image personnalisée » en tête
+ * (mise en avant), puis Illustration 1/2 (toujours présentes) et les
+ * illustrations supplémentaires du profil s'il y en a (`classPortraitExtras`,
+ * variable selon le profil — 0 à 4 de plus). UI pure, sans accès réseau. Un
+ * fichier choisi est validé (`validatePortraitFile`) puis proposé en aperçu
+ * dans `PortraitImportDialog` (PER-390) ; `onSelectFile` n'est appelé
  * qu'à la confirmation, à l'appelant de décider s'il l'envoie immédiatement
  * (fiche) ou le met en attente (wizard, tant que le personnage n'existe pas
  * encore en DB). Réutilisé identique par la fiche et l'étape « Identité » du
@@ -46,6 +53,7 @@ export interface PortraitVariantMenuProps {
  */
 export function PortraitVariantMenu({
   variant,
+  classId,
   onSelectStatic,
   onSelectFile,
   disabledCustom,
@@ -57,6 +65,7 @@ export function PortraitVariantMenu({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const close = () => setAnchor(null);
+  const extras = classPortraitExtras(classId);
 
   const customItem = (
     <MenuItem
@@ -79,6 +88,14 @@ export function PortraitVariantMenu({
         </IconButton>
       </AppTooltip>
       <Menu anchorEl={anchor} open={anchor !== null} onClose={close}>
+        {disabledCustom && disabledCustomReason ? (
+          <AppTooltip title={disabledCustomReason}>
+            <span>{customItem}</span>
+          </AppTooltip>
+        ) : (
+          customItem
+        )}
+        <Divider />
         <MenuItem
           selected={variant === 'default'}
           onClick={() => {
@@ -97,13 +114,18 @@ export function PortraitVariantMenu({
         >
           Illustration 2
         </MenuItem>
-        {disabledCustom && disabledCustomReason ? (
-          <AppTooltip title={disabledCustomReason}>
-            <span>{customItem}</span>
-          </AppTooltip>
-        ) : (
-          customItem
-        )}
+        {extras.map((extra, i) => (
+          <MenuItem
+            key={extra.variant}
+            selected={variant === extra.variant}
+            onClick={() => {
+              close();
+              onSelectStatic(extra.variant);
+            }}
+          >
+            {extra.name ?? `Illustration ${i + 3}`}
+          </MenuItem>
+        ))}
       </Menu>
       <input
         ref={fileInputRef}

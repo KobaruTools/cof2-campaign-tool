@@ -1109,7 +1109,10 @@ export function IdentityStep({
   const previewSrc =
     draft.portraitVariant === 'custom' && previewUrl
       ? croppedPreviewUrl ?? previewUrl
-      : classPortraitPath(draft.classId, draft.portraitVariant === 'alt' ? 'alt' : 'default');
+      : classPortraitPath(
+          draft.classId,
+          draft.portraitVariant === 'custom' ? 'default' : (draft.portraitVariant ?? 'default'),
+        );
 
   return (
     <Stack spacing={3}>
@@ -1132,6 +1135,7 @@ export function IdentityStep({
             />
             <PortraitVariantMenu
               variant={draft.portraitVariant ?? 'default'}
+              classId={draft.classId}
               onSelectStatic={(v) => {
                 onPortraitFile?.(null);
                 setPortraitError(null);

@@ -15,4 +15,9 @@ describe('classPortraitPath', () => {
   it('illustration alternative', () => {
     expect(classPortraitPath('barbare', 'alt')).toBe('/classes/barbare-2.webp');
   });
+
+  it('illustrations supplémentaires (altN)', () => {
+    expect(classPortraitPath('barbare', 'alt3')).toBe('/classes/barbare-3.webp');
+    expect(classPortraitPath('ensorceleur', 'alt6')).toBe('/classes/ensorceleur-6.webp');
+  });
 });

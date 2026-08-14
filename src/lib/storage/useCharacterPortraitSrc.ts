@@ -11,16 +11,25 @@
  * différé après la création du personnage, cf. PER-383).
  */
 import { useEffect, useState } from 'react';
-import type { PortraitVariant } from '@/lib/character/types';
+import type { PortraitVariant, StaticPortraitVariant } from '@/lib/character/types';
 import {
   downloadCharacterPortrait,
   downloadCharacterPortraitCropRect,
   type PortraitCropRect,
 } from '@/lib/storage/characterPortrait';
 
-/** Chemin de l'illustration STATIQUE de profil (standard ou alternative « -2 »). */
-export function classPortraitPath(classId: string, variant: 'default' | 'alt' = 'default'): string {
-  return `/classes/${classId}${variant === 'alt' ? '-2' : ''}.webp`;
+/**
+ * Chemin de l'illustration STATIQUE de profil : `default` → pas de suffixe,
+ * `alt` → `-2`, `alt3`/`alt4`/… → `-3`/`-4`/… (illustrations supplémentaires,
+ * cf. `src/data/classPortraitOptions.ts`).
+ */
+export function classPortraitPath(
+  classId: string,
+  variant: StaticPortraitVariant = 'default',
+): string {
+  if (variant === 'default') return `/classes/${classId}.webp`;
+  if (variant === 'alt') return `/classes/${classId}-2.webp`;
+  return `/classes/${classId}-${variant.slice(3)}.webp`;
 }
 
 // Cache module-level partagé par toutes les instances du hook (fiche, aperçus de
@@ -88,7 +97,7 @@ export function useCharacterPortraitSrc(
   variant: PortraitVariant,
   classId: string,
 ): string {
-  const fallback = classPortraitPath(classId, variant === 'alt' ? 'alt' : 'default');
+  const fallback = classPortraitPath(classId, variant === 'custom' ? 'default' : variant);
   const [resolved, setResolved] = useState<string | null>(() =>
     variant === 'custom' ? cache.get(characterId) ?? null : null,
   );

@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
@@ -37,7 +38,13 @@ import type {
   DamageDie,
   StartingEquipmentChoiceOption,
 } from '@/data/schema';
-import type { CharacterStatus, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
+import type {
+  CharacterStatus,
+  DerivedStatId,
+  EquipmentLine,
+  Identity,
+  StaticPortraitVariant,
+} from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import type { DerivedStatId as UiDerivedStatId } from '@/lib/ui/derivedStats';
 import { modifierDeltas } from '@/lib/character/ancestry';
@@ -50,6 +57,7 @@ import { PriestVocationIdentityLine } from '@/components/sheet/PriestVocationBad
 import { missingGrantedItems } from '@/lib/character/grantedEquipment';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
+import { useAppSession } from '@/lib/supabase/useAppSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import {
@@ -197,6 +205,7 @@ const NO_EDIT: Record<EditBlock, boolean> = {
 
 export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
@@ -565,6 +574,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const portraitCloudBacked = useCharactersStore((s) =>
     character ? character.id in s.cloudVersions : false,
   );
+  // Image personnalisée : stockée en ligne, donc exige une session avec accès à la
+  // DB (compte réel OU session joueur ouverte via un lien magique de MJ) — un
+  // visiteur anonyme ne peut choisir qu'une des illustrations statiques. Si le
+  // personnage n'est pas le sien, le mode édition lui-même est déjà inaccessible
+  // (lecture seule) : pas de vérification de propriété supplémentaire ici.
+  const session = useAppSession();
+  const portraitUploadBlocked = session.resolved && session.role === 'anonymous';
   const [portraitBusy, setPortraitBusy] = useState(false);
   const [portraitError, setPortraitError] = useState<string | null>(null);
 
@@ -600,7 +616,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   const ancestry = ancestryById.get(character.ancestryId);
 
-  const handleSelectStaticPortrait = (v: 'default' | 'alt') => {
+  const handleSelectStaticPortrait = (v: StaticPortraitVariant) => {
     if (character.portraitVariant === 'custom') {
       removeCharacterPortrait(character.id)
         .then(() => invalidateCharacterPortraitCache(character.id))
@@ -1314,12 +1330,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 {characterClass && (
                   <PortraitVariantMenu
                     variant={character.portraitVariant}
+                    classId={character.classId}
                     busy={portraitBusy}
                     onSelectStatic={handleSelectStaticPortrait}
                     onSelectFile={(file, cropRect) => void handleSelectPortraitFile(file, cropRect)}
                     onValidationError={setPortraitError}
-                    disabledCustom={!portraitCloudBacked}
-                    disabledCustomReason="Disponible une fois le personnage synchronisé avec le cloud."
+                    disabledCustom={!portraitCloudBacked || portraitUploadBlocked}
+                    disabledCustomReason={
+                      portraitUploadBlocked
+                        ? 'Connecte-toi ou rejoins une campagne pour personnaliser cette illustration.'
+                        : 'Disponible une fois le personnage synchronisé avec le cloud.'
+                    }
                   />
                 )}
               </Stack>
@@ -1353,6 +1374,24 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           {portraitError && (
             <AppAlert severity="error" onClose={() => setPortraitError(null)}>
               {portraitError}
+            </AppAlert>
+          )}
+
+          {editingBlocks.identity && portraitUploadBlocked && (
+            <AppAlert
+              severity="warning"
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => router.push(`/login?next=/character/${id}`)}
+                >
+                  Se connecter
+                </Button>
+              }
+            >
+              Une image personnalisée nécessite un compte ou une session ouverte via un lien de
+              campagne (elle est stockée en ligne).
             </AppAlert>
           )}
 

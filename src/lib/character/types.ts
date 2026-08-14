@@ -258,13 +258,22 @@ export type { FeatureChoice };
 export type Sex = 'male' | 'female';
 
 /**
- * Variante d'illustration du profil : chaque profil dispose d'une illustration
- * standard (`default` → `/classes/<id>.webp`) et d'une alternative
- * (`alt` → `/classes/<id>-2.webp`), ou d'un portrait personnalisé envoyé par le
- * joueur (`custom`, PER-383 — cf. `src/lib/storage/characterPortrait.ts` pour le
- * fichier, ce champ ne sert qu'à savoir LEQUEL afficher). Choix esthétique.
+ * Variante d'illustration STATIQUE du profil : `default` → `/classes/<id>.webp`,
+ * `alt` → `/classes/<id>-2.webp`, et `alt3`/`alt4`/… → `/classes/<id>-3.webp`/
+ * `-4.webp`/… pour les illustrations supplémentaires importées du livre de base
+ * (portraits de chapitre + personnages prétirés de l'annexe, cf.
+ * `src/data/classPortraitOptions.ts` pour la liste par profil, qui varie d'un
+ * profil à l'autre — toujours vérifier qu'un fichier `-N.webp` existe avant
+ * d'introduire un nouveau `altN`).
  */
-export type PortraitVariant = 'default' | 'alt' | 'custom';
+export type StaticPortraitVariant = 'default' | 'alt' | `alt${number}`;
+
+/**
+ * Variante d'illustration du profil, statique ou portrait personnalisé envoyé
+ * par le joueur (`custom`, PER-383 — cf. `src/lib/storage/characterPortrait.ts`
+ * pour le fichier, ce champ ne sert qu'à savoir LEQUEL afficher). Choix esthétique.
+ */
+export type PortraitVariant = StaticPortraitVariant | 'custom';
 
 /** Champs d'identité libres (PRD §5.2 étape 6). */
 export interface Identity {
