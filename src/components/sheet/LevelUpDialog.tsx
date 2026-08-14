@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
@@ -69,6 +69,7 @@ import {
   type PendingDivine,
 } from '@/lib/character/choices';
 import { classColor, prestigeCategoryColor } from '@/lib/ui/classColors';
+import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PathCard } from '@/components/PathCard';
@@ -81,6 +82,7 @@ import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
 import { ClassIcon } from '@/components/ClassIcon';
+import { DieIcon } from '@/components/DieIcon';
 
 /**
  * Custom property + keyframes pour la bordure animée du cadre des capacités
@@ -138,6 +140,14 @@ const BORDER_ANGLE_STYLES = `
   @keyframes selectedRowFadeUp {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes flipDigitOut {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
+  }
+  @keyframes flipDigitIn {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
   }
 `;
 
@@ -216,6 +226,11 @@ function AvailablePathGroup({
   // reste `undefined` pour les génériques (repli sur le dégradé or TUNÉ des blocs, cf. ci-dessus),
   // mais le titre veut une couleur PLEINE même générique : `prestigeCategoryColor` la fournit déjà.
   const titleColor = group.path?.type === 'prestige' ? prestigeCategoryColor(group.path.category) : color;
+  // Prestige : titre et ligne d'en-tête en DÉGRADÉ (comme les blocs de rang), pas en teinte pleine —
+  // 45° pour le texte (`background-clip: text`), 180° (vertical) pour la ligne, où le sens du 45°
+  // ne se verrait pas sur 2-3px de large.
+  const titleTextGradient = isPrestigePath ? prestigeMetalGradient(prestigeTint) : undefined;
+  const titleBarGradient = isPrestigePath ? prestigeMetalGradient(prestigeTint, '180deg') : undefined;
 
   // Capacités acquérables + le rang sauté (grisé), intercalés dans l'ordre des rangs.
   const rows: { feature: Feature; kind: 'acquirable' | 'skipped' }[] = group.features.map(
@@ -234,12 +249,27 @@ function AvailablePathGroup({
         sx={{
           alignItems: 'center',
           borderLeft: 3,
-          borderColor: titleColor ?? 'divider',
+          borderColor: titleBarGradient ? 'transparent' : (titleColor ?? 'divider'),
+          ...(titleBarGradient && { borderImage: `${titleBarGradient} 1` }),
           pl: 1.5,
           mb: 0.5,
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: titleColor ?? 'text.primary' }}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+            ...(titleTextGradient
+              ? {
+                  backgroundImage: titleTextGradient,
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent',
+                  WebkitTextFillColor: 'transparent',
+                }
+              : { color: titleColor ?? 'text.primary' }),
+          }}
+        >
           {group.path?.name ?? group.pathId}
         </Typography>
         {group.path && (
@@ -622,18 +652,18 @@ const BADGE_STAR_POSITIONS: readonly { top: string; left: string; size: number; 
  * anneau de pulsation + étoiles pendant 5 s (5 cycles d'1 s), puis fige (fill
  * mode `forwards`) — pas de boucle infinie.
  */
-function LevelBadge({ level }: { level: number }) {
+function LevelBadge({ level, color }: { level: number; color: string }) {
   return (
     <Box sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
       <Box
-        sx={(theme) => ({
+        sx={{
           position: 'absolute',
           inset: 0,
           borderRadius: 1,
-          border: `2px solid ${theme.palette.warning.main}`,
+          border: `2px solid ${color}`,
           animation: 'levelBadgePulseRing 1s ease-out 5 forwards',
           '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-        })}
+        }}
       />
       <Box
         sx={(theme) => ({
@@ -647,9 +677,9 @@ function LevelBadge({ level }: { level: number }) {
           fontSize: '1.05rem',
           fontWeight: 800,
           fontVariantNumeric: 'tabular-nums',
-          color: theme.palette.getContrastText(theme.palette.warning.main),
-          bgcolor: theme.palette.warning.main,
-          boxShadow: `0 0 0 1px ${alpha(theme.palette.warning.main, 0.6)}`,
+          color: theme.palette.getContrastText(color),
+          bgcolor: color,
+          boxShadow: `0 0 0 1px ${alpha(color, 0.6)}`,
         })}
       >
         {level}
@@ -671,34 +701,132 @@ function LevelBadge({ level }: { level: number }) {
   );
 }
 
-/** Accélère puis ralentit (« ease in/out ») — effet « roulette » du gain de PV. */
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+/**
+ * Compte de 0 jusqu'à `target`, un pas par valeur entière espacé de `stepMs` (chaque
+ * pas déclenche le flip d'un chiffre, cf. `FlipDigit`) — rythme fixe et rapide, pas
+ * de courbe : les gains de PV restent petits, ça n'a pas besoin d'accélérer/ralentir.
+ * Démarre après `delay` UNIQUEMENT pour le tout premier décompte de l'ouverture
+ * (500ms par défaut : le temps que l'entrée du wizard — `levelUpDialogPop`, 0.5s —
+ * se termine) ; les rejouages suivants (changement de `resetKey` pendant que le
+ * wizard reste ouvert — ex. bascule PV fixes ↔ dé de vie) démarrent SANS attendre :
+ * le bloc est déjà visible à ce stade, l'attente se voyait comme un « 0 » figé
+ * suivi d'un bond quasi instantané plutôt que comme une animation. Rejoué aussi à
+ * chaque changement de cible (recalcul du gain de PV — famille, dé de vie lancé…).
+ * `null` = rien à afficher (profil incomplet). Respecte `prefers-reduced-motion`.
+ *
+ * Le wizard reste monté entre deux ouvertures (seule la prop `open` de `Dialog`
+ * change) : sans `open` en dépendance, l'animation ne rejouerait qu'une fois. On la
+ * remet à 0 à la fermeture pour qu'elle se rejoue en entier (avec le délai
+ * d'ouverture) à la prochaine ouverture.
+ */
+function useCountUp(
+  target: number | null,
+  open: boolean,
+  resetKey: unknown,
+  { stepMs = 45, delay = 500 }: { stepMs?: number; delay?: number } = {},
+): number | null {
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const [display, setDisplay] = useState<number | null>(target === null ? null : 0);
+  // A déjà démarré un décompte au moins une fois depuis l'ouverture — sert à
+  // n'appliquer `delay` qu'à la toute première fois (cf. doc ci-dessus).
+  const hasStartedRef = useRef(false);
+  // Fermeture (ou changement de `resetKey`) : remet à 0 pour repartir de zéro,
+  // plutôt que de garder la valeur figée précédente. Ajustement pendant le rendu
+  // (pas d'effet), pattern recommandé par React — cf. `CoinInput` dans `PurseField`.
+  const [lastOpen, setLastOpen] = useState(open);
+  if (open !== lastOpen) {
+    setLastOpen(open);
+    if (!open) {
+      setDisplay(target === null ? null : 0);
+      hasStartedRef.current = false;
+    }
+  }
+  const [lastResetKey, setLastResetKey] = useState(resetKey);
+  if (resetKey !== lastResetKey) {
+    setLastResetKey(resetKey);
+    setDisplay(target === null ? null : 0);
+  }
+  useEffect(() => {
+    // Rien à animer (fermé, pas de gain, ou mouvement réduit) : pas de setState ici,
+    // la valeur instantanée est directement retournée plus bas.
+    if (!open || target === null || reducedMotion) return;
+    let i = 0;
+    const tick = () => {
+      hasStartedRef.current = true;
+      setDisplay(i);
+      if (i >= target) return;
+      i += 1;
+      timeoutId = setTimeout(tick, stepMs);
+    };
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const startTimeoutId = setTimeout(tick, hasStartedRef.current ? 0 : delay);
+    return () => {
+      clearTimeout(startTimeoutId);
+      clearTimeout(timeoutId);
+    };
+  }, [open, target, resetKey, stepMs, delay, reducedMotion]);
+  return !open || target === null || reducedMotion ? target : display;
 }
 
 /**
- * Effet « roulette » : anime un nombre de 0 jusqu'à `target` (courbe ease-in-out),
- * rejoué à chaque changement de cible (recalcul du gain de PV — famille, dé de vie
- * lancé…). `null` = rien à afficher (profil incomplet). Respecte `prefers-reduced-motion`.
+ * Chiffre d'un compteur façon tableau d'aéroport / horloge à volets : quand `char`
+ * change, l'ancien chiffre glisse vers le bas et sort du cadre (`overflow: hidden`),
+ * le nouveau vient du haut et prend sa place. Ajustement pendant le rendu (pas
+ * d'effet) pour détecter le changement, comme `useCountUp` ci-dessus.
  */
-function useCountUp(target: number | null, duration = 900): number | null {
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-  const [display, setDisplay] = useState<number | null>(target);
-  useEffect(() => {
-    // Rien à animer (pas de gain, ou mouvement réduit) : pas de setState ici, la
-    // valeur instantanée est directement retournée plus bas.
-    if (target === null || reducedMotion) return;
-    let raf = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      setDisplay(Math.round(target * easeInOutCubic(t)));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration, reducedMotion]);
-  return target === null || reducedMotion ? target : display;
+function FlipDigit({ char }: { char: string }) {
+  const [current, setCurrent] = useState(char);
+  const [exiting, setExiting] = useState<string | null>(null);
+  if (char !== current) {
+    setExiting(current);
+    setCurrent(char);
+  }
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        width: '0.65em',
+        height: '1em',
+        overflow: 'hidden',
+      }}
+    >
+      {exiting !== null && (
+        <Box
+          key={`out-${exiting}`}
+          onAnimationEnd={() => setExiting(null)}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'flipDigitOut 0.22s ease-in both',
+            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          }}
+        >
+          {exiting}
+        </Box>
+      )}
+      <Box
+        key={`in-${current}`}
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          ...(exiting !== null && {
+            animation: 'flipDigitIn 0.22s ease-out both',
+            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          }),
+        }}
+      >
+        {current}
+      </Box>
+    </Box>
+  );
 }
 
 /**
@@ -954,6 +1082,9 @@ export function LevelUpDialog({
         prestigeCategoryOrder(a) - prestigeCategoryOrder(b) ||
         voieSortKey(groupName(a)).localeCompare(voieSortKey(groupName(b)), 'fr'),
     );
+  // Couleur du badge de niveau : toujours celle du profil d'origine (pas de
+  // surcharge voie de prestige — retour propriétaire).
+  const levelBadgeColor = classColor(character.classId);
 
   // Voies hybrides (catégorie 4) regroupées par profil, pour les accordéons.
   const hybridByProfile = new Map<string, { classId: string; name: string; groups: FeatureGroup[] }>();
@@ -1007,7 +1138,7 @@ export function LevelUpDialog({
   // Le jet remplace la part « famille » ; la CON s'ajoute par-dessus (Option A, cf. ticket).
   const shownGain = rolling && rolledValid ? rolledNum + con : hpGain;
   // Effet « roulette » (0 → gain) rejoué à chaque recalcul du gain affiché.
-  const animatedGain = useCountUp(shownGain);
+  const animatedGain = useCountUp(shownGain, open, hpMode);
   // Bloquant : « dé de vie » choisi sans résultat valide saisi.
   const rolledPending = rolling && !rolledValid;
 
@@ -1232,13 +1363,11 @@ export function LevelUpDialog({
                 fontSize: '1rem',
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
-                color: theme.palette.primary.main,
-                bgcolor: alpha(theme.palette.primary.main, 0.14),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.45)}`,
+                color: theme.palette.common.white,
               })}
             >
               Niveau {character.level} →
-              <LevelBadge level={newLevel} />
+              <LevelBadge level={newLevel} color={levelBadgeColor} />
               {/* Positionnées ici (et non sur toute la largeur de l'en-tête) : les
                   pourcentages de `LevelUpEntranceStars` restent relatifs à ce petit
                   pilule, pas à toute la largeur de la modale (sinon débord = scrollbar
@@ -1246,6 +1375,10 @@ export function LevelUpDialog({
               <LevelUpEntranceStars />
             </Box>
             {shownGain !== null && (
+              // Sélection du dé de vie : le bloc « +X PV max » (qui ne vaut que pour le
+              // mode PV fixes) s'efface plutôt que de disparaître d'un coup — fondu +
+              // glissement vers la droite, réversible (retour sur PV fixes = même
+              // transition à l'envers, pilotée par `rolling`).
               <Box
                 sx={(theme) => {
                   const tone =
@@ -1265,10 +1398,20 @@ export function LevelUpDialog({
                     color: tone,
                     bgcolor: alpha(tone, 0.12),
                     border: `1px solid ${alpha(tone, 0.4)}`,
+                    transition: 'opacity .25s ease, transform .25s ease',
+                    opacity: rolling ? 0 : 1,
+                    transform: rolling ? 'translateX(16px)' : 'translateX(0)',
+                    pointerEvents: rolling ? 'none' : 'auto',
                   };
                 }}
               >
-                +{animatedGain ?? 0} PV max
+                +
+                {String(animatedGain ?? 0)
+                  .split('')
+                  .map((c, i) => (
+                    <FlipDigit key={i} char={c} />
+                  ))}
+                {' PV max'}
               </Box>
             )}
           </Stack>
@@ -1282,7 +1425,11 @@ export function LevelUpDialog({
                 <Stack
                   direction="row"
                   spacing={1.5}
-                  sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                  // `minHeight` fixe (= hauteur du `TextField` small, seul élément plus
+                  // haut que le `ToggleButtonGroup`) : sans ça, la rangée grandissait de
+                  // 1-2px quand le TextField apparaissait (mode « Dé de vie »), décalant
+                  // tout le contenu en dessous.
+                  sx={{ alignItems: 'center', flexWrap: 'wrap', minHeight: 40 }}
                 >
                   <ToggleButtonGroup
                     size="small"
@@ -1294,7 +1441,24 @@ export function LevelUpDialog({
                     <ToggleButton value="fixed">
                       PV fixes{hpGain !== null ? ` (+${hpGain})` : ''}
                     </ToggleButton>
-                    <ToggleButton value="rolled">Dé de vie ({hitDie})</ToggleButton>
+                    <ToggleButton
+                      value="rolled"
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                    >
+                      Dé de vie <DieIcon die={hitDie} size={18} noTooltip />
+                      <AppTooltip
+                        title={
+                          'Règle maison : lancez votre dé de récupération à la table et saisissez le ' +
+                          'résultat ; la Constitution s’ajoute au jet. Les valeurs d’attaque, la défense ' +
+                          'et les autres statistiques dérivées sont recalculées automatiquement à partir ' +
+                          'du niveau.'
+                        }
+                      >
+                        <InfoOutlinedIcon
+                          sx={{ fontSize: 18, color: 'text.secondary', cursor: 'help', flexShrink: 0 }}
+                        />
+                      </AppTooltip>
+                    </ToggleButton>
                   </ToggleButtonGroup>
                   {rolling && (
                     <TextField
@@ -1316,35 +1480,18 @@ export function LevelUpDialog({
                   )}
                 </Stack>
 
-                {/* Notes : affichées UNIQUEMENT en mode « Dé de vie », en style discret
-                    (comme les notes de voie). Le hors-plage garde un ton d'avertissement. */}
-                {rolling && (
-                  <Box sx={{ mt: 1 }}>
-                    {rolledOutOfRange && (
-                      <Typography
-                        variant="caption"
-                        component="div"
-                        color="warning.main"
-                        sx={{ mb: 0.5 }}
-                      >
-                        Un {hitDie} ne dépasse pas {dieMax} — valeur conservée telle quelle (les dés
-                        se lancent à la table).
-                      </Typography>
-                    )}
-                    <Typography
-                      variant="caption"
-                      component="div"
-                      sx={{
-                        fontStyle: 'italic',
-                        color: (theme) => alpha(theme.palette.text.secondary, 0.85),
-                      }}
-                    >
-                      Règle maison : lancez votre dé de récupération à la table et saisissez le
-                      résultat ; la Constitution s’ajoute au jet. Les valeurs d’attaque, la défense
-                      et les autres statistiques dérivées sont recalculées automatiquement à partir
-                      du niveau.
-                    </Typography>
-                  </Box>
+                {/* Hors-plage : affiché UNIQUEMENT en mode « Dé de vie » — le rappel de la
+                    règle maison est passé en info-bulle (icône « i » ci-dessus). */}
+                {rolling && rolledOutOfRange && (
+                  <Typography
+                    variant="caption"
+                    component="div"
+                    color="warning.main"
+                    sx={{ mt: 1 }}
+                  >
+                    Un {hitDie} ne dépasse pas {dieMax} — valeur conservée telle quelle (les dés
+                    se lancent à la table).
+                  </Typography>
                 )}
               </Box>
             )}

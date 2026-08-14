@@ -11,7 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import Radio from '@mui/material/Radio';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+import { alpha, lighten } from '@mui/material/styles';
 import type { Feature } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { AncestryIcon } from '@/components/AncestryIcon';
@@ -20,6 +20,7 @@ import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { SourceRef } from '@/components/SourceRef';
 import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
+import { prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
 
 export interface PathCardProps {
   /** Nom affiché en tête (chaîne simple, ou nœud enrichi — ex. `FeatureLabel`). */
@@ -79,6 +80,15 @@ export interface PathCardProps {
    * pas de détail) — ex. une pastille d'avertissement avec sa propre infobulle.
    */
   endAdornment?: ReactNode;
+  /**
+   * Carte de voie de PRESTIGE : remplace le contour/fond plein habituel par l'habillage
+   * « précieux » (liseré en dégradé métal + fond en dégradé assombri) réutilisé de
+   * `FeaturesByPath`/`prestigeStyle.ts` — visible même non cochée (contrairement au style
+   * plein, qui ne se colore qu'à la sélection). `prestigeTint` = teinte de FAMILLE
+   * (`prestigeCategoryColor`, absente pour les génériques → repli or tuné par défaut).
+   */
+  prestige?: boolean;
+  prestigeTint?: string;
 }
 
 /**
@@ -110,6 +120,8 @@ export function PathCard({
   onToggle,
   nameAdornment,
   endAdornment,
+  prestige = false,
+  prestigeTint,
 }: PathCardProps) {
   const ControlComp = control === 'radio' ? Radio : Checkbox;
   const GhostIcon = control === 'radio' ? FiberManualRecordIcon : CheckIcon;
@@ -133,18 +145,30 @@ export function PathCard({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        border: 2,
-        borderColor: checked ? color : 'divider',
         borderRadius: 1,
-        bgcolor: checked ? alpha(color, 0.06) : 'transparent',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        transition: 'border-color .15s, background-color .15s',
+        transition: 'border-color .15s, background-color .15s, filter .15s',
+        ...(prestige
+          ? {
+              ...prestigeStaticBorderSx(checked ? 2 : 1, 'inherit', prestigeTint),
+              border: 0,
+              background: `linear-gradient(45deg, ${alpha(prestigeTint ? lighten(prestigeTint, 0.55) : '#f5e7a0', checked ? 0.34 : 0.2)} 0%, ${alpha('#d0d0d0', checked ? 0.14 : 0.08)} 85%)`,
+            }
+          : {
+              border: 2,
+              borderColor: checked ? color : 'divider',
+              bgcolor: checked ? alpha(color, 0.06) : 'transparent',
+            }),
         '&:hover': disabled
           ? undefined
           : {
-              borderColor: checked ? color : alpha(color, 0.5),
-              bgcolor: checked ? alpha(color, 0.1) : alpha(color, 0.03),
+              ...(prestige
+                ? { filter: 'brightness(1.12)' }
+                : {
+                    borderColor: checked ? color : alpha(color, 0.5),
+                    bgcolor: checked ? alpha(color, 0.1) : alpha(color, 0.03),
+                  }),
               ...(!hasDetail ? ghostHoverSx : undefined),
             },
       }}
