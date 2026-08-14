@@ -96,6 +96,7 @@ export function IdentityFields({ identity, ancestryId, featureIds }: IdentityFie
         </Typography>
         <Typography
           variant="body2"
+          component="div"
           color={identity.description ? 'text.primary' : 'text.disabled'}
           sx={{ whiteSpace: 'pre-line' }}
         >

@@ -39,6 +39,7 @@ import type {
 } from '@/data/schema';
 import type { CharacterStatus, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
+import type { DerivedStatId as UiDerivedStatId } from '@/lib/ui/derivedStats';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
 import { oneHandableWeaponFamiliesForCharacter } from '@/lib/character/equipment';
@@ -112,7 +113,7 @@ import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { PinSectionButton } from '@/components/sheet/PinSectionButton';
 import { AppAlert } from '@/components/AppAlert';
-import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
+import { PlayerStatusPanel, type RestBarItemId } from '@/components/sheet/PlayerStatusPanel';
 import { StickySheetStatusBar } from '@/components/sheet/StickySheetStatusBar';
 import { RestProposalDialog } from '@/components/session/RestProposalDialog';
 import { BuffRequestControl } from '@/components/session/BuffRequestControl';
@@ -165,6 +166,18 @@ const familyById = new Map(families.map((f) => [f.id, f]));
  * quand il n'y a rien (l'égalité par défaut est `Object.is` — un `[]` neuf rendrait en boucle).
  */
 const NO_WAIVED_BUFFS: BeneficialEffectId[] = [];
+
+/**
+ * Sous-ensemble de « Statistiques dérivées » que `StickySheetStatusBar` sait condenser (défense/init/
+ * contact/distance/magie) — seules stats éligibles au PIN individuel de bloc (`DerivedStatsGrid`).
+ */
+const BAR_PINNABLE_UI_STAT_IDS: UiDerivedStatId[] = [
+  'defense',
+  'initiative',
+  'meleeAttack',
+  'rangedAttack',
+  'magicAttack',
+];
 
 /**
  * Blocs de la fiche possédant un mode édition à scope propre (crayon dédié). Le
@@ -349,6 +362,73 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [pinAbilities, setPinAbilities] = usePersistedBoolean('sheet:pin-abilities', false);
   const [pinDerivedStats, setPinDerivedStats] = usePersistedBoolean('sheet:pin-derived-stats', false);
   const [pinStatusGauges, setPinStatusGauges] = usePersistedBoolean('sheet:pin-status-gauges', false);
+  const [pinInventory, setPinInventory] = usePersistedBoolean('sheet:pin-inventory', false);
+  // Bourse dans le condensé Inventaire — PIN individuel (bloc « Bourse », `PurseField`), lui-même
+  // sans effet si la section Inventaire n'est pas épinglée (`pinInventory` ci-dessus). Défaut FERMÉ
+  // (« pin optionnel ») : l'utilisateur l'active s'il veut suivre sa bourse en permanence.
+  const [pinInventoryPurse, setPinInventoryPurse] = usePersistedBoolean('sheet:pin-inventory-purse', false);
+  // « Objet personnalisé » dans le condensé Inventaire — même principe que la bourse ci-dessus (pin
+  // optionnel, défaut FERMÉ), mais soudé au bouton lui-même (`WeldedBarPinButton`, `EquipmentList`)
+  // plutôt qu'à un en-tête. `customItemOpenNonce` PILOTE `EquipmentList.openCustomItemSignal` : même
+  // mécanisme nonce qu'`equipmentJumpNonce` ci-dessous (une incrémentation rouvre la modale).
+  const [pinInventoryCustomItem, setPinInventoryCustomItem] = usePersistedBoolean(
+    'sheet:pin-inventory-custom-item',
+    false,
+  );
+  const [customItemOpenNonce, setCustomItemOpenNonce] = useState(0);
+  // Sous-ensemble des 5 stats de « Statistiques dérivées » condensées dans la barre (défense/init/
+  // contact/distance/magie) — PIN individuel de chaque bloc (`DerivedStatsGrid`), lui-même sans effet
+  // si la section n'est pas épinglée (`pinDerivedStats` ci-dessus). Défaut statique (avant que
+  // `game` soit connu) : les 5 stats. L'effet ci-dessous RETIRE l'attaque magique de ce défaut, une
+  // seule fois, si le personnage n'a PAS de mana (0 PM/aucun sort → jamais utile) — mais seulement
+  // tant que l'utilisateur n'a JAMAIS touché ce réglage (`localStorage` encore vide), pour ne pas
+  // écraser un choix déjà fait.
+  const [pinnedDerivedStatItems, setPinnedDerivedStatItems] = usePersistedState<UiDerivedStatId[]>(
+    'sheet:pin-derived-stat-items',
+    BAR_PINNABLE_UI_STAT_IDS,
+    (raw) =>
+      Array.isArray(raw)
+        ? raw.filter((id): id is UiDerivedStatId => BAR_PINNABLE_UI_STAT_IDS.includes(id as UiDerivedStatId))
+        : undefined,
+  );
+  const derivedPinDefaultSeededRef = useRef(false);
+  useEffect(() => {
+    if (derivedPinDefaultSeededRef.current || typeof window === 'undefined') return;
+    if (window.localStorage.getItem('sheet:pin-derived-stat-items') != null) {
+      derivedPinDefaultSeededRef.current = true;
+      return;
+    }
+    // `game` peut encore être `null` pendant le chargement/l'hydratation : on attend qu'il soit
+    // connu avant de statuer sur le mana, plutôt que de figer un défaut prématuré (l'effet se
+    // réexécute à chaque render jusqu'à ce que `game` soit prêt).
+    if (!game) return;
+    derivedPinDefaultSeededRef.current = true;
+    if (game.manaMax == null) {
+      setPinnedDerivedStatItems(['defense', 'initiative', 'meleeAttack', 'rangedAttack']);
+    }
+  }, [game, setPinnedDerivedStatItems]);
+  // Boutons de repos (court/long) épinglés à la barre condensée sous « État du personnage » — PIN
+  // individuel soudé à chaque bouton sur la fiche (`RestBarPinButton`, `PlayerStatusPanel`), lui-même
+  // sans effet si la section n'est pas épinglée (`pinStatusGauges`). Les deux par défaut : pas de
+  // critère d'exclusion comme l'attaque magique (tout personnage se repose).
+  const [pinnedRestItems, setPinnedRestItems] = usePersistedState<RestBarItemId[]>(
+    'sheet:pin-rest-items',
+    ['shortRest', 'longRest'],
+    (raw) =>
+      Array.isArray(raw)
+        ? raw.filter((id): id is RestBarItemId => id === 'shortRest' || id === 'longRest')
+        : undefined,
+  );
+  const pinnedRestItemIds = new Set(pinnedRestItems);
+  const toggleRestItemPin = (id: RestBarItemId) => {
+    setPinnedRestItems((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+  // Ouverture des modales de repos (PER-151) : ÉLEVÉE ici (au lieu d'un état interne de
+  // `PlayerStatusPanel`) pour que les boutons de repos condensés de la barre (`StickySheetStatusBar`)
+  // puissent aussi les ouvrir — deux points d'entrée (bouton plein sur la fiche, icône dans la barre),
+  // un seul état.
+  const [shortRestOpen, setShortRestOpen] = useState(false);
+  const [longRestOpen, setLongRestOpen] = useState(false);
   // Disposition des voies : « colonnes » sur grand écran (défaut historique), mais
   // « lignes » par défaut sur mobile (PER-229) — en colonnes, le bloc central de la
   // fiche rend une grille large à défilement horizontal, très inconfortable au doigt.
@@ -838,6 +918,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const stickyInitiative = character.overrides.initiative ?? stickyDerived?.initiative ?? null;
   const stickyMeleeAttack = character.overrides.meleeAttack ?? stickyDerived?.meleeAttack ?? null;
   const stickyRangedAttack = character.overrides.rangedAttack ?? stickyDerived?.rangedAttack ?? null;
+  const stickyMagicAttack = character.overrides.magicAttack ?? stickyDerived?.magicAttack ?? null;
+  const pinnedDerivedStatIds = new Set(pinnedDerivedStatItems);
+  const toggleDerivedStatItemPin = (id: UiDerivedStatId) => {
+    setPinnedDerivedStatItems((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   // Rappel des états posés par le MJ (PER-281), remonté en tête d'« État du personnage » (PER-358),
   // au-dessus de la barre de vie. Cette section n'existe que si les stats dérivées sont calculables,
@@ -890,14 +975,29 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onJumpToDerivedStats={() => scrollToSection('derived-stats-section')}
               showStatusGauges={pinStatusGauges}
               onJumpToStatusGauges={() => scrollToSection('status-section')}
+              showInventory={pinInventory}
+              onJumpToInventory={() => scrollToSection('equipment-section')}
+              inventoryItemCount={character.equipment.length}
+              purse={character.purse}
+              showPurse={pinInventoryPurse}
+              showCustomItemButton={pinInventoryCustomItem}
+              onOpenCustomItem={() => setCustomItemOpenNonce((n) => n + 1)}
               maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
               depletion={character.depletion}
               manaMax={manaMax}
               luckMax={luckMax}
+              recoveryDiceMax={recoveryDiceMax}
+              recoveryDiceCurrent={currentRecoveryDice(recoveryDiceMax, character.depletion)}
+              recoveryDie={recoveryDie}
+              onOpenShortRest={() => setShortRestOpen(true)}
+              onOpenLongRest={() => setLongRestOpen(true)}
+              pinnedRestItems={pinnedRestItemIds}
               defense={stickyDefense}
               initiative={stickyInitiative}
               meleeAttack={stickyMeleeAttack}
               rangedAttack={stickyRangedAttack}
+              magicAttack={stickyMagicAttack}
+              pinnedDerivedStatIds={pinnedDerivedStatIds}
               testBonuses={display.testBonuses}
               abilityTestBonus={display.abilityTestBonus}
               statusTestBonus={display.statusTestBonus}
@@ -1389,6 +1489,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 attackMalusDie={attackMalusDie}
                 meleeAttackNotes={meleeAttackNotes}
                 rangedAttackNotes={rangedAttackNotes}
+                onToggleBarPin={toggleDerivedStatItemPin}
+                barPinnedIds={pinnedDerivedStatIds}
+                barSectionPinned={pinDerivedStats}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
@@ -1459,6 +1562,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                     />
                   ) : undefined
                 }
+                shortRestOpen={shortRestOpen}
+                onShortRestOpenChange={setShortRestOpen}
+                longRestOpen={longRestOpen}
+                onLongRestOpenChange={setLongRestOpen}
+                onToggleBarPin={toggleRestItemPin}
+                barPinnedIds={pinnedRestItemIds}
+                barSectionPinned={pinStatusGauges}
               />
               {/* Repos de groupe (PER-312) : quand le MJ propose une récupération à toute la
                   table, l'annonce s'ouvre ici — sur la fiche, là où le joueur applique son repos.
@@ -1684,6 +1794,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </SheetSection>
 
           <SheetSection
+            id="equipment-section"
             title="Inventaire"
             icon="inventory"
             collapsible
@@ -1710,9 +1821,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 pointerEvents: 'auto',
               },
             }}
-            action={(collapsed) =>
-              collapsed || readOnly ? null : (
-                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            action={(collapsed) => (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                {/* L'épingle (retour propriétaire) reste visible même replié — contrairement au reste
+                    de la rangée, qui n'a de sens qu'inventaire déplié : épingler ne demande pas de
+                    voir le contenu. */}
+                {!collapsed && !readOnly && (
                   <Box
                     className="add-mount-on-hover"
                     sx={{
@@ -1725,19 +1839,35 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   >
                     <AddMountButton onAdd={addMount} />
                   </Box>
+                )}
+                <PinSectionButton
+                  pinned={pinInventory}
+                  onToggle={() => setPinInventory(!pinInventory)}
+                  label="inventaire"
+                />
+                {!collapsed && !readOnly && (
                   <BlockEditButton
                     editing={editingBlocks.equipment}
                     onToggle={() => toggleBlock('equipment')}
                     label="inventaire"
                   />
-                </Stack>
-              )
-            }
+                )}
+              </Stack>
+            )}
           >
             {/* Bourse (PER-152) : argent possédé, état de jeu transitoire (montants éditables hors
                 mode « Modifier », non affecté par un repos). Les flèches de conversion entre unités
-                n'apparaissent qu'en mode édition du bloc. En tête du bloc inventaire. */}
-            <PurseField purse={character.purse} onChange={setPurse} editing={editingBlocks.equipment} />
+                n'apparaissent qu'en mode édition du bloc. En tête du bloc inventaire. Le pin de la
+                bourse vers la barre condensée (retour propriétaire) n'apparaît que si la section
+                Inventaire y est elle-même épinglée (`pinInventory`). */}
+            <PurseField
+              purse={character.purse}
+              onChange={setPurse}
+              editing={editingBlocks.equipment}
+              onToggleBarPin={() => setPinInventoryPurse(!pinInventoryPurse)}
+              barPinned={pinInventoryPurse}
+              barSectionPinned={pinInventory}
+            />
             <Divider sx={{ my: 1.5 }} />
             <EquipmentList
               equipment={character.equipment}
@@ -1801,6 +1931,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               resolveCriticalRange={(line) => weaponLineCriticalRange(character, line)}
               // Puce « Arme liée » (PER-74) sur la seule arme que la voie de l'arme liée concerne.
               resolveBoundWeapon={(line) => boundWeaponPathFor(character, line)}
+              // Ouverture externe (bouton carré de la barre condensée) + pin soudé au bouton.
+              openCustomItemSignal={customItemOpenNonce}
+              onToggleBarPin={() => setPinInventoryCustomItem(!pinInventoryCustomItem)}
+              barPinned={pinInventoryCustomItem}
+              barSectionPinned={pinInventory}
             />
           </SheetSection>
 
@@ -1923,7 +2058,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 placeholder="Notes libres du joueur…"
               />
             ) : character.notes ? (
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+              <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
                 <GlossaryRichText>{character.notes}</GlossaryRichText>
               </Typography>
             ) : (
