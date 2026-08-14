@@ -12,8 +12,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AbilityCompactGrid } from '@/components/AbilityCompactGrid';
-import { featureById, pathById } from '@/data';
-import type { Feature, Path } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { summarize } from '@/lib/character/summary';
 import {
@@ -21,14 +19,8 @@ import {
   useCharacterPortraitCropRect,
 } from '@/lib/storage/useCharacterPortraitSrc';
 import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
-import {
-  ANCESTRY_COLOR,
-  MAGE_PATH_COLOR,
-  classColor,
-  prestigeCategoryColor,
-  profileAccentGradient,
-} from '@/lib/ui/classColors';
-import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
+import { classColor, profileAccentGradient } from '@/lib/ui/classColors';
+import { PATH_COLUMN_COUNT, PATH_RANK_COUNT, pathColumns } from '@/lib/ui/pathColumns';
 
 export interface CharacterPreviewCardProps {
   character: Character;
@@ -39,163 +31,6 @@ export interface CharacterPreviewCardProps {
    * parent porte déjà la teinte (carte de l'écran MJ) — évite un dégradé en double.
    */
   tinted?: boolean;
-}
-
-/**
- * Ordre d'affichage des colonnes de voies dans la mini-carte de progression :
- * voie de peuple (ou du mage, qui la remplace) à gauche, voies de profil au
- * milieu, voie de prestige à droite — cohérent avec la fiche (`FeaturesByPath`).
- */
-const PATH_TYPE_ORDER: Record<Path['type'], number> = {
-  ancestry: 0,
-  mage: 0,
-  class: 1,
-  prestige: 2,
-};
-
-/**
- * Nombre de colonnes de la grille des voies : 7 voies possibles au maximum pour
- * un personnage (1 peuple/mage + 5 voies libres + 1 prestige — cf. règles CO2).
- */
-const PATH_COLUMN_COUNT = 7;
-
-/** Nombre de rangs (lignes) par voie. */
-const PATH_RANK_COUNT = 5;
-
-interface PathColumn {
-  name: string | undefined;
-  /**
-   * Fond CSS de chaque rang débloqué (index 0 = premier rang débloqué, en haut).
-   * Un carré est plein ssi son index est < `rankColors.length`. Normalement la
-   * couleur PLATE de la voie ; pour une voie de PRESTIGE, un DÉGRADÉ « précieux »
-   * (or générique, teinté par famille — PER-74). Exception : un rang qui a EMPRUNTÉ
-   * une capacité (PER-120) prend la couleur plate du profil de la capacité empruntée.
-   * Valeur utilisable telle quelle en `background` (couleur unie OU dégradé).
-   */
-  rankColors: string[];
-}
-
-/**
- * Couleur d'une voie selon son type : profil (teinte du profil ; celle du
- * personnage pour ses voies natives, du profil source en hybride), peuple, mage
- * ou prestige. Repli neutre si la voie est inconnue.
- */
-function pathColor(path: Path | undefined, classId: string): string {
-  if (!path) return '#90a4ae';
-  switch (path.type) {
-    case 'ancestry':
-      return ANCESTRY_COLOR;
-    case 'mage':
-      return MAGE_PATH_COLOR;
-    case 'prestige':
-      return prestigeCategoryColor(path.category);
-    case 'class':
-      return classColor(path.classIds.includes(classId) ? classId : path.classIds[0]);
-  }
-}
-
-/**
- * Couleur du profil de la capacité EMPRUNTÉE par une capacité (choix
- * `feature-from-path` résolu — PER-120, ex. Combattant aguerri prenant une
- * capacité de rang 1 d'une autre voie), ou `undefined` si la capacité n'emprunte
- * rien ou si le choix n'est pas encore fait.
- */
-function borrowedColorOf(character: Character, feature: Feature): string | undefined {
-  const defs = feature.choices;
-  const sels = character.featureChoices?.[feature.id];
-  if (!defs || !sels) return undefined;
-  for (let i = 0; i < defs.length; i += 1) {
-    if (defs[i].kind !== 'feature-from-path') continue;
-    const sel = sels[i];
-    if (typeof sel !== 'string') continue;
-    const borrowed = featureById.get(sel);
-    if (borrowed) return pathColor(pathById.get(borrowed.pathId), character.classId);
-  }
-  return undefined;
-}
-
-/**
- * Résume les voies d'un personnage en une grille de 7 emplacements FIXES : peuple/mage
- * en tête, profils au milieu, prestige toujours en dernier (voir placement plus bas).
- * Les emplacements sans voie valent `undefined`. Chaque rang débloqué porte sa couleur
- * (celle de la voie, ou du profil emprunté pour un rang à capacité empruntée). Les ids
- * inconnus sont ignorés (comme sur la fiche).
- */
-function pathColumns(character: Character): (PathColumn | undefined)[] {
-  const byPath = new Map<string, { path: Path | undefined; features: Map<number, Feature>; order: number }>();
-  for (const id of character.featureIds) {
-    const feature = featureById.get(id);
-    if (!feature) continue;
-    const entry = byPath.get(feature.pathId);
-    if (entry) {
-      entry.features.set(feature.rank, feature);
-    } else {
-      byPath.set(feature.pathId, {
-        path: pathById.get(feature.pathId),
-        features: new Map([[feature.rank, feature]]),
-        order: byPath.size,
-      });
-    }
-  }
-  // La voie du mage REMPLACE la voie de peuple (p. 60) : elles occupent le même
-  // « emplacement de peuple ». Un mage garde toutefois sa capacité de peuple de
-  // rang 1 (« Capacité de peuple + occultisme »), qui vit dans une voie de peuple
-  // distincte — d'où deux entrées ici. On les fusionne en une seule colonne (rangs
-  // réunis) sous la voie du mage, pour ne pas afficher deux colonnes là où il n'y a
-  // qu'un emplacement.
-  const magePath = [...byPath.values()].find((e) => e.path?.type === 'mage');
-  if (magePath) {
-    for (const [pathId, entry] of byPath) {
-      if (entry.path?.type !== 'ancestry') continue;
-      for (const [rank, feature] of entry.features) {
-        if (!magePath.features.has(rank)) magePath.features.set(rank, feature);
-      }
-      byPath.delete(pathId);
-    }
-  }
-  const buildColumn = (entry: { path: Path | undefined; features: Map<number, Feature> }): PathColumn => {
-    const baseColor = pathColor(entry.path, character.classId);
-    // Voie de PRESTIGE : les rangs NON empruntés reçoivent le DÉGRADÉ « précieux » (or par défaut pour
-    // les génériques, teinté par famille sinon) plutôt qu'une couleur plate — plus joli (demande proprio).
-    const prestigeFill =
-      entry.path?.type === 'prestige'
-        ? prestigeMetalGradient(
-            entry.path.category !== 'generic' ? prestigeCategoryColor(entry.path.category) : undefined,
-          )
-        : undefined;
-    const rankColors = [...entry.features.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .slice(0, PATH_RANK_COUNT)
-      // Un rang qui a emprunté une capacité prend la couleur plate du profil emprunté ; sinon la couleur
-      // de la voie — ou le dégradé précieux pour le prestige.
-      .map(([, feature]) => borrowedColorOf(character, feature) ?? prestigeFill ?? baseColor);
-    return { name: entry.path?.name, rankColors };
-  };
-  // Chaque voie occupe un EMPLACEMENT FIXE, pas une colonne compactée : peuple/mage
-  // à gauche (col. 0), voies de profil au milieu (col. 1-5, dans l'ordre d'acquisition),
-  // voie de prestige toujours à la dernière colonne (col. 6). Ainsi la prestige reste
-  // à droite même quand le personnage a moins de 7 voies (sinon elle remontait dans une
-  // colonne du milieu — cf. recettes PER-175).
-  const slots: (PathColumn | undefined)[] = new Array(PATH_COLUMN_COUNT).fill(undefined);
-  let classSlot = 1;
-  const entries = [...byPath.values()].sort((a, b) => {
-    const ta = a.path ? PATH_TYPE_ORDER[a.path.type] : 99;
-    const tb = b.path ? PATH_TYPE_ORDER[b.path.type] : 99;
-    return ta - tb || a.order - b.order;
-  });
-  for (const entry of entries) {
-    const column = buildColumn(entry);
-    const type = entry.path?.type;
-    if (type === 'ancestry' || type === 'mage') {
-      slots[0] = column;
-    } else if (type === 'prestige') {
-      slots[PATH_COLUMN_COUNT - 1] = column;
-    } else if (classSlot < PATH_COLUMN_COUNT - 1) {
-      slots[classSlot] = column;
-      classSlot += 1;
-    }
-  }
-  return slots;
 }
 
 export function CharacterPreviewCard({ character, tinted = true }: CharacterPreviewCardProps) {

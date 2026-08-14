@@ -35,6 +35,7 @@ import { classById, featureById, pathById } from '@/data';
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
+import { SourceRef } from '@/components/SourceRef';
 
 /** Mode de groupement de la liste : par voie (défaut) ou par profil (méta-groupes repliables). */
 export type FeatureGroupMode = 'path' | 'profile';
@@ -296,6 +297,7 @@ export function FeaturePathAutocomplete({
           );
         }
         const { name, classId, color } = pathProfile(params.group);
+        const sourcePage = pathById.get(params.group)?.sourcePage;
         return (
           <li key={params.key}>
             <Box
@@ -325,6 +327,11 @@ export function FeaturePathAutocomplete({
             >
               {classId ? <ClassIcon classId={classId} size={18} color={color} /> : null}
               <span>{name}</span>
+              {/* Citation de la voie, à DROITE de la barre — mousedown neutralisé pour ne
+                  pas voler le focus de l'input (même précaution que `toggleGroup`). */}
+              <Box sx={{ ml: 'auto', flexShrink: 0 }} onMouseDown={(e) => e.preventDefault()}>
+                <SourceRef page={sourcePage} term={name} />
+              </Box>
             </Box>
             <ul style={{ padding: 0, margin: 0 }}>{params.children}</ul>
           </li>

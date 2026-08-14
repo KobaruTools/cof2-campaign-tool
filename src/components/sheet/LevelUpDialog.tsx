@@ -6,6 +6,8 @@ import AutorenewIcon from '@mui/icons-material/Autorenew';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import ViewStreamIcon from '@mui/icons-material/ViewStream';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
 import Accordion from '@mui/material/Accordion';
@@ -71,10 +73,12 @@ import {
 import { classColor, prestigeCategoryColor } from '@/lib/ui/classColors';
 import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
+import { LevelUpPathsGrid } from '@/components/sheet/LevelUpPathsGrid';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { RichInline, FeatureText } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
@@ -149,6 +153,10 @@ const BORDER_ANGLE_STYLES = `
     from { transform: translateY(-100%); }
     to { transform: translateY(0); }
   }
+  @keyframes levelUpPathStagger {
+    from { opacity: 0; transform: translateX(-25%); }
+    to { opacity: 1; transform: translateX(0); }
+  }
 `;
 
 export interface LevelUpDialogProps {
@@ -171,6 +179,26 @@ export interface LevelUpDialogProps {
   onClose: () => void;
   /** Personnage promu à valider (niveau +1, capacités, historique). */
   onConfirm: (updated: Character) => void;
+}
+
+/** Décalage entre deux voies successives de l'entrée en stagger du mode liste. */
+const PATH_STAGGER_STEP_MS = 22;
+
+/**
+ * Style d'entrée en stagger d'un bloc de voie du mode liste (fondu + translation depuis
+ * la gauche, décalée par index) — rejoué à chaque montage du bloc, donc aussi bien au
+ * passage colonne → liste qu'à l'ouverture du wizard directement en mode liste (choix
+ * persisté). `overflow: hidden` masque le départ à -25 % de la largeur du bloc sans
+ * élargir le conteneur ni faire apparaître de scrollbar horizontale. Courbe à léger
+ * dépassement (même famille que `levelUpDialogPop`) : la translation file jusqu'à
+ * dépasser 0 avant de revenir se caler, petit rebond plus enjoué qu'un simple `ease-out`.
+ */
+function pathStaggerSx(index: number) {
+  return {
+    overflow: 'hidden',
+    animation: `levelUpPathStagger 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${index * PATH_STAGGER_STEP_MS}ms both`,
+    '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+  } as const;
 }
 
 /** Une voie disponible et ses capacités acquérables : en-tête + accordéons. */
@@ -557,6 +585,58 @@ function FeaturePointsBadge({
 }
 
 /**
+ * Bascule mode simplifié (graphe des voies, `LevelUpPathsGrid`) / mode avancé (liste
+ * détaillée `AvailablePathGroup`) — même patron que `FeaturesLayoutToggle` (voies &
+ * capacités de la fiche), mais ORDRE INVERSÉ : simplifié (colonnes) en premier ici,
+ * puisque c'est le mode PAR DÉFAUT (contre lignes en premier côté fiche).
+ */
+function LevelUpViewToggle({
+  value,
+  onChange,
+  simplifiedDisabledReason,
+}: {
+  value: boolean;
+  onChange: (simplified: boolean) => void;
+  /**
+   * Grise le bouton « simplifié » et explique pourquoi en infobulle (ex. profil
+   * hybride coché — le graphe ne montre jamais de voie hors profil). PAS de vrai
+   * `disabled` MUI : un bouton réellement désactivé bloque le survol lui-même
+   * (suppression navigateur des événements pointeur sur les éléments désactivés,
+   * cf. la remarque de la doc Tooltip) — l'infobulle « pourquoi c'est grisé » ne
+   * s'afficherait alors jamais. Le clic est neutralisé dans `onChange` ci-dessous.
+   */
+  simplifiedDisabledReason?: string;
+}) {
+  const simplifiedDisabled = !!simplifiedDisabledReason;
+  return (
+    <ToggleButtonGroup
+      value={value ? 'simplified' : 'advanced'}
+      exclusive
+      size="small"
+      onChange={(_, next) => {
+        if (next && !(next === 'simplified' && simplifiedDisabled)) onChange(next === 'simplified');
+      }}
+    >
+      <ToggleButton
+        value="simplified"
+        aria-label="Mode simplifié"
+        aria-disabled={simplifiedDisabled}
+        sx={simplifiedDisabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+      >
+        <AppTooltip title={simplifiedDisabled ? simplifiedDisabledReason : 'Mode simplifié — graphe des voies'}>
+          <ViewColumnIcon fontSize="small" />
+        </AppTooltip>
+      </ToggleButton>
+      <ToggleButton value="advanced" aria-label="Mode avancé">
+        <AppTooltip title="Mode avancé — liste détaillée">
+          <ViewStreamIcon fontSize="small" />
+        </AppTooltip>
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
+}
+
+/**
  * Étoile décorative à 4 branches (même forme que le scintillement des jetons de
  * la bourse, `PurseField`) : apparaît, tourne, s'estompe. `iterationCount` fixe
  * sa durée totale — utilisée aussi bien pour le « pop » d'entrée du wizard (une
@@ -855,6 +935,9 @@ export function LevelUpDialog({
   // par défaut pour ne pas noyer la montée de niveau classique — l'hybridation
   // est un choix délibéré (accord du MJ, cohérence narrative).
   const [showHybrid, setShowHybrid] = useState(false);
+  // Mode d'affichage des capacités acquérables : graphe des voies (simplifié, défaut)
+  // ou liste détaillée (avancé) — persisté (choix qui survit à la fermeture du wizard).
+  const [simplifiedView, setSimplifiedView] = usePersistedBoolean('level-up:simplified-view', true);
   // Voie d'accueil choisie pour la capacité divine d'un prêtre spécialiste (divine
   // de rang ≥ 2 acquise à ce niveau, p. 122). null tant que non désignée.
   const [divineHost, setDivineHost] = useState<string | null>(null);
@@ -1052,6 +1135,14 @@ export function LevelUpDialog({
         startedFirst(a) - startedFirst(b) ||
         groupName(a).localeCompare(groupName(b)),
     );
+
+  // Rangs 1 des voies de profil pas encore entamées, parmi les catégories affichées
+  // À PLAT (profil principal + profils déjà engagés) — candidates du popover « nouvelle
+  // voie » de la grille (`LevelUpPathsGrid`). Une voie hybride encore masquée derrière
+  // l'accordéon n'y figure pas : cohérent avec le choix de ne pas pousser l'hybridation.
+  const newPathOptions = flatGroups
+    .filter((g) => g.path?.type === 'class' && !startedPaths.has(g.path.id))
+    .flatMap((g) => g.features.filter((f) => f.rank === 1).map((f) => f.id));
 
   // Voies de prestige (catégorie 3) réunies dans un accordéon dédié, comme les
   // voies d'autres profils en hybride — un choix délibéré qu'on ne déploie qu'au
@@ -1632,7 +1723,11 @@ export function LevelUpDialog({
               </Box>
             )}
 
-            {remaining > 0 && (
+            {/* Mode simplifié : le bloc ne s'affiche QUE si le point est réellement
+                indépensable (`forcedOrphan`) — pas en libre choix d'hybridation, ce
+                que le graphe ne montre de toute façon jamais (cf. `LevelUpPathsGrid`).
+                Mode avancé : comportement inchangé, dès qu'un point reste à dépenser. */}
+            {remaining > 0 && (!simplifiedView || forcedOrphan) && (
               <Accordion
                 disableGutters
                 elevation={0}
@@ -1838,90 +1933,102 @@ export function LevelUpDialog({
               </Accordion>
             )}
 
-            {!hasAnyAvailable ? (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+              <LevelUpViewToggle
+                value={simplifiedView && !showHybrid}
+                onChange={setSimplifiedView}
+                simplifiedDisabledReason={
+                  showHybrid
+                    ? 'Le graphe ne montre pas les voies hors profil — décochez « Profil hybride » pour y revenir'
+                    : undefined
+                }
+              />
+            </Box>
+
+            {/* Profil hybride coché : le graphe ne montre jamais de voie hors profil
+                (choix délibéré, cf. `LevelUpPathsGrid`) — bascule forcée sur la liste
+                complète, seule à pouvoir les afficher, quel que soit le mode retenu. */}
+            {simplifiedView && !showHybrid ? (
+              <LevelUpPathsGrid
+                character={working}
+                available={available}
+                remaining={remaining}
+                locked={divineLock}
+                newPathOptions={newPathOptions}
+                onSelect={add}
+              />
+            ) : !hasAnyAvailable ? (
               <Typography variant="body2" color="text.secondary">
                 Aucune capacité supplémentaire disponible à ce niveau.
               </Typography>
             ) : (
               <Stack spacing={2}>
-                {flatGroups.map((group) => (
-                  <AvailablePathGroup
-                    key={group.pathId}
-                    group={group}
-                    color={pathColor(group.path)}
-                    remaining={remaining}
-                    lockAll={divineLock}
-                    skipped={skippedFor(group)}
-                    onAdd={add}
-                    abilities={character.abilities}
-                    level={newLevel}
-                  />
+                {flatGroups.map((group, index) => (
+                  <Box key={group.pathId} sx={pathStaggerSx(index)}>
+                    <AvailablePathGroup
+                      group={group}
+                      color={pathColor(group.path)}
+                      remaining={remaining}
+                      lockAll={divineLock}
+                      skipped={skippedFor(group)}
+                      onAdd={add}
+                      abilities={character.abilities}
+                      level={newLevel}
+                    />
+                  </Box>
                 ))}
 
                 {prestigeGroups.length > 0 && (
-                  <Accordion
-                    disableGutters
-                    elevation={0}
-                    sx={{
-                      border: 1,
-                      borderColor: 'divider',
-                      '&::before': { display: 'none' },
-                    }}
-                  >
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                        <WorkspacePremiumOutlinedIcon
-                          fontSize="small"
-                          sx={{ color: 'text.secondary' }}
-                        />
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                          Voies de prestige
-                        </Typography>
-                      </Stack>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Stack spacing={2}>
-                        {prestigeGroups.map((group) => (
-                          <AvailablePathGroup
-                            key={group.pathId}
-                            group={group}
-                            color={null}
-                            remaining={remaining}
-                            lockAll={divineLock}
-                            skipped={skippedFor(group)}
-                            onAdd={add}
-                            abilities={character.abilities}
-                            level={newLevel}
+                  <Box sx={pathStaggerSx(flatGroups.length)}>
+                    <Accordion
+                      disableGutters
+                      elevation={0}
+                      sx={{
+                        border: 1,
+                        borderColor: 'divider',
+                        '&::before': { display: 'none' },
+                      }}
+                    >
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                          <WorkspacePremiumOutlinedIcon
+                            fontSize="small"
+                            sx={{ color: 'text.secondary' }}
                           />
-                        ))}
-                      </Stack>
-                    </AccordionDetails>
-                  </Accordion>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                            Voies de prestige
+                          </Typography>
+                        </Stack>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack spacing={2}>
+                          {prestigeGroups.map((group) => (
+                            <AvailablePathGroup
+                              key={group.pathId}
+                              group={group}
+                              color={null}
+                              remaining={remaining}
+                              lockAll={divineLock}
+                              skipped={skippedFor(group)}
+                              onAdd={add}
+                              abilities={character.abilities}
+                              level={newLevel}
+                            />
+                          ))}
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
+                  </Box>
                 )}
 
-                {hasHybridOption && (
-                  <Box>
-                    <Box sx={{ mb: hybridProfiles.length > 0 ? 1.5 : 0 }}>
-                      <PathCard
-                        name="Profil hybride"
-                        checked={showHybrid}
-                        sourcePage={176}
-                        nameAdornment={
-                          <AppTooltip title="Nécessite l’accord du MJ à la table.">
-                            <WarningAmberOutlinedIcon
-                              sx={{ fontSize: 18, color: 'warning.main', cursor: 'help', flexShrink: 0 }}
-                            />
-                          </AppTooltip>
-                        }
-                        onToggle={() => setShowHybrid((v) => !v)}
-                      />
-                    </Box>
-                    {hybridProfiles.length > 0 && (
-                      <>
-                        <Typography variant="overline" color="text.secondary">
-                          Autres profils (profil hybride)
-                        </Typography>
-                        <Stack spacing={1}>
+                {/* Bascule « Profil hybride » déplacée dans la 2ᵉ barre du footer
+                    (voir `DialogActions`) : ne reste ici que la liste qu'elle révèle. */}
+                {hybridProfiles.length > 0 && (
+                  <Box sx={pathStaggerSx(flatGroups.length + (prestigeGroups.length > 0 ? 1 : 0))}>
+                    <Typography variant="overline" color="text.secondary">
+                      Autres profils (profil hybride)
+                    </Typography>
+                    <Stack spacing={1}>
                       {hybridProfiles.map((profile) => {
                         const color = classColor(profile.classId);
                         return (
@@ -1971,9 +2078,7 @@ export function LevelUpDialog({
                           </Accordion>
                         );
                       })}
-                        </Stack>
-                      </>
-                    )}
+                    </Stack>
                   </Box>
                 )}
               </Stack>
@@ -1981,31 +2086,59 @@ export function LevelUpDialog({
           </Box>
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ justifyContent: 'space-between' }}>
-        <FeaturePointsBadge spent={spent} budget={budget} satisfied={!pointsUnspent} />
-        <Stack direction="row" spacing={1}>
-          <Button onClick={close}>Annuler</Button>
-          <AppTooltip
-            title={
-              choicesPending
-                ? 'Résolvez les choix des capacités sélectionnées'
-                : pointsUnspent
-                  ? `Dépensez vos points de capacité (${remaining} restant${remaining > 1 ? 's' : ''})`
-                  : rolledPending
-                    ? 'Saisissez le résultat du dé de vie'
-                    : ''
+      <DialogActions sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1 }}>
+        {/* 2ᵉ barre du footer : bascule « Profil hybride », déplacée hors de la liste
+            avancée pour rester accessible quel que soit le mode d'affichage choisi
+            (simplifié ou avancé) — elle ne pilote que la visibilité de la section
+            « Autres profils » de la liste, mais son état survit au changement de mode. */}
+        {hasHybridOption && (
+          <PathCard
+            name="Profil hybride"
+            checked={showHybrid}
+            sourcePage={176}
+            nameAdornment={
+              <AppTooltip title="Nécessite l’accord du MJ à la table.">
+                <WarningAmberOutlinedIcon
+                  sx={{ fontSize: 18, color: 'warning.main', cursor: 'help', flexShrink: 0 }}
+                />
+              </AppTooltip>
             }
-          >
-            <Box component="span">
-              <Button
-                variant="contained"
-                onClick={confirm}
-                disabled={choicesPending || pointsUnspent || rolledPending}
-              >
-                Valider le niveau {newLevel}
-              </Button>
-            </Box>
-          </AppTooltip>
+            onToggle={() => setShowHybrid((v) => !v)}
+          />
+        )}
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            ...(hasHybridOption && { pt: 1, borderTop: 1, borderColor: 'divider' }),
+          }}
+        >
+          <FeaturePointsBadge spent={spent} budget={budget} satisfied={!pointsUnspent} />
+          <Stack direction="row" spacing={1}>
+            <Button onClick={close}>Annuler</Button>
+            <AppTooltip
+              title={
+                choicesPending
+                  ? 'Résolvez les choix des capacités sélectionnées'
+                  : pointsUnspent
+                    ? `Dépensez vos points de capacité (${remaining} restant${remaining > 1 ? 's' : ''})`
+                    : rolledPending
+                      ? 'Saisissez le résultat du dé de vie'
+                      : ''
+              }
+            >
+              <Box component="span">
+                <Button
+                  variant="contained"
+                  onClick={confirm}
+                  disabled={choicesPending || pointsUnspent || rolledPending}
+                >
+                  Valider le niveau {newLevel}
+                </Button>
+              </Box>
+            </AppTooltip>
+          </Stack>
         </Stack>
       </DialogActions>
       </Dialog>
