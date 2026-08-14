@@ -3714,6 +3714,17 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut créer un mur de feu rectiligne de 20 m de long pour 4 m de haut (portée 20 m, épaisseur 30 cm). Toute créature qui franchit le mur subit [2d4° + CHA] DM de feu. Le sort a une durée de CHA minutes.",
+    richText:
+      "Le personnage peut créer un mur de feu rectiligne de 20 m de long pour 4 m de haut (portée 20 m, épaisseur 30 cm). Toute créature qui franchit le mur subit [2d4° + CHA] DM de feu. Le sort a une durée de [=CHA] minutes.",
+    // Interrupteur de SUIVI (retour propriétaire) : marqueur seul, aucune valeur chiffrée (patron
+    // Barrière magique, archmage-r7) — permet au joueur de savoir si son mur est encore dressé.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Mur de feu actif', activeByDefault: false },
+      },
+    ],
     sourcePage: 167,
   },
   {
@@ -3725,6 +3736,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage invoque une colonne de feu (portée 20 m) qui inflige [4d4° + CHA] DM à la cible sur un test d'attaque magique réussi contre DEF. Les DM sont doublés contre les morts-vivants et les démons.",
+    richText:
+      "Le personnage invoque une colonne de feu (portée 20 m) qui inflige [4d4° + CHA] DM à la cible sur un test d'attaque magique réussi contre DEF. Les DM sont doublés contre les morts-vivants et les démons.",
     sourcePage: 167,
   },
   {
@@ -3735,6 +3748,8 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text:
+      "Le personnage devient insensible aux DM de feu et il divise par deux les DM de froid.",
+    richText:
       "Le personnage devient insensible aux DM de feu et il divise par deux les DM de froid.",
     // PER-137 : deux modes traités SÉPARÉMENT — immunité au feu (puce verte) ET ÷2 froid (puce bleue).
     damageReduction: [
@@ -3752,6 +3767,20 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage s'immole dans une aura de flammes vives pendant CHA minutes. Il est immunisé aux DM de feu et inflige 1d4° DM de feu à tout attaquant qui réussit à le blesser avec une arme, 2d4° s'il s'agit d'une arme naturelle.",
+    richText:
+      "Le personnage s'immole dans une aura de flammes vives pendant [=CHA] minutes. Il est immunisé aux DM de feu et inflige {1d4°} DM de feu à tout attaquant qui réussit à le blesser avec une arme, {2d4°} s'il s'agit d'une arme naturelle.",
+    // Interrupteur manuel (patron Présence glaciale, gel-r7) : immunité au feu déjà PERMANENTE via
+    // Insensible au feu (r6, cumulatif) → PAS re-déclarée ici (éviterait un doublon de puce). Les DM
+    // rendus à l'attaquant sont EN PLUS rendus en badge « riposte » situationnel sous la carte Défense
+    // (cf. `immolationRetaliationBadge`), actif via CE toggle OU la Forme élémentaire de feu (r8, qui
+    // « profite en permanence » de cet effet).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Immolation active', activeByDefault: false },
+      },
+    ],
     sourcePage: 167,
   },
   {
@@ -3763,6 +3792,43 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par jour, le personnage peut se transformer en élémentaire de feu (taille grand), pendant un maximum de CHA minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire du feu et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.\n\nÉLÉMENTAIRE DE FEU\nAGI +3* | CON +5 | FOR +5 | PER [mystique] | CHA [mystique] | INT [mystique] | VOL [mystique]\nDéfense 20 · Points de vigueur [Niv. du mystique × 4] · Initiative [Init. du mystique]\nFrappe de feu [attaque magique] · DM 2d4°+5 · DM de feu. La forme élémentaire de feu profite en permanence des effets des capacités Insensible au feu et Immolation.",
+    // Bloc de stats SORTI du texte affiché (creatureProfile, patron Ours r6/Loup lycanthrope) ; le
+    // `text` verbatim le conserve comme source. AGI/CON/FOR = valeurs ABSOLUES imprimées (« +3* »/« +5 »/
+    // « +5 ») → `abilityOverrides` SET sur TOUTE la fiche (patron ours/loup). PER/CHA/INT/VOL « [mystique] »
+    // = identiques au personnage (delta 0, `abilitiesFromMaster`) → PAS dans `abilityOverrides`.
+    // Défense 20 FIXE (pas d'échelle par rang) : ÉCART RAW ASSUMÉ, même limite que la DEF non imposée du
+    // loup/ours (`abilityOverrides` ne couvre que les caracs, la DEF de la fiche reste recalculée depuis
+    // l'AGI surchargée) — seule la mini-fiche affiche la DEF 20 exacte du livre.
+    // « ne peut plus utiliser ses capacités de profil » → `disablesProfileFeatures` (patron ours r6).
+    // « profite en permanence des effets d'Insensible au feu et Immolation » : Insensible au feu (r6) est
+    // déjà permanent (cumulatif) ; Immolation (r7) est normalement un sort à interrupteur → la forme
+    // active AUSSI son badge de riposte (`immolationRetaliationBadge`, OR sur les 2 interrupteurs).
+    // « ne peut pas parler » / retour à 0 PV : verbatim seul, aucune primitive de mutisme/rollback de PV.
+    richText:
+      "Une fois par jour, le personnage peut se transformer en élémentaire de feu (taille grande), pendant un maximum de [=CHA] minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire du feu et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Forme élémentaire de feu active', activeByDefault: false },
+        abilityOverrides: { AGI: 3, CON: 5, FOR: 5 },
+        disablesProfileFeatures: true,
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    creatureProfile: {
+      name: 'Élémentaire de feu',
+      transformation: true,
+      size: 'grande',
+      abilities: { AGI: 3, CON: 5, FOR: 5 },
+      bonusDieAbilities: ['AGI'],
+      abilitiesFromMaster: { PER: 0, CHA: 0, INT: 0, VOL: 0 },
+      defense: '20',
+      hitPoints: '[=niveau × 4]',
+      initiative: { fromMaster: 'initiative' },
+      attack: { label: 'Frappe de feu', fromMaster: 'magicAttack', damage: '2d4° + 5' },
+      note: "La forme élémentaire de feu profite en permanence des effets des capacités Insensible au feu et Immolation.",
+    },
     sourcePage: 167,
   },
 

@@ -81,6 +81,7 @@ import {
   elementalistRangedAttackNotes,
 } from '@/lib/character/elementalistPath';
 import { frostRetaliationBadge } from '@/lib/character/frostPath';
+import { immolationRetaliationBadge } from '@/lib/character/elementalFirePath';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -534,6 +535,26 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         },
       ]
     : [];
+  // PER-371 — Immolation (voie élémentaire du feu r7, p. 167) : même patron « Riposte » SITUATIONNEL
+  // que la forme Feu de l'élémentaliste (`elemental-retaliation`, ambre, icône du type de dégât) —
+  // actif via l'interrupteur « Immolation active » OU la Forme élémentaire de feu (r8), qui en profite
+  // en permanence (RAW).
+  const fireVoieRetaliation = immolationRetaliationBadge(character);
+  const fireVoieRetaliationBadges: DefenseBadgeData[] = fireVoieRetaliation
+    ? [
+        {
+          key: 'retaliation-elementaire-feu-r7',
+          variant: 'elemental-retaliation' as const,
+          scope: 'fire' as const,
+          text: fireVoieRetaliation.die,
+          dice: `{${fireVoieRetaliation.die}}`,
+          diceTierBonus: scalingDieTierBonus(character),
+          title: 'Immolation — riposte',
+          note: "Tant qu'Immolation (ou la Forme élémentaire de feu) est active, un attaquant qui le blesse avec une arme subit ces DM de feu (2d4° avec une arme naturelle).",
+          sources: [{ name: 'Immolation', featureId: 'prestige-elementaire-du-feu-r7' }],
+        },
+      ]
+    : [];
   // PER-74 — Déflexion arcanique (guerrier-mage r6, p. 151) : badge de rappel AMBRE (réaction
   // ponctuelle payée en PM, à la discrétion du joueur) — aucune valeur numérique fixe (le combattant
   // choisit +2 DEF pour 1 PM par attaque, +5 pour 3 PM à partir du rang 9).
@@ -583,6 +604,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ...retaliationBadges,
     ...elementalRetaliationBadges,
     ...frostRetaliationBadges,
+    ...fireVoieRetaliationBadges,
     ...deflectionBadges,
     ...situationalTestDieBadges,
   ];

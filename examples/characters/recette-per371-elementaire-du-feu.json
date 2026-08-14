@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per371-elementaire-du-feu",
+  "name": "Recette PER-371 — Prêtre (voie élémentaire du feu)",
+  "identity": {
+    "description": "ATTENDU : prêtre niveau 16 avec la voie de prestige élémentaire du feu (r4→r8) acquise. Vérifier sur la fiche : r4 Mur de feu / r5 Tornade de feu affichent leurs formules ([2d4°+CHA]/[4d4°+CHA]) enrichies ; r6 Insensible au feu porte les 2 puces RD (immunité feu + ÷2 froid) ; r7 Immolation a un interrupteur « Immolation active » — activé, un badge « riposte » ambre (icône feu, 1d4°) apparaît sous la carte Défense ; r8 Forme élémentaire de feu a son propre interrupteur — activé : AGI/CON/FOR passent à 3/5/5 sur TOUTE la fiche (DEF/tests recalculés), les capacités de profil (prêtre) sont grisées/inactives, une mini-fiche « Élémentaire de feu » (transformation, PAS un compagnon) apparaît avec DEF 20/PV niveau×4/Frappe de feu, ET le badge riposte de r7 reste affiché même si SEUL le toggle r8 est actif."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": -1,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": -1,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "foi-r1",
+    "prestige-elementaire-du-feu-r4",
+    "prestige-elementaire-du-feu-r5",
+    "prestige-elementaire-du-feu-r6",
+    "prestige-elementaire-du-feu-r7",
+    "prestige-elementaire-du-feu-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-371 — voie de prestige élémentaire du feu (p. 167), catégorie mystique.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
