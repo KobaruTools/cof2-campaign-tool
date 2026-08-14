@@ -3114,6 +3114,8 @@ function PathBlock({
   const disabledMessage = (feature: Feature): string | null => {
     const reason = disabledReasons?.get(feature.id);
     if (!reason) return null;
+    // PER-328 — message DÉDIÉ (emprunt désactivé « en plein soleil ») quand le générique ne convient pas.
+    if (reason.note) return reason.note;
     if (reason.kind === 'replaced') return `Remplacée par ${reason.byFeatureName} : cette capacité n'est plus disponible.`;
     // PER-74 — transformation active (Métamorphose de l'ours) : ce n'est pas une exclusion mutuelle
     // entre DEUX capacités, mais la perte d'accès aux capacités de profil pendant la forme.

@@ -953,6 +953,18 @@ export interface ConditionalStatBonusEffect {
    */
   disablesFeatures?: string[];
   /**
+   * Quand CET interrupteur est INACTIF, désactive les capacités EMPRUNTÉES (choix `feature-from-path`)
+   * portées par la MÊME capacité hôte : grisées + leurs effets non comptés (comme `disablesFeatures`,
+   * mais ciblant les emprunts de l'hôte et déclenché par l'ÉTAT ÉTEINT, pas allumé). Patron INVERSE :
+   * l'interrupteur décrit une condition d'AUTORISATION que le joueur active (PER-328, elfe des
+   * profondeurs r2 « Lames et sorcellerie », p. 17 : « il n'est pas capable d'utiliser ces capacités en
+   * plein soleil » → interrupteur « À l'abri du plein soleil », décoché = emprunts inutilisables). Les
+   * `bonuses` de l'effet peuvent être VIDES (interrupteur d'AUTORISATION pur). Résolu par
+   * `borrowedFeaturesDisabledByInactiveToggle` (effects.ts). Absent = les emprunts ne dépendent d'aucun
+   * interrupteur.
+   */
+  disablesBorrowedWhenInactive?: boolean;
+  /**
    * EXCLUSION MUTUELLE d'INTERRUPTEURS (PER-130, ≠ `disablesFeatures`) : ids des capacités dont
    * l'interrupteur est ÉTEINT quand CET interrupteur est ACTIVÉ — mais SANS désactiver/griser la
    * capacité (les deux restent pleinement interactives, c'est un simple basculement ON/OFF). Cas :

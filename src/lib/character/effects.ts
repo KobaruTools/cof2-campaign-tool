@@ -219,6 +219,9 @@ export function activeFeatureIdsForMods(character: Character): string[] {
   // rage/furie du berserk, p. 82 : les capacités des voies non cumulables ne comptent plus tant que
   // la rage ou la furie est active).
   for (const id of disabledFeatureIds(character)) disabled.add(id);
+  // PER-328 — emprunts de « Lames et sorcellerie » désactivés tant que « À l'abri du plein soleil »
+  // est éteint : leurs effets ne comptent plus (comme le grisage côté `disabledFeatureReasons`).
+  for (const id of borrowedFeaturesDisabledByInactiveToggle(character).keys()) disabled.add(id);
   return disabled.size ? ids.filter((id) => !disabled.has(id)) : ids;
 }
 
@@ -1567,7 +1570,13 @@ export function setEffectToggle(
 export interface DisabledFeatureReason {
   byFeatureId: string;
   byFeatureName: string;
-  kind: 'excluded' | 'replaced' | 'transformed';
+  kind: 'excluded' | 'replaced' | 'transformed' | 'borrow-inactive';
+  /**
+   * Message d'UI DÉDIÉ, quand le libellé générique du `kind` ne convient pas (PER-328 : un emprunt
+   * désactivé « en plein soleil » n'est pas une exclusion mutuelle classique). Prioritaire sur le
+   * message déduit du `kind`. Absent = message générique.
+   */
+  note?: string;
 }
 
 /**
@@ -1609,7 +1618,50 @@ export function disabledFeatureReasons(character: Character): Map<string, Disabl
       reasons.set(targetId, { byFeatureId: id, byFeatureName: feature.name, kind: 'replaced' });
     }
   }
+  // 3) PER-328 — emprunts (`feature-from-path`) désactivés tant que l'interrupteur d'autorisation de
+  // leur capacité hôte est ÉTEINT (« Lames et sorcellerie » : inutilisables en plein soleil).
+  for (const [targetId, reason] of borrowedFeaturesDisabledByInactiveToggle(character)) {
+    if (!reasons.has(targetId)) reasons.set(targetId, reason);
+  }
   return reasons;
+}
+
+/**
+ * PER-328 (elfe des profondeurs r2 « Lames et sorcellerie », p. 17) — capacités EMPRUNTÉES via un choix
+ * `feature-from-path` désactivées tant qu'un interrupteur `disablesBorrowedWhenInactive` de leur capacité
+ * HÔTE est INACTIF (« il n'est pas capable d'utiliser ces capacités en plein soleil » → interrupteur
+ * « À l'abri du plein soleil » décoché). Retourne, par id d'emprunt désactivé, la raison affichable
+ * (source = capacité hôte, message dédié). Vide si aucun hôte flaggé n'a d'interrupteur éteint. Consommé
+ * par `disabledFeatureReasons` (grisage + message) ET par `activeFeatureIdsForMods` (effets non comptés).
+ */
+export function borrowedFeaturesDisabledByInactiveToggle(
+  character: Character,
+): Map<string, DisabledFeatureReason> {
+  const out = new Map<string, DisabledFeatureReason>();
+  for (const hostId of character.featureIds) {
+    const host = featureById.get(hostId);
+    if (!host?.effects) continue;
+    const gatingIndex = host.effects.findIndex(
+      (e) => e.kind === 'conditional-stat-bonus' && e.disablesBorrowedWhenInactive,
+    );
+    if (gatingIndex < 0) continue;
+    if (isEffectActive(character, hostId, gatingIndex)) continue; // interrupteur ON → emprunts autorisés
+    const effect = host.effects[gatingIndex] as ConditionalStatBonusEffect;
+    const selections = character.featureChoices?.[hostId] ?? [];
+    host.choices?.forEach((def, i) => {
+      if (def.kind !== 'feature-from-path') return;
+      const sel = selections[i];
+      if (typeof sel !== 'string' || !featureById.has(sel)) return;
+      if (out.has(sel)) return;
+      out.set(sel, {
+        byFeatureId: hostId,
+        byFeatureName: host.name,
+        kind: 'borrow-inactive',
+        note: `Désactivée tant que « ${effect.activation.label} » n'est pas activé sur ${host.name} : cette capacité empruntée est inutilisable en plein soleil.`,
+      });
+    });
+  }
+  return out;
 }
 
 /**

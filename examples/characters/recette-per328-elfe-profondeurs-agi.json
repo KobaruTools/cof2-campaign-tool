@@ -50,6 +50,9 @@
   "effectToggles": {
     "elfe-des-profondeurs-r1": [
       true
+    ],
+    "elfe-des-profondeurs-r2": [
+      true
     ]
   },
   "effectInputs": {},
