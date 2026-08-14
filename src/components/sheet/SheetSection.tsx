@@ -59,9 +59,9 @@ export interface SheetSectionProps {
   /** État initial replié (n'a d'effet que si `collapsible`). */
   defaultCollapsed?: boolean;
   /**
-   * Clé de persistance de l'état replié/déplié dans `localStorage` (n'a d'effet que si
-   * `collapsible`). Le choix de l'utilisateur survit alors au rechargement, écrasant
-   * `defaultCollapsed`.
+   * Clé `localStorage` COMPLÈTE (déjà résolue via `storageKeys.sheet`/`storageKeys.gmSheet`)
+   * de l'état replié/déplié (n'a d'effet que si `collapsible`). Le choix de l'utilisateur
+   * survit alors au rechargement, écrasant `defaultCollapsed`.
    */
   persistKey?: string;
   /**
@@ -89,8 +89,6 @@ export interface SheetSectionProps {
   onTabChange?: (value: string) => void;
   children: ReactNode;
 }
-
-const storageKey = (key: string) => `sheet-section-collapsed:${key}`;
 
 // `useLayoutEffect` no-op côté serveur (avertissement React) : bascule sur `useEffect` hors navigateur.
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
@@ -172,7 +170,7 @@ export function SheetSection({
       pendingExpand.current = true;
       setCollapsed(false);
       if (persistKey && typeof window !== 'undefined') {
-        window.localStorage.setItem(storageKey(persistKey), 'false');
+        window.localStorage.setItem(persistKey, 'false');
       }
     } else {
       onExpanded?.();
@@ -183,7 +181,7 @@ export function SheetSection({
   // l'initialisation) pour ne pas désynchroniser le rendu serveur/client. Écrase `defaultCollapsed`.
   useEffect(() => {
     if (!collapsible || !persistKey || typeof window === 'undefined') return;
-    const saved = window.localStorage.getItem(storageKey(persistKey));
+    const saved = window.localStorage.getItem(persistKey);
     // Synchronisation d'un système externe (localStorage) vers l'état React, volontairement APRÈS le
     // montage (cf. commentaire ci-dessus) : le `setState` dans l'effet est ici l'usage recommandé.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -194,7 +192,7 @@ export function SheetSection({
     setCollapsed((c) => {
       const next = !c;
       if (persistKey && typeof window !== 'undefined') {
-        window.localStorage.setItem(storageKey(persistKey), String(next));
+        window.localStorage.setItem(persistKey, String(next));
       }
       return next;
     });

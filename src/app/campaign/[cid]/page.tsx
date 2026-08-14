@@ -54,6 +54,7 @@ import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
 import { HomeBackground } from '@/components/HomeBackground';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 import { AttachCharacterDialog } from '@/components/home/AttachCharacterDialog';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import type { CharacterSummary } from '@/lib/character/summary';
@@ -102,7 +103,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const [sort, setSort] = useState<SortState>({ key: 'updatedAt', dir: 'desc' });
   // Section « Archivés » (morts + retraités) repliable, repliée par défaut, choix
   // persisté en local (comme l'accueil). Une seule clé partagée par les campagnes.
-  const [archivedOpen, setArchivedOpen] = usePersistedBoolean('campaign-archived-open', false);
+  const [archivedOpen, setArchivedOpen] = usePersistedBoolean(storageKeys.campaign.archivedOpen, false);
 
   const { showToast } = useToast();
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>

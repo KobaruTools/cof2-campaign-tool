@@ -11,6 +11,10 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { newId } from '@/lib/character/factory';
 import { createDraft, type WizardDraft } from '@/lib/character/wizard';
+import { storageKeys } from '@/lib/storage/keys';
+import { runStorageMigration } from '@/lib/storage/migrateLegacyKeys';
+
+runStorageMigration();
 
 interface WizardState {
   draft: WizardDraft | null;
@@ -59,7 +63,7 @@ export const useWizardStore = create<WizardState>()(
       clear: () => set({ draft: null }),
     }),
     {
-      name: 'cof2-wizard-draft',
+      name: storageKeys.store.wizardDraft,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ draft: state.draft }),
       onRehydrateStorage: () => (state) => {

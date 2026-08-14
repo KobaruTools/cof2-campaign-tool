@@ -76,6 +76,7 @@ import { classColor, prestigeCategoryColor } from '@/lib/ui/classColors';
 import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
@@ -928,7 +929,7 @@ export function LevelUpDialog({
   const [showHybrid, setShowHybrid] = useState(false);
   // Mode d'affichage des capacités acquérables : graphe des voies (simplifié, défaut)
   // ou liste détaillée (avancé) — persisté (choix qui survit à la fermeture du wizard).
-  const [simplifiedView, setSimplifiedView] = usePersistedBoolean('level-up:simplified-view', true);
+  const [simplifiedView, setSimplifiedView] = usePersistedBoolean(storageKeys.levelUp.simplifiedView, true);
   // Voie d'accueil choisie pour la capacité divine d'un prêtre spécialiste (divine
   // de rang ≥ 2 acquise à ce niveau, p. 122). null tant que non désignée.
   const [divineHost, setDivineHost] = useState<string | null>(null);

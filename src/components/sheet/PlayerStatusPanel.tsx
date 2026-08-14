@@ -18,6 +18,7 @@ import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DieIcon } from '@/components/DieIcon';
 import { GaugeRow } from './GaugeRow';
+import { storageKeys } from '@/lib/storage/keys';
 import { HpGauge, type DamageKind } from './HpGauge';
 import { LongRestDialog } from './LongRestDialog';
 import { RecoveryDicePips } from './RecoveryDicePips';
@@ -204,7 +205,7 @@ export function PlayerStatusPanel({
         onDamage={onDamage}
         onHeal={onHeal}
         onReset={onResetHp}
-        persistKey="hp"
+        persistKey={storageKeys.gauge.hp}
       />
 
       {/* Jauge de mana — seulement pour un lanceur de sorts (manaMax non nul), PER-149. */}
@@ -214,7 +215,7 @@ export function PlayerStatusPanel({
           icon={<DerivedStatIcon statId="manaPoints" size={28} color="#fff" />}
           fillColor="info.main"
           capColor={manaColor}
-          persistKey="gauge-expanded:mana"
+          persistKey={storageKeys.gauge.mana}
           current={currentMana(manaMax, depletion)}
           max={manaMax}
           spendLabel="Dépenser"
@@ -251,7 +252,7 @@ export function PlayerStatusPanel({
             icon={g.classId ? <CircledClassIcon classId={g.classId} /> : undefined}
             fillColor={color}
             capColor={color}
-            persistKey={`gauge-expanded:usage:${g.key}`}
+            persistKey={storageKeys.gauge.usage(g.key)}
             current={g.current}
             max={g.max}
             spendLabel="Consommer"
@@ -274,7 +275,7 @@ export function PlayerStatusPanel({
         icon={<DerivedStatIcon statId="luckPoints" size={28} color="#fff" />}
         fillColor="secondary.main"
         capColor={luckColor}
-        persistKey="gauge-expanded:luck"
+        persistKey={storageKeys.gauge.luck}
         current={currentLuck(luckMax, depletion)}
         max={luckMax}
         spendLabel="Dépenser"

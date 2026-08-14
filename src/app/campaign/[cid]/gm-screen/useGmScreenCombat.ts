@@ -23,6 +23,7 @@ import { darken } from '@mui/material/styles';
 import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
 import { deriveStats, type Abilities, type DerivedStats } from '@/lib/engine';
 import { applyDamage, healHp, resetHp } from '@/lib/character/gauges';
+import { storageKeys } from '@/lib/storage/keys';
 import { summarize } from '@/lib/character/summary';
 import { classColor, prestigeCategoryColor, ANCESTRY_COLOR, MAGE_PATH_COLOR } from '@/lib/ui/classColors';
 import { creatureNcLabel, SIDE_ACCENT, SIDE_LABELS } from '@/lib/ui/creature';
@@ -608,7 +609,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             upsert({ ...character, depletion: applyDamage(character.depletion, amount, kind, maxHp) }),
           onHeal: (amount: number) => upsert({ ...character, depletion: healHp(character.depletion, amount) }),
           onReset: () => upsert({ ...character, depletion: resetHp(character.depletion) }),
-          persistKey: `gm-init:${character.id}`,
+          persistKey: storageKeys.gauge.gmInit(character.id),
         };
         // Lignes des COMPAGNONS (monture, familier, golem, loup…) de la section « Compagnons » de la
         // fiche : jamais wired jusqu'ici sur l'écran de MJ. Catégorie propre (`profileLabel`
@@ -684,7 +685,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
               upsert({ ...character, ...damageCompanion(character, entry.key, amount, kind) }),
             onHeal: (amount: number) => upsert({ ...character, ...healCompanion(character, entry.key, amount) }),
             onReset: () => upsert({ ...character, ...resetCompanionHp(character, entry.key) }),
-            persistKey: `gm-init:${rowKey}`,
+            persistKey: storageKeys.gauge.gmInit(rowKey),
           };
         });
         return [characterRow, ...companionRows];
@@ -735,7 +736,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
               onDamage: () => {},
               onHeal: () => {},
               onReset: () => {},
-              persistKey: `gm-init:${inst.id}`,
+              persistKey: storageKeys.gauge.gmInit(inst.id),
             },
           ];
         }
@@ -796,7 +797,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
               setCreatureDepletion(inst.id, applyDamage(depletion, amount, kind, maxHp)),
             onHeal: (amount: number) => setCreatureDepletion(inst.id, healHp(depletion, amount)),
             onReset: () => setCreatureDepletion(inst.id, resetHp(depletion)),
-            persistKey: `gm-init:${inst.id}`,
+            persistKey: storageKeys.gauge.gmInit(inst.id),
           },
         ];
       }),

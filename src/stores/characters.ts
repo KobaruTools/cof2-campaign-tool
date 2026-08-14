@@ -62,6 +62,10 @@ import {
 import { sessionSendFor } from '@/lib/session/sessionBridge';
 import { migrateCharacter } from '@/lib/engine';
 import { removeCharacterPortrait } from '@/lib/storage/characterPortrait';
+import { storageKeys } from '@/lib/storage/keys';
+import { runStorageMigration } from '@/lib/storage/migrateLegacyKeys';
+
+runStorageMigration();
 
 /** Délai d'inactivité avant flush cloud d'un personnage modifié (ms). */
 const FLUSH_DELAY_MS = 900;
@@ -660,7 +664,7 @@ export const useCharactersStore = create<CharactersState>()(
       };
     },
     {
-      name: 'cof2-characters',
+      name: storageKeys.store.characters,
       storage: createJSONStorage(() => localStorage),
       // On persiste le staging des personnages, plus le marqueur cloud-backed
       // (PER-205) **dérivé de `cloudVersions`** — pas maintenu à part : la clé de

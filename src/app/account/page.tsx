@@ -41,6 +41,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { AccountUnlockSection } from '@/components/account/AccountUnlockSection';
 import { useToast } from '@/components/toast/ToastProvider';
 import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
+import { storageKeys } from '@/lib/storage/keys';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ProviderIcon } from '@/components/icons/ProviderIcons';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
@@ -207,8 +208,8 @@ export default function AccountPage() {
       await deleteAccount();
       // Compte parti : on purge le cache localStorage (persos en staging + brouillon
       // wizard) pour ne laisser aucun blob cloud périmé, puis on repart à zéro.
-      localStorage.removeItem('cof2-characters');
-      localStorage.removeItem('cof2-wizard-draft');
+      localStorage.removeItem(storageKeys.store.characters);
+      localStorage.removeItem(storageKeys.store.wizardDraft);
       window.location.href = '/login';
     } catch {
       notify('La suppression a échoué. Réessaie.', 'error');

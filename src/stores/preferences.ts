@@ -18,6 +18,10 @@
  */
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { storageKeys } from '@/lib/storage/keys';
+import { runStorageMigration } from '@/lib/storage/migrateLegacyKeys';
+
+runStorageMigration();
 
 interface PreferencesState {
   /** Suivre la souris pour animer l'illustration de fond. Défaut : vrai. */
@@ -37,7 +41,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       setAnimateBackground: (v) => set({ animateBackground: v }),
     }),
     {
-      name: 'cof2-preferences',
+      name: storageKeys.store.preferences,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ animateBackground: state.animateBackground }),
       onRehydrateStorage: () => (state) => {

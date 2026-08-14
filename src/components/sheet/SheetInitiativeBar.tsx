@@ -40,12 +40,13 @@ import Typography from '@mui/material/Typography';
 import { CondensedOrderDots, InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { useGmScreenCombat } from '@/app/campaign/[cid]/gm-screen/useGmScreenCombat';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 
 /** Le tour se pilote depuis l'écran de MJ : la fiche ne le modifie jamais. */
 const noop = () => {};
 
 /** Clé `localStorage` du repli de la bande — préférence d'affichage LOCALE, comme les autres réglages du tracker. */
-const COLLAPSED_STORAGE_KEY = 'sheet-initiative-bar-collapsed';
+const COLLAPSED_STORAGE_KEY = storageKeys.sheet.initiativeBarCollapsed;
 
 /**
  * Empilement sous les modales/menus/tiroir latéral de la fiche (`Modal` MUI, 1300) et la barre

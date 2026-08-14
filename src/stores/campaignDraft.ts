@@ -16,6 +16,10 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { newId } from '@/lib/character/factory';
 import { DEFAULT_CAMPAIGN_RULES, type CampaignRules } from '@/lib/campaign';
+import { storageKeys } from '@/lib/storage/keys';
+import { runStorageMigration } from '@/lib/storage/migrateLegacyKeys';
+
+runStorageMigration();
 
 /** Joueur en cours de saisie : nom + secret de lien pré-généré (non encore en base). */
 export interface CampaignDraftPlayer {
@@ -122,7 +126,7 @@ export const useCampaignDraftStore = create<CampaignDraftState>()(
       clear: () => set({ draft: null }),
     }),
     {
-      name: 'cof2-campaign-draft',
+      name: storageKeys.store.campaignDraft,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ draft: state.draft }),
       onRehydrateStorage: () => (state) => {

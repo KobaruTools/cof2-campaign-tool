@@ -59,6 +59,7 @@ import { pickSortReducer, type SortKey } from '@/components/character-list/sort'
 import { usePersistedSort } from '@/components/character-list/usePersistedSort';
 import { HomeBackground } from '@/components/HomeBackground';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 import { normalizeSearchText } from '@/lib/ui/searchText';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { UploadCharacterDialog } from '@/components/home/UploadCharacterDialog';
@@ -111,13 +112,13 @@ export default function CharactersPage() {
   const [query, setQuery] = useState('');
   // Tri persisté en local (survit au rechargement, PER-183).
   const [sort, setSort] = usePersistedSort(
-    'home-sort',
+    storageKeys.home.sort,
     { key: 'updatedAt', dir: 'desc' },
     HOME_SORT_KEYS,
   );
   // Section « Archivés » (morts + retraités) repliable, repliée par défaut, choix
   // persisté en local (survit au rechargement).
-  const [archivedOpen, setArchivedOpen] = usePersistedBoolean('home-archived-open', false);
+  const [archivedOpen, setArchivedOpen] = usePersistedBoolean(storageKeys.home.archivedOpen, false);
 
   const { showToast } = useToast();
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>

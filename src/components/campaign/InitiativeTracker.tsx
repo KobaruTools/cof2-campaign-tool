@@ -161,6 +161,7 @@ import {
 import { currentHp, hpHealthState, type HealthState } from '@/lib/character/gauges';
 import { centeredScrollLeft } from '@/lib/ui/centerScroll';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 import {
   scrollEdges,
   stepScrollLeft,
@@ -1761,7 +1762,7 @@ function BandChevron({
  * renommage, un « Détaillé » enregistré du temps de PER-300 aurait continué de gagner et la barre
  * permanente n'aurait jamais paru.
  */
-const COMPACT_STORAGE_KEY = 'initiative-tracker-density-compact';
+const COMPACT_STORAGE_KEY = storageKeys.initiative.densityCompact;
 
 /**
  * Densité par défaut de l'écran de MJ : COMPACT (PER-301), là où PER-300 laissait le détaillé. C'est le
@@ -1780,7 +1781,7 @@ const COMPACT_BY_DEFAULT = true;
  * préférence) : la fenêtre projetée n'a pas cette bascule et ne doit pas hériter d'un repli fait
  * côté MJ, la même clé étant lue par les deux (aucun `cid` : préférence LOCALE à la machine du MJ).
  */
-const GM_COLLAPSED_STORAGE_KEY = 'gm-screen-initiative-collapsed';
+const GM_COLLAPSED_STORAGE_KEY = storageKeys.initiative.gmCollapsed;
 
 /** Côté (px) d'une puce du condensé replié, normale puis mise en évidence pour le combattant actif. */
 const CONDENSED_DOT_SIZE = 20;
@@ -1974,8 +1975,8 @@ function TrackerDensityToggle({
  * COLLÉE en bas de l'écran — elle devient un tiroir qu'on ouvre le temps de poser un état, donc
  * FERMÉE par défaut : une barre permanente doit rester basse, c'est toute sa raison d'être.
  */
-const PALETTE_STORAGE_KEY_DETAILED = 'initiative-tracker-palette-detailed';
-const PALETTE_STORAGE_KEY_COMPACT = 'initiative-tracker-palette-compact';
+const PALETTE_STORAGE_KEY_DETAILED = storageKeys.initiative.paletteDetailed;
+const PALETTE_STORAGE_KEY_COMPACT = storageKeys.initiative.paletteCompact;
 
 /**
  * Bascule d'ouverture de la palette d'états (PER-301), rangée avec le titre et la densité : c'est une

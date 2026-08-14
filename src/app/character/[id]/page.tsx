@@ -114,6 +114,7 @@ import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
 import { classColor } from '@/lib/ui/classColors';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 import { usePersistedState } from '@/lib/ui/usePersistedState';
 import { SheetInitiativeBar } from '@/components/sheet/SheetInitiativeBar';
 import { SheetSection } from '@/components/sheet/SheetSection';
@@ -368,20 +369,20 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // automatique — le déclencheur unique sur la ligne d'identité, puis les sentinelles de bas de
   // bloc, révélaient tout sans que le joueur ait pu choisir CE qu'il voulait garder sous les yeux).
   // Préférence GLOBALE persistée, comme `voiesLayout`/`featuresVerbatim` ci-dessous.
-  const [pinAbilities, setPinAbilities] = usePersistedBoolean('sheet:pin-abilities', false);
-  const [pinDerivedStats, setPinDerivedStats] = usePersistedBoolean('sheet:pin-derived-stats', false);
-  const [pinStatusGauges, setPinStatusGauges] = usePersistedBoolean('sheet:pin-status-gauges', false);
-  const [pinInventory, setPinInventory] = usePersistedBoolean('sheet:pin-inventory', false);
+  const [pinAbilities, setPinAbilities] = usePersistedBoolean(storageKeys.sheet.pinAbilities, false);
+  const [pinDerivedStats, setPinDerivedStats] = usePersistedBoolean(storageKeys.sheet.pinDerivedStats, false);
+  const [pinStatusGauges, setPinStatusGauges] = usePersistedBoolean(storageKeys.sheet.pinStatusGauges, false);
+  const [pinInventory, setPinInventory] = usePersistedBoolean(storageKeys.sheet.pinInventory, false);
   // Bourse dans le condensé Inventaire — PIN individuel (bloc « Bourse », `PurseField`), lui-même
   // sans effet si la section Inventaire n'est pas épinglée (`pinInventory` ci-dessus). Défaut FERMÉ
   // (« pin optionnel ») : l'utilisateur l'active s'il veut suivre sa bourse en permanence.
-  const [pinInventoryPurse, setPinInventoryPurse] = usePersistedBoolean('sheet:pin-inventory-purse', false);
+  const [pinInventoryPurse, setPinInventoryPurse] = usePersistedBoolean(storageKeys.sheet.pinInventoryPurse, false);
   // « Objet personnalisé » dans le condensé Inventaire — même principe que la bourse ci-dessus (pin
   // optionnel, défaut FERMÉ), mais soudé au bouton lui-même (`WeldedBarPinButton`, `EquipmentList`)
   // plutôt qu'à un en-tête. `customItemOpenNonce` PILOTE `EquipmentList.openCustomItemSignal` : même
   // mécanisme nonce qu'`equipmentJumpNonce` ci-dessous (une incrémentation rouvre la modale).
   const [pinInventoryCustomItem, setPinInventoryCustomItem] = usePersistedBoolean(
-    'sheet:pin-inventory-custom-item',
+    storageKeys.sheet.pinInventoryCustomItem,
     false,
   );
   const [customItemOpenNonce, setCustomItemOpenNonce] = useState(0);
@@ -498,10 +499,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // (eux) restent persistés, comme avant l'introduction des onglets (cf. `TestDomainsPanel`).
   const [statsView, setStatsView] = useState<'derived' | 'tests'>('derived');
   const [testsIncludeAbility, setTestsIncludeAbility] = usePersistedBoolean(
-    'test-domains:include-ability',
+    storageKeys.testDomains.includeAbility,
     false,
   );
-  const [testsHideZero, setTestsHideZero] = usePersistedBoolean('test-domains:hide-zero', true);
+  const [testsHideZero, setTestsHideZero] = usePersistedBoolean(storageKeys.testDomains.hideZero, true);
   const { showToast } = useToast();
   // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
@@ -1838,7 +1839,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             icon="inventory"
             collapsible
             defaultCollapsed
-            persistKey="equipment"
+            persistKey={storageKeys.sheet.sectionCollapsed('equipment')}
             // PER-116 — dépliage forcé depuis l'icône d'arme de la carte d'attaque (ci-dessous).
             expandSignal={equipmentJumpNonce}
             onExpanded={() => {
@@ -1987,7 +1988,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             icon="identity"
             collapsible
             defaultCollapsed
-            persistKey="identity"
+            persistKey={storageKeys.sheet.sectionCollapsed('identity')}
             action={(collapsed) =>
               collapsed || readOnly ? null : (
                 <BlockEditButton
@@ -2083,7 +2084,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             icon="notes"
             collapsible
             defaultCollapsed
-            persistKey="notes"
+            persistKey={storageKeys.sheet.sectionCollapsed('notes')}
             action={(collapsed) =>
               collapsed || readOnly ? null : (
                 <BlockEditButton
@@ -2116,7 +2117,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             icon="levels"
             collapsible
             defaultCollapsed
-            persistKey="level-history"
+            persistKey={storageKeys.sheet.sectionCollapsed('level-history')}
             action={(collapsed) =>
               !collapsed && !readOnly && canUndoLastLevelUp(character) ? (
                 <LevelUndoButton

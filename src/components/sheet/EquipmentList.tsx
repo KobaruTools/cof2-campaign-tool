@@ -67,6 +67,7 @@ import {
 } from '@/lib/character/items';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { usePersistedStringSet } from '@/lib/ui/usePersistedStringSet';
+import { storageKeys } from '@/lib/storage/keys';
 import { isFirearmItemId } from '@/lib/character/firearms';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { parseCoinPouchName } from '@/lib/character/coinPouch';
@@ -955,7 +956,7 @@ export function EquipmentList({
   // (clé stable par objet, pas par index — fragile au réordonnancement/suppression).
   // Sans `characterId` (wizard, catalogue hors personnage) : reste local à la session.
   const [pinnedDesc, togglePinnedKey] = usePersistedStringSet(
-    characterId ? `cof2-inventory-pinned-desc:${characterId}` : null,
+    characterId ? storageKeys.inventory.pinnedDesc(characterId) : null,
   );
   const pinKeyFor = (line: EquipmentLine): string =>
     isCustomItem(line) ? `custom:${line.name}` : `ref:${line.instanceId ?? line.itemId}`;
@@ -969,11 +970,11 @@ export function EquipmentList({
 
   // Bascule « Organiser par catégorie » (PER-221) : préférence UI GLOBALE persistée
   // (localStorage), groupé par défaut. Le regroupement est purement VISUEL.
-  const [grouped, setGrouped] = usePersistedBoolean('cof2-inventory-grouped', true);
+  const [grouped, setGrouped] = usePersistedBoolean(storageKeys.inventory.grouped, true);
   // Bascule d'affichage liste / colonnes (PER-223) : préférence UI GLOBALE persistée
   // (localStorage), orthogonale au regroupement. Défaut « liste » (rendu historique) —
   // le mode cartes est un opt-in. `true` = cartes, `false` = liste.
-  const [cards, setCards] = usePersistedBoolean('cof2-inventory-cards', false);
+  const [cards, setCards] = usePersistedBoolean(storageKeys.inventory.cards, false);
 
   // Réordonnancement manuel (PER-222) : disponible en mode ÉDITION (`onChange`), à plat
   // uniquement (regroupement désactivé), et seulement s'il y a au moins deux lignes.

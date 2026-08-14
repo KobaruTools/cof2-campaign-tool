@@ -75,6 +75,7 @@ import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIn
 import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 import { usePersistedState } from '@/lib/ui/usePersistedState';
 import { customCreatureBlob } from '@/lib/session/customCreature';
 import { useActiveSession } from '@/lib/session/useActiveSession';
@@ -694,7 +695,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             {claimed.length > 0 && (
               <CollapsibleSection
                 label="Joueurs"
-                storageKey="gm-screen-players-open"
+                storageKey={storageKeys.campaign.gmScreenPlayersOpen}
                 count={claimed.length}
               >
                 {claimed.map((character) => (
@@ -711,7 +712,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             {companionRoster.length > 0 && (
               <CollapsibleSection
                 label="Compagnons"
-                storageKey="gm-screen-companions-open"
+                storageKey={storageKeys.campaign.gmScreenCompanionsOpen}
                 count={companionRoster.length}
               >
                 {companionRoster.map((roster) => (
@@ -735,7 +736,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               <CollapsibleSection
                 label="Alliés"
                 color={SIDE_ACCENT.ally}
-                storageKey="gm-screen-allies-open"
+                storageKey={storageKeys.campaign.gmScreenAlliesOpen}
                 count={allies.length}
               >
                 {allies.map((inst) => (
@@ -758,7 +759,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               <CollapsibleSection
                 label="Adversaires"
                 color={SIDE_ACCENT.enemy}
-                storageKey="gm-screen-enemies-open"
+                storageKey={storageKeys.campaign.gmScreenEnemiesOpen}
                 count={enemies.length}
               >
                 {enemies.map((inst) => (

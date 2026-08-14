@@ -40,6 +40,7 @@ import { PlayersSection } from '@/components/campaign/PlayersSection';
 import { HomeBackground } from '@/components/HomeBackground';
 import { DEFAULT_CAMPAIGN_RULES, type CampaignRules } from '@/lib/campaign';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 import { useCampaignsStore } from '@/stores/campaigns';
 
 /** Verre dépoli commun aux cartes de réglages (aligné sur les autres pages). */
@@ -306,13 +307,13 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
             {/* Section : joueurs (3ᵉ position, après le placeholder PDF). Déplacée depuis
                 la vue campagne. Repliable, état persisté ; contenu « bare » car l'en-tête
                 et le repli sont fournis ici par `CollapsibleSection`. */}
-            <CollapsibleSection title="Joueurs" storageKey="campaign-settings-players-open">
+            <CollapsibleSection title="Joueurs" storageKey={storageKeys.campaign.settingsPlayersOpen}>
               <PlayersSection campaignId={cid} bare />
             </CollapsibleSection>
 
             {/* Section : règles de table (repliable, état persisté). Éditeur sur-mesure ;
                 chaque règle occupe son propre bloc — titre, description et renvoi au livre. */}
-            <CollapsibleSection title="Règles de table" storageKey="campaign-settings-rules-open">
+            <CollapsibleSection title="Règles de table" storageKey={storageKeys.campaign.settingsRulesOpen}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Décisions d’univers qui s’appliquent aux personnages de la campagne.
               </Typography>

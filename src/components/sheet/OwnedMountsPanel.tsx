@@ -44,6 +44,7 @@ import {
   CreatureSpecialAbilityBlocks,
 } from './CreatureStatBlock';
 import { HpGauge, type DamageKind } from './HpGauge';
+import { storageKeys } from '@/lib/storage/keys';
 
 /** Prix formaté « 300 pa » (ou chaîne vide si absent). */
 function formatPrice(price: Price): string {
@@ -198,7 +199,7 @@ function MountCard({
                 onDamage={onDamage}
                 onHeal={onHeal}
                 onReset={onReset}
-                persistKey={`mount:${owned.id}`}
+                persistKey={storageKeys.gauge.mount(owned.id)}
                 iconLabel={`Points de vigueur — ${displayName}`}
               />
             )}

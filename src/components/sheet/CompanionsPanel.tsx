@@ -14,6 +14,7 @@ import type { Depletion } from '@/lib/character/types';
 import { resolveCreatureMaxHp, type CompanionEntry } from '@/lib/character/companions';
 import type { DamageKind } from './HpGauge';
 import { HpGauge } from './HpGauge';
+import { storageKeys } from '@/lib/storage/keys';
 import { resolveCreatureAbilities } from '@/lib/ui/creature';
 import {
   CompanionSizePill,
@@ -133,7 +134,7 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
               onDamage={onDamage}
               onHeal={onHeal}
               onReset={onReset}
-              persistKey={`companion:${entry.key}`}
+              persistKey={storageKeys.gauge.companion(entry.key)}
               iconLabel={`Points de vigueur — ${profile.name}`}
             />
           )}

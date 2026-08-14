@@ -63,6 +63,7 @@ import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
 import { classColor, profileAccentGradient } from '@/lib/ui/classColors';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { storageKeys } from '@/lib/storage/keys';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { FirearmsAllowedProvider } from '@/components/ClassIcon';
@@ -96,12 +97,6 @@ import { useCharacterGameState } from '@/components/sheet/useCharacterGameState'
 import { statusSheetImpact, type AppliedStatus } from '@/lib/character/statusEffects';
 import { mergeMods } from '@/lib/character/orphanPoints';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
-
-/**
- * Clés de mémorisation du repli PROPRES au panneau : replier une section ici ne doit pas
- * replier la même section sur la vraie fiche (préférences indépendantes).
- */
-const PERSIST_PREFIX = 'gm-sheet:';
 
 /**
  * Liste d'états vide partagée : un sélecteur zustand doit renvoyer une référence STABLE quand il n'y
@@ -317,10 +312,10 @@ function GmSheetDrawerContent({
   // Toggles d'affichage de « Compétences & tests » (`TestDomainsPanel`) : mêmes clés que la
   // fiche complète, donc la préférence est PARTAGÉE entre les deux vues (mêmes onglets).
   const [testsIncludeAbility, setTestsIncludeAbility] = usePersistedBoolean(
-    'test-domains:include-ability',
+    storageKeys.testDomains.includeAbility,
     false,
   );
-  const [testsHideZero, setTestsHideZero] = usePersistedBoolean('test-domains:hide-zero', true);
+  const [testsHideZero, setTestsHideZero] = usePersistedBoolean(storageKeys.testDomains.hideZero, true);
 
   const {
     derived: {
@@ -714,7 +709,7 @@ function GmSheetDrawerContent({
             icon="inventory"
             collapsible
             defaultCollapsed
-            persistKey={`${PERSIST_PREFIX}equipment`}
+            persistKey={storageKeys.gmSheet.sectionCollapsed('equipment')}
             action={(collapsed) =>
               collapsed ? null : (
                 <BlockEditButton

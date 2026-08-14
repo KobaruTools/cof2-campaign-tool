@@ -1,4 +1,5 @@
 import type { OAuthProviderId } from './providers';
+import { storageKeys } from '@/lib/storage/keys';
 
 /**
  * Indice UX « dernière méthode d'auth utilisée » (PER-188), mémorisé en
@@ -7,7 +8,7 @@ import type { OAuthProviderId } from './providers';
  */
 export type LastAuthMethod = OAuthProviderId | 'magic-link';
 
-const STORAGE_KEY = 'cof2:last-auth-method';
+const STORAGE_KEY = storageKeys.auth.lastMethod;
 
 const VALID: readonly LastAuthMethod[] = ['google', 'discord', 'magic-link'];
 

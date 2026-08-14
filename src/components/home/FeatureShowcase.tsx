@@ -41,6 +41,7 @@ import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { GuidedCreationDemo } from '@/components/home/GuidedCreationDemo';
 import { GaugeRow } from '@/components/sheet/GaugeRow';
 import { HpGauge } from '@/components/sheet/HpGauge';
+import { storageKeys } from '@/lib/storage/keys';
 import { RecoveryDicePips } from '@/components/sheet/RecoveryDicePips';
 import { STATUS_EFFECTS, type Die, type StatusEffectId } from '@/data/schema';
 import {
@@ -257,7 +258,7 @@ function InPlayDemo() {
       <HpGauge
         depletion={depletion}
         maxHp={DEMO_MAX_HP}
-        persistKey="home-demo"
+        persistKey={storageKeys.gauge.homeDemo}
         controlsBelow
         hideDetails
         onDamage={(amount, kind) => setDepletion((d) => applyDamage(d, amount, kind, DEMO_MAX_HP))}
@@ -269,7 +270,7 @@ function InPlayDemo() {
         icon={<DerivedStatIcon statId="manaPoints" size={28} color="#fff" />}
         fillColor="info.main"
         capColor={theme.palette.info.main}
-        persistKey="gauge-expanded:home-demo-mana"
+        persistKey={storageKeys.gauge.homeDemoMana}
         controlsBelow
         hideDetails
         current={currentMana(DEMO_MAX_MANA, depletion)}

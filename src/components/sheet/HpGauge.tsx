@@ -116,7 +116,7 @@ export interface HpGaugeProps {
   onHeal: (amount: number) => void;
   /** Remet les PV à plein. */
   onReset: () => void;
-  /** Clé `localStorage` de l'état déplié/replié du formulaire dégâts/soin (unique par jauge). */
+  /** Clé `localStorage` COMPLÈTE (déjà résolue via `storageKeys.gauge`) de l'état déplié/replié du formulaire dégâts/soin (unique par jauge). */
   persistKey: string;
   /** Libellé de l'icône cœur (info-bulle du cap). Défaut « Points de vie ». */
   iconLabel?: string;
@@ -156,7 +156,7 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
   const hpColor = theme.palette.success.main;
   const [amount, setAmount] = useState('1');
   const [kind, setKind] = useState<DamageKind>('lethal');
-  const [expanded, toggleExpanded] = usePersistentBoolean(`gauge-expanded:${persistKey}`, defaultExpanded);
+  const [expanded, toggleExpanded] = usePersistentBoolean(persistKey, defaultExpanded);
 
   const current = currentHp(maxHp, depletion);
   const lethal = Math.max(0, depletion.hp?.lethal ?? 0);
