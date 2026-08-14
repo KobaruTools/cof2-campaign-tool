@@ -20,6 +20,7 @@ import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
+import HistoryIcon from '@mui/icons-material/History';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Box from '@mui/material/Box';
@@ -311,6 +312,15 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
             Voir l&apos;ordre d&apos;initiative
           </Button>
           <OpenPlayTrackerWindowButton />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<HistoryIcon />}
+            component={Link}
+            href="/play/history"
+          >
+            Historique des parties
+          </Button>
         </Stack>
       </Box>
       <Paper elevation={0} sx={sectionSx}>

@@ -96,6 +96,7 @@ describe('decideRouteAccess — session joueur (lien du MJ)', () => {
   it('garde son espace et ses fiches', () => {
     expect(allows('/play', 'player')).toBe(true);
     expect(allows('/play/initiative', 'player')).toBe(true);
+    expect(allows('/play/history', 'player')).toBe(true);
     expect(allows('/characters', 'player')).toBe(true);
     expect(allows('/character/abc', 'player')).toBe(true);
     expect(allows('/create', 'player')).toBe(true);
@@ -139,6 +140,7 @@ describe('decideRouteAccess — session propriétaire', () => {
   it("l'espace joueur lui est fermé (exclusif au joueur) et le ramène à la vitrine", () => {
     expect(redirectOf('/play', 'owner')).toBe('/');
     expect(redirectOf('/play/initiative', 'owner')).toBe('/');
+    expect(redirectOf('/play/history', 'owner')).toBe('/');
   });
 
   it('aucune redirection ne demande de report `?next=` (déjà authentifié)', () => {
