@@ -89,6 +89,8 @@ export interface PathCardProps {
    */
   prestige?: boolean;
   prestigeTint?: string;
+  /** Épaisseur de la bordure (non-prestige) en px. Défaut 2. */
+  borderWidth?: number;
 }
 
 /**
@@ -122,6 +124,7 @@ export function PathCard({
   endAdornment,
   prestige = false,
   prestigeTint,
+  borderWidth = 2,
 }: PathCardProps) {
   const ControlComp = control === 'radio' ? Radio : Checkbox;
   const GhostIcon = control === 'radio' ? FiberManualRecordIcon : CheckIcon;
@@ -156,7 +159,7 @@ export function PathCard({
               background: `linear-gradient(45deg, ${alpha(prestigeTint ? lighten(prestigeTint, 0.55) : '#f5e7a0', checked ? 0.34 : 0.2)} 0%, ${alpha('#d0d0d0', checked ? 0.14 : 0.08)} 85%)`,
             }
           : {
-              border: 2,
+              border: borderWidth,
               borderColor: checked ? color : 'divider',
               bgcolor: checked ? alpha(color, 0.06) : 'transparent',
             }),
@@ -293,13 +296,15 @@ export function PathCard({
           <Box sx={{ p: 1, borderTop: 1, borderColor: 'divider' }} onClick={(e) => e.stopPropagation()}>
             {detail ?? (feature ? (
               <>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: 'block', mb: note ? 0 : 0.25 }}
-                >
-                  {rankLabel}
-                </Typography>
+                {rankLabel && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mb: note ? 0 : 0.25 }}
+                  >
+                    {rankLabel}
+                  </Typography>
+                )}
                 {note && (
                   <Typography
                     variant="caption"

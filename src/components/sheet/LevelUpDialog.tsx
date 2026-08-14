@@ -1730,7 +1730,7 @@ export function LevelUpDialog({
                               const cost = featureCost(feature, progression);
                               return (
                                 <Box key={feature.id}>
-                                  <Stack direction="row" spacing="4px">
+                                  <Stack direction="row" spacing="4px" sx={{ alignItems: 'stretch' }}>
                                     {/* Même patron de carte que les capacités acquérables
                                         (`AvailablePathGroup`) — sans case à cocher : la
                                         sélection est déjà acquise ici. Hexagones collés au
@@ -1768,13 +1768,8 @@ export function LevelUpDialog({
                                       />
                                     </Box>
                                     {/* Coût + corbeille : EN DEHORS du bloc de la carte, sur la droite —
-                                        empilés sur exactement la hauteur du bloc (rang collapsé),
-                                        4px d'écart entre eux et avec le bloc. La corbeille (flexGrow,
-                                        min-height 0) se réduit pour ne jamais dépasser cette hauteur. */}
-                                    <Stack
-                                      spacing="4px"
-                                      sx={{ alignItems: 'stretch', justifyContent: 'space-between', flexShrink: 0 }}
-                                    >
+                                        collés l'un à l'autre (4px d'écart), en haut, taille fixe. */}
+                                    <Stack spacing="4px" sx={{ alignItems: 'stretch', flexShrink: 0 }}>
                                       <MetaPill>{`${cost} pt${cost > 1 ? 's' : ''}`}</MetaPill>
                                       <AppTooltip title="Retirer ce choix">
                                         <Box
