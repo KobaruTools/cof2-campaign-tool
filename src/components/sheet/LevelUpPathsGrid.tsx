@@ -114,15 +114,17 @@ const PATH_GRID_ANIMATIONS = `
     100% { box-shadow: 0 0 0 5px rgba(255, 255, 255, 0); }
   }
   @keyframes pathTutorialFinger {
-    /* Centrage horizontal EXACT via translateX(-50%) — géré ici (pas par un décalage en px
-       deviné sur la largeur de l'icône), constant à chaque étape ; seuls translateY/scale
-       varient pour le mouvement de « pression ». */
-    0% { opacity: 0; transform: translate(-50%, -6px) scale(1); }
-    10% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-    28% { opacity: 1; transform: translate(-50%, 2px) scale(0.88); }
-    40% { opacity: 1; transform: translate(-50%, 2px) scale(0.88); }
-    55% { opacity: 0; transform: translate(-50%, -6px) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -6px) scale(1); }
+    /* Centrage EXACT (horizontal ET vertical) via translate(-50%, -50%) — géré ici, jamais
+       par un décalage en px/% deviné sur la taille de l'icône ou du rang ciblé (l'icône
+       (44px) est de toute façon plus grande que la case : centrée, elle déborde déjà des
+       deux côtés SANS décalage supplémentaire, quel que soit le rang démontré). calc()
+       ajoute juste le petit mouvement de « pression » (translateY) par-dessus le -50 %. */
+    0% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)) scale(1); }
+    10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    28% { opacity: 1; transform: translate(-50%, calc(-50% + 2px)) scale(0.88); }
+    40% { opacity: 1; transform: translate(-50%, calc(-50% + 2px)) scale(0.88); }
+    55% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)) scale(1); }
   }
   @keyframes pathTutorialBarFill {
     0%, 10% { transform: scaleX(0); opacity: 1; }
@@ -669,18 +671,19 @@ export function LevelUpPathsGrid({
                     }}
                   />
                 </Box>
-                {/* Doigt qui appuie — dépasse la case vers le haut (`top` négatif) pour se
-                    voir même sur une case minuscule ; seul indice que le geste « maintenir »
-                    existe. */}
+                {/* Doigt qui appuie — centré sur la case, déborde des deux côtés (icône plus
+                    grande que la case, jamais un décalage arbitraire) pour rester visible et
+                    juste même sur une case minuscule, quel que soit le rang démontré ; seul
+                    indice que le geste « maintenir » existe. */}
                 <TouchAppIcon
                   sx={{
                     position: 'absolute',
-                    top: '-40%',
+                    top: '50%',
                     left: '50%',
                     // Repli SANS animation (ci-dessous) : `transform` reste posé ici (jamais dans
                     // le bloc reduced-motion, qui ne coupe QUE `animation`) — sinon le doigt perd
-                    // son centrage `translateX(-50%)` dès que l'animation est coupée.
-                    transform: 'translate(-50%, 0) scale(1)',
+                    // son centrage `translate(-50%, -50%)` dès que l'animation est coupée.
+                    transform: 'translate(-50%, -50%) scale(1)',
                     opacity: 1,
                     fontSize: 44,
                     color: '#fff',
@@ -695,21 +698,6 @@ export function LevelUpPathsGrid({
         );
       })}
       </Box>
-
-      {showDemoTutorial && (
-        // Texte de la démo : hors de la case (`overflow: hidden`), sous la grille — le
-        // doigt anime QUEL rang, le texte explique CE QUE fait le geste.
-        <Stack
-          direction="row"
-          spacing={0.5}
-          sx={{ alignItems: 'center', justifyContent: 'center', mt: 0.75 }}
-        >
-          <TouchAppIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-          <Typography variant="caption" color="text.secondary">
-            Rester appuyé pour choisir un rang
-          </Typography>
-        </Stack>
-      )}
 
       {preview &&
         (() => {
