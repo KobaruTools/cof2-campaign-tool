@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
@@ -705,41 +705,35 @@ function LevelBadge({ level, color }: { level: number; color: string }) {
  * Compte de 0 jusqu'à `target`, un pas par valeur entière espacé de `stepMs` (chaque
  * pas déclenche le flip d'un chiffre, cf. `FlipDigit`) — rythme fixe et rapide, pas
  * de courbe : les gains de PV restent petits, ça n'a pas besoin d'accélérer/ralentir.
- * Démarre après `delay` UNIQUEMENT pour le tout premier décompte de l'ouverture
- * (500ms par défaut : le temps que l'entrée du wizard — `levelUpDialogPop`, 0.5s —
- * se termine) ; les rejouages suivants (changement de `resetKey` pendant que le
- * wizard reste ouvert — ex. bascule PV fixes ↔ dé de vie) démarrent SANS attendre :
- * le bloc est déjà visible à ce stade, l'attente se voyait comme un « 0 » figé
- * suivi d'un bond quasi instantané plutôt que comme une animation. Rejoué aussi à
- * chaque changement de cible (recalcul du gain de PV — famille, dé de vie lancé…).
- * `null` = rien à afficher (profil incomplet). Respecte `prefers-reduced-motion`.
+ * Démarre après `delay` (500ms par défaut : le temps que l'entrée du wizard —
+ * `levelUpDialogPop`, 0.5s — se termine), rejoué à chaque changement de cible
+ * (recalcul du gain de PV — famille, dé de vie lancé…) ou de `resetKey` (ex. le
+ * mode PV fixes/dé de vie : rebasculer sur PV fixes doit rejouer l'animation même
+ * si la valeur numérique retombe sur le même gain). `stepMs` doit rester ⩾ à la
+ * durée du flip (`FlipDigit`, 0.22s) : plus court, chaque flip est interrompu par
+ * le suivant avant d'avoir pu se jouer, et tout le décompte se voit comme un bond
+ * instantané au lieu d'un défilement. `null` = rien à afficher (profil incomplet).
+ * Respecte `prefers-reduced-motion`.
  *
  * Le wizard reste monté entre deux ouvertures (seule la prop `open` de `Dialog`
  * change) : sans `open` en dépendance, l'animation ne rejouerait qu'une fois. On la
- * remet à 0 à la fermeture pour qu'elle se rejoue en entier (avec le délai
- * d'ouverture) à la prochaine ouverture.
+ * remet à 0 à la fermeture pour qu'elle se rejoue en entier à la prochaine ouverture.
  */
 function useCountUp(
   target: number | null,
   open: boolean,
   resetKey: unknown,
-  { stepMs = 45, delay = 500 }: { stepMs?: number; delay?: number } = {},
+  { stepMs = 240, delay = 500 }: { stepMs?: number; delay?: number } = {},
 ): number | null {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [display, setDisplay] = useState<number | null>(target === null ? null : 0);
-  // A déjà démarré un décompte au moins une fois depuis l'ouverture — sert à
-  // n'appliquer `delay` qu'à la toute première fois (cf. doc ci-dessus).
-  const hasStartedRef = useRef(false);
   // Fermeture (ou changement de `resetKey`) : remet à 0 pour repartir de zéro,
   // plutôt que de garder la valeur figée précédente. Ajustement pendant le rendu
   // (pas d'effet), pattern recommandé par React — cf. `CoinInput` dans `PurseField`.
   const [lastOpen, setLastOpen] = useState(open);
   if (open !== lastOpen) {
     setLastOpen(open);
-    if (!open) {
-      setDisplay(target === null ? null : 0);
-      hasStartedRef.current = false;
-    }
+    if (!open) setDisplay(target === null ? null : 0);
   }
   const [lastResetKey, setLastResetKey] = useState(resetKey);
   if (resetKey !== lastResetKey) {
@@ -752,14 +746,13 @@ function useCountUp(
     if (!open || target === null || reducedMotion) return;
     let i = 0;
     const tick = () => {
-      hasStartedRef.current = true;
       setDisplay(i);
       if (i >= target) return;
       i += 1;
       timeoutId = setTimeout(tick, stepMs);
     };
     let timeoutId: ReturnType<typeof setTimeout>;
-    const startTimeoutId = setTimeout(tick, hasStartedRef.current ? 0 : delay);
+    const startTimeoutId = setTimeout(tick, delay);
     return () => {
       clearTimeout(startTimeoutId);
       clearTimeout(timeoutId);
