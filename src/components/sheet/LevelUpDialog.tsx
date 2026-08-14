@@ -1628,7 +1628,10 @@ export function LevelUpDialog({
               )}
             </Box>
 
-          <Box>
+          {/* `display: flex` + `order` uniquement pour permuter grille et « Capacités
+              sélectionnées » sur mobile (`xs`) — sur desktop l'ordre du DOM (inchangé)
+              suffit, moins gênant proprio à côté d'un panneau latéral. */}
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             {pendingDivine && divineAccessible && (
               <DivineAcquisitionCard
                 pending={pendingDivine}
@@ -1652,6 +1655,7 @@ export function LevelUpDialog({
               // rotation géométrique (donc pas de coins « vides »).
               <Box
                 sx={(theme) => ({
+                  order: { xs: 4, sm: 0 },
                   mb: 2,
                   p: 1.5,
                   borderRadius: 1.5,
@@ -2035,6 +2039,7 @@ export function LevelUpDialog({
               </Accordion>
             )}
 
+            <Box sx={{ order: { xs: 1, sm: 0 }, mb: { xs: 2, sm: 0 } }}>
             {simplifiedView ? (
               <LevelUpPathsGrid
                 character={working}
@@ -2171,6 +2176,7 @@ export function LevelUpDialog({
                 )}
               </Stack>
             )}
+            </Box>
           </Box>
         </Stack>
       </DialogContent>
