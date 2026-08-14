@@ -450,6 +450,19 @@ function borrowedFeatureOf(character: Character | undefined, feature: Feature): 
 }
 
 /**
+ * PER-328 — la capacité porte-t-elle un interrupteur d'AUTORISATION des emprunts
+ * (`ConditionalStatBonusEffect.disablesBorrowedWhenInactive`, ex. elfe des profondeurs r2 « Lames et
+ * sorcellerie » : « À l'abri du plein soleil ») ? Un tel interrupteur GATE les cartes empruntées, on le
+ * rend donc EN TÊTE de l'hôte (près de ses choix), PAS sous les cartes empruntées — sinon il se lit
+ * comme appartenant à l'emprunt (retour propriétaire).
+ */
+function hasBorrowAuthorizationToggle(feature: Feature): boolean {
+  return (feature.effects ?? []).some(
+    (e) => e.kind === 'conditional-stat-bonus' && e.disablesBorrowedWhenInactive === true,
+  );
+}
+
+/**
  * Remplacement des types d'action de la carte NATIVE d'une capacité quand un grant fixe
  * (`grantedFeature.freeActionIfOwned`, PER-323) s'applique : si le personnage possède DÉJÀ cette
  * capacité nativement et qu'une autre capacité acquise l'octroierait (cambion « Enfant des ténèbres »),
@@ -4419,6 +4432,14 @@ function PathBlock({
                     )}
                   </>
                 )}
+                {/* PER-328 — interrupteur d'AUTORISATION des emprunts (« À l'abri du plein soleil ») en
+                    tête, AVANT les cartes empruntées qu'il gate (retour proprio). */}
+                {hasBorrowAuthorizationToggle(openFeature) && hasEffectToggles(openFeature) && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    {renderEffectToggles(openFeature)}
+                  </>
+                )}
                 {(() => {
                   // PER-120 : capacité(s) EMPRUNTÉE(s) (Combattant aguerri) rendue(s) SOUS le
                   // texte/choix, sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
@@ -4592,7 +4613,9 @@ function PathBlock({
                     </>
                   ) : null;
                 })()}
-                {hasEffectToggles(openFeature) && (
+                {/* Interrupteurs conditionnels de l'hôte, en pied — SAUF l'interrupteur d'autorisation
+                    des emprunts (PER-328), déjà rendu en tête ci-dessus. */}
+                {hasEffectToggles(openFeature) && !hasBorrowAuthorizationToggle(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
                     {renderEffectToggles(openFeature)}
@@ -5007,6 +5030,14 @@ function PathBlock({
                     : renderChoiceDisplay(feature, { onEdit: onEnableFeatureEditing })}
                 </>
               )}
+              {/* PER-328 — interrupteur d'AUTORISATION des emprunts (« À l'abri du plein soleil ») rendu
+                  EN TÊTE de l'hôte, AVANT les cartes empruntées qu'il gate (retour proprio). */}
+              {hasBorrowAuthorizationToggle(feature) && hasEffectToggles(feature) && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  {renderEffectToggles(feature)}
+                </>
+              )}
               {(() => {
                 // PER-120 : capacité(s) EMPRUNTÉE(s) (Combattant aguerri) rendue(s) SOUS le
                 // texte/choix, sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
@@ -5162,7 +5193,9 @@ function PathBlock({
                   </>
                 ) : null;
               })()}
-              {hasEffectToggles(feature) && (
+              {/* Interrupteurs conditionnels de l'hôte, en pied — SAUF l'interrupteur d'autorisation des
+                  emprunts (PER-328), déjà rendu en tête ci-dessus. */}
+              {hasEffectToggles(feature) && !hasBorrowAuthorizationToggle(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
                   {renderEffectToggles(feature)}
