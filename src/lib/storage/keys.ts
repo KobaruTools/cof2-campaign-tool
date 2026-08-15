@@ -30,6 +30,7 @@ export const storageKeys = {
     preferences: key('store', 'preferences'),
     wizardDraft: key('store', 'wizard-draft'),
     campaignDraft: key('store', 'campaign-draft'),
+    tours: key('store', 'tours'),
   },
   auth: {
     lastMethod: key('auth', 'last-method'),

@@ -6,6 +6,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
@@ -103,6 +104,9 @@ import {
 } from '@/components/sheet/MagicItemBadges';
 import SportsMartialArtsIcon from '@mui/icons-material/SportsMartialArts';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import type { Step } from 'react-joyride';
+import { GuidedTour } from '@/components/tour/GuidedTour';
+import { useGuidedTour } from '@/lib/tours/useGuidedTour';
 
 /** Libellés FR des 7 types d'objet (le CODE reste en anglais, cf. CLAUDE.md). */
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
@@ -791,6 +795,7 @@ function FormAccordion({
   defaultExpanded,
   expanded,
   onChange,
+  dataTour,
   children,
 }: {
   title: string;
@@ -798,12 +803,15 @@ function FormAccordion({
   defaultExpanded?: boolean;
   expanded?: boolean;
   onChange?: (expanded: boolean) => void;
+  /** Cible du tour guidé (PER-423) — voir `src/components/tour/GuidedTour.tsx`. */
+  dataTour?: string;
   children: ReactNode;
 }) {
   return (
     <Accordion
       disableGutters
       elevation={0}
+      data-tour={dataTour}
       {...(onChange
         ? { expanded, onChange: (_: unknown, next: boolean) => onChange(next) }
         : { defaultExpanded })}
@@ -1098,6 +1106,39 @@ function ItemPreviewCard({
   );
 }
 
+/** Étapes du tour guidé pilote (PER-423) : identité, aperçu en direct, enchantement, sauvegarde
+ * — les 4 zones décrites par le ticket. Ciblées par attribut `data-tour` plutôt que par classe
+ * ou id, pour rester distinctes de tout style. */
+const ITEM_DIALOG_TOUR_STEPS: Step[] = [
+  {
+    target: '[data-tour="item-dialog-identity"]',
+    title: 'Identité de l’objet',
+    content:
+      'Donnez un nom et une description à votre objet. Une icône est aussi proposée un peu plus bas.',
+    placement: 'auto',
+  },
+  {
+    target: '[data-tour="item-dialog-preview"]',
+    title: 'Aperçu en direct',
+    content:
+      'Cet aperçu montre l’objet tel qu’il apparaîtra dans l’inventaire, mis à jour au fil de votre saisie.',
+    placement: 'auto',
+  },
+  {
+    target: '[data-tour="item-dialog-enchantment"]',
+    title: 'Enchantement',
+    content:
+      'Dépliez cette section pour ajouter des enchantements : bonus de caractéristiques, propriétés magiques, charges…',
+    placement: 'auto',
+  },
+  {
+    target: '[data-tour="item-dialog-save"]',
+    title: 'Enregistrer',
+    content: 'Une fois satisfait du résultat, validez ici pour ajouter l’objet à l’inventaire.',
+    placement: 'auto',
+  },
+];
+
 export interface ItemDialogProps {
   open: boolean;
   onClose: () => void;
@@ -1189,6 +1230,13 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
   };
 
   const mechanical = type !== null && isMechanicalType(type);
+  // Formulaire réellement affiché : dès qu'un type cosmétique est choisi, ou qu'une base
+  // mécanique l'est aussi (mêmes conditions que celles qui affichent les champs plus bas).
+  const formVisible = type !== null && (!mechanical || baseId !== null);
+  // Tour guidé (PER-423) : les cibles n'existent que si `formVisible` — le démarrage auto
+  // attend donc ce moment plutôt que la seule ouverture de la modale. Désactivé sous mobile
+  // (`fullScreen`), la mise en page y étant trop différente.
+  const tour = useGuidedTour('itemDialog', { ready: open && formVisible, enabled: !fullScreen });
   const trimmedName = form.name.trim();
   // Potion (PER-XXX) : nom par défaut dérivé de ses propriétés (« Potion de soin 1d4° ») quand le
   // joueur ne saisit rien — la fiole reste identifiable sans obliger à taper un nom.
@@ -1350,8 +1398,22 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
       fullWidth
       fullScreen={fullScreen}
     >
-      <DialogTitle sx={{ position: 'relative', pr: 6 }}>
+      <DialogTitle sx={{ position: 'relative', pr: 9 }}>
         {editing ? 'Modifier l’objet' : 'Ajouter un objet'}
+        {tour.helpVisible && (
+          <Tooltip title="Revoir le tutoriel" disableInteractive>
+            <span style={{ position: 'absolute', top: 8, right: 40 }}>
+              <IconButton
+                aria-label="Revoir le tutoriel"
+                onClick={tour.replay}
+                disabled={!formVisible}
+                size="small"
+              >
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
         <IconButton
           aria-label="Fermer"
           onClick={onClose}
@@ -1531,6 +1593,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                   porter un fond, à côté du type/de la base plutôt qu'en pleine largeur. */}
               {type !== null && (!mechanical || baseId !== null) && (
                 <Box
+                  data-tour="item-dialog-preview"
                   sx={{
                     flex: { xs: '1 1 auto', sm: '0 0 260px' },
                     minWidth: 0,
@@ -1559,7 +1622,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
               mécanique est sélectionnée. */}
           {type !== null && (!mechanical || baseId !== null) && (
             <>
-              <FormAccordion title="Identité" defaultExpanded>
+              <FormAccordion title="Identité" defaultExpanded dataTour="item-dialog-identity">
                 <TextField
                   autoFocus
                   size="small"
@@ -1797,6 +1860,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                 title="Enchantement"
                 expanded={enchantmentExpanded}
                 onChange={setEnchantmentExpanded}
+                dataTour="item-dialog-enchantment"
                 subtitle={(() => {
                   const level = magicLevel({
                     magicBonus: type === 'weapon' ? Number(form.magicBonus) || 0 : 0,
@@ -2017,10 +2081,13 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Annuler</Button>
-        <Button variant="contained" disabled={!valid} onClick={confirm}>
+        <Button data-tour="item-dialog-save" variant="contained" disabled={!valid} onClick={confirm}>
           {editing ? 'Enregistrer' : bulkCreate && count > 1 ? `Ajouter ${count} exemplaires` : 'Ajouter'}
         </Button>
       </DialogActions>
+      {formVisible && (
+        <GuidedTour run={tour.run} steps={ITEM_DIALOG_TOUR_STEPS} onTourEnd={tour.onTourEnd} />
+      )}
     </Dialog>
   );
 }
