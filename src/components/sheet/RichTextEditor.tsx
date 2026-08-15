@@ -446,14 +446,15 @@ function EditorToolbar({ editor }: { editor: import('@tiptap/core').Editor }) {
 }
 
 /**
- * Éditeur Tiptap MVP (PER-397) branché sur `CustomItem.description`. Contrôlé par `value`
- * SEULEMENT à l'initialisation (`content` de `useEditor` n'est jamais réinjecté après montage,
- * pattern standard des éditeurs riches — sinon chaque frappe replace le curseur en tête) :
- * les frappes suivantes remontent via `onChange`, jamais l'inverse. `immediatelyRender: false`
- * (recommandation Tiptap sous Next.js/SSR) → l'éditeur n'existe qu'après montage client, d'où
- * le repli affiché tant que `editor` est `null`.
+ * Éditeur Tiptap MVP (PER-397) — sert la description d'objet, les notes perso et l'identité
+ * (renommé `RichTextEditor` par PER-415, ex-`ItemDescriptionEditor`, un seul composant pour
+ * plusieurs blocs). Contrôlé par `value` SEULEMENT à l'initialisation (`content` de `useEditor`
+ * n'est jamais réinjecté après montage, pattern standard des éditeurs riches — sinon chaque
+ * frappe replace le curseur en tête) : les frappes suivantes remontent via `onChange`, jamais
+ * l'inverse. `immediatelyRender: false` (recommandation Tiptap sous Next.js/SSR) → l'éditeur
+ * n'existe qu'après montage client, d'où le repli affiché tant que `editor` est `null`.
  */
-export function ItemDescriptionEditor({
+export function RichTextEditor({
   value,
   onChange,
   placeholder,

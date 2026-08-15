@@ -229,7 +229,7 @@ const SingleParagraph = Extension.create({
   },
 });
 
-/** Extensions complètes de l'éditeur de description (`ItemDescriptionEditor.tsx`). */
+/** Extensions complètes de l'éditeur de description (`RichTextEditor.tsx`). */
 export const RICH_TEXT_EDITOR_EXTENSIONS = [
   StarterKit.configure({
     // Ces désactivations reflètent le PÉRIMÈTRE MVP (5 marques inline) : aucune syntaxe PER-395

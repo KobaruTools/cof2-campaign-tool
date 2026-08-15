@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
+import HistoryIcon from '@mui/icons-material/History';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -27,6 +28,8 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -126,6 +129,8 @@ import { SheetInitiativeBar } from '@/components/sheet/SheetInitiativeBar';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
+import { CharacterSessionHistoryDrawer } from '@/components/sheet/CharacterSessionHistoryDrawer';
+import { CharacterSessionNotesEditor } from '@/components/sheet/CharacterSessionNotesEditor';
 import { PinSectionButton } from '@/components/sheet/PinSectionButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel, type RestBarItemId } from '@/components/sheet/PlayerStatusPanel';
@@ -159,7 +164,7 @@ import { weaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange'
 import { boundWeaponPathFor } from '@/lib/character/boundWeapon';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
-import { ItemDescriptionEditor } from '@/components/sheet/ItemDescriptionEditor';
+import { RichTextEditor } from '@/components/sheet/RichTextEditor';
 import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { DemiElfeAncestryDialog } from '@/components/sheet/DemiElfeAncestryDialog';
 import { AncestryChoicesDialog } from '@/components/sheet/AncestryChoicesDialog';
@@ -259,7 +264,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   //  - Le store `campaignCombat` est alimenté en direct par le canal (broadcast `combat-state`) ; on
   //    le CHARGE aussi depuis la table autoritative à l'entrée en session, pour voir les états déjà
   //    posés avant qu'on rejoigne (le canal ne rediffuse qu'à la prochaine mutation du MJ).
-  const { isActive: sessionActive } = useActiveSession(characterCampaignId);
+  const { isActive: sessionActive, session: activeSession } = useActiveSession(characterCampaignId);
   const combatStatuses = useCampaignCombatStore((s) =>
     characterCampaignId ? s.byCampaign[characterCampaignId]?.statuses[id] : undefined,
   );
@@ -351,6 +356,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       return { abilities: next, derived: next, features: next, equipment: next, identity: next, notes: next };
     });
   const [levelUpOpen, setLevelUpOpen] = useState(false);
+  // Bloc « Notes » à onglets pendant une partie en cours (PER-415) : onglet actif + drawer
+  // d'historique, ouvrable qu'il y ait ou non une session active (le bouton reste visible).
+  const [notesTab, setNotesTab] = useState<'notes' | 'session'>('notes');
+  const [notesHistoryOpen, setNotesHistoryOpen] = useState(false);
   // Défilement au-delà de l'en-tête : quand la ligne d'identité passe sous la barre
   // d'application collée, on révèle cette même ligne en sous-titre du header et le
   // bouton « Haut de page ». Sentinelle = la ligne d'identité elle-même ; `rootMargin`
@@ -2103,18 +2112,65 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             collapsible
             defaultCollapsed
             persistKey={storageKeys.sheet.sectionCollapsed('notes')}
-            action={(collapsed) =>
-              collapsed || readOnly ? null : (
-                <BlockEditButton
-                  editing={editingBlocks.notes}
-                  onToggle={() => toggleBlock('notes')}
-                  label="notes"
-                />
-              )
-            }
+            action={(collapsed) => (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                {/* Historique des parties de CE personnage (PER-415/416) : toujours proposé,
+                    replié ou non, onglets ou non — indépendant du mode édition. */}
+                <AppTooltip title="Historique des parties">
+                  <IconButton
+                    size="small"
+                    onClick={() => setNotesHistoryOpen(true)}
+                    aria-label="Historique des parties"
+                  >
+                    <HistoryIcon fontSize="small" />
+                  </IconButton>
+                </AppTooltip>
+                {!collapsed && !readOnly && (
+                  <BlockEditButton
+                    editing={editingBlocks.notes}
+                    onToggle={() => toggleBlock('notes')}
+                    label="notes"
+                  />
+                )}
+              </Stack>
+            )}
           >
-            {editingBlocks.notes ? (
-              <ItemDescriptionEditor
+            {sessionActive && activeSession ? (
+              <>
+                <Tabs
+                  value={notesTab}
+                  onChange={(_, v) => setNotesTab(v)}
+                  sx={{ minHeight: 36, mb: 1.5 }}
+                >
+                  <Tab label="Notes" value="notes" sx={{ minHeight: 36, py: 0.5 }} />
+                  <Tab label="Notes de session" value="session" sx={{ minHeight: 36, py: 0.5 }} />
+                </Tabs>
+                {notesTab === 'notes' ? (
+                  editingBlocks.notes ? (
+                    <RichTextEditor
+                      value={character.notes}
+                      onChange={(text) => update({ notes: text })}
+                      placeholder="Notes libres du joueur…"
+                    />
+                  ) : character.notes ? (
+                    <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
+                      <GlossaryRichText>{character.notes}</GlossaryRichText>
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Aucune note.
+                    </Typography>
+                  )
+                ) : (
+                  <CharacterSessionNotesEditor
+                    characterId={character.id}
+                    sessionId={activeSession.id}
+                    readOnly={readOnly}
+                  />
+                )}
+              </>
+            ) : editingBlocks.notes ? (
+              <RichTextEditor
                 value={character.notes}
                 onChange={(text) => update({ notes: text })}
                 placeholder="Notes libres du joueur…"
@@ -2176,6 +2232,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       {/* Bouton flottant « Haut de page », révélé par le même trigger que le sous-titre
           du header. Ancré bas-droite, SOUS la pile de toasts (cf. z-index). */}
       <ScrollToTopButton visible={scrolledPastHeader} />
+
+      <CharacterSessionHistoryDrawer
+        open={notesHistoryOpen}
+        onClose={() => setNotesHistoryOpen(false)}
+        characterName={character.name || 'Personnage'}
+      />
 
       <LevelUpDialog
         open={levelUpOpen}
