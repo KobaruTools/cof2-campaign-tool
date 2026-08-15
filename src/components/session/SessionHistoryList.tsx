@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import GroupsIcon from '@mui/icons-material/Groups';
 import LockIcon from '@mui/icons-material/Lock';
 import PublicIcon from '@mui/icons-material/Public';
 import Box from '@mui/material/Box';
@@ -16,6 +17,7 @@ import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Paper from '@mui/material/Paper';
+import Popover from '@mui/material/Popover';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
@@ -35,8 +37,11 @@ const glassPaper = {
   borderColor: 'rgba(255, 255, 255, 0.10)',
 } as const;
 
-/** Formate une durée en millisecondes en « Xh Ym » (ou « <1 min » si nulle). */
-function formatDuration(ms: number): string {
+/**
+ * Formate une durée en millisecondes en « Xh Ym » (ou « <1 min » si nulle). Exporté pour
+ * `CharacterSessionHistoryDrawer` (PER-416) — même registre de formatage, pas de duplication.
+ */
+export function formatDuration(ms: number): string {
   const totalMinutes = Math.round(ms / 60_000);
   if (totalMinutes < 1) return '< 1 min';
   const h = Math.floor(totalMinutes / 60);
@@ -46,7 +51,7 @@ function formatDuration(ms: number): string {
   return `${h} h ${m} min`;
 }
 
-function formatDate(iso: string): string {
+export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', {
     weekday: 'long',
     day: 'numeric',
@@ -55,7 +60,7 @@ function formatDate(iso: string): string {
   });
 }
 
-function formatTimeRange(startedAt: string, endedAt: string): string {
+export function formatTimeRange(startedAt: string, endedAt: string): string {
   const fmt = (iso: string) =>
     new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   return `${fmt(startedAt)} – ${fmt(endedAt)}`;
@@ -207,70 +212,71 @@ function SessionRecapBlock({
   );
 }
 
-function SessionCard({
+/**
+ * Ligne date + heure — date et plage horaire/durée sur la MÊME ligne, séparées par un trait
+ * vertical, plutôt que deux lignes empilées. Extrait pour être identique entre le tiroir MJ
+ * (`SessionCard` ci-dessous) et le tiroir perso (`CharacterSessionHistoryDrawer`, PER-416).
+ */
+export function SessionDateTimeLine({ entry }: { entry: SessionHistoryEntry }) {
+  return (
+    <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
+        {formatDate(entry.startedAt)}
+      </Typography>
+      <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255, 255, 255, 0.2)' }} />
+      <Typography variant="body2" color="text.secondary">
+        {formatTimeRange(entry.startedAt, entry.endedAt)} · {formatDuration(entry.durationMs)}
+      </Typography>
+    </Stack>
+  );
+}
+
+/** Liste des présences d'une partie — factorisée entre le bloc repliable et la popover. */
+function ParticipantsList({ entry }: { entry: SessionHistoryEntry }) {
+  if (entry.participants.length === 0) {
+    return (
+      <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic' }}>
+        Aucune présence journalisée.
+      </Typography>
+    );
+  }
+  return (
+    <Stack spacing={0.75}>
+      {entry.participants.map((p) => (
+        <Stack
+          key={p.playerId ?? 'gm'}
+          direction="row"
+          spacing={2}
+          sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: p.playerId === null ? 600 : 400 }}>
+            {p.name}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+            {formatDuration(p.presenceMs)}
+            {p.entries > 1 ? ` (${p.entries} connexions)` : ''}
+          </Typography>
+        </Stack>
+      ))}
+    </Stack>
+  );
+}
+
+/**
+ * Bloc « Présences » repliable — utilisé sur les pages dédiées MJ/joueur
+ * (`/campaign/[cid]/history`, `/play/history`) où il reste ouvert par défaut, en dessous de la
+ * ligne date/durée.
+ */
+export function SessionParticipantsCollapse({
   entry,
-  participantsDefaultOpen,
-  isMostRecent,
-  isGm,
-  recap,
-  onRecapSaved,
+  defaultOpen,
 }: {
   entry: SessionHistoryEntry;
-  /** État initial du bloc présences (repliable indépendamment par carte, pas persisté). */
-  participantsDefaultOpen: boolean;
-  /** Met en avant cette carte comme « dernière partie jouée » (PER-407, tiroir MJ uniquement). */
-  isMostRecent: boolean;
-  /** Le viewer courant est-il le MJ ? Donne accès à l'édition du recap. */
-  isGm: boolean;
-  recap: SessionRecap | undefined;
-  onRecapSaved: (recap: SessionRecap) => void;
+  defaultOpen: boolean;
 }) {
-  const [presenceOpen, setPresenceOpen] = useState(participantsDefaultOpen);
+  const [presenceOpen, setPresenceOpen] = useState(defaultOpen);
   return (
-    <Paper
-      variant="outlined"
-      sx={{
-        ...glassPaper,
-        ...(isMostRecent && {
-          borderColor: 'primary.main',
-          boxShadow: (theme) => `0 0 0 1px ${theme.palette.primary.main}`,
-        }),
-      }}
-    >
-      {isMostRecent && (
-        <Typography
-          variant="overline"
-          sx={{ display: 'block', color: 'primary.main', fontWeight: 700, mb: 0.5 }}
-        >
-          Dernière partie jouée
-        </Typography>
-      )}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1}
-        sx={{
-          mb: 1.5,
-          justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-        }}
-      >
-        <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
-            {formatDate(entry.startedAt)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {formatTimeRange(entry.startedAt, entry.endedAt)} · {formatDuration(entry.durationMs)}
-          </Typography>
-        </Box>
-        <EndReasonBadge reason={entry.endedReason} />
-      </Stack>
-
-      <Divider sx={{ mb: 1.5, borderColor: 'rgba(255, 255, 255, 0.10)' }} />
-
-      {/* Bloc présences repliable : accessoire pour la lecture rapide (durée, raison de fin
-          suffisent souvent), d'où un état initial réglable par le consommateur — replié par
-          défaut dans le tiroir de l'écran de MJ (`GmHistoryDrawer`), ouvert par défaut sur les
-          pages dédiées MJ/joueur (`/campaign/[cid]/history`, `/play/history`). */}
+    <>
       <Box
         role="button"
         tabIndex={0}
@@ -309,30 +315,133 @@ function SessionCard({
         </Typography>
       </Box>
       <Collapse in={presenceOpen} unmountOnExit>
-        <Stack spacing={0.75}>
-          {entry.participants.length === 0 ? (
-            <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic' }}>
-              Aucune présence journalisée.
-            </Typography>
-          ) : (
-            entry.participants.map((p) => (
-              <Stack
-                key={p.playerId ?? 'gm'}
-                direction="row"
-                sx={{ justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: p.playerId === null ? 600 : 400 }}>
-                  {p.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {formatDuration(p.presenceMs)}
-                  {p.entries > 1 ? ` (${p.entries} connexions)` : ''}
-                </Typography>
-              </Stack>
-            ))
-          )}
-        </Stack>
+        <ParticipantsList entry={entry} />
       </Collapse>
+    </>
+  );
+}
+
+/**
+ * Bouton « Présences » ouvrant une popover — remplace le bloc repliable dans les DEUX tiroirs
+ * (MJ `GmHistoryDrawer`, perso `CharacterSessionHistoryDrawer`) : la liste des présences n'est
+ * qu'un détail secondaire là, pas de bloc dépliable qui pousse le reste de la carte. Placé sur la
+ * ligne date/durée, poussé à l'extrémité droite via `ml: 'auto'`.
+ */
+export function SessionParticipantsButton({ entry }: { entry: SessionHistoryEntry }) {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
+  return (
+    <>
+      <Box
+        component="button"
+        type="button"
+        onClick={(e) => setAnchorEl(e.currentTarget)}
+        aria-expanded={open}
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          ml: 'auto',
+          px: 1,
+          py: 0.4,
+          font: 'inherit',
+          color: 'text.secondary',
+          bgcolor: 'transparent',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: 1,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.06)' },
+          '&:focus-visible': { outline: '2px solid currentColor', outlineOffset: 2 },
+        }}
+      >
+        <GroupsIcon fontSize="small" />
+        <Typography variant="body2" component="span" sx={{ color: 'inherit' }}>
+          Présences ({entry.participants.length})
+        </Typography>
+      </Box>
+      <Popover
+        open={open}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: {
+              ...glassPaper,
+              p: 1.5,
+              mt: 0.5,
+              minWidth: 220,
+              maxWidth: 320,
+            },
+          },
+        }}
+      >
+        <ParticipantsList entry={entry} />
+      </Popover>
+    </>
+  );
+}
+
+function SessionCard({
+  entry,
+  participantsDefaultOpen,
+  isMostRecent,
+  isGm,
+  recap,
+  onRecapSaved,
+}: {
+  entry: SessionHistoryEntry;
+  /** État initial du bloc présences (repliable indépendamment par carte, pas persisté). */
+  participantsDefaultOpen: boolean;
+  /** Met en avant cette carte comme « dernière partie jouée » (PER-407, tiroir MJ uniquement). */
+  isMostRecent: boolean;
+  /** Le viewer courant est-il le MJ ? Donne accès à l'édition du recap. */
+  isGm: boolean;
+  recap: SessionRecap | undefined;
+  onRecapSaved: (recap: SessionRecap) => void;
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        ...glassPaper,
+        ...(isMostRecent && {
+          borderColor: 'primary.main',
+          boxShadow: (theme) => `0 0 0 1px ${theme.palette.primary.main}`,
+        }),
+      }}
+    >
+      {isMostRecent && (
+        <Typography
+          variant="overline"
+          sx={{ display: 'block', color: 'primary.main', fontWeight: 700, mb: 0.5 }}
+        >
+          Dernière partie jouée
+        </Typography>
+      )}
+      {/* `gap` plutôt que `spacing` : la règle de marges générée par `spacing` a une
+          spécificité CSS plus forte que `ml: 'auto'` du bouton et l'écraserait. */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        sx={{
+          mb: 1.5,
+          gap: 1,
+          justifyContent: participantsDefaultOpen ? 'space-between' : 'flex-start',
+          alignItems: { xs: 'flex-start', sm: 'center' },
+        }}
+      >
+        <SessionDateTimeLine entry={entry} />
+        <EndReasonBadge reason={entry.endedReason} />
+        {!participantsDefaultOpen && <SessionParticipantsButton entry={entry} />}
+      </Stack>
+
+      <Divider sx={{ mb: 1.5, borderColor: 'rgba(255, 255, 255, 0.10)' }} />
+
+      {participantsDefaultOpen && (
+        <SessionParticipantsCollapse entry={entry} defaultOpen={participantsDefaultOpen} />
+      )}
 
       <SessionRecapBlock
         sessionId={entry.id}
