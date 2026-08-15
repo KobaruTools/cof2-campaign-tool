@@ -87,12 +87,6 @@ import {
   demiElfeFeyBloodUsageMax,
   DEMI_ELFE_FEY_BLOOD_HOST,
   DEMI_ELFE_FEY_BLOOD_USAGE_KEY,
-  armureSacreeMinorPowerUsageMax,
-  ARMURE_SACREE_MINOR_POWER_HOST,
-  ARMURE_SACREE_MINOR_POWER_USAGE_KEY,
-  armureSacreeMajorPowerUsageMax,
-  ARMURE_SACREE_MAJOR_POWER_HOST,
-  ARMURE_SACREE_MAJOR_POWER_USAGE_KEY,
   mysticBorrowedSpellSubstitutions,
   mageAlternateAbilitySubstitutions,
   shortRestLockKey,
@@ -3547,10 +3541,7 @@ function PathBlock({
                 staffGrantedPrimary ||
                 // PER-324 : « Sang féerique » — goutte de PM masquée seulement pour un NON-lanceur
                 // (incantations gratuites sans PM) ; un LANCEUR voit le coût (rang du sort) pour payer.
-                (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)) ||
-                // PER-370 : sort associé à l'armure sacrée (r5/r7) — conféré sans coût en mana.
-                feature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
-                feature.id === ARMURE_SACREE_MAJOR_POWER_HOST)
+                (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)))
             ) && (
               <SpellManaBadge
                 feature={ghostShipManaCostFeature(character, borrowed ?? feature)}
@@ -4297,9 +4288,7 @@ function PathBlock({
                               openFeature.id === FAMILIAR_LEARNED_SPELL_HOST ||
                               staffGranted ||
                               !!grant?.noMana ||
-                              (borrowedNoMana && !caster) ||
-                              openFeature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
-                              openFeature.id === ARMURE_SACREE_MAJOR_POWER_HOST
+                              (borrowedNoMana && !caster)
                             }
                             noManaNote={
                               staffGranted ? (
@@ -4309,12 +4298,6 @@ function PathBlock({
                                 </>
                               ) : grant?.noMana ? (
                                 CAMBION_NO_MANA_NOTE
-                              ) : openFeature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
-                                openFeature.id === ARMURE_SACREE_MAJOR_POWER_HOST ? (
-                                <>
-                                  Sort associé à l’armure sacrée : utilisé sans dépenser de mana, dans la
-                                  limite du compteur ci-dessous (<SourceRef page={166} />).
-                                </>
                               ) : undefined
                             }
                             spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
@@ -4886,9 +4869,7 @@ function PathBlock({
                             feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
                             staffGranted ||
                             !!grant?.noMana ||
-                            (borrowedNoMana && !caster) ||
-                            feature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
-                            feature.id === ARMURE_SACREE_MAJOR_POWER_HOST
+                            (borrowedNoMana && !caster)
                           }
                           noManaNote={
                             staffGranted ? (
@@ -4898,12 +4879,6 @@ function PathBlock({
                               </>
                             ) : grant?.noMana ? (
                               CAMBION_NO_MANA_NOTE
-                            ) : feature.id === ARMURE_SACREE_MINOR_POWER_HOST ||
-                              feature.id === ARMURE_SACREE_MAJOR_POWER_HOST ? (
-                              <>
-                                Sort associé à l’armure sacrée : utilisé sans dépenser de mana, dans la
-                                limite du compteur ci-dessous (<SourceRef page={166} />).
-                              </>
                             ) : undefined
                           }
                           spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}

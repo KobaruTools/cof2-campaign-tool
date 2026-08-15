@@ -3601,6 +3601,9 @@ export const prestigeFeatures2: Feature[] = [
     // RD ne suit le toggle QUE si le rang n'est pas déjà supplanté par une version supérieure (une
     // capacité remplacée est grisée + son interrupteur rendu non-interactif, `disabledFeatureReasons`) ;
     // pour le rang le plus haut possédé, elle reflète si l'armure est effectivement portée ou rangée.
+    // CE MÊME interrupteur (retour propriétaire 2026-08-15) grise aussi les sorts associés (r5/r7) tant
+    // qu'il est éteint (`armureSacreeBorrowedFeaturesDisabledWhenStowed`, effects.ts) : effets passifs
+    // permanents ET possibilité de lancer le sort suspendus armure rangée.
     damageReduction: { kind: 'flat', value: 3 },
     effects: [
       {
@@ -3629,8 +3632,9 @@ export const prestigeFeatures2: Feature[] = [
     // PER-370 : choix d'un sort de rang 1 à 4 de N'IMPORTE QUELLE voie (aucune restriction de profil/
     // famille) — patron `feature-from-path` déjà existant (`spellsOnly`, sans `classIds`/`pathIds`/
     // `familyScope`). Compteur d'usage variable selon le rang choisi : moteur `armureSacreeMinorPowerUsageMax`
-    // (effects.ts), affiché en compteur synthétique par-combat sur la carte, sans coût en mana (arbitrage
-    // propriétaire 2026-08-13, même traitement que le sort appris du familier PER-74).
+    // (effects.ts), affiché en compteur synthétique par-combat sur la carte, EN PLUS du coût en mana normal
+    // de son rang (retour propriétaire 2026-08-15, abroge l'arbitrage « sans coût en mana » du 2026-08-13).
+    // Désactivé tant que l'armure n'est pas déployée (interrupteur de r4/r6/r8, `armureSacreeBorrowedFeaturesDisabledWhenStowed`).
     choices: [
       {
         kind: 'feature-from-path',
@@ -3678,9 +3682,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage associe à son armure un sort de son choix de rang 5 à 7 de n'importe quelle voie. Il peut utiliser ce sort plus souvent s'il est moins puissant, mais dans tous les cas pas plus d'une fois par combat :\n- Rang 5, 3 fois par jour ;\n- Rang 6, 2 fois par jour ;\n- Rang 7, 1 fois par jour.",
-    // PER-370 : même patron que r5 (choix + compteur variable selon rang), pool QUOTIDIEN cette fois
-    // (`armureSacreeMajorPowerUsageMax`). Le plafond « pas plus d'une fois par combat » reste DESCRIPTIF
-    // dans le texte, non appliqué par le moteur (arbitrage propriétaire 2026-08-13 : pool quotidien seul).
+    // PER-370 : même patron que r5 (choix + compteur variable selon rang EN PLUS du coût en mana normal),
+    // pool QUOTIDIEN cette fois (`armureSacreeMajorPowerUsageMax`). Le plafond « pas plus d'une fois par
+    // combat » reste DESCRIPTIF dans le texte, non appliqué par le moteur (arbitrage propriétaire
+    // 2026-08-13 : pool quotidien seul). Désactivé tant que l'armure n'est pas déployée (r4/r6/r8).
     choices: [
       {
         kind: 'feature-from-path',
@@ -4034,6 +4039,11 @@ export const prestigeFeatures2: Feature[] = [
     // difficulté 15 FIXE (indépendante des caracs) reste en texte brut.
     richText:
       "Le personnage invoque un violent maelström de vents tourbillonnants à une portée de 500 m. Le phénomène occupe un espace de 20 m de diamètre et toutes les créatures présentes dans la zone d'effet subissent {2d4°} DM par round. De plus, une cible doit réussir un test de FOR difficulté 15 ou être renversée. Le sort a une durée [=CHA] minutes et le personnage peut déplacer la tornade de 10 m par action de mouvement.",
+    // Tag data-only (retour propriétaire 2026-08-15) : catalogue `caught-in-vortex` (schema.ts) pour
+    // suivre à l'écran MJ toute cible qui reste dans la zone, SANS coller à elle après sa sortie
+    // (contrairement à Pétrifié/Emprisonné/Contrôlé, qui persistent) — cohérent avec la nature de zone
+    // MOBILE du cyclone (contrairement à Séisme, zone fixe instantanée, qui n'a aucun tag).
+    situationalEffectIds: ['caught-in-vortex'],
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -4041,6 +4051,36 @@ export const prestigeFeatures2: Feature[] = [
         activation: { kind: 'temporary', label: 'Cyclone actif', activeByDefault: false },
       },
     ],
+    // Compagnon MINIMAL (retour propriétaire 2026-08-15) : réutilise le MÊME interrupteur ci-dessus
+    // (`companionPresent` détecte tout effet `conditional-stat-bonus`/`temporary` sur la capacité —
+    // aucun gating dédié à écrire) pour faire apparaître le cyclone dans la section « Compagnons »/
+    // roster MJ tant qu'il est actif. Ce n'est PAS une créature : ni `defense`, ni `hitPoints`, ni
+    // `attack` (le DM/round est automatique, sans jet — cf. `specialAbilities`, pas un jet d'attaque
+    // recopié du maître). `companionType: 'summon'` réutilisé (patron Arbre animé, aucun taxon dédié
+    // aux zones n'existe).
+    // BUT premier de ce compagnon (retour propriétaire) : rappeler le déplacement de 10 m par action
+    // de mouvement sur la carte Compagnon elle-même. `note` NE SUFFIT PAS ici : la carte Compagnon
+    // l'omet volontairement (patron PER-216, `CompanionsPanel.tsx` — le `note` du profil ne s'affiche
+    // QUE sur la mini-fiche de la carte de VOIE). Le déplacement va donc en `specialAbilities` (seul
+    // champ rendu par LES DEUX cartes), en second après les vents tourbillonnants ; `note` reste posé
+    // pour la mini-fiche de la capacité (cohérent avec les autres profils).
+    creatureProfile: {
+      name: 'Cyclone',
+      companionType: 'summon',
+      specialAbilities: [
+        {
+          name: 'Vents tourbillonnants',
+          text: "Toute créature présente dans la zone subit 2d4° DM par round et doit réussir un test de FOR difficulté 15 ou être renversée.",
+          richText:
+            "Toute créature présente dans la zone subit {2d4°} DM par round et doit réussir un test de FOR difficulté 15 ou être renversée.",
+        },
+        {
+          name: 'Déplacement',
+          text: 'Le personnage peut déplacer le cyclone de 10 m par action de mouvement.',
+        },
+      ],
+      note: 'Le personnage peut déplacer le cyclone de 10 m par action de mouvement.',
+    },
     sourcePage: 169,
   },
   {

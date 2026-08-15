@@ -1652,6 +1652,11 @@ export function disabledFeatureReasons(character: Character): Map<string, Disabl
   for (const [targetId, reason] of borrowedFeaturesDisabledByInactiveToggle(character)) {
     if (!reasons.has(targetId)) reasons.set(targetId, reason);
   }
+  // 4) PER-370 (retour propriétaire 2026-08-15) — sorts associés à l'armure sacrée (r5/r7) désactivés
+  // tant que l'armure n'est pas déployée (interrupteur porté par un AUTRE hôte, r4/r6/r8).
+  for (const [targetId, reason] of armureSacreeBorrowedFeaturesDisabledWhenStowed(character)) {
+    if (!reasons.has(targetId)) reasons.set(targetId, reason);
+  }
   return reasons;
 }
 
@@ -1944,9 +1949,9 @@ export function demiElfeFeyBloodUsageMax(character: Character): number | undefin
 /**
  * PER-370 — Hôte du sort associé à l'armure sacrée au rang 5 « Pouvoir unique (L) » (voie de l'armure
  * sacrée, p. 166) : sort de rang 1 à 4 de N'IMPORTE QUELLE voie, choisi via `feature-from-path`
- * (`spellsOnly`, sans restriction de profil/famille). Lancé SANS coût en mana (arbitrage propriétaire
- * 2026-08-13, même traitement que le sort appris du familier PER-74) : le compteur EST la contrainte,
- * rechargé à chaque combat (récupération rapide, donc aussi repos long).
+ * (`spellsOnly`, sans restriction de profil/famille). Lancé au coût en mana NORMAL de son rang (retour
+ * propriétaire 2026-08-15, abroge l'arbitrage « sans coût en mana » du 2026-08-13) : le compteur
+ * ci-dessous est une limite EN PLUS de la dépense de PM, rechargé à chaque combat.
  */
 export const ARMURE_SACREE_MINOR_POWER_HOST = 'prestige-armure-sacree-r5';
 
@@ -1982,9 +1987,9 @@ export function armureSacreeMinorPowerUsageMax(character: Character): number | u
 
 /**
  * PER-370 — Hôte du sort associé à l'armure sacrée au rang 7 « Pouvoir puissant (L) » : même mécanique
- * que le rang 5 (sort de son choix, N'IMPORTE QUELLE voie, sans coût en mana) mais pool QUOTIDIEN. Le
- * plafond RAW « pas plus d'une fois par combat » (p. 166) reste DESCRIPTIF dans le texte, non appliqué
- * par le moteur (arbitrage propriétaire 2026-08-13 : pool quotidien seul).
+ * que le rang 5 (sort de son choix, N'IMPORTE QUELLE voie, coût en mana normal de son rang, cf. r5) mais
+ * pool QUOTIDIEN. Le plafond RAW « pas plus d'une fois par combat » (p. 166) reste DESCRIPTIF dans le
+ * texte, non appliqué par le moteur (arbitrage propriétaire 2026-08-13 : pool quotidien seul).
  */
 export const ARMURE_SACREE_MAJOR_POWER_HOST = 'prestige-armure-sacree-r7';
 
@@ -2014,6 +2019,53 @@ export function armureSacreeMajorPowerUsageMax(character: Character): number | u
   if (rank <= 5) return 3;
   if (rank === 6) return 2;
   return 1;
+}
+
+/**
+ * PER-370 (retour propriétaire 2026-08-15) — rangs de DÉPLOIEMENT de l'armure sacrée, du plus bas au
+ * plus haut. Remplacement INCONDITIONNEL (`replacesFeatures`) : le rang le plus haut POSSÉDÉ est
+ * toujours le seul effectif (jamais deux à la fois).
+ */
+const ARMURE_SACREE_DEPLOY_RANK_IDS = [
+  'prestige-armure-sacree-r4',
+  'prestige-armure-sacree-r6',
+  'prestige-armure-sacree-r8',
+];
+
+/**
+ * PER-370 (retour propriétaire 2026-08-15) — sorts associés à l'armure sacrée (r5 « Pouvoir unique »,
+ * r7 « Pouvoir puissant ») désactivés tant que l'armure n'est pas DÉPLOYÉE. Cas DISTINCT de
+ * `borrowedFeaturesDisabledByInactiveToggle` : là-bas l'interrupteur d'autorisation est porté par la
+ * capacité hôte du choix lui-même ; ici l'interrupteur « déployée/rangée » pertinent est celui du rang
+ * d'armure ACTUELLEMENT EFFECTIF (r4/r6/r8 — un hôte DIFFÉRENT de r5/r7). Retourne les sélections
+ * `feature-from-path` de r5 ET r7 désactivées, avec le rang d'armure comme source. Vide si aucun rang
+ * d'armure n'est possédé, ou si son interrupteur « déployée » est actif (l'armure est portée).
+ */
+export function armureSacreeBorrowedFeaturesDisabledWhenStowed(
+  character: Character,
+): Map<string, DisabledFeatureReason> {
+  const out = new Map<string, DisabledFeatureReason>();
+  const activeArmorId = [...ARMURE_SACREE_DEPLOY_RANK_IDS]
+    .reverse()
+    .find((id) => character.featureIds.includes(id));
+  if (!activeArmorId) return out;
+  const armor = featureById.get(activeArmorId);
+  const idx = armor?.effects?.findIndex((e) => e.kind === 'conditional-stat-bonus') ?? -1;
+  if (idx < 0 || isEffectActive(character, activeArmorId, idx)) return out; // armure déployée → rien à griser
+  const effect = armor?.effects?.[idx] as ConditionalStatBonusEffect | undefined;
+  const label = effect?.activation.label ?? armor?.name ?? 'l’armure';
+  for (const hostId of [ARMURE_SACREE_MINOR_POWER_HOST, ARMURE_SACREE_MAJOR_POWER_HOST]) {
+    if (!character.featureIds.includes(hostId)) continue;
+    const sel = character.featureChoices?.[hostId]?.[0];
+    if (typeof sel !== 'string' || !featureById.has(sel)) continue;
+    out.set(sel, {
+      byFeatureId: activeArmorId,
+      byFeatureName: armor?.name ?? activeArmorId,
+      kind: 'borrow-inactive',
+      note: `Désactivée tant que « ${label} » n'est pas activé : ce sort associé à l'armure sacrée est inutilisable armure rangée (p. 166).`,
+    });
+  }
+  return out;
 }
 
 /**
