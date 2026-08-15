@@ -532,6 +532,11 @@ export const prestigePaths2: PrestigePath[] = [
     category: 'mystic',
     prerequisites:
       "Cette voie peut aussi être choisie par un mage qui maîtrise au moins un sort d'air. Remplacer le Charisme par l'Intelligence dans le texte des capacités.",
+    // PER-373 : remplacement CHA→INT mécanisé pour les personnages de famille 'mages' (cf.
+    // `mageAlternateAbilitySubstitutions`, effects.ts). Sans effet pour un mystique (CHA conservé).
+    // Sur cette voie, seuls r6 (Mur de vent, [=CHA] minutes), r7 (Cyclone, [=CHA] minutes) et r8
+    // (Forme élémentaire, [=CHA] minutes) contiennent effectivement du CHA — r4/r5 n'en portent pas.
+    mageAlternateAbility: 'INT',
     note: "Les voies élémentaires ont tendance à changer profondément ceux qui les suivent, tant physiquement que mentalement. Dans le cas de l'air, les cheveux deviennent blancs et la peau très pâle, tandis que le tempérament devient rêveur.",
     featureIds: [
       'prestige-elementaire-de-l-air-r4',
@@ -3027,14 +3032,18 @@ export const prestigeFeatures2: Feature[] = [
     // `[#INT]` (patron Vision/mages.ts, PER-364). Immunité à la détection/localisation magique →
     // nouvelle catégorie `magic-detection` dans `IMMUNITY_IDS` (arbitrage propriétaire 2026-08-11 :
     // même mécanique de badge informatif que les 10 autres immunités, aucune logique de blocage
-    // automatique n'existait déjà pour cette catégorie). Le bonus de +5 aux tests pour résister aux
-    // sorts d'esprit reste VERBATIM (arbitrage propriétaire 2026-08-11, distinct de l'immunité
-    // ci-dessus) : la fiche n'a qu'un seul chiffre `magicAttack` partagé attaque/résistance, et aucun
-    // panneau n'existe encore pour afficher un bonus purement informatif sans le recalculer — même
-    // limite que le bâton de l'archimage (r4) et l'elfe/halfelin (p. 50/56).
+    // automatique n'existait déjà pour cette catégorie). Le bonus de +5 est mécanisé en `test-bonus`
+    // fixe (prestige, comme sombre-magie-r1/envouteur-r1/etc.) sur 2 nouveaux domaines créés à
+    // cette occasion (validé propriétaire 2026-08-15) : `emotion-concealment` (CHA, cacher ses
+    // émotions) et `mind-affecting-resistance` (VOL, résister aux sorts d'esprit) — panneau
+    // « Compétences & tests » (`TestDomainsPanel.tsx`), pas de collision avec `magicAttack`.
     richText:
       "Le personnage ou un allié au contact est immunisé à toutes les tentatives de détection des mensonges, des sentiments ou des émotions, même magiques pendant [#INT] heures. Il ne peut pas non plus être localisé ou scruté par des moyens magiques (sorts ou pouvoirs comme clairvoyance ou détection de l'invisible). En plus de ce sort, le personnage obtient un bonus de +5 à tous les tests destinés à cacher ses émotions et ses sentiments ou pour résister aux sorts qui affectent l'esprit (charme, fascination, domination, etc.).",
-    effects: [{ kind: 'immunity', immunities: ['magic-detection'] }],
+    effects: [
+      { kind: 'immunity', immunities: ['magic-detection'] },
+      { kind: 'test-bonus', domains: ['emotion-concealment'], value: 5 },
+      { kind: 'test-bonus', domains: ['mind-affecting-resistance'], value: 5 },
+    ],
     sourcePage: 161,
   },
   {
@@ -3967,6 +3976,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage prend une grande inspiration et souffle une terrible bourrasque. Toutes les créatures face à lui dans un cône de 30 m de long et de large à son extrémité doivent faire un test de FOR difficulté [10 + rang] ou être renversée et repoussées en arrière à une distance qui dépend de leur taille.\n- Très petite à moyenne : 20 m, subit 3d4° DM\n- Grande : 10 m, subit 2d4° DM\n- Énorme : 5 m subit 1d4° DM\n- Colossale : seulement renversée",
+    // Effet instantané de zone (pousse/DM des cibles, pas le lanceur) : même famille que Séisme (terre
+    // r7), aucun interrupteur de suivi. Les trois dés de dégâts par palier de taille sont balisés.
+    richText:
+      "Le personnage prend une grande inspiration et souffle une terrible bourrasque. Toutes les créatures face à lui dans un cône de 30 m de long et de large à son extrémité doivent faire un test de FOR difficulté [10 + rang] ou être renversée et repoussées en arrière à une distance qui dépend de leur taille.\n- Très petite à moyenne : 20 m, subit {3d4°} DM\n- Grande : 10 m, subit {2d4°} DM\n- Énorme : 5 m subit {1d4°} DM\n- Colossale : seulement renversée",
     sourcePage: 168,
   },
   {
@@ -3978,6 +3991,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage et un compagnon supplémentaire par rang peuvent être transportés par les forces du vent sur une distance de 1 km au maximum à la vitesse de 100 m par round. Le personnage doit voir l'endroit où le sort va le transporter et cet endroit doit pouvoir recevoir toutes les personnes qui l'accompagnent.",
+    // Pas d'interrupteur de suivi : sort utilitaire/exploration (transport), même famille que
+    // Litomorphose (terre r5). « Un compagnon supplémentaire par rang » → terme nommé [#rang]
+    // (patron Nature nourricière, rôdeur) : le rang atteint dans CETTE voie, pas une formule à calculer.
+    richText:
+      "Le personnage et un compagnon supplémentaire par [#rang] peuvent être transportés par les forces du vent sur une distance de 1 km au maximum à la vitesse de 100 m par round. Le personnage doit voir l'endroit où le sort va le transporter et cet endroit doit pouvoir recevoir toutes les personnes qui l'accompagnent.",
     sourcePage: 168,
   },
   {
@@ -3989,6 +4007,17 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le sort crée un mur de vent circulaire de 5 à 10 m de diamètre autour du personnage (au choix) pendant CHA minutes. Il bloque les attaques à distance dans les deux sens (mais pas la magie) et repousse les créatures qui tentent de le franchir. Il leur faut réussir un test de FOR difficulté [10 + rang] pour passer.",
+    // Interrupteur de SUIVI (patron Mur de pierre/Mur de feu) : mur défensif à usage tactique, pas
+    // de DM au franchissement (purement bloquant, comme le mur de pierre).
+    richText:
+      "Le sort crée un mur de vent circulaire de 5 à 10 m de diamètre autour du personnage (au choix) pendant [=CHA] minutes. Il bloque les attaques à distance dans les deux sens (mais pas la magie) et repousse les créatures qui tentent de le franchir. Il leur faut réussir un test de FOR difficulté [10 + rang] pour passer.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Mur de vent actif', activeByDefault: false },
+      },
+    ],
     sourcePage: 169,
   },
   {
@@ -4000,6 +4029,18 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage invoque un violent maelström de vents tourbillonnants à une portée de 500 m. Le phénomène occupe un espace de 20 m de diamètre et toutes les créatures présentes dans la zone d'effet subissent 2d4° DM par round. De plus, une cible doit réussir un test de FOR difficulté 15 ou être renversée. Le sort a une durée CHA minutes et le personnage peut déplacer la tornade de 10 m par action de mouvement.",
+    // Zone invoquée mobile à usage tactique (déplaçable par action de mouvement) : même famille que
+    // Mur de vent/Mur de feu → interrupteur de suivi. Dé de DM par round balisé ; durée [=CHA] minutes ;
+    // difficulté 15 FIXE (indépendante des caracs) reste en texte brut.
+    richText:
+      "Le personnage invoque un violent maelström de vents tourbillonnants à une portée de 500 m. Le phénomène occupe un espace de 20 m de diamètre et toutes les créatures présentes dans la zone d'effet subissent {2d4°} DM par round. De plus, une cible doit réussir un test de FOR difficulté 15 ou être renversée. Le sort a une durée [=CHA] minutes et le personnage peut déplacer la tornade de 10 m par action de mouvement.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Cyclone actif', activeByDefault: false },
+      },
+    ],
     sourcePage: 169,
   },
   {
@@ -4011,6 +4052,41 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par jour, le personnage peut se transformer en élémentaire d'air (taille grand), pendant un maximum de CHA minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de l'air et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.\n\nÉLÉMENTAIRE D'AIR\nAGI +5* | CON +4 | FOR +4 | PER [mystique] | CHA [mystique] | INT [mystique] | VOL [mystique]\nDéfense 25 · Points de vigueur [Niv. × 5] · Initiative [mystique + 3]\nFrappe [attaque magique] · DM 2d4°+ 4 de foudre Immunité aux DM de foudre.",
+    // Même patron que Forme élémentaire de feu/terre (r8) : bloc de stats SORTI du texte affiché vers
+    // creatureProfile, `text` verbatim conservé comme source. AGI/CON/FOR = valeurs ABSOLUES imprimées
+    // (« +5* »/« +4 »/« +4 ») → `abilityOverrides`. AGI porte l'astérisque → `bonusDieAbilities: ['AGI']`.
+    // PER/CHA/INT/VOL « [mystique] » = identiques au personnage → `abilitiesFromMaster` (delta 0).
+    // Initiative « [mystique + 3] » : PREMIER cas d'un décalage constant sur une stat recopiée du
+    // maître (tous les autres élémentaires recopient sans offset) → nouveau champ `MasterStatRef.offset`
+    // (schema.ts) + branchement dans `CreatureStatBlock.tsx` (2 sites de rendu natif de `MasterStatValue`).
+    // DM de foudre + immunité au même élément : même écart RAW assumé que le feu (le type élémentaire
+    // du dé n'est pas porté par `attack.damage`, verbatim seul) ; l'immunité passe en `note` (patron
+    // « profite en permanence de… » du feu).
+    richText:
+      "Une fois par jour, le personnage peut se transformer en élémentaire d'air (taille grande), pendant un maximum de [=CHA] minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de l'air et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: "Forme élémentaire d'air active", activeByDefault: false },
+        abilityOverrides: { AGI: 5, CON: 4, FOR: 4 },
+        disablesProfileFeatures: true,
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    creatureProfile: {
+      name: "Élémentaire d'air",
+      transformation: true,
+      size: 'grande',
+      abilities: { AGI: 5, CON: 4, FOR: 4 },
+      bonusDieAbilities: ['AGI'],
+      abilitiesFromMaster: { PER: 0, CHA: 0, INT: 0, VOL: 0 },
+      defense: '25',
+      hitPoints: '[=niveau × 5]',
+      initiative: { fromMaster: 'initiative', offset: 3 },
+      attack: { label: 'Frappe', fromMaster: 'magicAttack', damage: '2d4° + 4' },
+      note: "Immunité aux DM de foudre.",
+    },
     sourcePage: 169,
   },
 

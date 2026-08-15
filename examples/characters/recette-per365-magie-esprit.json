@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per365-magie-esprit",
+  "name": "Recette PER-365 — Magicien (voie de la magie de l'esprit)",
+  "identity": {
+    "description": "ATTENDU : magicien niveau 10 avec la voie de prestige de la magie de l'esprit (r4→r8) acquise. r4 Esprit impénétrable : richText avec terme nommé INT (10) en encadré, immunité magic-detection, + bonus de test mécanisé +5 sur 2 domaines (emotion-concealment CHA, mind-affecting-resistance VOL) visibles dans le panneau Compétences & tests. r5 Lire les pensées : richText avec dé {1d6}+INT en formule, interrupteur de fiche « Lire les pensées actif » qui ajoute +3 à la DEF quand activé (à vérifier dans le calcul dérivé). r6 Prison mentale : compteur d'usage 1/combat (jauge dans État du personnage + bouton sur la carte). r7 Attaque mentale : dé {5d4°}+INT, formule difficulté [10+INT], puce « Inconscient » (situationalEffectIds). r8 Contrôle mental : richText avec 3 termes nommés INT (10) sur la table de durée par NC."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "prestige-magie-de-l-esprit-r4",
+    "prestige-magie-de-l-esprit-r5",
+    "prestige-magie-de-l-esprit-r6",
+    "prestige-magie-de-l-esprit-r7",
+    "prestige-magie-de-l-esprit-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-365 — voie de la magie de l'esprit (p. 161), recette des 5 rangs.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

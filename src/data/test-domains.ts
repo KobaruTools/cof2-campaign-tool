@@ -298,6 +298,21 @@ export const testDomains: TestDomain[] = [
   { id: 'pushing-limits', label: 'Se dépasser', abilities: ['VOL'], sourcePage: 202 },
   { id: 'fear-resistance', label: 'Résister à la peur', abilities: ['VOL'], sourcePage: 202 },
   { id: 'temptation-resistance', label: 'Résister à la tentation', abilities: ['VOL'], sourcePage: 202 },
+  // résister aux sorts qui affectent l'esprit — charme, fascination, domination, etc.
+  // (Esprit impénétrable, prestige-magie-de-l-esprit-r4, p. 161) : volonté face à une
+  // emprise mentale → VOL, distinct de `fear-resistance` (peur seule).
+  {
+    id: 'mind-affecting-resistance',
+    label: 'Résister aux effets mentaux',
+    abilities: ['VOL'],
+    sourcePage: 161,
+  },
+
+  // --- CHA — dissimulation de soi (PER-74, mages) ----------------------------
+  // cacher ses émotions et ses sentiments (Esprit impénétrable, prestige-magie-de-l-esprit-r4,
+  // p. 161) : maîtrise de son propre visage/comportement → CHA. Distinct de `deception`
+  // (Supercherie, tromper autrui) et de `evasion`/`fear-resistance`.
+  { id: 'emotion-concealment', label: 'Dissimuler ses émotions', abilities: ['CHA'], sourcePage: 161 },
 ];
 
 /** Index de lookup par id (clé de contenu → domaine). */

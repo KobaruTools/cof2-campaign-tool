@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
@@ -447,7 +446,12 @@ export function TestDomainsPanel({
           onHideZeroChange={onHideZeroChange}
         />
       </Stack>
-      <Stack spacing={2.5}>
+      {/* Grille de colonnes CONDENSÉES (retour propriétaire, essai) : une colonne par carac, comme
+          l'aperçu au survol de `StickySheetStatusBar` — plutôt que 7 bandes empilées pleine
+          largeur. `auto-fit`/`minmax` laisse les colonnes se replier sur plusieurs lignes quand le
+          panneau (hébergé dans une `SheetSection`, moins large que l'en-tête global) n'en a pas la
+          place ; jamais moins de 7 sur un écran assez large. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 1.5 }}>
         {ABILITY_IDS.map((ability) => {
           // Un domaine multi-carac (ex. Équitation CON/CHA, Survie en forêt AGI/PER) apparaît
           // sous CHACUNE de ses caracs : le bonus de compétence est le même, seule la carac que
@@ -544,46 +548,40 @@ export function TestDomainsPanel({
           );
 
           return (
-            <Box key={ability}>
+            <Box key={ability} sx={{ borderRadius: 1, overflow: 'hidden' }}>
+              {/* En-tête condensé (retour propriétaire, essai) : icône (nom au survol, `title`) +
+                  total « test de [CARAC] » + dé bonus éventuel — même contenu que la colonne
+                  d'aperçu au survol de `StickySheetStatusBar`, sans le libellé texte de la carac
+                  (le nom complet reste accessible via le tooltip de l'icône ET celui du total). */}
               <Stack
                 direction="row"
-                spacing={1}
+                spacing={0.5}
                 sx={{
                   alignItems: 'center',
-                  // Collé au tableau des domaines qui suit : pas de marge basse et coins bas
-                  // carrés (le tableau reprend les coins arrondis en bas). Sans domaines, l'en-tête
-                  // reste une pastille entièrement arrondie.
-                  mb: 0,
-                  px: 1,
+                  justifyContent: 'center',
                   py: 0.5,
-                  borderRadius: group.length > 0 ? '4px 4px 0 0' : 1,
-                  // Dégradé gauche→droite : du gris de fond actuel (`action.hover`) vers la
-                  // teinte d'identité de la carac légèrement désaturée (PER-224 → tests).
                   background: (theme) =>
                     abilityTestGradient(ability, theme.palette.action.hover, ABILITY_TEST_GRADIENT.header),
                 }}
               >
-                <AbilityIcon ability={ability} size={24} />
-                <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                  {ABILITY_NAMES[ability]} ({ability})
-                </Typography>
+                <AbilityIcon ability={ability} title size={20} />
                 <AppTooltip title={testBreakdown}>
                   <Stack
                     direction="row"
-                    spacing={0.5}
+                    spacing={0.25}
                     sx={{
                       alignItems: 'center',
                       cursor: 'help',
                       color: caracBuffed ? 'secondary.main' : 'text.secondary',
                     }}
                   >
-                    <DieIcon die="d20" size={18} noTooltip />
-                    <Typography variant="subtitle2" color="inherit" sx={{ fontWeight: 700 }}>
+                    <DieIcon die="d20" size={14} noTooltip />
+                    <Typography variant="caption" color="inherit" sx={{ fontWeight: 700 }}>
                       {signed(caracTest)}
                     </Typography>
                   </Stack>
                 </AppTooltip>
-                {dice.length > 0 && <BonusDieBadge ability={ability} sources={dice} size={16} />}
+                {dice.length > 0 && <BonusDieBadge ability={ability} sources={dice} size={13} />}
                 {agiPenalty > 0 && (
                   <AppTooltip
                     title={
@@ -600,24 +598,22 @@ export function TestDomainsPanel({
                           réécrire, la pastille signale seulement la SOURCE — l'armure portée — via
                           son icône (cuirasse). Le tooltip porte la valeur et la référence de page. */}
                       <WarnPill outlined>
-                        <ItemTypeIcon type="armor" size={13} />
+                        <ItemTypeIcon type="armor" size={11} />
                       </WarnPill>
                     </Box>
                   </AppTooltip>
                 )}
               </Stack>
               {group.length > 0 && (
-                <Box
+                <Stack
+                  spacing={0.25}
                   sx={{
-                    p: 1,
-                    // Coins bas arrondis + haut carré : le tableau prolonge l'en-tête au-dessus.
-                    borderRadius: '0 0 4px 4px',
+                    p: 0.5,
                     // Fond plat très faible de la teinte de la carac, sous les cellules (qui
-                    // portent leur propre dégradé) : matérialise chaque « tableau » de tests.
+                    // portent leur propre dégradé) : matérialise chaque « colonne » de tests.
                     background: abilityTestPanelBg(ability),
                   }}
                 >
-                <Grid container spacing={1}>
                   {group.map(({ d, bonus }) => {
                     // Bonus de compétence de ce domaine + bonus de magie applicable à CE test
                     // (couple carac × domaine), arbitré et plafonné par le moteur.
@@ -828,11 +824,11 @@ export function TestDomainsPanel({
                       <Box
                         sx={{
                           display: 'flex',
-                          alignItems: 'baseline',
+                          alignItems: 'flex-start',
                           justifyContent: 'space-between',
-                          gap: 1,
-                          px: 1,
-                          py: 0.5,
+                          gap: 0.5,
+                          px: 0.75,
+                          py: 0.25,
                           borderRadius: 1,
                           // Même dégradé carac que l'en-tête, mais BEAUCOUP moins intense (cellules
                           // très nombreuses → volontairement subtil). Les cellules bonifiées gardent
@@ -851,20 +847,24 @@ export function TestDomainsPanel({
                         }}
                       >
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography variant="body2" color={has || die ? undefined : 'text.disabled'} noWrap>
+                          <Typography
+                            variant="caption"
+                            color={has || die ? undefined : 'text.disabled'}
+                            sx={{ display: 'block', overflowWrap: 'break-word' }}
+                          >
                             {d.label}
                           </Typography>
                           {multiAbility && (
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                               {d.abilities.map((a) => (a === ability ? `[${a}]` : a)).join(' / ')}
                             </Typography>
                           )}
                         </Box>
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                          {die && <BonusDieBadge ability={d.label} sources={die} size={14} />}
+                        <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center', flexShrink: 0 }}>
+                          {die && <BonusDieBadge ability={d.label} sources={die} size={12} />}
                           <Typography
-                            variant="subtitle1"
-                            sx={{ fontWeight: has ? 700 : 400 }}
+                            variant="body2"
+                            sx={{ fontWeight: has ? 700 : 400, fontVariantNumeric: 'tabular-nums' }}
                             color={has || die || (includeAbility && display !== 0) ? undefined : 'text.disabled'}
                           >
                             {signed(display)}
@@ -878,10 +878,10 @@ export function TestDomainsPanel({
                               sx={(theme) => ({
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                px: 0.75,
-                                height: 20,
+                                px: 0.5,
+                                height: 16,
                                 borderRadius: 1,
-                                fontSize: '0.7rem',
+                                fontSize: '0.6rem',
                                 fontWeight: 700,
                                 lineHeight: 1,
                                 whiteSpace: 'nowrap',
@@ -890,7 +890,7 @@ export function TestDomainsPanel({
                                 border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
                               })}
                             >
-                              +15
+                              15
                             </Box>
                           )}
                           {/* Rappel MJ (non appliqué) du malus d'armure sur les tests de survie CON :
@@ -898,7 +898,7 @@ export function TestDomainsPanel({
                               imposé). Le détail — valeur du malus et libre appréciation — est dans le tooltip. */}
                           {survivalConReminder && (
                             <WarnPill outlined>
-                              <WarningAmberRoundedIcon sx={{ fontSize: 14 }} />
+                              <WarningAmberRoundedIcon sx={{ fontSize: 12 }} />
                             </WarnPill>
                           )}
                         </Stack>
@@ -906,7 +906,7 @@ export function TestDomainsPanel({
                     );
 
                     return (
-                      <Grid key={d.id} size={{ xs: 6, sm: 4 }}>
+                      <Box key={d.id}>
                         {breakdown ? (
                           <AppTooltip title={breakdown}>
                             {row}
@@ -914,16 +914,15 @@ export function TestDomainsPanel({
                         ) : (
                           row
                         )}
-                      </Grid>
+                      </Box>
                     );
                   })}
-                </Grid>
-                </Box>
+                </Stack>
               )}
             </Box>
           );
         })}
-      </Stack>
+      </Box>
       {universalBonus && (
         <AppTooltip
           title={
