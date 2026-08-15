@@ -18,6 +18,9 @@ import { ACTION_TYPE_LABELS } from '@/components/FeatureLabel';
  */
 const HEX_CLIP = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
 const HEX_RATIO = Math.sqrt(3) / 2;
+/** Facteur d'agrandissement mobile (`xs`) de TOUS les hexagones de marqueur d'action de l'app —
+ * retour propriétaire (plus lisible au doigt). Source UNIQUE (`Hex`), pas de réglage par appelant. */
+const MOBILE_HEX_SCALE = 1.3;
 
 /** Un hexagone coloré au contenu blanc centré (lettre de type d'action ou icône). */
 function Hex({
@@ -51,8 +54,8 @@ function Hex({
         aria-label={label}
         sx={{
           position: 'relative',
-          width: size,
-          height: size * HEX_RATIO,
+          width: { xs: size * MOBILE_HEX_SCALE, sm: size },
+          height: { xs: size * MOBILE_HEX_SCALE * HEX_RATIO, sm: size * HEX_RATIO },
           flexShrink: 0,
           // Halo bleu mana diffus quand la concentration transforme le marqueur
           // (même effet que la goutte de PM réduite, SpellManaBadge). À PORTER ICI,
@@ -82,7 +85,7 @@ function Hex({
             justifyContent: 'center',
             color: 'common.white',
             fontWeight: 800,
-            fontSize: size * 0.5,
+            fontSize: { xs: size * MOBILE_HEX_SCALE * 0.5, sm: size * 0.5 },
             lineHeight: 1,
             // Le centrage géométrique laisse le glyphe visuellement un peu haut
             // (la boîte de ligne réserve de la place pour les jambages) : léger
@@ -122,9 +125,11 @@ export function ActionMarkerHex({
           proprio). Lettre agrandie (0.6 au lieu du 0.5 par défaut de `Hex`). */}
       <Hex fill="info.main" size={size} label={label} glyphOffsetY="3.5%">
         {marker === 'spell' ? (
-          <EmergencyIcon sx={{ fontSize: size * 0.62, color: 'inherit' }} />
+          <EmergencyIcon
+            sx={{ fontSize: { xs: size * MOBILE_HEX_SCALE * 0.62, sm: size * 0.62 }, color: 'inherit' }}
+          />
         ) : (
-          <Box component="span" sx={{ fontSize: size * 0.6, lineHeight: 1 }}>
+          <Box component="span" sx={{ fontSize: { xs: size * MOBILE_HEX_SCALE * 0.6, sm: size * 0.6 }, lineHeight: 1 }}>
             {marker}
           </Box>
         )}
@@ -201,7 +206,7 @@ export function FeatureMarkerHexes({
     <Stack direction="row" spacing={0.25} sx={sx}>
       {feature.isSpell && (
         <Hex fill={fill} size={size} label="Sort">
-          <EmergencyIcon sx={{ fontSize: size * 0.6, color: 'inherit' }} />
+          <EmergencyIcon sx={{ fontSize: { xs: size * MOBILE_HEX_SCALE * 0.6, sm: size * 0.6 }, color: 'inherit' }} />
         </Hex>
       )}
       {displayActionTypes.map((a) => {
