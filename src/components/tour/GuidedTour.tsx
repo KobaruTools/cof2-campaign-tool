@@ -22,10 +22,18 @@ export function GuidedTour({
   run,
   steps,
   onTourEnd,
+  onStepBefore,
 }: {
   run: boolean;
   steps: Step[];
   onTourEnd: () => void;
+  /**
+   * Appelé juste avant l'affichage de chaque étape, avec la définition de cette étape.
+   * Sert à déplier une section (accordéon) dont la cible dépend d'un état contrôlé par le
+   * composant hôte plutôt que par le tour lui-même (ex. `Enchantement` dans `ItemDialog`,
+   * PER-424bis) — le tour ne connaît pas cet état, seul l'hôte peut le faire.
+   */
+  onStepBefore?: (step: Step) => void;
 }) {
   return (
     <Joyride
@@ -39,6 +47,7 @@ export function GuidedTour({
       // beacon — un tour déclenché automatiquement doit se montrer sans étape cachée.
       options={{ zIndex: 1400, skipBeacon: true }}
       onEvent={(data: EventData) => {
+        if (data.type === EVENTS.STEP_BEFORE) onStepBefore?.(data.step);
         if (data.type === EVENTS.TOUR_END) onTourEnd();
       }}
     />

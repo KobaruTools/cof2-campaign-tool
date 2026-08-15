@@ -24,7 +24,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import { ItemDescriptionEditor } from './ItemDescriptionEditor';
+import { RichTextEditor } from './RichTextEditor';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
@@ -1106,38 +1106,83 @@ function ItemPreviewCard({
   );
 }
 
-/** Étapes du tour guidé pilote (PER-423) : identité, aperçu en direct, enchantement, sauvegarde
- * — les 4 zones décrites par le ticket. Ciblées par attribut `data-tour` plutôt que par classe
- * ou id, pour rester distinctes de tout style. */
-const ITEM_DIALOG_TOUR_STEPS: Step[] = [
-  {
-    target: '[data-tour="item-dialog-identity"]',
-    title: 'Identité de l’objet',
-    content:
-      'Donnez un nom et une description à votre objet. Une icône est aussi proposée un peu plus bas.',
-    placement: 'auto',
-  },
-  {
-    target: '[data-tour="item-dialog-preview"]',
-    title: 'Aperçu en direct',
-    content:
-      'Cet aperçu montre l’objet tel qu’il apparaîtra dans l’inventaire, mis à jour au fil de votre saisie.',
-    placement: 'auto',
-  },
-  {
-    target: '[data-tour="item-dialog-enchantment"]',
-    title: 'Enchantement',
-    content:
-      'Dépliez cette section pour ajouter des enchantements : bonus de caractéristiques, propriétés magiques, charges…',
-    placement: 'auto',
-  },
-  {
-    target: '[data-tour="item-dialog-save"]',
-    title: 'Enregistrer',
-    content: 'Une fois satisfait du résultat, validez ici pour ajouter l’objet à l’inventaire.',
-    placement: 'auto',
-  },
-];
+/** Étapes du tour guidé pilote (PER-423, étoffé PER-424bis à la demande du propriétaire) :
+ * identité, caractéristiques (armes/armures/boucliers uniquement), aperçu en direct, puis
+ * enchantement — dépliée automatiquement (voir `onStepBefore` sur `GuidedTour` dans le rendu)
+ * et détaillée en 4 grands groupes plutôt qu'une seule étape, vu la densité de cette section.
+ * Ciblées par attribut `data-tour` plutôt que par classe ou id, pour rester distinctes de tout
+ * style. `mechanical` conditionne la seule étape absente d'un objet cosmétique. */
+function buildItemDialogTourSteps(mechanical: boolean): Step[] {
+  const steps: Step[] = [
+    {
+      target: '[data-tour="item-dialog-identity"]',
+      title: 'Identité de l’objet',
+      content:
+        'Donnez un nom et une description à votre objet. Une icône est aussi proposée un peu plus bas.',
+      placement: 'auto',
+    },
+  ];
+  if (mechanical) {
+    steps.push({
+      target: '[data-tour="item-dialog-characteristics"]',
+      title: 'Caractéristiques',
+      content:
+        'Ces valeurs reprennent celles du livre pour la base choisie : vous pouvez les ajuster librement pour cet exemplaire précis.',
+      placement: 'auto',
+    });
+  }
+  steps.push(
+    {
+      target: '[data-tour="item-dialog-preview"]',
+      title: 'Aperçu en direct',
+      content:
+        'Cet aperçu montre l’objet tel qu’il apparaîtra dans l’inventaire, mis à jour au fil de votre saisie.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="item-dialog-enchantment"]',
+      title: 'Enchantement',
+      content:
+        'Tout ce qui relève de CET exemplaire précis, pas du livre : bonus magique, propriétés, charges… Cette section se déplie automatiquement pour la suite du tour.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="item-dialog-enchantment-magic"]',
+      title: 'Bonus magique et DEF magique',
+      content:
+        'Le bonus magique (+N) profite aux armes, la DEF magique à tout objet défensif. Ensemble, ils déterminent le niveau de magie de l’objet et sa valeur estimée, affichés juste en dessous.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="item-dialog-enchantment-properties"]',
+      title: 'Propriétés magiques',
+      content:
+        'Les propriétés spéciales tirées du livre (p. 251-254) : flamboyante, de précision, de protection…',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="item-dialog-enchantment-bonuses"]',
+      title: 'Bonus d’exemplaire',
+      content:
+        'Bonus ou malus de caractéristiques, de statistiques dérivées, ou aux tests que confère l’objet porté. Ce dernier est un bonus de magie : il ne se cumule pas avec un autre bonus de magie sur le même test (p. 80), seul le meilleur compte.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="item-dialog-enchantment-charges"]',
+      title: 'Charges',
+      content:
+        'Réservé aux objets à charges limitées (règle maison, aucun objet du livre de base n’en a) : baguette, sceptre, talisman… Laissez vide pour des utilisations illimitées.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="item-dialog-save"]',
+      title: 'Enregistrer',
+      content: 'Une fois satisfait du résultat, validez ici pour ajouter l’objet à l’inventaire.',
+      placement: 'auto',
+    },
+  );
+  return steps;
+}
 
 export interface ItemDialogProps {
   open: boolean;
@@ -1638,7 +1683,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                 />
                 {/* Éditeur riche Tiptap (PER-397) : gras/italique/barré/couleur/taille, sérialisés
                     en `string` simple (jamais de HTML) — voir `richTextEditorSync.ts`. */}
-                <ItemDescriptionEditor
+                <RichTextEditor
                   value={form.description}
                   onChange={(text) => setField('description', text)}
                   placeholder="Origine, propriétés, notes libres…"
@@ -1773,7 +1818,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                   et surchargeables : c'est ce qui fait de la ligne une VARIANTE. Aucune pour un
                   objet libre, d'où l'accordéon conditionné à la famille mécanique. */}
               {mechanical && (
-                <FormAccordion title="Caractéristiques" defaultExpanded>
+                <FormAccordion title="Caractéristiques" defaultExpanded dataTour="item-dialog-characteristics">
                   {/* Stats d'arme. */}
                   {type === 'weapon' && (
                     <>
@@ -1878,6 +1923,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                 <Stack
                   direction="row"
                   spacing={1.5}
+                  data-tour="item-dialog-enchantment-magic"
                   sx={{ alignItems: 'flex-start', flexWrap: 'wrap', rowGap: 1 }}
                 >
                   {/* Bonus magique +N d'ARME (PER-306, p. 251) : « un bonus en attaque et aux
@@ -1943,14 +1989,17 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                   {/* Propriétés spéciales (PER-306, p. 251-254) : famille ARME pour une arme,
                       famille DÉFENSE pour tout le reste (armure, bouclier, mais aussi
                       accessoires enchantés — cape de protection, anneau…). */}
-                  <MagicPropertyRows
-                    kinds={type === 'weapon' ? MAGIC_WEAPON_PROPERTY_KINDS : MAGIC_DEFENSE_PROPERTY_KINDS}
-                    addLabel="Ajouter une propriété magique"
-                    rows={form.magicProperties}
-                    onChange={(rows) => setField('magicProperties', rows)}
-                  />
+                  <Box data-tour="item-dialog-enchantment-properties">
+                    <MagicPropertyRows
+                      kinds={type === 'weapon' ? MAGIC_WEAPON_PROPERTY_KINDS : MAGIC_DEFENSE_PROPERTY_KINDS}
+                      addLabel="Ajouter une propriété magique"
+                      rows={form.magicProperties}
+                      onChange={(rows) => setField('magicProperties', rows)}
+                    />
+                  </Box>
 
                   <Stack spacing={2} divider={<Divider />}>
+                    <Stack spacing={2} divider={<Divider />} data-tour="item-dialog-enchantment-bonuses">
                     {/* Bonus/malus de CARACTÉRISTIQUES (PER-272), par lignes. */}
                     <BonusRows
                       ids={ABILITY_IDS}
@@ -2026,12 +2075,13 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                       rows={form.testBonuses}
                       onChange={(rows) => setField('testBonuses', rows)}
                     />
+                    </Stack>
 
                     {/* CHARGES (PER-294) : baguette, sceptre, talisman… Les deux cases de
                         rechargement sont indépendantes et cumulables ; aucune cochée =
                         rechargement à la main uniquement. RÈGLE MAISON : aucun objet à charges
                         dans le livre de base. */}
-                    <Box>
+                    <Box data-tour="item-dialog-enchantment-charges">
                       <TextField
                         type="number"
                         size="small"
@@ -2086,7 +2136,14 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
         </Button>
       </DialogActions>
       {formVisible && (
-        <GuidedTour run={tour.run} steps={ITEM_DIALOG_TOUR_STEPS} onTourEnd={tour.onTourEnd} />
+        <GuidedTour
+          run={tour.run}
+          steps={buildItemDialogTourSteps(mechanical)}
+          onTourEnd={tour.onTourEnd}
+          onStepBefore={(step) => {
+            if (step.target === '[data-tour="item-dialog-enchantment"]') setEnchantmentExpanded(true);
+          }}
+        />
       )}
     </Dialog>
   );
