@@ -6,6 +6,7 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
 import { CharacterSyncNotifier } from '@/components/CharacterSyncNotifier';
 import { PaidContentBoot } from '@/components/PaidContentBoot';
+import { TextureBackground } from '@/components/TextureBackground';
 import { ToastProvider } from '@/components/toast/ToastProvider';
 import theme from '@/theme';
 
@@ -26,6 +27,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             voulu — tableau d'accueil, voies en colonnes — ont leur propre
             conteneur de défilement, non affecté). */}
         <GlobalStyles styles={{ body: { overflowX: 'hidden' } }} />
+        {/* TEST visuel (fond bleu texturé issu du livre, PER-432) — à retirer si non
+            retenu. Composant dédié (pas un `body::before` CSS pur) : le parallaxe au
+            scroll a besoin d'un ref DOM pour poser son `transform` à chaque frame. */}
+        <TextureBackground />
         {/* Toasts globaux empilés (bas droite) : `useToast()` accessible partout. */}
         <ToastProvider>{children}</ToastProvider>
         {/* Bandeau global de conflit de synchro + filet de flush avant fermeture (PER-192). */}

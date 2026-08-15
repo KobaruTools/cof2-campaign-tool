@@ -85,10 +85,6 @@ const FOOTER_HEIGHT = `${FOOTER_IMAGE_HEIGHT}vh`;
 // supérieur de l'image) → transparent plus bas. Plus petit = on voit plus d'image.
 const FOOTER_TOP_FADE = 32; // %
 
-// Couleur de fond de l'app (thème sombre) : sert au dégradé de fondu intérieur.
-const BG = 'rgb(18, 18, 18)';
-const BG0 = 'rgba(18, 18, 18, 0)';
-
 // Illustration ENTIÈRE (celle qui a été « coupée » en deux moitiés) : fallback mobile
 // de la variante `full`, où les deux moitiés sont masquées.
 const MOBILE_IMAGE = '/cover-full.webp';
@@ -107,15 +103,20 @@ function SidePanel({
 }) {
   const isLeft = side === 'left';
   const isFooter = variant === 'footer';
-  // Dégradé de fondu intérieur (côté contenu). Direction : transparent au bord
-  // extérieur → opaque (couleur de l'app) vers l'intérieur.
+  // Fondu intérieur (côté contenu) : MASQUE (alpha) appliqué à l'image elle-même,
+  // pas un rectangle peint par-dessus — sinon le fond de l'app (texture, PER-432)
+  // serait recouvert d'un aplat uni au lieu de transparaître. Opaque au bord
+  // extérieur → transparent vers l'intérieur (mêmes arrêts qu'avant).
   // - `full` : arrêts figés en vh, alignés sur le bord intérieur de l'image (dont la
   //   largeur découle de la hauteur).
   // - `footer` : arrêts relatifs à la LARGEUR du panneau (%), bornés au ras de la
   //   coupe par un plafond en vh — plus la page est large, plus on voit d'image.
-  const innerFade = isFooter
-    ? `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} min(${FOOTER_FADE_START_PCT}%, ${FOOTER_FADE_START_CAP}vh), ${BG} min(${FOOTER_FADE_END_PCT}%, ${FOOTER_FADE_END_CAP}vh))`
-    : `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} max(${FADE_START}vh, ${FADE_START_MIN}px), ${BG} min(max(${FADE_END}vh, ${FADE_END_MIN}px), ${FADE_END_CAP_VW}vw))`;
+  const maskHorizontal = isFooter
+    ? `linear-gradient(to ${isLeft ? 'right' : 'left'}, #000 0, #000 min(${FOOTER_FADE_START_PCT}%, ${FOOTER_FADE_START_CAP}vh), transparent min(${FOOTER_FADE_END_PCT}%, ${FOOTER_FADE_END_CAP}vh))`
+    : `linear-gradient(to ${isLeft ? 'right' : 'left'}, #000 0, #000 max(${FADE_START}vh, ${FADE_START_MIN}px), transparent min(max(${FADE_END}vh, ${FADE_END_MIN}px), ${FADE_END_CAP_VW}vw))`;
+  // Footer : second masque VERTICAL (transparent en haut → opaque plus bas), qui
+  // masque la coupure du bord supérieur de l'image sans peindre de rectangle uni.
+  const maskVertical = `linear-gradient(to bottom, transparent 0%, #000 ${FOOTER_TOP_FADE}%)`;
   return (
     <Box
       sx={{
@@ -155,28 +156,13 @@ function SidePanel({
           backgroundRepeat: 'no-repeat',
           opacity: 0.6,
           willChange: 'transform',
+          // Fondu intérieur (+ vertical en footer) par MASQUE plutôt que par
+          // rectangle peint : le fond de l'app transparaît là où l'image s'efface.
+          maskImage: isFooter ? `${maskHorizontal}, ${maskVertical}` : maskHorizontal,
+          WebkitMaskImage: isFooter ? `${maskHorizontal}, ${maskVertical}` : maskHorizontal,
+          ...(isFooter && { maskComposite: 'intersect', WebkitMaskComposite: 'source-in' }),
         }}
       />
-      {/* Dégradé de fondu intérieur, FIXE (hors de la couche animée) : transparent
-          côté extérieur, opaque (couleur de l'app) côté intérieur vers le contenu. */}
-      <Box
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          background: innerFade,
-        }}
-      />
-      {/* Footer : fondu VERTICAL supplémentaire — opaque en haut (masque la coupure
-          du bord supérieur de l'image) → transparent vers le bas où l'art apparaît. */}
-      {isFooter && (
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(to bottom, ${BG} 0%, ${BG0} ${FOOTER_TOP_FADE}%)`,
-          }}
-        />
-      )}
     </Box>
   );
 }
@@ -213,12 +199,13 @@ export function HomeBackground({ variant = 'full' }: { variant?: HomeBackgroundV
         //   colle au bas du document et passe DERRIÈRE le pied de page global (verre
         //   semi-transparent), qui la laisse transparaître floutée — sans jamais
         //   recouvrir le haut de la page (contrairement à un ancrage `fixed`).
-        // Plein écran : backdrop FIXE couvrant tout le viewport, peint dans la
-        //   couleur de l'app.
+        // Plein écran : backdrop FIXE couvrant tout le viewport. SANS bgcolor
+        //   (comme la variante footer) : le fond de l'app (texture, PER-432,
+        //   `body::before`) transparaît là où les deux moitiés ne couvrent pas.
         position: isFooter ? 'absolute' : 'fixed',
         left: 0,
         right: 0,
-        ...(isFooter ? { bottom: 0, height: FOOTER_HEIGHT } : { top: 0, bottom: 0, bgcolor: 'background.default' }),
+        ...(isFooter ? { bottom: 0, height: FOOTER_HEIGHT } : { top: 0, bottom: 0 }),
         zIndex: -1,
         pointerEvents: 'none',
       }}

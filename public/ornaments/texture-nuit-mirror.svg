@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="786" height="1024" viewBox="0 0 786 1024">
+  <!-- Tuile "kaleidoscope" (test fond bleu texture, PER-432) : la texture brute
+       (texture-nuit-1.webp, 393x512) repetee en 2x2, chaque copie retournee a
+       partir du coin haut-gauche. Image encodee en base64 (pas de href externe) :
+       une <image> externe ne charge pas quand ce SVG est utilise en CSS
+       background-image (contexte 'image', fetch de sous-ressource bloque). -->
+  <defs>
+    <!-- Seuil colorimétrique : ne garde que les zones claires, le reste devient
+         transparent (au lieu d'un aplat sombre). feColorMatrix calcule la
+         luminance par pixel et la réinjecte comme canal alpha (RVB inchangés) ;
+         feComponentTransfer applique ensuite une rampe dure sur cet alpha
+         (coupe nette sous ~0.3, pleine opacité au-delà de ~0.7). -->
+    <filter
+      id="lightsOnly"
+      x="-20%"
+      y="-20%"
+      width="140%"
+      height="140%"
+      color-interpolation-filters="sRGB"
+    >
+      <feColorMatrix
+        type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0.2126 0.7152 0.0722 0 0"
+      />
+      <!-- Étape 1/2 — étalement : la luminance RÉELLE de cette texture ne couvre
+           qu'une bande étroite (~0.086 à ~0.154, mesuré) au lieu de 0..1. On
+           l'étire d'abord sur toute la plage pour que l'étape 2 (le dégradé) ait
+           de la place pour travailler, sinon tout se tasse sur 2-3 valeurs. -->
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="14.7" intercept="-1.265" />
+      </feComponentTransfer>
+      <!-- Étape 2/2 — dégradé continu, mais désormais creusé au MILIEU : les tons
+           sombres restent à ~0 (inchangé), les tons MOYENS-CLAIRS (le « entre deux »)
+           sont désormais bien plus supprimés qu'avant (0.02→0.18 au lieu de
+           0.04→0.79), et seuls les tons les plus clairs (dernier ~15%) remontent
+           franchement vers l'opacité pleine. Toujours une seule courbe lisse
+           (aucun palier), juste très aplatie avant sa remontée finale. -->
+      <feComponentTransfer>
+        <feFuncA
+          type="table"
+          tableValues="0 0.01 0.03 0.06 0.09 0.12 0.16 0.20 0.26 0.36 0.55 0.82 1"
+        />
+      </feComponentTransfer>
+    </filter>
+    <image id="t" filter="url(#lightsOnly)" href="data:image/webp;base64,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" width="393" height="512" />
+  </defs>
+  <use href="#t" />
+  <use href="#t" transform="translate(786,0) scale(-1,1)" />
+  <use href="#t" transform="translate(0,1024) scale(1,-1)" />
+  <use href="#t" transform="translate(786,1024) scale(-1,-1)" />
+</svg>
