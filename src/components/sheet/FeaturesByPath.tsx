@@ -3400,6 +3400,7 @@ function PathBlock({
       sx={{
         position: 'relative',
         mb: compact ? 0 : 1,
+        pb: '5px',
         pl: compact ? 1 : 1.5,
         borderLeft: isPrestigePath ? 0 : 3,
         borderColor: isPrestigePath ? undefined : (titleColor ?? 'divider'),
@@ -3446,9 +3447,10 @@ function PathBlock({
           // Vue colonne : titre de voie réduit de 2px (body2 0.875rem → 0.75rem) pour tenir la
           // largeur maintenant que la colonne de prestige occupe une 7e colonne (PER-74).
           ...(compact && { fontSize: '0.75rem' }),
-          // Réserve la largeur du bloc icône/compteur/infobulle (collé au bord droit, ci-dessous)
-          // pour que le titre passe à la ligne AVANT de passer dessous plutôt que de le chevaucher.
-          ...(compact && { pr: 3 }),
+          // Vue colonne : `flex:1` fait passer le titre à la ligne dans l'espace restant, la
+          // colonne icône/compteur/infobulle (flex, pas absolue, ci-dessous) gardant sa propre
+          // largeur — le titre ne peut donc plus chevaucher ce bloc.
+          ...(compact && { flex: 1 }),
         }}
       >
         {path?.name ?? group.pathId}
@@ -3459,12 +3461,11 @@ function PathBlock({
       {compact ? (
         // Vue colonne : icône de profil, compteur de rangs, puis le « i » d'infobulle EN DESSOUS —
         // ça libère le titre (très condensé sur 7 colonnes). Uniforme pour toutes les voies connues.
-        // Collé au bord droit de l'en-tête (position absolue, pas de suivi de flux du titre — retour
-        // proprio : le bloc dérivait vers le centre de la colonne au lieu de rester à son bord droit).
-        <Stack
-          spacing={0.25}
-          sx={{ position: 'absolute', top: 0, right: 0, flexShrink: 0, alignItems: 'flex-end' }}
-        >
+        // En flux flex (pas absolu, retour proprio 2026-08-15 : l'absolu sortait ce bloc du calcul
+        // de hauteur de l'en-tête et le faisait chevaucher les rangs en dessous) — collé au bord
+        // droit simplement parce que le titre voisin est en `flex:1` et prend le reste de la largeur.
+        <Stack spacing={0.25} sx={{ flexShrink: 0, alignItems: 'flex-end' }}>
+
           {ownerClassId ? (
             <ClassIcon classId={ownerClassId} size={18} />
           ) : (
