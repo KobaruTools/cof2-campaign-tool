@@ -131,6 +131,12 @@ export function AppHeaderNavDrawer({
               </ListItemIcon>
               <ListItemText>Aide-mémoire</ListItemText>
             </ListItemButton>
+            <ListItemButton component={Link} href="/codex" onClick={onClose}>
+              <ListItemIcon>
+                <SectionIcon name="paths" size={24} />
+              </ListItemIcon>
+              <ListItemText>Codex</ListItemText>
+            </ListItemButton>
             <Divider sx={{ my: 0.5 }} />
             <RulesBookDrawerItems onNavigate={onClose} />
           </>

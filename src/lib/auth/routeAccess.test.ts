@@ -62,7 +62,14 @@ describe('decideRouteAccess — visiteur sans session', () => {
     // (`current_user_is_entitled`, fail-safe sur `is_anonymous()`) et par le bucket
     // privé des PDF payants. `/pdf` doit suivre `/rules` — sinon pdf.js reçoit une
     // redirection au lieu du document.
-    for (const path of ['/bestiary', '/reference', '/rules/core-rulebook/12', '/pdf/core.pdf']) {
+    for (const path of [
+      '/bestiary',
+      '/reference',
+      '/rules/core-rulebook/12',
+      '/pdf/core.pdf',
+      '/codex',
+      '/codex/voies',
+    ]) {
       expect(allows(path, 'anonymous')).toBe(true);
     }
   });
@@ -84,6 +91,7 @@ describe('decideRouteAccess — session joueur (lien du MJ)', () => {
       '/reference',
       '/rules/core-rulebook/1',
       '/pdf/core-rulebook.pdf',
+      '/codex',
     ]) {
       expect(allows(path, 'player')).toBe(true);
     }

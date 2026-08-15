@@ -10,7 +10,7 @@
  * | `/` (vitrine)                             |   oui   |  oui   |    non     |   oui   |
  * | `/login` `/auth` `/join` `/about` …       |   oui   |  oui   |    oui     |   oui   |
  * | `/characters` `/character/*` `/create`    |   oui   |  oui   |    non     |   oui   |
- * | `/bestiary` `/reference` `/rules` `/pdf`  |   oui   |  oui   |    non     |   oui   |
+ * | `/bestiary` `/reference` `/rules` `/pdf` `/codex` |   oui   |  oui   |    non     |   oui   |
  * | `/play`                                   |   non   |  oui   |    non     |   non   |
  * | `/campaigns` `/campaign/*` `/account`     |   non   |  non   |    non     |   oui   |
  *
@@ -56,8 +56,13 @@ const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about', '/privacy', 
  * `/pdf` sert le fichier lui-même (`public/pdf/`), lu par pdf.js : il doit suivre
  * exactement le même périmètre que la page du visualiseur, sinon pdf.js reçoit une
  * redirection au lieu du document.
+ *
+ * `/codex` (PER-418) : bibliothèque de règles consultable hors personnage, même
+ * périmètre public que `/bestiary`/`/reference` — le gating du contenu PAYANT qu'elle
+ * liste (voies du Compagnon) reste porté par les registres (`contentRegistry.ts`), pas
+ * par cette liste de préfixes.
  */
-const CONTENT_PATH_PREFIXES = ['/bestiary', '/reference', '/rules', '/pdf'] as const;
+const CONTENT_PATH_PREFIXES = ['/bestiary', '/reference', '/rules', '/pdf', '/codex'] as const;
 
 /**
  * Routes de l'**atelier de personnage** : ouvertes à TOUT LE MONDE, visiteur sans

@@ -167,6 +167,11 @@ export function AppHeaderShell() {
               icon={<SectionIcon name="notes" size={20} />}
               label="Aide-mémoire"
             />
+            <HeaderNavButton
+              href="/codex"
+              icon={<SectionIcon name="paths" size={20} />}
+              label="Codex"
+            />
           </>
         )}
 
