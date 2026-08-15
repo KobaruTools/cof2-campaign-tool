@@ -14,9 +14,11 @@
  */
 import { useEffect, useState } from 'react';
 import type { User, UserIdentity } from '@supabase/supabase-js';
+import DeleteOutlineIcon from '@mui/icons-material/Delete';
 import EmailIcon from '@mui/icons-material/Email';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import LogoutIcon from '@mui/icons-material/Logout';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -28,6 +30,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
@@ -36,12 +39,14 @@ import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
 import { AccountUnlockSection } from '@/components/account/AccountUnlockSection';
 import { useToast } from '@/components/toast/ToastProvider';
 import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
 import { storageKeys } from '@/lib/storage/keys';
+import { describeStorageKey, isProtectedStorageKey } from '@/lib/storage/keyDescriptions';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ProviderIcon } from '@/components/icons/ProviderIcons';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
@@ -52,6 +57,20 @@ import { deleteAccount } from './actions';
 const IS_CONFIGURED = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 );
+
+/** Liste de debug (PER-412) : outil de développement, jamais affichée en prod. */
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
+/** Lit toutes les clés `localStorage` présentes, triées, avec leur description. */
+function readStorageEntries(): Array<{ key: string; description: string }> {
+  if (typeof window === 'undefined') return [];
+  const entries: Array<{ key: string; description: string }> = [];
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (key !== null) entries.push({ key, description: describeStorageKey(key) });
+  }
+  return entries.sort((a, b) => a.key.localeCompare(b.key));
+}
 
 /** Libellé du mot à retaper pour confirmer la suppression (confirmation forte). */
 const DELETE_CONFIRM_WORD = 'SUPPRIMER';
@@ -95,6 +114,8 @@ export default function AccountPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [storageEntries, setStorageEntries] = useState<Array<{ key: string; description: string }>>([]);
 
   const { showToast } = useToast();
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
@@ -125,6 +146,25 @@ export default function AccountPage() {
       cancelled = true;
     };
   }, []);
+
+  // Liste de debug (PER-412) : lue une fois au montage, pas de suivi live.
+  useEffect(() => {
+    if (!IS_DEV) return;
+    void Promise.resolve().then(() => setStorageEntries(readStorageEntries()));
+  }, []);
+
+  function deleteStorageEntry(key: string) {
+    localStorage.removeItem(key);
+    setStorageEntries((prev) => prev.filter((entry) => entry.key !== key));
+  }
+
+  function confirmResetLocalConfig() {
+    for (const { key } of readStorageEntries()) {
+      if (!isProtectedStorageKey(key)) localStorage.removeItem(key);
+    }
+    setResetOpen(false);
+    window.location.reload();
+  }
 
   async function saveHandle() {
     setSavingHandle(true);
@@ -328,6 +368,62 @@ export default function AccountPage() {
               </Typography>
             </Section>
 
+            {/* Données stockées sur cet appareil (PER-412) : réinitialisation globale
+                des réglages/préférences locaux (jamais les personnages ni le compte),
+                + liste de debug (dev uniquement, jamais affichée en prod). */}
+            <Section title="Données stockées sur cet appareil">
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Réinitialise les réglages d’affichage et de confort propres à cet
+                appareil (repli des sections, tri, densité…). Tes personnages et les
+                données de ton compte ne sont pas concernés.
+              </Typography>
+              <Button
+                variant="outlined"
+                color="warning"
+                startIcon={<RestartAltIcon />}
+                onClick={() => setResetOpen(true)}
+              >
+                Réinitialiser toutes les configurations de cet appareil
+              </Button>
+
+              {IS_DEV && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    Debug (dev uniquement) — {storageEntries.length} clé(s) localStorage sur cet appareil.
+                  </Typography>
+                  <List dense disablePadding sx={{ maxHeight: 320, overflowY: 'auto' }}>
+                    {storageEntries.map(({ key, description }) => (
+                      <ListItem
+                        key={key}
+                        disableGutters
+                        secondaryAction={
+                          <Tooltip title="Supprimer cette clé">
+                            <IconButton
+                              size="small"
+                              edge="end"
+                              onClick={() => deleteStorageEntry(key)}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        }
+                      >
+                        <ListItemText
+                          primary={key}
+                          secondary={description}
+                          slotProps={{
+                            primary: { variant: 'body2', sx: { fontFamily: 'monospace' } },
+                            secondary: { variant: 'caption' },
+                          }}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </>
+              )}
+            </Section>
+
             {/* Débloquer du contenu (PER-243) — auto-gaté : ne s'affiche que pour un
                 compte habilité (allowlist), sinon le composant ne rend rien. */}
             <AccountUnlockSection />
@@ -461,6 +557,27 @@ export default function AccountPage() {
             startIcon={deleting ? <CircularProgress size={18} color="inherit" /> : undefined}
           >
             Supprimer définitivement
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation : réinitialisation des réglages locaux (irréversible). */}
+      <Dialog open={resetOpen} onClose={() => setResetOpen(false)}>
+        <DialogTitle>Réinitialiser les réglages de cet appareil ?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Tous les réglages d’affichage et de confort propres à cet appareil
+            reviendront à leur valeur par défaut. Cette action est
+            <strong> irréversible</strong>. Tes personnages et les données de ton
+            compte ne sont pas touchés.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetOpen(false)} color="inherit">
+            Annuler
+          </Button>
+          <Button color="warning" variant="contained" onClick={confirmResetLocalConfig}>
+            Réinitialiser
           </Button>
         </DialogActions>
       </Dialog>
