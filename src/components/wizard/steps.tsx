@@ -1125,12 +1125,13 @@ export function IdentityStep({
               alt=""
               aria-hidden
               sx={{
-                width: 56,
-                height: 56,
+                width: 128,
+                height: 128,
                 borderRadius: 2,
                 objectFit: 'cover',
                 objectPosition: 'top',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
+                flexShrink: 0,
               }}
             />
             <PortraitVariantMenu

@@ -1,10 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import { classPortraitPath } from '@/lib/storage/useCharacterPortraitSrc';
+import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
 import { featureById, families, ancestryById, classById, pathById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
 import { checkCompliance } from '@/lib/engine';
@@ -35,7 +38,36 @@ import type { StepProps } from './types';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
-export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
+export function SummaryStep({
+  draft,
+  patch,
+  campaignAllowsFirearms,
+  portraitFile,
+  portraitCropRect,
+}: StepProps) {
+  // Illustration CHOISIE, en fond flottant du récapitulatif (PER-330 retours) — même esprit que le
+  // filigrane du portrait sur la fiche en mobile (`HeaderIllustrations`) : aperçu 100 % local du fichier
+  // en attente (aucun envoi tant que le personnage n'existe pas en DB, cf. PER-383), sinon l'illustration
+  // statique du profil. Hooks AVANT tout retour anticipé (règles des Hooks).
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!portraitFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(portraitFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [portraitFile]);
+  const croppedPreviewUrl = useCroppedImageSrc(previewUrl ?? undefined, portraitCropRect);
+  const portraitSrc =
+    draft.portraitVariant === 'custom' && previewUrl
+      ? croppedPreviewUrl ?? previewUrl
+      : classPortraitPath(
+          draft.classId,
+          draft.portraitVariant === 'custom' ? 'default' : (draft.portraitVariant ?? 'default'),
+        );
+
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
@@ -75,7 +107,43 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
   const warnings = checkCompliance(preview, rulesContext, firearmsAllowed);
 
   return (
-    <Stack spacing={3}>
+    // Bleed jusqu'aux bords du cadre d'étape (`Paper` translucide de `create/page.tsx`, padding
+    // {xs:2, sm:3}) : les marges négatives annulent ce padding, `overflow: hidden` clippe le filigrane au
+    // cadre, et le padding est réappliqué sur le contenu (`Stack` intérieur).
+    <Box
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        mx: { xs: -2, sm: -3 },
+        my: { xs: -2, sm: -3 },
+      }}
+    >
+      {/* Filigrane flottant de l'illustration choisie : ancré au bord DROIT, pleine hauteur, très
+          transparent, estompé vers la gauche par un masque en dégradé (illisibilité du texte évitée) —
+          purement décoratif (aria-hidden, pointerEvents none, sous le contenu). */}
+      <Box
+        component="img"
+        src={portraitSrc}
+        alt=""
+        aria-hidden
+        sx={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          height: '100%',
+          width: 'auto',
+          maxWidth: '75%',
+          objectFit: 'cover',
+          objectPosition: 'top',
+          opacity: 0.32,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          zIndex: 0,
+          maskImage: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 68%)',
+          WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 68%)',
+        }}
+      />
+      <Stack spacing={3} sx={{ position: 'relative', zIndex: 1, p: { xs: 2, sm: 3 } }}>
       <Box>
         <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
           {draft.name || 'Nouveau personnage'}
@@ -262,6 +330,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
           <PageRefText>{warnings.map((a) => a.message).join(' ')}</PageRefText>
         </AppAlert>
       )}
-    </Stack>
+      </Stack>
+    </Box>
   );
 }
