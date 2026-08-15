@@ -152,7 +152,7 @@ import { SourceRef, PageRefText } from '@/components/SourceRef';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
-import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
+import { ActionMarkerHex, FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
@@ -1550,7 +1550,12 @@ export function ConcentrationToggle({
       }
     >
       <AppTooltip
-        title="Concentration accrue : les sorts en (A) coûtent 2 PM de moins (plancher 0) et deviennent une action limitée (L)"
+        title={
+          <>
+            Concentration accrue : les sorts en <ActionMarkerHex marker="A" size={16} /> coûtent 2 PM
+            de moins (plancher 0) et deviennent une action limitée <ActionMarkerHex marker="L" size={16} />
+          </>
+        }
         page={228}
       >
         <SelfImprovementIcon fontSize="small" />
