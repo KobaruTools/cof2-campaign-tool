@@ -2,18 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { classPortraitPath } from '@/lib/storage/useCharacterPortraitSrc';
 import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
-import { featureById, families, ancestryById, classById, pathById } from '@/data';
+import { featureById, families, ancestryById, classById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
 import { checkCompliance } from '@/lib/engine';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { finalAbilities, level1FeatureIds, materializeDraft } from '@/lib/character/wizard';
-import { classDisplayName, effectiveClassPathIds } from '@/lib/character/classDisplay';
+import { classDisplayName } from '@/lib/character/classDisplay';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { activeFeatureIdsForMods, defenseAbility, effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
 import { hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
@@ -31,9 +30,9 @@ import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/master
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { AbilityValueBadge } from '@/components/AbilityValueBadge';
 import { ClassIcon } from '@/components/ClassIcon';
-import { AncestryIcon } from '@/components/AncestryIcon';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { FeatureLabel } from '@/components/FeatureLabel';
+import { AcquiredPathsGrid } from './AcquiredPathsGrid';
 import type { StepProps } from './types';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -129,7 +128,10 @@ export function SummaryStep({
           position: 'absolute',
           top: 0,
           right: 0,
-          height: '100%',
+          // Taille FIXE (pas dépendante de la hauteur du bloc) — même valeurs que le
+          // filigrane portrait de la fiche (`HeaderIllustrations.tsx`), pour un rendu
+          // cohérent quel que soit le contenu du récapitulatif.
+          height: { xs: 300, md: 600 },
           width: 'auto',
           maxWidth: '75%',
           objectFit: 'cover',
@@ -215,74 +217,7 @@ export function SummaryStep({
         <Typography variant="subtitle2" gutterBottom>
           Capacités acquises
         </Typography>
-        <Grid container spacing={1}>
-          {featureIds.map((id) => {
-            const feature = featureById.get(id);
-            const path = feature ? pathById.get(feature.pathId) : undefined;
-            // Capacité liée à un profil = voie de classe → couleur/icône de SON
-            // profil (pas du profil principal : en hybride, une voie peut venir
-            // d'un autre profil). Voie de peuple / du mage : pas de profil →
-            // bordure neutre.
-            const featureClassId =
-              path?.type === 'class'
-                ? effectiveClassPathIds(characterClass, firearmsAllowed).includes(path.id)
-                  ? characterClass.id
-                  : path.classIds[0]
-                : null;
-            const color = featureClassId ? classColor(featureClassId) : null;
-            // Voie de peuple : pas de profil → icône neutre du peuple (la voie du
-            // mage / de prestige n'a pas d'icône, AncestryIcon ne rend alors rien).
-            const ancestryId = path?.type === 'ancestry' ? path.id : null;
-            return (
-              <Grid key={id} size={{ xs: 6, sm: 3 }}>
-                <Box
-                  sx={{
-                    height: '100%',
-                    px: 1.5,
-                    py: 0.75,
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: color ?? 'divider',
-                    // Voie de peuple / du mage (pas de couleur de profil) : fond gris/blanc
-                    // très transparent plutôt que rien, pour montrer qu'elle est active.
-                    bgcolor: color ? alpha(color, 0.15) : (theme) => alpha(theme.palette.text.primary, 0.04),
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: 1,
-                  }}
-                >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {feature ? <FeatureLabel feature={feature} /> : id}
-                    </Typography>
-                    {path && (
-                      <Typography variant="caption" color="text.secondary">
-                        {path.name}
-                      </Typography>
-                    )}
-                  </Box>
-                  {featureClassId ? (
-                    <ClassIcon
-                      classId={featureClassId}
-                      size={20}
-                      color="#fff"
-                      sx={{ mt: 0.25 }}
-                    />
-                  ) : (
-                    ancestryId && (
-                      <AncestryIcon
-                        ancestryId={ancestryId}
-                        size={20}
-                        sx={{ mt: 0.25, color: 'text.secondary' }}
-                      />
-                    )
-                  )}
-                </Box>
-              </Grid>
-            );
-          })}
-        </Grid>
+        <AcquiredPathsGrid character={preview} />
       </Box>
 
       {/* Choix portés par les capacités de niveau 1 (PER-66/68) — bloquant :
