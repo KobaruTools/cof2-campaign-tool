@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/check-storage-keys.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check:storage-keys": "tsx scripts/check-storage-keys.ts",
     "validate:data": "tsx scripts/validate-data.ts",
     "home:shots": "tsx scripts/generate-home-shots.ts",
     "ingest": "tsx scripts/ingest-bestiary.ts",
