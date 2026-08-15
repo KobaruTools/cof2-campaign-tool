@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Box from '@mui/material/Box';
+import { hrefFromIndex, useCampaignSlugIndex } from '@/lib/routing/slug';
 
 export interface CampaignBadgeProps {
   /** Nom de la campagne de rattachement, ou `null` pour « Non attribué ». */
@@ -24,6 +25,7 @@ export interface CampaignBadgeProps {
  * sessions joueur hors de l'accueil (jamais rendu pour eux).
  */
 export function CampaignBadge({ name, campaignId }: CampaignBadgeProps) {
+  const campaignSlugIndex = useCampaignSlugIndex();
   const assigned = name != null;
   const clickable = assigned && campaignId != null;
 
@@ -58,11 +60,11 @@ export function CampaignBadge({ name, campaignId }: CampaignBadgeProps) {
   // Cliquable → vraie ancre (`Link`) : Ctrl/⌘+Clic et clic-molette ouvrent la
   // campagne dans un nouvel onglet. `stopPropagation` empêche la carte mobile
   // parente d'ouvrir la fiche du personnage au clic sur le badge.
-  if (clickable) {
+  if (clickable && name != null && campaignId != null) {
     return (
       <Box
         component={Link}
-        href={`/campaign/${campaignId}`}
+        href={hrefFromIndex('/campaign', campaignSlugIndex, campaignId)}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
         sx={badgeSx}
       >

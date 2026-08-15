@@ -17,6 +17,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { hrefFromIndex, useCharacterSlugIndex } from '@/lib/routing/slug';
 import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
@@ -128,6 +129,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const characters = useCharactersStore((s) => s.characters);
+  const characterSlugIndex = useCharacterSlugIndex();
   const cloudVersions = useCharactersStore((s) => s.cloudVersions);
   const loadCharacters = useCharactersStore((s) => s.load);
   const claim = useCharactersStore((s) => s.claim);
@@ -233,7 +235,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
       key: 'open',
       label: 'Ouvrir',
       icon: <OpenInNewIcon fontSize="small" />,
-      href: (r) => `/character/${r.id}`,
+      href: (r) => hrefFromIndex('/character', characterSlugIndex, r.id),
     },
     {
       key: 'export',
@@ -249,7 +251,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
       key: 'open',
       label: 'Ouvrir (lecture seule)',
       icon: <OpenInNewIcon fontSize="small" />,
-      href: (r) => `/character/${r.id}`,
+      href: (r) => hrefFromIndex('/character', characterSlugIndex, r.id),
     },
   ];
 
@@ -342,7 +344,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
         {myRows.length > 0 ? (
           <CharacterList
             rows={myRows}
-            hrefFor={(r) => `/character/${r.id}`}
+            hrefFor={(r) => hrefFromIndex('/character', characterSlugIndex, r.id)}
             actions={myActions}
             renderNameMarker={renderNameMarker}
           />
@@ -368,7 +370,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
               <ClaimableRow
                 key={r.id}
                 row={r}
-                href={`/character/${r.id}`}
+                href={hrefFromIndex('/character', characterSlugIndex, r.id)}
                 onClaim={() => setClaimTarget(r)}
               />
             ))}
@@ -386,7 +388,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
           </Typography>
           <CharacterList
             rows={rosterRows}
-            hrefFor={(r) => `/character/${r.id}`}
+            hrefFor={(r) => hrefFromIndex('/character', characterSlugIndex, r.id)}
             actions={rosterActions}
             renderNameMarker={renderNameMarker}
             renderNameSuffix={(r) =>

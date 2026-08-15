@@ -17,16 +17,17 @@ import { HomeBackground } from '@/components/HomeBackground';
 import { SessionHistoryList } from '@/components/session/SessionHistoryList';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useHeaderContent } from '@/stores/headerContent';
+import { useResolvedCampaign } from '@/lib/routing/slug';
 
 export default function CampaignHistoryPage({ params }: { params: Promise<{ cid: string }> }) {
-  const { cid } = use(params);
-  const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
+  const { cid: cidParam } = use(params);
+  const { campaign, cid, href: campaignPath } = useResolvedCampaign(cidParam);
   const loadCampaigns = useCampaignsStore((s) => s.load);
 
   useHeaderContent({
     breadcrumbs: [
       { label: 'Campagnes', href: '/campaigns' },
-      { label: campaign?.name ?? '…', href: `/campaign/${cid}` },
+      { label: campaign?.name ?? '…', href: campaignPath },
       { label: 'Historique des parties' },
     ],
   });
@@ -44,7 +45,7 @@ export default function CampaignHistoryPage({ params }: { params: Promise<{ cid:
         <Button
           startIcon={<ArrowBackIcon />}
           component={Link}
-          href={`/campaign/${cid}`}
+          href={campaignPath}
           sx={{ mb: 3 }}
         >
           Retour à la campagne

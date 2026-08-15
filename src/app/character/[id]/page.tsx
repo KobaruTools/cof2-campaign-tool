@@ -174,6 +174,7 @@ import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
 import { useBuffOptOutStore } from '@/stores/buffOptOut';
 import { useHeaderContent } from '@/stores/headerContent';
+import { hrefFromIndex, useCampaignSlugIndex, useResolvedCharacter } from '@/lib/routing/slug';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -212,11 +213,14 @@ const NO_EDIT: Record<EditBlock, boolean> = {
 };
 
 export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+  const { id: idParam } = use(params);
   const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
-  const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
+  // Résout un slug lisible OU un lien historique (rétrocompatibilité, cf. `slug.ts`) ; le reste
+  // du fichier continue de lire `id` — désormais le VRAI id une fois le personnage résolu.
+  const { character, id } = useResolvedCharacter(idParam);
+  const campaignSlugIndex = useCampaignSlugIndex();
   const upsert = useCharactersStore((s) => s.upsert);
   const loadCharacters = useCharactersStore((s) => s.load);
   // Campagnes disponibles pour l'attribution (PER-180) : le personnage peut être
@@ -614,7 +618,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             ? [
                 {
                   label: headerCurrentCampaign?.name ?? 'la campagne',
-                  href: `/campaign/${character.campaignId}`,
+                  href: hrefFromIndex('/campaign', campaignSlugIndex, character.campaignId),
                 },
                 { label: character.name || 'Sans nom' },
               ]
@@ -1928,6 +1932,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             <Divider sx={{ my: 1.5 }} />
             <EquipmentList
               equipment={character.equipment}
+              ancestryId={character.ancestryId}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
               characterId={character.id}
               // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.

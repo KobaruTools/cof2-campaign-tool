@@ -65,12 +65,13 @@ import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
 import { useWizardStore } from '@/stores/wizard';
+import { hrefFromIndex, useCharacterSlugIndex, useResolvedCampaign } from '@/lib/routing/slug';
 
 // Pas de tri par campagne ici : la campagne est le contexte implicite.
 const CAMPAIGN_SORT_KEYS: SortKey[] = ['updatedAt', 'name', 'level'];
 
 export default function CampaignPage({ params }: { params: Promise<{ cid: string }> }) {
-  const { cid } = use(params);
+  const { cid: cidParam } = use(params);
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
   const characters = useCharactersStore((s) => s.characters);
   const duplicate = useCharactersStore((s) => s.duplicate);
@@ -78,7 +79,10 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const upsert = useCharactersStore((s) => s.upsert);
   const campaignsStatus = useCampaignsStore((s) => s.status);
   const loadCampaigns = useCampaignsStore((s) => s.load);
-  const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
+  // Résout un slug lisible OU un lien historique (rétrocompatibilité) ; le reste du fichier
+  // continue de lire `cid` — désormais le VRAI id une fois la campagne résolue (cf. `slug.ts`).
+  const { campaign, cid, href: campaignPath } = useResolvedCampaign(cidParam);
+  const characterSlugIndex = useCharacterSlugIndex();
   const players = usePlayersStore((s) => s.players);
   const loadPlayers = usePlayersStore((s) => s.load);
   const draft = useWizardStore((s) => s.draft);
@@ -212,7 +216,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       key: 'open',
       label: 'Ouvrir',
       icon: <OpenInNewIcon fontSize="small" />,
-      href: (r) => `/character/${r.id}`,
+      href: (r) => hrefFromIndex('/character', characterSlugIndex, r.id),
     },
     {
       key: 'duplicate',
@@ -244,7 +248,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const list = (groupRows: CharacterSummary[], attachedTop = false) => (
     <CharacterList
       rows={groupRows}
-      hrefFor={(r) => `/character/${r.id}`}
+      hrefFor={(r) => hrefFromIndex('/character', characterSlugIndex, r.id)}
       actions={actions}
       sort={sort}
       onPickSort={pickSort}
@@ -318,7 +322,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             variant="outlined"
             startIcon={<HistoryIcon />}
             component={Link}
-            href={`/campaign/${cid}/history`}
+            href={`${campaignPath}/history`}
             sx={{ ml: { sm: 'auto' } }}
           >
             Historique des parties
@@ -327,7 +331,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             variant="outlined"
             startIcon={<SettingsIcon />}
             component={Link}
-            href={`/campaign/${cid}/settings`}
+            href={`${campaignPath}/settings`}
           >
             Réglages de la campagne
           </Button>

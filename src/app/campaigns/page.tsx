@@ -16,6 +16,7 @@
  */
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { hrefFromIndex, useCampaignSlugIndex } from '@/lib/routing/slug';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import PersonIcon from '@mui/icons-material/Person';
@@ -50,6 +51,7 @@ export default function CampaignsPage() {
   const status = useCampaignsStore((s) => s.status);
   const error = useCampaignsStore((s) => s.error);
   const campaigns = useCampaignsStore((s) => s.campaigns);
+  const campaignSlugIndex = useCampaignSlugIndex();
   const load = useCampaignsStore((s) => s.load);
   const remove = useCampaignsStore((s) => s.remove);
   const characters = useCharactersStore((s) => s.characters);
@@ -250,7 +252,7 @@ export default function CampaignsPage() {
                   >
                     <Box
                       component={Link}
-                      href={`/campaign/${campaign.id}`}
+                      href={hrefFromIndex('/campaign', campaignSlugIndex, campaign.id)}
                       sx={{
                         minWidth: 0,
                         cursor: 'pointer',
@@ -280,7 +282,7 @@ export default function CampaignsPage() {
                     </Box>
                     <Stack direction="row" sx={{ flexShrink: 0 }}>
                       <AppTooltip title="Réglages">
-                        <IconButton component={Link} href={`/campaign/${campaign.id}/settings`}>
+                        <IconButton component={Link} href={`${hrefFromIndex('/campaign', campaignSlugIndex, campaign.id)}/settings`}>
                           <SettingsIcon fontSize="small" />
                         </IconButton>
                       </AppTooltip>

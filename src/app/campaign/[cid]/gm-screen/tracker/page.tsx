@@ -12,10 +12,19 @@
  * (PER-271). Ici le `cid` vient de l'URL (session owner) ; là-bas il vient du claim de la
  * session d'observateur. Vue dépouillée, lecture seule, client de session (voir le composant).
  */
-import { use } from 'react';
+import { use, useEffect } from 'react';
 import { ProjectionTrackerView } from '@/components/campaign/ProjectionTrackerView';
+import { useCampaignsStore } from '@/stores/campaigns';
+import { useResolvedCampaign } from '@/lib/routing/slug';
 
 export default function GmTrackerWindowPage({ params }: { params: Promise<{ cid: string }> }) {
-  const { cid } = use(params);
+  const { cid: cidParam } = use(params);
+  // Fenêtre popup autonome (`window.open`) : charge elle-même les campagnes pour résoudre le slug
+  // avant de transmettre le VRAI id au canal temps réel (cf. `slug.ts`).
+  const { cid } = useResolvedCampaign(cidParam);
+  const loadCampaigns = useCampaignsStore((s) => s.load);
+  useEffect(() => {
+    void loadCampaigns();
+  }, [loadCampaigns]);
   return <ProjectionTrackerView cid={cid} />;
 }

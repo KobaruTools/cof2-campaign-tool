@@ -27,6 +27,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { hrefFromIndex, useCharacterSlugIndex } from '@/lib/routing/slug';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -103,6 +104,7 @@ export function ImportCharacterDialog({
 }: ImportCharacterDialogProps) {
   const importCharacter = useCharactersStore((s) => s.importCharacter);
   const campaigns = useCampaignsStore((s) => s.campaigns);
+  const characterSlugIndex = useCharacterSlugIndex();
 
   const [state, setState] = useState<ImportState>({ status: 'idle' });
   const [dragging, setDragging] = useState(false);
@@ -403,7 +405,7 @@ export function ImportCharacterDialog({
               <Button
                 variant="contained"
                 component={Link}
-                href={`/character/${state.characters[0].id}`}
+                href={hrefFromIndex('/character', characterSlugIndex, state.characters[0].id)}
                 onClick={handleClose}
               >
                 Ouvrir la fiche

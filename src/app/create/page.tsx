@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { characterHref } from '@/lib/routing/slug';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -328,7 +329,7 @@ export default function CreatePage() {
     // `created=1` : la fiche affiche une confirmation de création puis nettoie
     // l'URL (voir la page de fiche). La fiche est indépendante de la campagne
     // (PER-180) ; la FK campagne du personnage est portée par le brouillon.
-    router.push(`/character/${character.id}?created=1`);
+    router.push(`${characterHref(character, useCharactersStore.getState().characters)}?created=1`);
   };
 
   return (

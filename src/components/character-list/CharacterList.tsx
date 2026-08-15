@@ -16,6 +16,7 @@
 import { Fragment, type ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { hrefFromIndex, useCampaignSlugIndex } from '@/lib/routing/slug';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -196,6 +197,7 @@ export function CharacterList({
 }: CharacterListProps) {
   const router = useRouter();
   const getById = useCharactersStore((s) => s.getById);
+  const campaignSlugIndex = useCampaignSlugIndex();
   const [menu, setMenu] = useState<{ anchor: HTMLElement; row: CharacterSummary } | null>(null);
 
   // Groupes repliés (par clé). Repli purement visuel, non persisté : les
@@ -222,11 +224,12 @@ export function CharacterList({
   // est l'id de campagne (ou `__none__` pour « Non attribué ») : on ne montre le
   // lien que pour une vraie campagne, reconnue via `campaignNameById`.
   const renderGroupLink = (key: string) => {
-    if (!campaignNameById?.has(key)) return null;
+    const name = campaignNameById?.get(key);
+    if (name == null) return null;
     return (
       <Box
         component={Link}
-        href={`/campaign/${key}`}
+        href={hrefFromIndex('/campaign', campaignSlugIndex, key)}
         // Vraie ancre : Ctrl/⌘+Clic et clic-molette ouvrent la campagne dans un
         // nouvel onglet. `stopPropagation` empêche l'en-tête de groupe parent de
         // se replier au clic (simple ou Enter) sur le lien.

@@ -21,6 +21,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { campaignHref } from '@/lib/routing/slug';
 import AddIcon from '@mui/icons-material/Add';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -141,7 +142,7 @@ export default function CampaignCreatePage() {
     // Verrouille l'écran d'attente AVANT de vider le brouillon (cf. redirecting).
     setRedirecting(true);
     clear();
-    router.push(`/campaign/${campaign.id}`);
+    router.push(campaignHref(campaign, useCampaignsStore.getState().campaigns));
   };
 
   const handleCopy = async (secret: string) => {

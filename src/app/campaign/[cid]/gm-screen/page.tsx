@@ -88,6 +88,7 @@ import { groupBuffFeatureId, groupBuffIntensityFor } from '@/lib/character/group
 import { GroupBuffDialog, type GroupBuffCandidate } from '@/components/campaign/GroupBuffDialog';
 import type { BeneficialEffectId } from '@/data/schema';
 import { useHeaderContent } from '@/stores/headerContent';
+import { hrefFromIndex, useCharacterSlugIndex, useResolvedCampaign } from '@/lib/routing/slug';
 import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
 
 /**
@@ -210,7 +211,12 @@ function CollapsibleSection({
 }
 
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
-  const { cid } = use(params);
+  const { cid: cidParam } = use(params);
+  // Résout le slug lisible (ou un lien historique) AVANT `useGmScreenCombat` — le VRAI id seul
+  // alimente le canal temps réel/les stores en aval (cf. `slug.ts`) ; le reste du fichier continue
+  // de lire `cid`, désormais toujours le vrai id une fois la campagne résolue.
+  const { cid, href: campaignPath } = useResolvedCampaign(cidParam);
+  const characterSlugIndex = useCharacterSlugIndex();
   const smUp = useMediaQuery((t: Theme) => t.breakpoints.up('sm'));
   const appHeaderHeight = smUp ? APP_HEADER_HEIGHT_SM_UP : APP_HEADER_HEIGHT_XS;
   // Fond + ombre de la barre d'actions collée : révélés seulement une fois RÉELLEMENT collée
@@ -301,7 +307,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       ? {}
       : {
           breadcrumbs: [
-            { label: campaign.name, href: `/campaign/${cid}` },
+            { label: campaign.name, href: campaignPath },
             { label: 'Écran de MJ' },
           ],
           // Cycle de vie de la session synchronisée (PER-264), compacté dans l'en-tête
@@ -642,7 +648,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             size="small"
             startIcon={<PetsOutlinedIcon />}
             component={Link}
-            href={`/campaign/${cid}/gm-screen?${BESTIARY_PARAM}=1`}
+            href={`${campaignPath}/gm-screen?${BESTIARY_PARAM}=1`}
             scroll={false}
             sx={(theme) => glassButtonSx(theme, 'info')}
           >
@@ -656,7 +662,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             size="small"
             startIcon={<MenuBookOutlinedIcon />}
             component={Link}
-            href={`/campaign/${cid}/gm-screen?${REFERENCE_PARAM}=1`}
+            href={`${campaignPath}/gm-screen?${REFERENCE_PARAM}=1`}
             scroll={false}
             sx={(theme) => glassButtonSx(theme, 'info')}
           >
@@ -671,7 +677,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             size="small"
             startIcon={<HistoryIcon />}
             component={Link}
-            href={`/campaign/${cid}/gm-screen?${HISTORY_PARAM}=1`}
+            href={`${campaignPath}/gm-screen?${HISTORY_PARAM}=1`}
             scroll={false}
             sx={(theme) => glassButtonSx(theme, 'info')}
           >
@@ -685,7 +691,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             size="small"
             startIcon={<HandymanIcon />}
             component={Link}
-            href={`/campaign/${cid}/gm-screen?${TOOLS_PARAM}=${lastToolTab}`}
+            href={`${campaignPath}/gm-screen?${TOOLS_PARAM}=${lastToolTab}`}
             scroll={false}
             sx={(theme) => glassButtonSx(theme, 'info')}
           >
@@ -728,8 +734,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                     key={character.id}
                     character={character}
                     player={character.playerId ? playerById.get(character.playerId) ?? null : null}
-                    href={`/character/${character.id}`}
-                    panelHref={`/campaign/${cid}/gm-screen?sheet=${character.id}`}
+                    href={hrefFromIndex('/character', characterSlugIndex, character.id)}
+                    panelHref={`${campaignPath}/gm-screen?sheet=${character.id}`}
                   />
                 ))}
               </CollapsibleSection>

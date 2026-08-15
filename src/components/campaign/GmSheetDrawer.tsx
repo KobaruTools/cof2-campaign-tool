@@ -33,6 +33,7 @@
  */
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { hrefFromIndex, useCharacterSlugIndex } from '@/lib/routing/slug';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import Box from '@mui/material/Box';
@@ -304,6 +305,7 @@ function GmSheetDrawerContent({
   longRestOpen,
   onLongRestOpenChange,
 }: GmSheetDrawerContentProps) {
+  const characterSlugIndex = useCharacterSlugIndex();
   const characterClass = classById.get(character.classId);
   const ancestry = ancestryById.get(character.ancestryId);
   // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185) : sans
@@ -445,7 +447,7 @@ function GmSheetDrawerContent({
             variant="outlined"
             startIcon={<OpenInNewIcon fontSize="small" />}
             component={Link}
-            href={`/character/${character.id}`}
+            href={hrefFromIndex('/character', characterSlugIndex, character.id)}
             sx={{ flexShrink: 0 }}
           >
             Fiche complète
@@ -730,6 +732,7 @@ function GmSheetDrawerContent({
             <Divider sx={{ my: 1.5 }} />
             <EquipmentList
               equipment={character.equipment}
+              ancestryId={character.ancestryId}
               characterId={character.id}
               // SEUL `onChange` d'édition ouvert dans le panneau (ajout, variante, quantité,
               // suppression, réordonnancement) : distribuer du butin sans quitter l'écran de MJ.

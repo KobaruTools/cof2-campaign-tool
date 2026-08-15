@@ -18,6 +18,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { hrefFromIndex, useCharacterSlugIndex } from '@/lib/routing/slug';
 import AddIcon from '@mui/icons-material/Add';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -87,6 +88,7 @@ export default function CharactersPage() {
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const characters = useCharactersStore((s) => s.characters);
+  const characterSlugIndex = useCharacterSlugIndex();
   const cloudVersions = useCharactersStore((s) => s.cloudVersions);
   const loadCharacters = useCharactersStore((s) => s.load);
   const duplicate = useCharactersStore((s) => s.duplicate);
@@ -248,7 +250,7 @@ export default function CharactersPage() {
       key: 'open',
       label: 'Ouvrir',
       icon: <OpenInNewIcon fontSize="small" />,
-      href: (r) => `/character/${r.id}`,
+      href: (r) => hrefFromIndex('/character', characterSlugIndex, r.id),
     },
     {
       key: 'upload',
@@ -420,7 +422,7 @@ export default function CharactersPage() {
                   <CharacterList
                     rows={activeRows}
                     groups={groups}
-                    hrefFor={(r) => `/character/${r.id}`}
+                    hrefFor={(r) => hrefFromIndex('/character', characterSlugIndex, r.id)}
                     actions={actions}
                     showCampaign
                     campaignNameById={campaignNameById}
@@ -498,7 +500,7 @@ export default function CharactersPage() {
                     <Collapse in={archivedOpen} unmountOnExit>
                       <CharacterList
                         rows={archivedRows}
-                        hrefFor={(r) => `/character/${r.id}`}
+                        hrefFor={(r) => hrefFromIndex('/character', characterSlugIndex, r.id)}
                         actions={actions}
                         showCampaign
                         campaignNameById={campaignNameById}

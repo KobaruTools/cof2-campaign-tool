@@ -42,6 +42,7 @@ import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { storageKeys } from '@/lib/storage/keys';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useHeaderContent } from '@/stores/headerContent';
+import { useResolvedCampaign } from '@/lib/routing/slug';
 
 /** Verre dépoli commun aux cartes de réglages (aligné sur les autres pages). */
 const glassPaper = {
@@ -130,15 +131,15 @@ function CollapsibleSection({
 }
 
 export default function CampaignSettingsPage({ params }: { params: Promise<{ cid: string }> }) {
-  const { cid } = use(params);
+  const { cid: cidParam } = use(params);
   const status = useCampaignsStore((s) => s.status);
   const load = useCampaignsStore((s) => s.load);
   const update = useCampaignsStore((s) => s.update);
-  const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
+  const { campaign, cid, href: campaignPath } = useResolvedCampaign(cidParam);
 
   useHeaderContent({
     breadcrumbs: [
-      { label: campaign?.name ?? 'Campagne', href: `/campaign/${cid}` },
+      { label: campaign?.name ?? 'Campagne', href: campaignPath },
       { label: 'Réglages' },
     ],
   });
