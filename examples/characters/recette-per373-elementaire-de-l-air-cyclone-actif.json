@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per373-elementaire-de-l-air (cyclone actif)",
+  "name": "Recette PER-373 — Prêtre (voie élémentaire de l'air) (cyclone actif)",
+  "identity": {
+    "description": "ATTENDU : prêtre niveau 16 avec la voie de prestige élémentaire de l'air (r4→r8) acquise. Vérifier sur la fiche : r4 Bourrasque affiche les trois dés de dégâts par palier de taille enrichis ({3d4°}/{2d4°}/{1d4°}), aucun interrupteur (effet instantané) ; r5 Chevaucher les nuées affiche « par rang » enrichi SANS interrupteur (sort utilitaire) ; r6 Mur de vent porte un interrupteur « Mur de vent actif » et affiche [=CHA] minutes ; r7 Cyclone porte un interrupteur « Cyclone actif » et affiche {2d4°}/[=CHA] minutes — actif : une carte « Cyclone » apparaît dans la section Compagnons avec DEUX capacités spéciales visibles sur la carte — « Vents tourbillonnants » ({2d4°} DM/round + test FOR 15) ET « Déplacement » (10 m par action de mouvement, BUT premier de ce compagnon — vérifier qu'elle est bien visible, contrairement au `note` du profil qui n'apparaît QUE sur la mini-fiche de la capacité, jamais sur la carte Compagnon, patron PER-216) ; l'état « Pris dans le cyclone » (catalogue effets situationnels) est disponible pour le suivi MJ ; r8 Forme élémentaire d'air a son propre interrupteur — activé : AGI/CON/FOR passent à 5/4/4 sur TOUTE la fiche (DEF/tests recalculés, dé bonus sur AGI), les capacités de profil (prêtre) sont grisées/inactives, une mini-fiche « Élémentaire d'air » (transformation, PAS un compagnon) apparaît avec DEF 25/PV niveau×5/Initiative = mystique+3 (PREMIER cas d'offset sur une stat recopiée du maître)/Frappe/note Immunité aux DM de foudre."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "foi-r1",
+    "prestige-elementaire-de-l-air-r4",
+    "prestige-elementaire-de-l-air-r5",
+    "prestige-elementaire-de-l-air-r6",
+    "prestige-elementaire-de-l-air-r7",
+    "prestige-elementaire-de-l-air-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "prestige-elementaire-de-l-air-r7": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-373 — voie de prestige élémentaire de l'air (p. 168-169), catégorie mystique. (cyclone actif)",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

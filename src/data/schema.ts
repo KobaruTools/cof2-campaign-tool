@@ -1584,6 +1584,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'time-displaced',
   'hypnotized',
   'petrified',
+  'whirling-winds',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1768,6 +1769,20 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Changé en pierre (effet permanent). RD 30, mais un sort de litomorphose inflige 4d4° DM sans réduction. Si la victime est de niveau supérieur ou égal au lanceur du sort, elle peut faire un test de CON difficulté [10 + CHA] à la fin de chaque round pour mettre fin à l'effet.",
     sourcePage: 167,
+  },
+  // « Cyclone » (élémentaire de l'air, r7, p. 169). PREMIER cas d'une zone MOBILE que le lanceur peut
+  // déplacer par action de mouvement (contrairement à Séisme, zone fixe instantanée, qui n'a AUCUN tag) :
+  // tant qu'une cible reste dans la zone, elle encaisse des DM par round ET risque le renversement, ce
+  // qui justifie un suivi MJ (arbitrage propriétaire 2026-08-15) — sans pour autant coller à la cible
+  // après sa sortie de la zone (à la différence de Pétrifié/Emprisonné/Contrôlé). Data-only, aucun
+  // `modifiers` (le DM/round et le test de renversement restent dans le verbatim de la capacité).
+  // Libellé/id repris du nom de la capacité spéciale posée sur le compagnon « Cyclone »
+  // (`specialAbilities`, part2.ts) — même nom des deux côtés (retour propriétaire).
+  'whirling-winds': {
+    label: 'Vents tourbillonnants',
+    effect:
+      "Tant que la cible reste dans la zone du cyclone, elle subit 2d4° DM par round et doit réussir un test de FOR difficulté 15 à chaque round ou être renversée. Sort la zone pour être libérée de cet effet.",
+    sourcePage: 169,
   },
 };
 

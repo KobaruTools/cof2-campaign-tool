@@ -4039,11 +4039,12 @@ export const prestigeFeatures2: Feature[] = [
     // difficulté 15 FIXE (indépendante des caracs) reste en texte brut.
     richText:
       "Le personnage invoque un violent maelström de vents tourbillonnants à une portée de 500 m. Le phénomène occupe un espace de 20 m de diamètre et toutes les créatures présentes dans la zone d'effet subissent {2d4°} DM par round. De plus, une cible doit réussir un test de FOR difficulté 15 ou être renversée. Le sort a une durée [=CHA] minutes et le personnage peut déplacer la tornade de 10 m par action de mouvement.",
-    // Tag data-only (retour propriétaire 2026-08-15) : catalogue `caught-in-vortex` (schema.ts) pour
+    // Tag data-only (retour propriétaire 2026-08-15) : catalogue `whirling-winds` (schema.ts) pour
     // suivre à l'écran MJ toute cible qui reste dans la zone, SANS coller à elle après sa sortie
     // (contrairement à Pétrifié/Emprisonné/Contrôlé, qui persistent) — cohérent avec la nature de zone
-    // MOBILE du cyclone (contrairement à Séisme, zone fixe instantanée, qui n'a aucun tag).
-    situationalEffectIds: ['caught-in-vortex'],
+    // MOBILE du cyclone (contrairement à Séisme, zone fixe instantanée, qui n'a aucun tag). Même nom
+    // que la capacité spéciale du compagnon « Cyclone » ci-dessous (retour propriétaire).
+    situationalEffectIds: ['whirling-winds'],
     effects: [
       {
         kind: 'conditional-stat-bonus',

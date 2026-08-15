@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per373-elementaire-de-l-air-variante-mage",
+  "name": "Recette PER-373 — Magicien (variante mage, voie élémentaire de l'air)",
+  "identity": {
+    "description": "ATTENDU : magicien niveau 16 prenant la voie de prestige élémentaire de l'air en variante MAGE (prérequis : « mage qui maîtrise au moins un sort d'air », via air-r1 Murmures dans le vent). Vérifier sur la fiche : r6 Mur de vent affiche la durée enrichie avec INTELLIGENCE (pas Charisme), marquée « remplace Charisme » ; r7 Cyclone affiche la durée [=INT] minutes (pas CHA) ; r8 Forme élémentaire d'air affiche la durée [=INT] minutes (pas CHA) une fois activée. r4/r5 restent inchangés (aucun CHA natif). CONTRASTE avec `recette-per373-elementaire-de-l-air.json` (prêtre = mystique normal) où r6/r7/r8 restent indexés sur CHA."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -2,
+    "AGI": 0,
+    "CON": 0,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 5,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": -2,
+    "AGI": 0,
+    "CON": 0,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 5,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "air-r1",
+    "prestige-elementaire-de-l-air-r4",
+    "prestige-elementaire-de-l-air-r5",
+    "prestige-elementaire-de-l-air-r6",
+    "prestige-elementaire-de-l-air-r7",
+    "prestige-elementaire-de-l-air-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "prestige-elementaire-de-l-air-r8": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-373 — variante mage de la voie élémentaire de l'air (CHA→INT), p. 168-169.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
