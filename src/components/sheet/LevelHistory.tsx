@@ -4,17 +4,60 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { featureById, pathById } from '@/data';
 import type { LevelUpEntry } from '@/lib/character/types';
 import { ORPHAN_REWARD_LABEL } from '@/lib/character/orphanPoints';
-import { FeatureLabel } from '@/components/FeatureLabel';
 import { SourceRef } from '@/components/SourceRef';
+import { ClassIcon } from '@/components/ClassIcon';
+import { AncestryIcon } from '@/components/AncestryIcon';
+import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
+import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
+import {
+  classColor,
+  prestigeCategoryColor,
+  MAGE_PATH_COLOR,
+  ANCESTRY_COLOR,
+  ANCESTRY_MARKER_COLOR,
+} from '@/lib/ui/classColors';
+import { prestigeMetalGradient, prestigeGemStops } from '@/lib/ui/prestigeStyle';
 
 export interface LevelHistoryProps {
   history: LevelUpEntry[];
 }
 
-/** Une capacité de l'historique : « Voie — Rang N — Nom » (id brut si inconnue). */
+/** Badge custom (≠ Chip MUI, cf. `DefenseBadge`) : rang de voie, teinté de la couleur du profil. */
+function RankBadge({ rank, color }: { rank: number; color?: string }) {
+  return (
+    <Box
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 22,
+        px: 0.9,
+        borderRadius: 1,
+        flexShrink: 0,
+        lineHeight: 1,
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+        color: color ?? theme.palette.text.secondary,
+        bgcolor: alpha(color ?? theme.palette.text.secondary, 0.12),
+        border: `1px solid ${alpha(color ?? theme.palette.text.secondary, 0.45)}`,
+      })}
+    >
+      Rang {rank}
+    </Box>
+  );
+}
+
+/**
+ * Une capacité de l'historique : badge de rang + icône de profil (couleur/dégradé) + nom de voie
+ * (même teinte) + nom de capacité, marqueurs `*`/(A)/(L)/(M)/(G) en hexagones (PER-74, même recette
+ * que `FeaturesByPath` : couleur de profil, dégradé métal du prestige selon sa famille, indigo
+ * arcane pour la voie du mage, taupe neutre pour une voie de peuple). Id brut si capacité inconnue.
+ */
 function HistoryFeature({ featureId }: { featureId: string }) {
   const feature = featureById.get(featureId);
   if (!feature) {
@@ -24,15 +67,63 @@ function HistoryFeature({ featureId }: { featureId: string }) {
       </Typography>
     );
   }
-  const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
+  const path = pathById.get(feature.pathId);
+  const pathName = path?.name ?? feature.pathId;
+  const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+  const isMagePath = path?.type === 'mage';
+  const isPrestigePath = path?.type === 'prestige';
+  const ancestryId = path?.type === 'ancestry' ? path.id : undefined;
+  const color = classId
+    ? classColor(classId)
+    : isMagePath
+      ? MAGE_PATH_COLOR
+      : path?.type === 'prestige'
+        ? prestigeCategoryColor(path.category)
+        : ancestryId
+          ? ANCESTRY_COLOR
+          : undefined;
+  const iconAncestryId = ancestryId ?? (isMagePath ? 'mage' : isPrestigePath ? 'prestige' : undefined);
+  const markerColor = color ?? (ancestryId ? ANCESTRY_MARKER_COLOR : undefined);
+  const nameGradient = isPrestigePath ? prestigeMetalGradient(color) : undefined;
   return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-      <Chip label={`Rang ${feature.rank}`} size="small" variant="outlined" />
-      <Typography variant="body2">
-        <Box component="span" sx={{ color: 'text.secondary' }}>
-          {pathName} —{' '}
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
+      <RankBadge rank={feature.rank} color={color} />
+      {classId && <ClassIcon classId={classId} size={16} sx={{ color }} />}
+      {iconAncestryId && (
+        <AncestryIcon
+          ancestryId={iconAncestryId}
+          size={16}
+          gradientStops={isPrestigePath ? prestigeGemStops(color) : undefined}
+          sx={{ color: isMagePath ? MAGE_PATH_COLOR : 'text.secondary' }}
+        />
+      )}
+      <Typography
+        variant="body2"
+        component="div"
+        sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}
+      >
+        <Box
+          component="span"
+          sx={
+            nameGradient
+              ? {
+                  fontWeight: 700,
+                  backgroundImage: nameGradient,
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent',
+                  WebkitTextFillColor: 'transparent',
+                }
+              : { fontWeight: 700, color: color ?? 'text.secondary' }
+          }
+        >
+          {pathName}
         </Box>
-        <FeatureLabel feature={feature} />
+        <Box component="span" sx={{ color: 'text.secondary' }}>
+          —
+        </Box>
+        <DeclinedFeatureName feature={feature} />
+        <FeatureMarkerHexes feature={feature} color={markerColor} pathRank={feature.rank} size={16} />
       </Typography>
     </Stack>
   );
