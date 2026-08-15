@@ -137,17 +137,19 @@ export function HeaderIllustrations({
           alt=""
           aria-hidden
           sx={{
-            // Masqué sur mobile (< md) — PER-228, cf. la vitruve du peuple ci-dessus.
-            display: { xs: 'none', md: 'block' },
+            display: 'block',
             position: 'absolute',
-            top: 0,
+            // Sur mobile, décalée un peu plus haut et vers la gauche (top négatif,
+            // right > 50 % rapproche le bord droit du centre avant le translateX).
+            top: { xs: -24, md: 0 },
             // Ancré au bord DROIT de l'écran (symétrique de la vitruve) : right 50 %
             // place le bord droit de l'image au centre du viewport, translateX 50vw le
             // ramène sur le bord droit de l'écran.
-            right: '50%',
+            right: { xs: '58%', md: '50%' },
             transform: 'translateX(50vw)',
             willChange: 'transform',
-            height: 600,
+            // Hauteur réduite de moitié sur mobile (< md) — reste visible mais moins envahissante.
+            height: { xs: 300, md: 600 },
             width: 'auto',
             opacity: 0.4,
             pointerEvents: 'none',
@@ -165,9 +167,11 @@ export function HeaderIllustrations({
         <Paper
           variant="outlined"
           sx={{
-            display: { xs: 'none', md: 'block' },
+            display: 'block',
             position: 'absolute',
-            top: 0,
+            // Sur mobile (< md), cadre limité à la moitié inférieure du bloc titre
+            // (hauteur -50%) au lieu de s'étirer sur toute sa hauteur.
+            top: { xs: '50%', md: 0 },
             bottom: 0,
             right: 0,
             width: FALLBACK_FRAME_WIDTH,
