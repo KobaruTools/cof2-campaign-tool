@@ -119,8 +119,7 @@ export function SummaryStep({
       }}
     >
       {/* Filigrane flottant de l'illustration choisie : ancré au bord DROIT, pleine hauteur, très
-          transparent, estompé vers la gauche par un masque en dégradé (illisibilité du texte évitée) —
-          purement décoratif (aria-hidden, pointerEvents none, sous le contenu). */}
+          transparent — purement décoratif (aria-hidden, pointerEvents none, sous le contenu). */}
       <Box
         component="img"
         src={portraitSrc}
@@ -139,12 +138,12 @@ export function SummaryStep({
           pointerEvents: 'none',
           userSelect: 'none',
           zIndex: 0,
-          maskImage: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 68%)',
-          WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 68%)',
         }}
       />
       <Stack spacing={3} sx={{ position: 'relative', zIndex: 1, p: { xs: 2, sm: 3 } }}>
-      <Box>
+      {/* `textShadow` hérite sur toute la descendance Typography : lisibilité du nom/profil
+          sur le filigrane, sans devoir le répéter ligne par ligne. */}
+      <Box sx={{ textShadow: '0 1px 4px rgba(0, 0, 0, 0.85)' }}>
         <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
           {draft.name || 'Nouveau personnage'}
         </Typography>
@@ -186,7 +185,9 @@ export function SummaryStep({
               iconSize={32}
               showCode
               valueVariant="h6"
-              sx={{ flex: 1, minWidth: 0, px: 0.5 }}
+              // `filter: drop-shadow` (pas `boxShadow`) : suit la silhouette de l'icône ET du
+              // chiffre, contraste lisible sur le filigrane derrière.
+              sx={{ flex: 1, minWidth: 0, px: 0.5, filter: 'drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85))' }}
             />
           ))}
         </Stack>
