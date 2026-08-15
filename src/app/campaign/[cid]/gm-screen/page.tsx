@@ -34,6 +34,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HandymanIcon from '@mui/icons-material/Handyman';
+import HistoryIcon from '@mui/icons-material/History';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -69,6 +70,7 @@ import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDra
 import { DEFAULT_GM_TOOL, isGmToolId, type GmToolId } from '@/components/campaign/GmToolsDrawer';
 import { GmReferenceDrawerHost, REFERENCE_PARAM } from '@/components/campaign/GmReferenceDrawerHost';
 import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBestiaryDrawerHost';
+import { GmHistoryDrawerHost, HISTORY_PARAM } from '@/components/campaign/GmHistoryDrawerHost';
 import { HomeBackground } from '@/components/HomeBackground';
 import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIndicator';
 import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
@@ -660,6 +662,21 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           >
             Aide-mémoire
           </Button>
+          {/* Historique des parties : ouvre le tiroir latéral intégrant l'historique des sessions
+              closes (`SessionHistoryList`, PER-270/407) sans quitter l'écran de MJ. Vraie ancre
+              (`?history=1`) → Ctrl/⌘+Clic ouvre dans un nouvel onglet, le bouton Retour ferme le
+              tiroir. Même patron que les tiroirs Bestiaire/Aide-mémoire. */}
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<HistoryIcon />}
+            component={Link}
+            href={`/campaign/${cid}/gm-screen?${HISTORY_PARAM}=1`}
+            scroll={false}
+            sx={(theme) => glassButtonSx(theme, 'info')}
+          >
+            Historique
+          </Button>
           {/* Outils du MJ (PER-199, PER-200) : ouvre le tiroir latéral à onglets (rumeurs de
               taverne, butin, et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic
               ouvre dans un nouvel onglet, le bouton Retour ferme le tiroir. */}
@@ -950,6 +967,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
       <Suspense>
         <GmBestiaryDrawerHost />
+      </Suspense>
+
+      {/* Tiroir « Historique des parties », piloté par `?history=1`. Même contrainte de frontière
+          `Suspense` (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
+      <Suspense>
+        <GmHistoryDrawerHost campaignId={cid} />
       </Suspense>
     </>
   );

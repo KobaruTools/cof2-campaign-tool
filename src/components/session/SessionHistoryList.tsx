@@ -8,7 +8,9 @@
  */
 import { useEffect, useState } from 'react';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Box from '@mui/material/Box';
+import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
@@ -87,7 +89,15 @@ function EndReasonBadge({ reason }: { reason: SessionEndReason }) {
   );
 }
 
-function SessionCard({ entry }: { entry: SessionHistoryEntry }) {
+function SessionCard({
+  entry,
+  participantsDefaultOpen,
+}: {
+  entry: SessionHistoryEntry;
+  /** État initial du bloc présences (repliable indépendamment par carte, pas persisté). */
+  participantsDefaultOpen: boolean;
+}) {
+  const [presenceOpen, setPresenceOpen] = useState(participantsDefaultOpen);
   return (
     <Paper variant="outlined" sx={glassPaper}>
       <Stack
@@ -112,34 +122,85 @@ function SessionCard({ entry }: { entry: SessionHistoryEntry }) {
 
       <Divider sx={{ mb: 1.5, borderColor: 'rgba(255, 255, 255, 0.10)' }} />
 
-      <Stack spacing={0.75}>
-        {entry.participants.length === 0 ? (
-          <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic' }}>
-            Aucune présence journalisée.
-          </Typography>
-        ) : (
-          entry.participants.map((p) => (
-            <Stack
-              key={p.playerId ?? 'gm'}
-              direction="row"
-              sx={{ justifyContent: 'space-between', alignItems: 'center' }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: p.playerId === null ? 600 : 400 }}>
-                {p.name}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {formatDuration(p.presenceMs)}
-                {p.entries > 1 ? ` (${p.entries} connexions)` : ''}
-              </Typography>
-            </Stack>
-          ))
-        )}
-      </Stack>
+      {/* Bloc présences repliable : accessoire pour la lecture rapide (durée, raison de fin
+          suffisent souvent), d'où un état initial réglable par le consommateur — replié par
+          défaut dans le tiroir de l'écran de MJ (`GmHistoryDrawer`), ouvert par défaut sur les
+          pages dédiées MJ/joueur (`/campaign/[cid]/history`, `/play/history`). */}
+      <Box
+        role="button"
+        tabIndex={0}
+        aria-expanded={presenceOpen}
+        onClick={() => setPresenceOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setPresenceOpen((v) => !v);
+          }
+        }}
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          mb: presenceOpen ? 0.75 : 0,
+          cursor: 'pointer',
+          userSelect: 'none',
+          color: 'text.secondary',
+          borderRadius: 1,
+          '&:focus-visible': { outline: '2px solid currentColor', outlineOffset: 2 },
+        }}
+      >
+        <ExpandMoreIcon
+          fontSize="small"
+          sx={{
+            transition: 'transform 0.2s',
+            transform: presenceOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+          }}
+        />
+        <Typography variant="body2" sx={{ fontWeight: 600, color: 'inherit' }}>
+          Présences
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'text.disabled' }}>
+          ({entry.participants.length})
+        </Typography>
+      </Box>
+      <Collapse in={presenceOpen} unmountOnExit>
+        <Stack spacing={0.75}>
+          {entry.participants.length === 0 ? (
+            <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic' }}>
+              Aucune présence journalisée.
+            </Typography>
+          ) : (
+            entry.participants.map((p) => (
+              <Stack
+                key={p.playerId ?? 'gm'}
+                direction="row"
+                sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: p.playerId === null ? 600 : 400 }}>
+                  {p.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {formatDuration(p.presenceMs)}
+                  {p.entries > 1 ? ` (${p.entries} connexions)` : ''}
+                </Typography>
+              </Stack>
+            ))
+          )}
+        </Stack>
+      </Collapse>
     </Paper>
   );
 }
 
-export function SessionHistoryList({ campaignId }: { campaignId: string }) {
+export function SessionHistoryList({
+  campaignId,
+  participantsDefaultOpen = true,
+}: {
+  campaignId: string;
+  /** État initial du bloc présences de chaque carte — replié par défaut dans le tiroir de
+   *  l'écran de MJ, ouvert par défaut ailleurs (comportement historique inchangé). */
+  participantsDefaultOpen?: boolean;
+}) {
   const [entries, setEntries] = useState<SessionHistoryEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -194,7 +255,7 @@ export function SessionHistoryList({ campaignId }: { campaignId: string }) {
   return (
     <Stack spacing={2}>
       {entries.map((entry) => (
-        <SessionCard key={entry.id} entry={entry} />
+        <SessionCard key={entry.id} entry={entry} participantsDefaultOpen={participantsDefaultOpen} />
       ))}
     </Stack>
   );
