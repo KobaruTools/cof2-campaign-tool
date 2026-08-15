@@ -1176,7 +1176,7 @@ export function EquipmentList({
         {description ? (
           <AppTooltip
             title={
-              <Box sx={{ whiteSpace: 'pre-line' }}>
+              <Box sx={{ whiteSpace: 'pre-line', fontSize: { xs: '0.8125rem', sm: 'inherit' } }}>
                 <GlossaryRichText>{description}</GlossaryRichText>
               </Box>
             }
@@ -1252,7 +1252,7 @@ export function EquipmentList({
           variant="caption"
           color="text.secondary"
           component="div"
-          sx={{ mt: 0.25, whiteSpace: 'pre-line' }}
+          sx={{ mt: 0.75, whiteSpace: 'pre-line', fontSize: { xs: '0.8125rem', sm: 'inherit' } }}
         >
           <GlossaryRichText>{description}</GlossaryRichText>
         </Typography>
