@@ -56,11 +56,12 @@ export interface UnarmedStrikeView {
    */
   damageAbilities: AbilityId[];
   /**
-   * Non létal (défaut, p. 219) ou AU CHOIX (moine). Un moine garde TOUJOURS le choix d'infliger
-   * des DM létaux ou non à mains nues (« lorsqu'il le souhaite », p. 119) — y compris avec Poings
-   * de fer (« il peut, s'il le souhaite… »), donc jamais forcé létal.
+   * Non létal (défaut, p. 219), AU CHOIX (moine) ou LÉTAL forcé (félis « Armes naturelles », Le
+   * Compagnon p. 19 : DM létaux avec les armes naturelles). Un moine garde TOUJOURS le choix
+   * d'infliger des DM létaux ou non à mains nues (« lorsqu'il le souhaite », p. 119) — y compris
+   * avec Poings de fer (« il peut, s'il le souhaite… »), donc jamais forcé létal.
    */
-  lethality: 'non-lethal' | 'choice';
+  lethality: 'non-lethal' | 'choice' | 'lethal';
   /** Attaques considérées comme magiques (Mains d'énergie, p. 119). */
   magical: boolean;
   /** « 1 au dé remplacé par le résultat maximal » (Griffes du tigre, p. 119). */
@@ -157,6 +158,19 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
     damageAbilities = [];
     lethality = 'non-lethal';
     sources = addSource(sources, 'mercenaire-r1');
+  }
+
+  // FÉLIS — Armes naturelles (voie du félis r2, Le Compagnon p. 19, PER-329) : le félis attaque avec
+  // ses griffes/crocs, remplaçant les mains nues par [1d4 + FOR] DM LÉTAUX. Sur une action limitée, il
+  // peut substituer l'AGI à la FOR (attaque ET DM) → best-of `['FOR', 'AGI']` aux DM (patron Poings de
+  // fer, l'économie d'action n'étant pas modélisée ; l'échange en TOUCHE reste verbatim). Placé AVANT
+  // le moine/colosse/poing : un félis moine garde le dé (≥) et la létalité AU CHOIX de la voie du poing.
+  if (has('felis-r2')) {
+    damage = { count: 1, die: 'd4' };
+    evolving = false;
+    damageAbilities = ['FOR', 'AGI'];
+    lethality = 'lethal';
+    sources = addSource(sources, 'felis-r2');
   }
 
   // Trait de profil du moine (p. 119) : DM létaux AU CHOIX à mains nues — le moine maîtrise sa force

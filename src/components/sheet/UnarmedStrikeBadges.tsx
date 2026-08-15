@@ -77,6 +77,9 @@ const NON_LETHAL_RULE =
 /** Verbatim du trait de profil du moine (p. 119). */
 const MONK_LETHAL_CHOICE =
   'Tous les moines infligent des DM létaux avec les attaques à mains nues lorsqu’ils le souhaitent (p. 119).';
+/** Verbatim des armes naturelles du félis (Le Compagnon p. 19). */
+const FELIS_LETHAL =
+  'Le félis inflige des DM létaux lorsqu’il utilise ses armes naturelles (griffes et crocs) (p. 19).';
 
 /**
  * Rangée de badges custom qualifiant l'attaque à MAINS NUES (PER-141) : létalité (non
@@ -91,7 +94,9 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
   const energyHands = sourceOf('energie-vitale-r1');
   const tigerClaws = sourceOf('maitrise-r2');
 
-  // Létalité : un moine choisit toujours (jamais forcé) ; sinon non létal (DM temporaires, p. 219).
+  // Létalité : un moine choisit toujours (jamais forcé) ; le félis inflige des DM LÉTAUX forcés avec
+  // ses armes naturelles ; sinon non létal (DM temporaires, p. 219).
+  const felisNaturalWeapons = sourceOf('felis-r2');
   const lethalityBadge =
     view.lethality === 'choice' ? (
       <QualifierBadge
@@ -99,6 +104,13 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
         icon={<SportsMartialArtsIcon sx={{ fontSize: 18 }} />}
         label="Létal au choix"
         tooltip={badgeTooltip(MONK_LETHAL_CHOICE)}
+      />
+    ) : view.lethality === 'lethal' ? (
+      <QualifierBadge
+        color="error"
+        icon={<SportsMartialArtsIcon sx={{ fontSize: 18 }} />}
+        label="Létal"
+        tooltip={badgeTooltip(FELIS_LETHAL, felisNaturalWeapons)}
       />
     ) : (
       <QualifierBadge

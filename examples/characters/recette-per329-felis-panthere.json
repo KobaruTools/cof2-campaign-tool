@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per329-felis-panthere",
+  "name": "Recette PER-329 — Félis (forme panthère active)",
+  "identity": {
+    "description": "ATTENDU : interrupteur « Sous forme de panthère » (r4) ACTIF → les caracs de la fiche passent aux valeurs de la panthère : AGI 4, FOR 2, PER 2 (CON/CHA/INT/VOL = celles du PJ). Dés bonus (*) sur AGI et PER. Les capacités de profil restent utilisables (le livre ne les interdit PAS sous cette forme)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "felis",
+  "classId": "guerrier",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "felis",
+  "featureIds": [
+    "felis-r1",
+    "felis-r2",
+    "felis-r3",
+    "felis-r4",
+    "felis-r5"
+  ],
+  "featureChoices": {
+    "felis-r3": [
+      "saltimbanque"
+    ]
+  },
+  "effectToggles": {
+    "felis-r4": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-329 — félis. Recette du contenu payant « Le Compagnon » (source companion).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

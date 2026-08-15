@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per329-felis-baseline",
+  "name": "Recette PER-329 — Félis (Le Compagnon)",
+  "identity": {
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Félis » + « Voie du félis » (rangs 1-5). r1 Âme féline → +3 en Escalade, Saut, Course (sprint) ; nuit étoilée = pénombre (verbatim). r2 Armes naturelles → à mains nues : 1d4 LÉTAL, DM FOR/AGI (badge « Létal »). r3 Vif et discret → +3 Init, +3 Discrétion, + choix saltimbanque (+3 Jonglerie/Acrobaties). r4 Métamorphose féline → bloc PANTHÈRE (forme, non active ici). r5 Nature féline → +1 AGI, +1 PER. Caracs de peuple : +1 AGI (choix), -1 FOR (choix)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "felis",
+  "classId": "guerrier",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "felis",
+  "featureIds": [
+    "felis-r1",
+    "felis-r2",
+    "felis-r3",
+    "felis-r4",
+    "felis-r5"
+  ],
+  "featureChoices": {
+    "felis-r3": [
+      "saltimbanque"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-329 — félis. Recette du contenu payant « Le Compagnon » (source companion).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
