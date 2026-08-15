@@ -46,6 +46,12 @@ export interface AbilityValueBadgeProps {
   adornment?: ReactNode;
   /** Style additionnel fusionné sur le conteneur (largeur, marges, `cursor`…). */
   sx?: SxProps<Theme>;
+  /** Style additionnel fusionné sur l'icône (ex. taille responsive mobile). */
+  iconSx?: SxProps<Theme>;
+  /** Style additionnel fusionné sur le code de la carac (ex. taille responsive mobile). */
+  codeSx?: SxProps<Theme>;
+  /** Style additionnel fusionné sur le chiffre (ex. taille responsive mobile). */
+  valueSx?: SxProps<Theme>;
 }
 
 /**
@@ -63,6 +69,9 @@ export function AbilityValueBadge({
   scaleBase,
   adornment,
   sx,
+  iconSx,
+  codeSx,
+  valueSx,
 }: AbilityValueBadgeProps) {
   // `lineHeight: 1` : supprime l'espace bas du line-box qui décentrerait le chiffre.
   const number = (
@@ -73,6 +82,7 @@ export function AbilityValueBadge({
         lineHeight: 1,
         color: abilityTotalColor(value, ability),
         fontSize: scaleBase ? abilityTotalFontSize(value, scaleBase) : undefined,
+        ...valueSx,
       }}
     >
       {signed(value)}
@@ -80,9 +90,9 @@ export function AbilityValueBadge({
   );
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, ...sx }}>
-      <AbilityIcon ability={ability} size={iconSize} title />
+      <AbilityIcon ability={ability} size={iconSize} title sx={iconSx} />
       {showCode && (
-        <Typography variant={codeVariant} color="text.secondary" sx={{ fontWeight: 'bold', lineHeight: 1 }}>
+        <Typography variant={codeVariant} color="text.secondary" sx={{ fontWeight: 'bold', lineHeight: 1, ...codeSx }}>
           {ability}
         </Typography>
       )}

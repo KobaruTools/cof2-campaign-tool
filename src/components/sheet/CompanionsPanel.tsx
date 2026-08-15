@@ -153,6 +153,7 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
                 profile={profile}
                 masterAbilities={abilities}
                 bonusDieAbilities={bonusDieAbilities}
+                mobileEnlarge
               />
             )}
             <CreatureDerivedStats
@@ -163,6 +164,7 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
               masterDerived={masterDerived}
               defenseAltActive={defenseAltActive}
               showHitPoints={maxHp === null}
+              mobileEnlarge
             />
           </Stack>
         )}

@@ -620,7 +620,11 @@ function GroupHeader({ type, count }: { type: ItemType; count: number }) {
         borderBottom: itemTypeHeaderBorder(type),
       }}
     >
-      <ItemTypeIcon type={type} size={18} />
+      <ItemTypeIcon
+        type={type}
+        size={18}
+        sx={{ width: { xs: 24, sm: 18 }, height: { xs: 24, sm: 18 } }}
+      />
       <Typography variant="overline" sx={{ fontWeight: 700, lineHeight: 1.6 }}>
         {ITEM_TYPE_LABELS[type]}
       </Typography>
@@ -1144,7 +1148,10 @@ export function EquipmentList({
         component="span"
         sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
       >
-        <ItemIcon id={lineIcon} sx={{ color: 'text.secondary' }} />
+        <ItemIcon
+          id={lineIcon}
+          sx={{ color: 'text.secondary', width: { xs: 22, sm: 16 }, height: { xs: 22, sm: 16 } }}
+        />
         Élixir —
         <CapabilityChip featureId={elixirFeatureId} label={null} />
       </Typography>
@@ -1160,7 +1167,10 @@ export function EquipmentList({
         }}
       >
         {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
-        <ItemIcon id={lineIcon} sx={{ color: 'text.secondary' }} />
+        <ItemIcon
+          id={lineIcon}
+          sx={{ color: 'text.secondary', width: { xs: 22, sm: 16 }, height: { xs: 22, sm: 16 } }}
+        />
         {/* Titre de l'objet. S'il porte une description libre, il devient survolable
             (tooltip) — la description reste masquée par défaut. */}
         {description ? (

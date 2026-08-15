@@ -121,19 +121,28 @@ const masterValue = (derived: DerivedStats, stat: DerivedStatId): number =>
  * Stat recopiée du maître : son total dérivé (info-bulle « Initiative du maître »).
  * Sans contexte de stats dérivées (ex. aperçu du wizard), repli sur un libellé.
  */
-function MasterStatValue({ stat, masterDerived }: { stat: DerivedStatId; masterDerived?: DerivedStats }) {
+function MasterStatValue({
+  stat,
+  masterDerived,
+  offset,
+}: {
+  stat: DerivedStatId;
+  masterDerived?: DerivedStats;
+  offset?: number;
+}) {
   const label = MASTER_STAT_LABEL[stat] ?? stat;
+  const suffix = offset ? ` + ${offset}` : '';
   if (!masterDerived) {
     return (
       <Typography component="span" variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-        {label} du maître
+        {label} du maître{suffix}
       </Typography>
     );
   }
   return (
-    <AppTooltip title={`${label} du maître`}>
+    <AppTooltip title={`${label} du maître${suffix}`}>
       <Box component="span" sx={{ fontWeight: 700, cursor: 'help', fontVariantNumeric: 'tabular-nums' }}>
-        {masterValue(masterDerived, stat)}
+        {masterValue(masterDerived, stat) + (offset ?? 0)}
       </Box>
     </AppTooltip>
   );
@@ -158,6 +167,12 @@ export interface CreatureAbilitiesGridProps {
    * bestiaire, PER-175, pour la colonne droite de la carte compagnon).
    */
   variant?: 'compact' | 'large';
+  /**
+   * Icône/chiffre agrandis sur mobile (breakpoint `xs`), hauteur de puce libre — la largeur
+   * reste contrainte par la grille à 7 colonnes. Réservé à la carte « Compagnons » (PER-233
+   * retour mobile) ; `false` ailleurs (mini-fiche « Voies & capacités ») pour ne rien changer.
+   */
+  mobileEnlarge?: boolean;
 }
 
 /**
@@ -166,7 +181,7 @@ export interface CreatureAbilitiesGridProps {
  * (`abilities`) ou dérivées du maître (`abilitiesFromMaster`). `null` si le profil n'a pas de bloc
  * de caractéristiques dans le livre (ex. écuyer). Le variant `large` reprend le style du bestiaire.
  */
-export function CreatureAbilitiesGrid({ profile, masterAbilities, bonusDieAbilities, variant = 'compact' }: CreatureAbilitiesGridProps) {
+export function CreatureAbilitiesGrid({ profile, masterAbilities, bonusDieAbilities, variant = 'compact', mobileEnlarge = false }: CreatureAbilitiesGridProps) {
   const resolved = resolveCreatureAbilities(profile, masterAbilities);
   if (!resolved) return null;
   // Dés bonus de la créature = dés INNÉS (notés « * » dans le livre, portés par le profil)
@@ -189,11 +204,15 @@ export function CreatureAbilitiesGrid({ profile, masterAbilities, bonusDieAbilit
             valueVariant={large ? 'h6' : 'caption'}
             scaleBase={large ? '1.2rem' : undefined}
             adornment={allBonusDice.has(id) ? <BonusDieBadge ability={id} size={large ? 14 : 12} /> : undefined}
+            // Mobile (carte « Compagnons ») : icône + chiffre agrandis, largeur inchangée
+            // (grille figée à 7 colonnes) — seule la hauteur de la puce grandit avec `py`.
+            iconSx={mobileEnlarge && !large ? { width: { xs: 22, sm: 16 }, height: { xs: 22, sm: 16 } } : undefined}
+            valueSx={mobileEnlarge && !large ? { fontSize: { xs: '0.95rem', sm: undefined } } : undefined}
             sx={{
               borderRadius: large ? 1.5 : 0.5,
               border: 1,
               borderColor: 'divider',
-              py: large ? { xs: 0.5, sm: 0.6 } : 0.4,
+              py: large ? { xs: 0.5, sm: 0.6 } : mobileEnlarge ? { xs: 0.9, sm: 0.4 } : 0.4,
               cursor: 'help',
               bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
             }}
@@ -330,6 +349,12 @@ export interface CreatureStatsLineProps {
    * plus par un texte.
    */
   showHitPoints?: boolean;
+  /**
+   * Icônes cerclées (DEF/Init./attaque) agrandies sur mobile (`xs`) — utilisé uniquement par
+   * `CreatureDerivedStats` (carte « Compagnons », retour mobile PER-233) ; sans effet sur
+   * `CreatureStatsLine`.
+   */
+  mobileEnlarge?: boolean;
 }
 
 /**
@@ -400,7 +425,11 @@ export function CreatureStatsLine({
         {profile.initiative && (
           <CreatureStatChip statId="initiative">
             {isMasterRef(profile.initiative) ? (
-              <MasterStatValue stat={profile.initiative.fromMaster} masterDerived={masterDerived} />
+              <MasterStatValue
+                stat={profile.initiative.fromMaster}
+                masterDerived={masterDerived}
+                offset={profile.initiative.offset}
+              />
             ) : (
               rich(profile.initiative)
             )}
@@ -490,7 +519,15 @@ export function CreatureDescriptionRich({
  * Bloc COMPACT « icône de stat dérivée + valeur » façon bestiaire (PER-175) — bordé, centré.
  * Disposés côte à côte sur UNE seule ligne (grille) dans la colonne droite de la carte compagnon.
  */
-function DerivedStatBlock({ statId, children }: { statId: UiDerivedStatId; children: ReactNode }) {
+function DerivedStatBlock({
+  statId,
+  children,
+  mobileEnlarge = false,
+}: {
+  statId: UiDerivedStatId;
+  children: ReactNode;
+  mobileEnlarge?: boolean;
+}) {
   return (
     <Stack
       direction="row"
@@ -500,17 +537,32 @@ function DerivedStatBlock({ statId, children }: { statId: UiDerivedStatId; child
         justifyContent: 'center',
         minWidth: 0,
         px: 0.6,
-        py: 0.4,
+        py: mobileEnlarge ? { xs: 0.7, sm: 0.4 } : 0.4,
         borderRadius: 1,
         border: 1,
         borderColor: 'divider',
         bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
       }}
     >
-      <DerivedStatIcon statId={statId} size={20} title />
+      {/* Icône cerclée (DEF/Init./attaque, y compris le disque du dé de DM inclus dans
+          `children`) agrandie sur mobile — largeur libre ici (2-3 blocs par ligne, pas 7). */}
+      <DerivedStatIcon
+        statId={statId}
+        size={20}
+        title
+        sx={mobileEnlarge ? { width: { xs: 26, sm: 20 }, height: { xs: 26, sm: 20 } } : undefined}
+      />
       <Box
         component="span"
-        sx={{ fontWeight: 700, fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 0.4, whiteSpace: 'nowrap' }}
+        sx={{
+          fontWeight: 700,
+          fontSize: mobileEnlarge ? { xs: '1rem', sm: '0.9rem' } : '0.9rem',
+          fontVariantNumeric: 'tabular-nums',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.4,
+          whiteSpace: 'nowrap',
+        }}
       >
         {children}
       </Box>
@@ -532,6 +584,7 @@ export function CreatureDerivedStats({
   masterDerived,
   defenseAltActive,
   showHitPoints = false,
+  mobileEnlarge = false,
 }: CreatureStatsLineProps) {
   const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
   const defAlt = profile.defenseAlt;
@@ -574,7 +627,11 @@ export function CreatureDerivedStats({
       key: 'init',
       statId: 'initiative',
       content: isMasterRef(profile.initiative) ? (
-        <MasterStatValue stat={profile.initiative.fromMaster} masterDerived={masterDerived} />
+        <MasterStatValue
+          stat={profile.initiative.fromMaster}
+          masterDerived={masterDerived}
+          offset={profile.initiative.offset}
+        />
       ) : (
         rich(profile.initiative)
       ),
@@ -622,7 +679,7 @@ export function CreatureDerivedStats({
   const row = (items: Block[]) => (
     <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, gap: 0.6 }}>
       {items.map((b) => (
-        <DerivedStatBlock key={b.key} statId={b.statId}>
+        <DerivedStatBlock key={b.key} statId={b.statId} mobileEnlarge={mobileEnlarge}>
           {b.content}
         </DerivedStatBlock>
       ))}
