@@ -2601,6 +2601,13 @@ export interface InitiativeTrackerProps {
    */
   onRestartRounds?: () => void;
   /**
+   * Action « Réinitialiser le combat » (PER-283, écran de MJ uniquement), rendue directement à
+   * DROITE du compteur « Tour N » — pas dans `headerAction` (trop loin à droite, au-delà de la
+   * bascule densité/palette) : c'est là que le MJ regarde déjà pour la manche, et l'action agit
+   * justement sur ce compteur (le ramène à 1). Absente ⇒ rien de rendu (roster vide, projection).
+   */
+  resetCombatAction?: ReactNode;
+  /**
    * Mode PROJECTION (PER-248) : la fenêtre « présentation » destinée à être projetée
    * pour les joueurs. On y masque tout ce qui est réservé au MJ ou qui prend de la place
    * inutilement — jauge de PV interactive, NC et PV des créatures, en-tête et bouton
@@ -2646,6 +2653,7 @@ export function InitiativeTracker({
   onRestartRounds,
   projection = false,
   headerAction,
+  resetCombatAction,
   statusControls,
   statusPalette,
   stickyBottom = false,
@@ -2739,9 +2747,9 @@ export function InitiativeTracker({
           MJ, donc rien de tout ça en mode projection. */}
       {!projection && (
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            {"Ordre d'initiative"}
-          </Typography>
+          {/* Densité des cartes (PER-300), tout à gauche de la barre — réglage d'AFFICHAGE, distinct
+              des actions de jeu qui suivent. Masquée en repli (cf. condensé plus loin). */}
+          {!collapsed && <TrackerDensityToggle compact={compactPref} onChange={setCompactPref} />}
           {/* Condensé replié (nouvelle demande) : mêmes puces que le bandeau replié de la fiche
               (`CondensedOrderDots`), pour lire d'un coup d'œil qui joue sans rien redéplier. */}
           <Fade in={showCondensedOrder} unmountOnExit timeout={200}>
@@ -2801,10 +2809,7 @@ export function InitiativeTracker({
               </IconButton>
             </Stack>
           )}
-          {/* Densité des cartes (PER-300) : rangée avec le titre et le compteur de manche — c'est un
-              réglage d'AFFICHAGE, pas une action de jeu, il n'a rien à faire dans le groupe
-              « Tour précédent / Tour suivant » à droite. Masquée en repli (cf. condensé plus haut). */}
-          {!collapsed && <TrackerDensityToggle compact={compactPref} onChange={setCompactPref} />}
+          {!collapsed && resetCombatAction}
           {/* Palette d'états repliable (PER-301) : même rangée que la densité, c'est un réglage
               d'affichage. Le bouton n'apparaît que si l'appelant fournit une palette (écran de MJ). */}
           {!collapsed && hasPalette && <StatusPaletteToggle open={paletteOpen} onChange={setPaletteOpen} />}
