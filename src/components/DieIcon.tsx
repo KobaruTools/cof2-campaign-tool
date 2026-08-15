@@ -57,6 +57,10 @@ export function DieIcon({
     ? `${die} — dé évolutif${level !== undefined ? ` (niveau ${level})` : ''}`
     : die;
 
+  // Grossi sur mobile (breakpoint `sm`) : les icônes de dé restent lisibles au
+  // pouce même quand un appelant les affiche petites (18px…) sur desktop.
+  const mobileSize = Math.round(size * 1.35);
+
   const svg = (
     <Box
       component="svg"
@@ -66,8 +70,8 @@ export function DieIcon({
       sx={{
         display: 'inline-block',
         flexShrink: 0,
-        width: size,
-        height: size,
+        width: { xs: mobileSize, sm: size },
+        height: { xs: mobileSize, sm: size },
         fill: color ?? 'currentColor',
         ...(evolving ? {} : sx),
       }}
@@ -89,7 +93,7 @@ export function DieIcon({
           top: 0,
           right: 0,
           transform: 'translate(20%, 0)',
-          fontSize: Math.max(16, size * 0.85),
+          fontSize: { xs: Math.max(16, mobileSize * 0.85), sm: Math.max(16, size * 0.85) },
           fontWeight: 700,
           lineHeight: 1,
           color: 'secondary.main',
