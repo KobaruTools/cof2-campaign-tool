@@ -83,6 +83,37 @@ function copyKey(oldKey: string, newKey: string): void {
   }
 }
 
+/**
+ * Paires (ancienne clé, nouvelle clé) reconnues par la migration ET
+ * actuellement présentes dans `localStorage` (statiques + dynamiques
+ * résolues contre les clés existantes). Sert au bloc « Données stockées sur
+ * cet appareil » (PER-412) pour proposer un nettoyage des anciennes clés :
+ * une paire n'y est listée que si l'ancienne clé existe encore.
+ */
+export function listLegacyKeyPairs(): Array<{ oldKey: string; newKey: string }> {
+  if (typeof window === 'undefined') return [];
+  const pairs: Array<{ oldKey: string; newKey: string }> = [];
+
+  for (const [oldKey, newKey] of STATIC_KEY_MAP) {
+    if (localStorage.getItem(oldKey) !== null) pairs.push({ oldKey, newKey });
+  }
+
+  const existingKeys: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key !== null) existingKeys.push(key);
+  }
+  for (const [oldPrefix, newPrefix] of DYNAMIC_PREFIX_MAP) {
+    for (const oldKey of existingKeys) {
+      if (!oldKey.startsWith(oldPrefix)) continue;
+      const suffix = oldKey.slice(oldPrefix.length);
+      pairs.push({ oldKey, newKey: `${newPrefix}${suffix}` });
+    }
+  }
+
+  return pairs;
+}
+
 export function runStorageMigration(): void {
   if (typeof window === 'undefined') return;
   try {

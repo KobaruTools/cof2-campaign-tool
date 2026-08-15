@@ -47,6 +47,7 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
 import { storageKeys } from '@/lib/storage/keys';
 import { describeStorageKey, isProtectedStorageKey } from '@/lib/storage/keyDescriptions';
+import { listLegacyKeyPairs } from '@/lib/storage/migrateLegacyKeys';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ProviderIcon } from '@/components/icons/ProviderIcons';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
@@ -70,6 +71,23 @@ function readStorageEntries(): Array<{ key: string; description: string }> {
     if (key !== null) entries.push({ key, description: describeStorageKey(key) });
   }
   return entries.sort((a, b) => a.key.localeCompare(b.key));
+}
+
+type LegacyPair = { oldKey: string; newKey: string; safe: boolean };
+
+/**
+ * Paires ancienne/nouvelle clé présentes, avec leur statut de sécurité :
+ * `safe` = la nouvelle clé existe déjà (migration confirmée pour CETTE
+ * paire) → l'ancienne peut être supprimée sans perte. Sinon on la laisse en
+ * place (mode privé, quota localStorage, ou copie jamais tentée).
+ */
+function readLegacyPairs(): LegacyPair[] {
+  if (typeof window === 'undefined') return [];
+  return listLegacyKeyPairs().map(({ oldKey, newKey }) => ({
+    oldKey,
+    newKey,
+    safe: window.localStorage.getItem(newKey) !== null,
+  }));
 }
 
 /** Libellé du mot à retaper pour confirmer la suppression (confirmation forte). */
@@ -116,6 +134,8 @@ export default function AccountPage() {
   const [deleting, setDeleting] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [storageEntries, setStorageEntries] = useState<Array<{ key: string; description: string }>>([]);
+  const [legacyPairs, setLegacyPairs] = useState<LegacyPair[]>([]);
+  const [cleanupOpen, setCleanupOpen] = useState(false);
 
   const { showToast } = useToast();
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
@@ -153,9 +173,16 @@ export default function AccountPage() {
     void Promise.resolve().then(() => setStorageEntries(readStorageEntries()));
   }, []);
 
+  // Anciennes clés (nomenclature pré-migration) encore présentes : lu au montage,
+  // affiché pour tout le monde (pas réservé au dev — utile à un joueur normal).
+  useEffect(() => {
+    void Promise.resolve().then(() => setLegacyPairs(readLegacyPairs()));
+  }, []);
+
   function deleteStorageEntry(key: string) {
     localStorage.removeItem(key);
     setStorageEntries((prev) => prev.filter((entry) => entry.key !== key));
+    setLegacyPairs((prev) => prev.filter((pair) => pair.oldKey !== key));
   }
 
   function confirmResetLocalConfig() {
@@ -164,6 +191,19 @@ export default function AccountPage() {
     }
     setResetOpen(false);
     window.location.reload();
+  }
+
+  // Ne supprime QUE les anciennes clés dont la nouvelle existe déjà (re-vérifié
+  // ici, pas seulement depuis l'état affiché, pour éviter toute course avec un
+  // autre onglet). Une paire sans nouvelle clé confirmée n'est jamais touchée.
+  function confirmCleanupLegacy() {
+    const fresh = readLegacyPairs();
+    const safeKeys = new Set(fresh.filter((p) => p.safe).map((p) => p.oldKey));
+    for (const key of safeKeys) localStorage.removeItem(key);
+    setLegacyPairs(fresh.filter((p) => !p.safe));
+    setStorageEntries((prev) => prev.filter((entry) => !safeKeys.has(entry.key)));
+    setCleanupOpen(false);
+    notify(`${safeKeys.size} ancienne(s) clé(s) nettoyée(s).`);
   }
 
   async function saveHandle() {
@@ -386,6 +426,32 @@ export default function AccountPage() {
                 Réinitialiser toutes les configurations de cet appareil
               </Button>
 
+              {legacyPairs.length > 0 && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {legacyPairs.filter((p) => p.safe).length} ancienne(s) clé(s) (nomenclature
+                    pré-migration) peuvent être nettoyées sans risque — leur équivalent existe déjà.
+                    {legacyPairs.some((p) => !p.safe) && (
+                      <>
+                        {' '}
+                        {legacyPairs.filter((p) => !p.safe).length} autre(s) n’ont pas encore de
+                        version migrée et sont laissées en place par sécurité.
+                      </>
+                    )}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    startIcon={<DeleteOutlineIcon />}
+                    disabled={!legacyPairs.some((p) => p.safe)}
+                    onClick={() => setCleanupOpen(true)}
+                  >
+                    Nettoyer les anciennes configurations
+                  </Button>
+                </>
+              )}
+
               {IS_DEV && (
                 <>
                   <Divider sx={{ my: 2 }} />
@@ -578,6 +644,26 @@ export default function AccountPage() {
           </Button>
           <Button color="warning" variant="contained" onClick={confirmResetLocalConfig}>
             Réinitialiser
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation : nettoyage des anciennes clés déjà migrées. */}
+      <Dialog open={cleanupOpen} onClose={() => setCleanupOpen(false)}>
+        <DialogTitle>Nettoyer les anciennes configurations ?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Supprime uniquement les clés au format historique dont l’équivalent au
+            nouveau format existe déjà sur cet appareil ({legacyPairs.filter((p) => p.safe).length}{' '}
+            clé(s)). Celles sans équivalent confirmé ne sont pas touchées.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCleanupOpen(false)} color="inherit">
+            Annuler
+          </Button>
+          <Button color="primary" variant="contained" onClick={confirmCleanupLegacy}>
+            Nettoyer
           </Button>
         </DialogActions>
       </Dialog>
