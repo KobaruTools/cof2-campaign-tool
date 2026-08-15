@@ -1941,7 +1941,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             <Divider sx={{ my: 1.5 }} />
             <EquipmentList
               equipment={character.equipment}
-              ancestryId={character.ancestryId}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
               characterId={character.id}
               // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.
