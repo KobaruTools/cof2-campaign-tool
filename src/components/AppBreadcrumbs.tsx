@@ -73,7 +73,7 @@ export function AppBreadcrumbs({
     minWidth: 0,
     fontWeight: 600,
     color: 'text.primary',
-    lineHeight: 1.2,
+    lineHeight: 1.5,
   } as const;
 
   return (
@@ -163,15 +163,17 @@ export function AppBreadcrumbs({
                 </Box>
               </Box>
             ) : isLast ? (
-              <Typography
-                variant="subtitle2"
-                component="h1"
-                aria-current="page"
-                noWrap
-                sx={{ ...currentSx, flexShrink: 1 }}
-              >
-                {crumb.label}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flexShrink: 1 }}>
+                <Typography
+                  variant="subtitle2"
+                  component="h1"
+                  aria-current="page"
+                  noWrap
+                  sx={currentSx}
+                >
+                  {crumb.label}
+                </Typography>
+              </Box>
             ) : (
               <MuiLink
                 component={Link}
