@@ -53,6 +53,8 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { OAUTH_PROVIDERS } from '@/lib/auth/providers';
 import { useHeaderContent } from '@/stores/headerContent';
 import { fetchMyProfile, setMyHandle } from '@/lib/friends/repo';
+import { TOUR_REGISTRY, type TourId } from '@/lib/tours/registry';
+import { useToursStore } from '@/stores/tours';
 import { deleteAccount } from './actions';
 
 const IS_CONFIGURED = Boolean(
@@ -490,6 +492,11 @@ export default function AccountPage() {
               )}
             </Section>
 
+            {/* Tutoriels (PER-424) : un tour peut être relancé indépendamment des
+                autres — liste générée depuis le registre central (jamais codée en
+                dur ici), voir src/lib/tours/registry.ts. */}
+            <TourResetSection notify={notify} />
+
             {/* Débloquer du contenu (PER-243) — auto-gaté : ne s'affiche que pour un
                 compte habilité (allowlist), sinon le composant ne rend rien. */}
             <AccountUnlockSection />
@@ -680,5 +687,64 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </Typography>
       {children}
     </Paper>
+  );
+}
+
+/**
+ * Section « Tutoriels » (PER-424) : un contrôle de réinitialisation par tour, pas
+ * un bouton global — liste générée depuis `TOUR_REGISTRY` (registre central posé
+ * par PER-423), jamais codée en dur ici. Réinitialiser efface juste le statut
+ * vu/passé de CE tour ; il se relance automatiquement à la prochaine ouverture de
+ * sa page, sans confirmation forte (action mineure, sans perte de données).
+ *
+ * Itère `Object.entries` plutôt que `TOUR_LIST` : seules les entrées du registre
+ * exposent la clé `TourId` (ex. `itemDialog`) attendue par `resetTour`/
+ * `completedVersions` — `TOUR_LIST` n'expose que la clé de stockage (`item-dialog`).
+ */
+function TourResetSection({ notify }: { notify: (message: string) => void }) {
+  const completedVersions = useToursStore((s) => s.completedVersions);
+  const hasHydrated = useToursStore((s) => s.hasHydrated);
+  const resetTour = useToursStore((s) => s.resetTour);
+
+  return (
+    <Section title="Tutoriels">
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        Réinitialise un tutoriel guidé pour qu’il se relance automatiquement à sa
+        prochaine ouverture.
+      </Typography>
+      <List dense disablePadding>
+        {(Object.entries(TOUR_REGISTRY) as [TourId, (typeof TOUR_REGISTRY)[TourId]][]).map(
+          ([tourId, tour]) => {
+            const seen = hasHydrated && completedVersions[tourId] === tour.version;
+            return (
+              <ListItem
+                key={tourId}
+                disableGutters
+                secondaryAction={
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="inherit"
+                    startIcon={<RestartAltIcon fontSize="small" />}
+                    disabled={!hasHydrated}
+                    onClick={() => {
+                      resetTour(tourId);
+                      notify(`Tutoriel « ${tour.label} » réinitialisé.`);
+                    }}
+                  >
+                    Réinitialiser
+                  </Button>
+                }
+              >
+                <ListItemText
+                  primary={tour.label}
+                  secondary={seen ? 'Déjà vu sur cet appareil' : 'Jamais vu sur cet appareil'}
+                />
+              </ListItem>
+            );
+          },
+        )}
+      </List>
+    </Section>
   );
 }
