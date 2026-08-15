@@ -17,6 +17,7 @@ import {
   lockedRank12Family,
   manualFeatureIds,
   maxRetrainings,
+  recordManualFeatureChange,
   totalFeatureCost,
   undoLastLevelUp,
 } from './levelUp';
@@ -129,6 +130,46 @@ describe('manualFeatureIds', () => {
   it('ensemble vide si aucun historique (rien à distinguer)', () => {
     const c = makeCharacter({ featureIds: ['rage-r1', 'brute-r1'], levelUpHistory: [] });
     expect(manualFeatureIds(c).size).toBe(0);
+  });
+});
+
+describe('recordManualFeatureChange', () => {
+  it('ne journalise rien pour un retrait (dérivable après coup, cf. `LevelHistory`)', () => {
+    const c = makeCharacter({
+      level: 4,
+      featureIds: ['rage-r1', 'brute-r1'],
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: ['rage-r1'] },
+        { level: 4, chosenFeatureIds: ['brute-r1'] },
+      ],
+    });
+    const history = recordManualFeatureChange(c, ['rage-r1']); // brute-r1 retiré à la main
+    expect(history).toBe(c.levelUpHistory); // aucun ajout → référence inchangée
+  });
+
+  it('journalise un ajout manuel sur l’entrée du niveau courant', () => {
+    const c = makeCharacter({
+      level: 4,
+      featureIds: ['rage-r1'],
+      levelUpHistory: [{ level: 1, chosenFeatureIds: ['rage-r1'] }],
+    });
+    const history = recordManualFeatureChange(c, ['rage-r1', 'brute-r1']);
+    const level4 = history.find((e) => e.level === 4)!;
+    expect(level4.manualAddedFeatureIds).toEqual(['brute-r1']);
+    expect(level4.chosenFeatureIds).toEqual([]); // pas un choix de wizard
+  });
+
+  it('sans historique (fixture bricolée) : renvoie l’historique tel quel', () => {
+    const c = makeCharacter({ featureIds: ['rage-r1'], levelUpHistory: [] });
+    expect(recordManualFeatureChange(c, ['rage-r1', 'brute-r1'])).toEqual([]);
+  });
+
+  it('aucun changement → renvoie l’historique tel quel (même référence)', () => {
+    const c = makeCharacter({
+      featureIds: ['rage-r1'],
+      levelUpHistory: [{ level: 1, chosenFeatureIds: ['rage-r1'] }],
+    });
+    expect(recordManualFeatureChange(c, ['rage-r1'])).toBe(c.levelUpHistory);
   });
 });
 

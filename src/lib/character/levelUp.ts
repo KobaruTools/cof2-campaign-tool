@@ -144,6 +144,41 @@ export function featureIdsFromHistory(character: Character): string[] | null {
 }
 
 /**
+ * Journalise dans `levelUpHistory` un AJOUT manuel de `featureIds` fait sur la fiche permissive
+ * (édition libre des voies & capacités, hors wizard) — pour tracer visuellement l'écart dans
+ * l'historique des niveaux plutôt que de le laisser silencieusement diverger.
+ *
+ * Seuls les AJOUTS sont journalisés ici : leur niveau d'acquisition n'est autrement pas
+ * retrouvable (contrairement à un retrait, qui reste identifiable après coup en comparant
+ * `featureIdsFromHistory` aux `featureIds` courants — cf. rendu de `LevelHistory`). Ids ajoutés
+ * → `manualAddedFeatureIds` de l'entrée du niveau COURANT (créée si absente, sans
+ * `chosenFeatureIds` puisqu'un ajout manuel n'est jamais un choix de wizard).
+ *
+ * Historique vide (sauvegarde ancienne / fixture bricolée) → renvoyé tel quel : rien à tracer,
+ * il n'y a pas d'entrée où accrocher le marqueur.
+ */
+export function recordManualFeatureChange(
+  character: Character,
+  nextFeatureIds: string[],
+): LevelUpEntry[] {
+  if (character.levelUpHistory.length === 0) return character.levelUpHistory;
+  const prevSet = new Set(character.featureIds);
+  const added = nextFeatureIds.filter((id) => !prevSet.has(id));
+  if (added.length === 0) return character.levelUpHistory;
+
+  const history = character.levelUpHistory.map((entry) => ({ ...entry }));
+  let currentEntry = history.find((e) => e.level === character.level);
+  if (!currentEntry) {
+    currentEntry = { level: character.level, chosenFeatureIds: [] };
+    history.push(currentEntry);
+  }
+  currentEntry.manualAddedFeatureIds = [
+    ...new Set([...(currentEntry.manualAddedFeatureIds ?? []), ...added]),
+  ];
+  return history.sort((a, b) => a.level - b.level);
+}
+
+/**
  * Retire une capacité de la sélection en cours et, avec elle, toute capacité
  * sélectionnée de la même voie d'un rang supérieur (sinon on laisserait une
  * voie à trous, choix illégal). Conserve l'ordre d'ajout.

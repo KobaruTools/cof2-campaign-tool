@@ -5,8 +5,10 @@ import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import PanToolIcon from '@mui/icons-material/PanTool';
 import { featureById, pathById } from '@/data';
-import type { LevelUpEntry } from '@/lib/character/types';
+import type { Character } from '@/lib/character/types';
+import { featureIdsFromHistory } from '@/lib/character/levelUp';
 import { ORPHAN_REWARD_LABEL } from '@/lib/character/orphanPoints';
 import { SourceRef } from '@/components/SourceRef';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -23,7 +25,7 @@ import {
 import { prestigeMetalGradient, prestigeGemStops } from '@/lib/ui/prestigeStyle';
 
 export interface LevelHistoryProps {
-  history: LevelUpEntry[];
+  character: Character;
 }
 
 /** Badge custom (≠ Chip MUI, cf. `DefenseBadge`) : rang de voie, teinté de la couleur du profil. */
@@ -48,6 +50,37 @@ function RankBadge({ rank, color }: { rank: number; color?: string }) {
       })}
     >
       Rang {rank}
+    </Box>
+  );
+}
+
+/**
+ * Badge custom (≠ Chip MUI, cf. `RankBadge`) : signale un changement fait à la main sur la
+ * fiche permissive (édition libre des voies & capacités, hors wizard) — teinte warning pour
+ * rester cohérent avec `ManualPin` (`FeaturesByPath`), qui marque le même genre d'écart.
+ */
+function ManualChangeBadge() {
+  return (
+    <Box
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.4,
+        height: 22,
+        px: 0.9,
+        borderRadius: 1,
+        flexShrink: 0,
+        lineHeight: 1,
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+        color: theme.palette.warning.main,
+        bgcolor: alpha(theme.palette.warning.main, 0.12),
+        border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+      })}
+    >
+      <PanToolIcon sx={{ fontSize: 13 }} />
+      Changement manuel
     </Box>
   );
 }
@@ -133,8 +166,16 @@ function HistoryFeature({ featureId }: { featureId: string }) {
  * Historique des montées de niveau (PER-50) : ce qui a été choisi niveau par
  * niveau (« qu’ai-je pris au niveau 4 ? »), avec annulation du dernier niveau.
  */
-export function LevelHistory({ history }: LevelHistoryProps) {
-  const entries = [...history].sort((a, b) => a.level - b.level);
+export function LevelHistory({ character }: LevelHistoryProps) {
+  const entries = [...character.levelUpHistory].sort((a, b) => a.level - b.level);
+  // Capacités choisies par l'historique mais absentes de la fiche : retrait manuel rétroactif
+  // (fiche modifiée à la main hors wizard) — contrairement à un ajout, le niveau d'origine
+  // reste connu ici (celui de l'entrée qui l'a choisie), donc détectable SANS journalisation
+  // dédiée, y compris pour les fiches modifiées avant l'existence de ce marqueur visuel.
+  const canonicalIds = featureIdsFromHistory(character);
+  const manuallyRemovedIds = canonicalIds
+    ? new Set(canonicalIds.filter((id) => !character.featureIds.includes(id)))
+    : new Set<string>();
 
   if (entries.length === 0) {
     return (
@@ -160,14 +201,31 @@ export function LevelHistory({ history }: LevelHistoryProps) {
           {entry.chosenFeatureIds.length === 0 &&
           !entry.orphanRewards?.length &&
           !entry.forgottenFeatureIds?.length &&
+          !entry.manualAddedFeatureIds?.length &&
           entry.rolledHp === undefined ? (
             <Typography variant="body2" color="text.secondary">
               Aucune capacité acquise à ce niveau.
             </Typography>
           ) : (
             <Stack spacing={0.5} sx={{ pl: 1.5, borderLeft: 3, borderColor: 'divider' }}>
-              {entry.chosenFeatureIds.map((id) => (
-                <HistoryFeature key={id} featureId={id} />
+              {entry.chosenFeatureIds.map((id) =>
+                manuallyRemovedIds.has(id) ? (
+                  <Stack key={id} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <ManualChangeBadge />
+                    <Box sx={{ textDecoration: 'line-through', color: 'text.secondary' }}>
+                      <HistoryFeature featureId={id} />
+                    </Box>
+                  </Stack>
+                ) : (
+                  <HistoryFeature key={id} featureId={id} />
+                ),
+              )}
+              {/* Capacité(s) ajoutée(s) à la main à CE niveau (édition libre, hors wizard). */}
+              {entry.manualAddedFeatureIds?.map((id) => (
+                <Stack key={`manual-${id}`} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <ManualChangeBadge />
+                  <HistoryFeature featureId={id} />
+                </Stack>
               ))}
               {/* Capacité(s) oubliée(s) ce niveau via le changement d'orientation (p. 43) :
                   tracées pour expliciter la reconversion (et rendre l'undo transparent). */}

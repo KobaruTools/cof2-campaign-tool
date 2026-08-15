@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per53bis-historique-manuel",
+  "name": "Recette — Historique (changements manuels)",
+  "identity": {
+    "description": "ATTENDU dans l'onglet « Historique des niveaux » : Niveau 4 → « Rang 3 voie de la brute » RAYÉE avec le badge jaune « Changement manuel » (main), car choisie par l'historique mais absente des voies & capacités actuelles — cas RÉTROACTIF, détecté sans avoir besoin d'avoir été capté au moment du retrait (reproduit le vrai cas GALD'HUN, prestige-familier-fantastique-r3 remplacé à la main par l'archimage). Niveau 4 également → « Rang 1 voie de la rage » avec le MÊME badge, non rayée : ajoutée à la main hors wizard, journalisée sur l'entrée du niveau courant au moment de l'édition."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 4,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "brute-r1",
+    "pagne-r1",
+    "humain-r1",
+    "brute-r2",
+    "pagne-r2",
+    "rage-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "brute-r1",
+        "pagne-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "brute-r2"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "pagne-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "brute-r3"
+      ],
+      "manualAddedFeatureIds": [
+        "rage-r1"
+      ]
+    }
+  ],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER — recette visuelle du traçage des changements manuels dans l’historique des niveaux.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

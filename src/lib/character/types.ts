@@ -892,6 +892,14 @@ export interface LevelUpEntry {
    * de schéma). Stocké sur le niveau d'origine → l'annulation du niveau le retire.
    */
   rolledHp?: number;
+  /**
+   * Ids de capacités AJOUTÉES à la main à CE niveau, hors wizard (édition libre des voies &
+   * capacités de la fiche permissive) — journalisé pour tracer visuellement les modifications
+   * manuelles dans l'historique (PER-53 bis). Distinct de `chosenFeatureIds` (réservé aux choix
+   * du wizard) : une édition libre au niveau courant crée/complète cette liste sur l'entrée de
+   * ce niveau. Absent = aucun ajout manuel. Champ additif optionnel (pas de migration de schéma).
+   */
+  manualAddedFeatureIds?: string[];
 }
 
 export interface Character {
