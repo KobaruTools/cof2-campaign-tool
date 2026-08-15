@@ -1,10 +1,17 @@
 'use client';
 
+import * as React from 'react';
+import Backdrop from '@mui/material/Backdrop';
 import Box from '@mui/material/Box';
+import Portal from '@mui/material/Portal';
 import Tooltip from '@mui/material/Tooltip';
 import type { TooltipProps } from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { SourceRef } from '@/components/SourceRef';
+
+/** Délai (ms) au-delà duquel MUI referme seul l'infobulle tactile ; on le désactive de fait (voir plus bas) pour la laisser épinglée jusqu'au tap en dehors. */
+const TOUCH_LEAVE_DELAY_MS = 24 * 60 * 60 * 1000;
 
 export interface AppTooltipProps extends Omit<TooltipProps, 'title'> {
   /**
@@ -35,6 +42,11 @@ export interface AppTooltipProps extends Omit<TooltipProps, 'title'> {
  * seule fois dans le thème) et absorbe le motif récurrent « contenu + citation
  * de source ». Point d'entrée unique : préférer ce composant à `@mui/material/
  * Tooltip` partout dans l'app.
+ *
+ * Sur pointeur tactile (`pointer: coarse`), la bulle déclenchée par l'appui
+ * long de MUI reste épinglée à l'écran (fond assombri) au lieu de disparaître
+ * peu après le relâchement du doigt ; un tap sur le fond assombri la referme.
+ * Comportement au survol/clic inchangé sur pointeur fin (souris/trackpad).
  */
 export function AppTooltip({
   title,
@@ -47,6 +59,23 @@ export function AppTooltip({
   children,
   ...rest
 }: AppTooltipProps) {
+  const isTouch = useMediaQuery('(pointer: coarse)');
+  const [touchOpen, setTouchOpen] = React.useState(false);
+  // Le `touchend` de l'appui long qui ouvre la bulle cible encore l'élément
+  // d'origine (capturé au `touchstart`, avant que le fond assombri n'existe) :
+  // le clic issu de ce même geste doit être avalé une fois pour ne pas
+  // déclencher l'action du bouton sous-jacent. Le timeout est un filet de
+  // sécurité si ce clic ne survient jamais (le drapeau ne doit pas fuiter sur
+  // un futur tap réel une fois la bulle refermée).
+  const suppressNextClickRef = React.useRef(false);
+  const handleTouchOpen = () => {
+    suppressNextClickRef.current = true;
+    setTouchOpen(true);
+    window.setTimeout(() => {
+      suppressNextClickRef.current = false;
+    }, 600);
+  };
+
   const hasSource = page != null || section != null;
 
   const content = hasSource ? (
@@ -68,25 +97,84 @@ export function AppTooltip({
   if (preLine) tooltipSx.whiteSpace = 'pre-line';
 
   const callerTooltip = slotProps?.tooltip as { sx?: unknown } | undefined;
-  const mergedSlotProps: TooltipProps['slotProps'] =
-    Object.keys(tooltipSx).length > 0
+  const callerPopper = slotProps?.popper as { onClick?: (event: React.MouseEvent) => void } | undefined;
+
+  // Un clic n'importe où dans la bulle (texte, `SourceRef`, marge de
+  // remplissage) doit rester sans effet sur le reste de l'appli : bloqué ici
+  // pour de bon, il n'a plus à remonter jusqu'à un éventuel bouton ancêtre.
+  // Nécessaire car la bulle est portée hors du DOM du déclencheur : React fait
+  // encore bubbler l'évènement le long de l'arbre React (pas du DOM) jusqu'à
+  // cet ancêtre, qui pourrait s'activer par erreur — sans ce blocage, ni les
+  // clics dans la bulle ni ceux sur le fond assombri n'en seraient exemptés.
+  const mergedSlotProps: TooltipProps['slotProps'] = {
+    ...slotProps,
+    ...(Object.keys(tooltipSx).length > 0
       ? {
-          ...slotProps,
           tooltip: {
             ...callerTooltip,
             sx: [tooltipSx, callerTooltip?.sx].filter(Boolean) as never,
           },
         }
-      : slotProps;
+      : {}),
+    popper: {
+      ...callerPopper,
+      onClick: (event: React.MouseEvent) => {
+        event.stopPropagation();
+        callerPopper?.onClick?.(event);
+      },
+    } as never,
+  };
+
+  const childWithClickCapture = children as React.ReactElement<{
+    onClickCapture?: (event: React.MouseEvent) => void;
+  }>;
+  const touchTrigger = isTouch
+    ? React.cloneElement(childWithClickCapture, {
+        onClickCapture: (event: React.MouseEvent) => {
+          if (suppressNextClickRef.current) {
+            suppressNextClickRef.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          childWithClickCapture.props.onClickCapture?.(event);
+        },
+      })
+    : children;
 
   return (
-    <Tooltip
-      title={content}
-      slotProps={mergedSlotProps}
-      {...(enterDelay != null ? { enterDelay, enterNextDelay: enterDelay } : {})}
-      {...rest}
-    >
-      {children}
-    </Tooltip>
+    <>
+      <Tooltip
+        title={content}
+        slotProps={mergedSlotProps}
+        {...(enterDelay != null ? { enterDelay, enterNextDelay: enterDelay } : {})}
+        {...rest}
+        {...(isTouch
+          ? {
+              open: touchOpen,
+              onOpen: handleTouchOpen,
+              onClose: () => setTouchOpen(false),
+              leaveTouchDelay: TOUCH_LEAVE_DELAY_MS,
+            }
+          : {})}
+      >
+        {touchTrigger}
+      </Tooltip>
+      {isTouch && (
+        <Portal>
+          <Backdrop
+            open={touchOpen}
+            onClick={(event) => {
+              event.stopPropagation();
+              setTouchOpen(false);
+            }}
+            sx={(theme) => ({
+              zIndex: theme.zIndex.tooltip - 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            })}
+          />
+        </Portal>
+      )}
+    </>
   );
 }
