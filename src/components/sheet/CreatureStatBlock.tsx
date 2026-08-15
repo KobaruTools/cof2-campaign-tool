@@ -125,10 +125,13 @@ function MasterStatValue({
   stat,
   masterDerived,
   offset,
+  mobileEnlarge = false,
 }: {
   stat: DerivedStatId;
   masterDerived?: DerivedStats;
   offset?: number;
+  /** Chiffre agrandi sur mobile (`xs`) — carte « Compagnons » ; jamais le DM qui suit. */
+  mobileEnlarge?: boolean;
 }) {
   const label = MASTER_STAT_LABEL[stat] ?? stat;
   const suffix = offset ? ` + ${offset}` : '';
@@ -141,7 +144,15 @@ function MasterStatValue({
   }
   return (
     <AppTooltip title={`${label} du maître${suffix}`}>
-      <Box component="span" sx={{ fontWeight: 700, cursor: 'help', fontVariantNumeric: 'tabular-nums' }}>
+      <Box
+        component="span"
+        sx={{
+          fontWeight: 700,
+          cursor: 'help',
+          fontVariantNumeric: 'tabular-nums',
+          fontSize: mobileEnlarge ? { xs: '1.05rem', sm: 'inherit' } : undefined,
+        }}
+      >
         {masterValue(masterDerived, stat) + (offset ?? 0)}
       </Box>
     </AppTooltip>
@@ -556,7 +567,7 @@ function DerivedStatBlock({
         component="span"
         sx={{
           fontWeight: 700,
-          fontSize: mobileEnlarge ? { xs: '1rem', sm: '0.9rem' } : '0.9rem',
+          fontSize: '0.9rem',
           fontVariantNumeric: 'tabular-nums',
           display: 'inline-flex',
           alignItems: 'center',
@@ -567,6 +578,16 @@ function DerivedStatBlock({
         {children}
       </Box>
     </Stack>
+  );
+}
+
+/** Enrobe UNIQUEMENT le chiffre (jamais le DM qui suit) d'une taille agrandie sur mobile. */
+function EnlargedStatValue({ mobileEnlarge, children }: { mobileEnlarge: boolean; children: ReactNode }) {
+  if (!mobileEnlarge) return <>{children}</>;
+  return (
+    <Box component="span" sx={{ fontSize: { xs: '1.05rem', sm: 'inherit' } }}>
+      {children}
+    </Box>
   );
 }
 
@@ -601,21 +622,23 @@ export function CreatureDerivedStats({
       statId: 'defense',
       content: (
         <>
-          {defAlt && defenseAltActive ? (
-            <AppTooltip
-              title={`${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`}
-            >
-              <Box component="span" sx={{ cursor: 'help' }}>
-                {isMasterRef(defAlt.value)
-                  ? masterDerived
-                    ? masterValue(masterDerived, defAlt.value.fromMaster)
-                    : 'DEF du maître'
-                  : rich(defAlt.value)}
-              </Box>
-            </AppTooltip>
-          ) : (
-            creatureDefenseNode(profile, abilities, level, rank)
-          )}
+          <EnlargedStatValue mobileEnlarge={mobileEnlarge}>
+            {defAlt && defenseAltActive ? (
+              <AppTooltip
+                title={`${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`}
+              >
+                <Box component="span" sx={{ cursor: 'help' }}>
+                  {isMasterRef(defAlt.value)
+                    ? masterDerived
+                      ? masterValue(masterDerived, defAlt.value.fromMaster)
+                      : 'DEF du maître'
+                    : rich(defAlt.value)}
+                </Box>
+              </AppTooltip>
+            ) : (
+              creatureDefenseNode(profile, abilities, level, rank)
+            )}
+          </EnlargedStatValue>
           <CreatureDefenseBadges profile={profile} />
         </>
       ),
@@ -626,14 +649,18 @@ export function CreatureDerivedStats({
     statBlocks.push({
       key: 'init',
       statId: 'initiative',
-      content: isMasterRef(profile.initiative) ? (
-        <MasterStatValue
-          stat={profile.initiative.fromMaster}
-          masterDerived={masterDerived}
-          offset={profile.initiative.offset}
-        />
-      ) : (
-        rich(profile.initiative)
+      content: (
+        <EnlargedStatValue mobileEnlarge={mobileEnlarge}>
+          {isMasterRef(profile.initiative) ? (
+            <MasterStatValue
+              stat={profile.initiative.fromMaster}
+              masterDerived={masterDerived}
+              offset={profile.initiative.offset}
+            />
+          ) : (
+            rich(profile.initiative)
+          )}
+        </EnlargedStatValue>
       ),
     });
   }
@@ -643,11 +670,14 @@ export function CreatureDerivedStats({
       statId: attackStatId,
       content: (
         <>
-          {attack.fromMaster ? (
-            <MasterStatValue stat={attack.fromMaster} masterDerived={masterDerived} />
-          ) : (
-            <Box component="span">{attack.value}</Box>
-          )}
+          {/* Chiffre du jet initial agrandi sur mobile — le DM qui suit garde sa taille. */}
+          <EnlargedStatValue mobileEnlarge={mobileEnlarge}>
+            {attack.fromMaster ? (
+              <MasterStatValue stat={attack.fromMaster} masterDerived={masterDerived} />
+            ) : (
+              <Box component="span">{attack.value}</Box>
+            )}
+          </EnlargedStatValue>
           {/* DM optionnel (ex. dard du pseudo-dragon : effet = poison, pas de DM). */}
           {attack.damage && (
             <>
@@ -668,7 +698,9 @@ export function CreatureDerivedStats({
       statId: extra.ranged ? 'rangedAttack' : 'meleeAttack',
       content: (
         <>
-          <MasterStatValue stat="magicAttack" masterDerived={masterDerived} />
+          <EnlargedStatValue mobileEnlarge={mobileEnlarge}>
+            <MasterStatValue stat="magicAttack" masterDerived={masterDerived} />
+          </EnlargedStatValue>
           <Box component="span" sx={{ opacity: 0.5 }}>·</Box>
           {rich(extra.damage)}
         </>

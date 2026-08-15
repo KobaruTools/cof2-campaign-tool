@@ -577,6 +577,8 @@ export function DerivedStatsGrid({
                               alignItems: 'center',
                               gap: 0.75,
                               cursor: 'help',
+                              // Chiffre agrandi sur mobile — le libellé/l'icône/les badges autour gardent leur taille.
+                              fontSize: { xs: '1.75rem', sm: 'inherit' },
                             }}
                           >
                             {display === null ? '—' : display}

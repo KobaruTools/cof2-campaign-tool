@@ -155,6 +155,8 @@ export function FormAttackCard({ attack, touch, forced, wrapTouch, abilities, at
                     alignItems: 'center',
                     gap: 0.5,
                     cursor: 'help',
+                    // Chiffre de la TOUCHE agrandi sur mobile — jamais le DM (bloc séparé).
+                    fontSize: { xs: '1.75rem', sm: 'inherit' },
                   }}
                 >
                   {touch === null ? '—' : touch}
