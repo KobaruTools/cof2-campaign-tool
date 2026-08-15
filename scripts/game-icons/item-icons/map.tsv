@@ -38,8 +38,10 @@ wand	lorc/crystal-wand.svg
 tent	delapouite/camping-tent.svg
 ring	delapouite/diamond-ring.svg
 amulet	lorc/gem-pendant.svg
-cloak	delapouite/cape-armor.svg
+cloak	delapouite/cape.svg
 boots	lorc/leather-boot.svg
 herbs	delapouite/herbs-bundle.svg
 bandage	lorc/bandage-roll.svg
 holy-symbol	lorc/holy-symbol.svg
+helmet	lorc/barbute.svg
+gloves	delapouite/gloves.svg

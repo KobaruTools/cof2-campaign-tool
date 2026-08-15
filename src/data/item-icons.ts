@@ -108,6 +108,8 @@ export const ITEM_SUBCATEGORY_ICON_IDS = [
   'herbs',
   'bandage',
   'holy-symbol',
+  'helmet',
+  'gloves',
 ] as const;
 
 export type ItemTypeIconId = (typeof ITEM_TYPE_ICON_IDS)[number];

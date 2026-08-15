@@ -105,10 +105,10 @@ describe('catalogue', () => {
     expect(bad).toEqual([]);
   });
 
-  it('couvre les 30 sous-catégories du catalogue (les 15 autres sont réservées aux objets libres)', () => {
+  it('couvre les 30 sous-catégories du catalogue (les 17 autres sont réservées aux objets libres)', () => {
     const used = new Set(equipment.map((i) => i.icon).filter(Boolean));
     const unused = ITEM_SUBCATEGORY_ICON_IDS.filter((id) => !used.has(id));
-    // 45 sous-catégories - 30 portées par le catalogue = 15 icônes « libres ».
-    expect(unused.length).toBe(15);
+    // 47 sous-catégories - 30 portées par le catalogue = 17 icônes « libres ».
+    expect(unused.length).toBe(17);
   });
 });

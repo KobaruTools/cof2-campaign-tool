@@ -66,7 +66,7 @@ export interface ItemIconGroup {
 
 /** Ids de sous-catégorie regroupés par thème pour le sélecteur (source unique de l'ordre). */
 const SUBCATEGORY_GROUPS: readonly (readonly ItemSubcategoryIcon[])[] = [
-  ['clothes', 'padded-armor', 'leather-armor', 'studded-armor', 'mail-shirt', 'heavy-mail', 'plate-armor', 'full-plate', 'small-shield', 'large-shield', 'cloak', 'boots'],
+  ['clothes', 'padded-armor', 'leather-armor', 'studded-armor', 'mail-shirt', 'heavy-mail', 'plate-armor', 'full-plate', 'small-shield', 'large-shield', 'cloak', 'boots', 'helmet', 'gloves'],
   ['potion', 'herbs', 'bandage', 'ration', 'mess-kit', 'waterskin', 'mug'],
   ['rope', 'grapple', 'torch', 'lantern', 'lamp-oil', 'tinderbox', 'blanket', 'tent', 'backpack', 'lockpicks', 'quiver', 'writing-kit', 'instrument', 'key'],
   ['spellbook', 'scroll', 'wand', 'holy-symbol', 'amulet', 'ring'],
@@ -169,6 +169,8 @@ export const ITEM_ICON_LABELS: Record<ItemIconId, string> = {
   herbs: 'Herbes',
   bandage: 'Bandages',
   'holy-symbol': 'Symbole sacré',
+  helmet: 'Casque',
+  gloves: 'Gants',
 };
 
 /** Libellé FR d'une icône, avec repli sur son id (jamais vide). */

@@ -333,11 +333,13 @@ composant commun `src/components/ItemIcon.tsx`.
 | Tente (`tent`) | `delapouite/camping-tent.svg` | Delapouite |
 | Anneau (`ring`) | `delapouite/diamond-ring.svg` | Delapouite |
 | Amulette (`amulet`) | `lorc/gem-pendant.svg` | Lorc |
-| Cape (`cloak`) | `delapouite/cape-armor.svg` | Delapouite |
+| Cape (`cloak`) | `delapouite/cape.svg` | Delapouite |
 | Bottes (`boots`) | `lorc/leather-boot.svg` | Lorc |
 | Herbes (`herbs`) | `delapouite/herbs-bundle.svg` | Delapouite |
 | Bandages (`bandage`) | `lorc/bandage-roll.svg` | Lorc |
 | Symbole sacré (`holy-symbol`) | `lorc/holy-symbol.svg` | Lorc |
+| Casque (`helmet`) | `lorc/barbute.svg` | Lorc |
+| Gants (`gloves`) | `delapouite/gloves.svg` | Delapouite |
 
 ## Icônes des titres de section
 
