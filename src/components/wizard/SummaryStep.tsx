@@ -204,7 +204,14 @@ export function SummaryStep({
         />
       </Box>
 
-      <Box>
+      <Box
+        sx={{
+          p: 1.5,
+          borderRadius: 2,
+          backdropFilter: 'blur(6px)',
+          bgcolor: (theme) => alpha(theme.palette.background.paper, 0.55),
+        }}
+      >
         <Typography variant="subtitle2" gutterBottom>
           Capacités acquises
         </Typography>
@@ -281,7 +288,14 @@ export function SummaryStep({
       {/* Choix portés par les capacités de niveau 1 (PER-66/68) — bloquant :
           le bouton « Créer » reste désactivé tant qu'ils ne sont pas résolus. */}
       {featureIds.some((id) => hasActionableChoice(preview, id)) && (
-        <Box>
+        <Box
+          sx={{
+            p: 1.5,
+            borderRadius: 2,
+            backdropFilter: 'blur(6px)',
+            bgcolor: (theme) => alpha(theme.palette.background.paper, 0.55),
+          }}
+        >
           <Typography variant="subtitle2" gutterBottom>
             Choix à faire
           </Typography>
