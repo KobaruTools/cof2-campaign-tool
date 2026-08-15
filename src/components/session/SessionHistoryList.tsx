@@ -9,15 +9,21 @@
 import { useEffect, useState } from 'react';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import LockIcon from '@mui/icons-material/Lock';
+import PublicIcon from '@mui/icons-material/Public';
 import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { fetchSessionHistory, type SessionHistoryEntry } from '@/lib/session/history';
+import { fetchSessionRecaps, upsertSessionRecap, type SessionRecap } from '@/lib/session/recap';
 import type { SessionEndReason } from '@/lib/session/types';
 
 /** Verre dépoli commun aux cartes (aligné sur les réglages de campagne). */
@@ -89,17 +95,156 @@ function EndReasonBadge({ reason }: { reason: SessionEndReason }) {
   );
 }
 
+/**
+ * Recap MJ partagé (PER-407, `game_session_recaps`) : MJ écrit/republie via un
+ * champ éditable + interrupteur de visibilité ; joueur ne voit ce bloc QUE si
+ * la RLS lui a effectivement renvoyé une ligne (donc déjà publiée) — aucune
+ * vérification de `visibleToPlayers` côté client, la base a déjà filtré.
+ */
+function SessionRecapBlock({
+  sessionId,
+  recap,
+  isGm,
+  onSaved,
+}: {
+  sessionId: string;
+  recap: SessionRecap | undefined;
+  isGm: boolean;
+  onSaved: (recap: SessionRecap) => void;
+}) {
+  // Initialisation paresseuse depuis `recap` : le parent ne monte ce composant
+  // qu'une fois entrées ET recaps chargés ensemble (cf. `SessionHistoryList`),
+  // donc `recap` est déjà à sa valeur définitive au premier rendu — pas besoin
+  // d'effet de resynchronisation.
+  const [content, setContent] = useState(recap?.content ?? '');
+  const [visibleToPlayers, setVisibleToPlayers] = useState(recap?.visibleToPlayers ?? false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!isGm) {
+    if (!recap || recap.content.trim() === '') return null;
+    return (
+      <Box sx={{ mt: 1.5 }}>
+        <Divider sx={{ mb: 1.5, borderColor: 'rgba(255, 255, 255, 0.10)' }} />
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+          Résumé du MJ
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+          {recap.content}
+        </Typography>
+      </Box>
+    );
+  }
+
+  const save = async (patch: Partial<Pick<SessionRecap, 'content' | 'visibleToPlayers'>>) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const saved = await upsertSessionRecap(sessionId, patch);
+      onSaved(saved);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Box sx={{ mt: 1.5 }}>
+      <Divider sx={{ mb: 1.5, borderColor: 'rgba(255, 255, 255, 0.10)' }} />
+      <Stack
+        direction="row"
+        sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}
+      >
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Recap MJ
+        </Typography>
+        <FormControlLabel
+          sx={{ mr: 0 }}
+          control={
+            <Switch
+              size="small"
+              checked={visibleToPlayers}
+              disabled={saving}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setVisibleToPlayers(next);
+                void save({ visibleToPlayers: next });
+              }}
+            />
+          }
+          label={
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+              {visibleToPlayers ? <PublicIcon fontSize="small" /> : <LockIcon fontSize="small" />}
+              <Typography variant="body2" color="text.secondary">
+                {visibleToPlayers ? 'Visible aux joueurs' : 'Privé (MJ uniquement)'}
+              </Typography>
+            </Stack>
+          }
+          labelPlacement="start"
+        />
+      </Stack>
+      <TextField
+        fullWidth
+        multiline
+        minRows={2}
+        maxRows={8}
+        placeholder="Notes de résumé pour cette partie…"
+        value={content}
+        disabled={saving}
+        onChange={(e) => setContent(e.target.value)}
+        onBlur={() => {
+          if (content !== (recap?.content ?? '')) void save({ content });
+        }}
+        size="small"
+      />
+      {error && (
+        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+          {error}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 function SessionCard({
   entry,
   participantsDefaultOpen,
+  isMostRecent,
+  isGm,
+  recap,
+  onRecapSaved,
 }: {
   entry: SessionHistoryEntry;
   /** État initial du bloc présences (repliable indépendamment par carte, pas persisté). */
   participantsDefaultOpen: boolean;
+  /** Met en avant cette carte comme « dernière partie jouée » (PER-407, tiroir MJ uniquement). */
+  isMostRecent: boolean;
+  /** Le viewer courant est-il le MJ ? Donne accès à l'édition du recap. */
+  isGm: boolean;
+  recap: SessionRecap | undefined;
+  onRecapSaved: (recap: SessionRecap) => void;
 }) {
   const [presenceOpen, setPresenceOpen] = useState(participantsDefaultOpen);
   return (
-    <Paper variant="outlined" sx={glassPaper}>
+    <Paper
+      variant="outlined"
+      sx={{
+        ...glassPaper,
+        ...(isMostRecent && {
+          borderColor: 'primary.main',
+          boxShadow: (theme) => `0 0 0 1px ${theme.palette.primary.main}`,
+        }),
+      }}
+    >
+      {isMostRecent && (
+        <Typography
+          variant="overline"
+          sx={{ display: 'block', color: 'primary.main', fontWeight: 700, mb: 0.5 }}
+        >
+          Dernière partie jouée
+        </Typography>
+      )}
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1}
@@ -188,6 +333,13 @@ function SessionCard({
           )}
         </Stack>
       </Collapse>
+
+      <SessionRecapBlock
+        sessionId={entry.id}
+        recap={recap}
+        isGm={isGm}
+        onSaved={onRecapSaved}
+      />
     </Paper>
   );
 }
@@ -195,20 +347,39 @@ function SessionCard({
 export function SessionHistoryList({
   campaignId,
   participantsDefaultOpen = true,
+  highlightMostRecent = false,
+  isGm = false,
 }: {
   campaignId: string;
   /** État initial du bloc présences de chaque carte — replié par défaut dans le tiroir de
    *  l'écran de MJ, ouvert par défaut ailleurs (comportement historique inchangé). */
   participantsDefaultOpen?: boolean;
+  /** Marque la première entrée (déjà triée par date décroissante) comme « dernière partie
+   *  jouée » — mise en avant purement visuelle, pas de nouveau point de lecture (PER-407). */
+  highlightMostRecent?: boolean;
+  /** Le viewer courant est-il le MJ ? Ouvre l'édition du recap (`/campaign/[cid]/history`,
+   *  tiroir MJ) — par défaut `false` (vue joueur `/play/history`, lecture seule). */
+  isGm?: boolean;
 }) {
   const [entries, setEntries] = useState<SessionHistoryEntry[] | null>(null);
+  const [recaps, setRecaps] = useState<Map<string, SessionRecap>>(new Map());
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchSessionHistory(campaignId)
-      .then((rows) => {
-        if (!cancelled) setEntries(rows);
+      .then(async (rows) => {
+        if (cancelled) return;
+        // Recap secondaire à l'affichage principal : un échec de lecture ne doit pas
+        // empêcher la consultation de l'historique lui-même. Attendu AVANT de poser
+        // `entries`, pour que chaque carte monte avec son recap déjà chargé (état
+        // initial correct dès le premier rendu, sans effet de resynchronisation).
+        const recapMap = await fetchSessionRecaps(rows.map((r) => r.id)).catch(
+          () => new Map<string, SessionRecap>(),
+        );
+        if (cancelled) return;
+        setRecaps(recapMap);
+        setEntries(rows);
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -254,8 +425,18 @@ export function SessionHistoryList({
 
   return (
     <Stack spacing={2}>
-      {entries.map((entry) => (
-        <SessionCard key={entry.id} entry={entry} participantsDefaultOpen={participantsDefaultOpen} />
+      {entries.map((entry, index) => (
+        <SessionCard
+          key={entry.id}
+          entry={entry}
+          participantsDefaultOpen={participantsDefaultOpen}
+          isMostRecent={highlightMostRecent && index === 0}
+          isGm={isGm}
+          recap={recaps.get(entry.id)}
+          onRecapSaved={(recap) =>
+            setRecaps((prev) => new Map(prev).set(entry.id, recap))
+          }
+        />
       ))}
     </Stack>
   );

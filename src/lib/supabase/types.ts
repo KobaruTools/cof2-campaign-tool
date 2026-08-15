@@ -285,6 +285,41 @@ export type Database = {
           },
         ]
       }
+      game_session_recaps: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          session_id: string
+          updated_at: string
+          visible_to_players: boolean
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          session_id: string
+          updated_at?: string
+          visible_to_players?: boolean
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          session_id?: string
+          updated_at?: string
+          visible_to_players?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_session_recaps_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_sessions: {
         Row: {
           campaign_id: string

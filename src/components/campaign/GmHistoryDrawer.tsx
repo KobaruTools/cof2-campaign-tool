@@ -90,7 +90,12 @@ export function GmHistoryDrawer({ campaignId, open, onClose }: GmHistoryDrawerPr
       </Box>
 
       <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 3 }}>
-        <SessionHistoryList campaignId={campaignId} participantsDefaultOpen={false} />
+        <SessionHistoryList
+          campaignId={campaignId}
+          participantsDefaultOpen={false}
+          highlightMostRecent
+          isGm
+        />
       </Box>
     </Drawer>
   );

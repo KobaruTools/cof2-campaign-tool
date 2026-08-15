@@ -54,7 +54,7 @@ export default function CampaignHistoryPage({ params }: { params: Promise<{ cid:
           Historique des parties
         </Typography>
 
-        <SessionHistoryList campaignId={cid} />
+        <SessionHistoryList campaignId={cid} isGm />
       </Container>
     </>
   );
