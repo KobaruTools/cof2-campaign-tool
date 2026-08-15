@@ -44,7 +44,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import {
   CharacterList,
@@ -72,6 +71,7 @@ import { useAppSession } from '@/lib/supabase/useAppSession';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
+import { useHeaderContent } from '@/stores/headerContent';
 
 const HOME_SORT_KEYS: SortKey[] = ['updatedAt', 'name', 'level', 'campaign'];
 
@@ -79,6 +79,7 @@ const HOME_SORT_KEYS: SortKey[] = ['updatedAt', 'name', 'level', 'campaign'];
 const norm = normalizeSearchText;
 
 export default function CharactersPage() {
+  useHeaderContent({ breadcrumbs: [{ label: 'Mes personnages' }] });
   // Rôle de session : la page est ouverte SANS compte (l'app est locale d'abord), on
   // avertit alors le visiteur que ses fiches ne vivent que dans ce navigateur.
   const { role, resolved } = useAppSession();
@@ -281,10 +282,6 @@ export default function CharactersPage() {
     <>
       <title>Mes personnages — Éditeur de personnage CO2</title>
       <HomeBackground />
-      {/* Fil d'Ariane à un maillon : la page n'est plus l'accueil (le logo de marque
-          mène à la vitrine `/`). Les liens globaux Bestiaire/Campagnes + menu compte
-          sont injectés en dur par l'en-tête (PER-239). */}
-      <AppHeader breadcrumbs={[{ label: 'Mes personnages' }]} />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>

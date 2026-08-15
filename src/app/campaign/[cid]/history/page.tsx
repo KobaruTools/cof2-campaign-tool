@@ -13,15 +13,23 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
-import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
 import { SessionHistoryList } from '@/components/session/SessionHistoryList';
 import { useCampaignsStore } from '@/stores/campaigns';
+import { useHeaderContent } from '@/stores/headerContent';
 
 export default function CampaignHistoryPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
   const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
   const loadCampaigns = useCampaignsStore((s) => s.load);
+
+  useHeaderContent({
+    breadcrumbs: [
+      { label: 'Campagnes', href: '/campaigns' },
+      { label: campaign?.name ?? '…', href: `/campaign/${cid}` },
+      { label: 'Historique des parties' },
+    ],
+  });
 
   useEffect(() => {
     void loadCampaigns();
@@ -31,13 +39,6 @@ export default function CampaignHistoryPage({ params }: { params: Promise<{ cid:
     <>
       <title>{`Historique — ${campaign?.name ?? 'Campagne'} — Éditeur de personnage CO2`}</title>
       <HomeBackground />
-      <AppHeader
-        breadcrumbs={[
-          { label: 'Campagnes', href: '/campaigns' },
-          { label: campaign?.name ?? '…', href: `/campaign/${cid}` },
-          { label: 'Historique des parties' },
-        ]}
-      />
 
       <Container maxWidth="sm" sx={{ py: 4 }}>
         <Button

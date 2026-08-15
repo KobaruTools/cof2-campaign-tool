@@ -25,7 +25,6 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
 import { AppShowcase } from '@/components/home/AppShowcase';
 import { FeatureShowcase } from '@/components/home/FeatureShowcase';
@@ -36,6 +35,7 @@ import { SectionIcon } from '@/components/SectionIcon';
 import type { SectionIconName } from '@/lib/ui/sectionIcons';
 import { BOOKS, DEFAULT_BOOK_ID, rulesHref } from '@/lib/ui/books';
 import type { SessionRole } from '@/lib/auth/sessionRole';
+import { useHeaderContent } from '@/stores/headerContent';
 
 /** Verre dépoli commun aux blocs de la vitrine (aligné sur le reste de l'app). */
 const GLASS = {
@@ -200,6 +200,9 @@ function HeroActions({ role }: { role: SessionRole }) {
 const sectionIcon = (name: SectionIconName) => <SectionIcon name={name} size={22} />;
 
 export function HomeLanding({ role }: { role: SessionRole }) {
+  // Pas de fil d'Ariane : le logo de marque couvre déjà l'accueil. Le rôle est passé
+  // explicitement (résolu côté serveur) pour figer la nav dès le 1er rendu.
+  useHeaderContent({ sessionRole: role });
   const isAnonymous = role === 'anonymous' || role === 'projection';
   const BookIcon = BOOKS[DEFAULT_BOOK_ID].Icon;
 
@@ -212,10 +215,6 @@ export function HomeLanding({ role }: { role: SessionRole }) {
           ici puis retirée (arbitrage proprio) : le haut de page revient au décor du
           héros. */}
       <HomeBackground variant="footer" />
-      {/* Pas de fil d'Ariane : le logo de marque couvre déjà l'accueil. Le rôle est
-          passé explicitement (résolu côté serveur) pour figer la nav dès le 1er rendu. */}
-      <AppHeader sessionRole={role} />
-
       <Container maxWidth="lg" sx={{ py: { xs: 4, sm: 7 } }}>
         <Stack spacing={{ xs: 5, sm: 7 }}>
           {/* ─── Héros ─────────────────────────────────────────────────────────

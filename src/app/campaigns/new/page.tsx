@@ -40,7 +40,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
 import { HomeBackground } from '@/components/HomeBackground';
@@ -49,6 +48,7 @@ import { insertPlayer } from '@/lib/player/repo';
 import { joinLinkUrl } from '@/lib/player/types';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useCampaignDraftStore } from '@/stores/campaignDraft';
+import { useHeaderContent } from '@/stores/headerContent';
 
 const STEP_LABELS = ['Identité', 'Règles de table', 'Joueurs', 'Récapitulatif'] as const;
 
@@ -63,6 +63,12 @@ const glassPaper = {
 } as const;
 
 export default function CampaignCreatePage() {
+  useHeaderContent({
+    breadcrumbs: [
+      { label: 'Campagnes', href: '/campaigns' },
+      { label: 'Nouvelle campagne' },
+    ],
+  });
   const router = useRouter();
   const status = useCampaignsStore((s) => s.status);
   const loadCampaigns = useCampaignsStore((s) => s.load);
@@ -207,12 +213,6 @@ export default function CampaignCreatePage() {
     <>
       <title>Nouvelle campagne — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader
-        breadcrumbs={[
-          { label: 'Campagnes', href: '/campaigns' },
-          { label: 'Nouvelle campagne' },
-        ]}
-      />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         {unconfigured ? (

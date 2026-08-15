@@ -19,7 +19,7 @@ import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import { alpha } from '@mui/material/styles';
-import { AppHeader } from '@/components/AppHeader';
+import { useHeaderContent } from '@/stores/headerContent';
 
 const ANIMATION = 'wave' as const;
 
@@ -84,20 +84,21 @@ function TileGridSkeleton({ count, minWidth, height }: { count: number; minWidth
 }
 
 export function CharacterSheetSkeleton() {
+  // Sous-header de l'en-tête global (nav/logo/compte restent, eux, montés en permanence par
+  // `layout.tsx`) : fil d'Ariane et bouton « Modifier » réduits à des blocs neutres — leur
+  // contenu réel (nom du personnage, lecture seule ou non) n'est connu qu'une fois le
+  // personnage chargé. Sans ce push, le sous-header disparaîtrait pendant le chargement
+  // (aucun `breadcrumbs`/`action`) et sauterait à l'hydratation. Ni sous-titre ni 3ᵉ étage
+  // (barre condensée) : absents tant que le personnage n'est pas là, donc pas de risque de
+  // saut sur ces zones.
+  useHeaderContent({
+    breadcrumbs: [
+      { label: <Skeleton animation={ANIMATION} variant="text" width={140} sx={{ fontSize: '0.8rem' }} /> },
+    ],
+    action: <Skeleton animation={ANIMATION} variant="rounded" width={84} height={28} sx={{ borderRadius: 1 }} />,
+  });
   return (
     <>
-      {/* En-tête d'app collé en haut (nav + fil d'Ariane), monté dès le squelette : sinon
-          il surgit d'un bloc à l'hydratation et repousse toute la fiche vers le bas. Fil
-          d'Ariane et bouton « Modifier » réduits à des blocs neutres — leur contenu réel
-          (nom du personnage, lecture seule ou non) n'est connu qu'une fois le personnage
-          chargé. Ni sous-titre ni 3ᵉ étage (barre condensée) : absents tant que le
-          personnage n'est pas là, donc pas de risque de saut sur ces zones. */}
-      <AppHeader
-        breadcrumbs={[
-          { label: <Skeleton animation={ANIMATION} variant="text" width={140} sx={{ fontSize: '0.8rem' }} /> },
-        ]}
-        action={<Skeleton animation={ANIMATION} variant="rounded" width={84} height={28} sx={{ borderRadius: 1 }} />}
-      />
       <Container maxWidth="md" sx={{ py: 4 }} aria-hidden>
         <Stack spacing={3}>
           {/* En-tête de fiche : campagne, nom, peuple · profil · niveau, bouton de montée. */}

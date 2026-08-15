@@ -34,7 +34,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AppHeader } from '@/components/AppHeader';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
 import { HomeBackground } from '@/components/HomeBackground';
@@ -42,6 +41,7 @@ import { DEFAULT_CAMPAIGN_RULES, type CampaignRules } from '@/lib/campaign';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { storageKeys } from '@/lib/storage/keys';
 import { useCampaignsStore } from '@/stores/campaigns';
+import { useHeaderContent } from '@/stores/headerContent';
 
 /** Verre dépoli commun aux cartes de réglages (aligné sur les autres pages). */
 const glassPaper = {
@@ -136,6 +136,13 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
   const update = useCampaignsStore((s) => s.update);
   const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
 
+  useHeaderContent({
+    breadcrumbs: [
+      { label: campaign?.name ?? 'Campagne', href: `/campaign/${cid}` },
+      { label: 'Réglages' },
+    ],
+  });
+
   // Charge les campagnes possédées au montage : la campagne courante est résolue
   // depuis ce cache cloud (RLS `owner_id`).
   useEffect(() => {
@@ -204,12 +211,6 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
     <>
       <title>Réglages de la campagne — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader
-        breadcrumbs={[
-          { label: campaign?.name ?? 'Campagne', href: `/campaign/${cid}` },
-          { label: 'Réglages' },
-        ]}
-      />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         {status === 'unconfigured' ? (

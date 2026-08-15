@@ -15,8 +15,8 @@ import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
+import { useHeaderContent } from '@/stores/headerContent';
 
 /** Lien externe stylé de façon homogène (discret, ouverture dans un nouvel onglet). */
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -34,12 +34,12 @@ function ExternalLink({ href, children }: { href: string; children: React.ReactN
 }
 
 export default function AboutPage() {
+  useHeaderContent({ breadcrumbs: [{ label: 'À propos' }] });
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>À propos — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader breadcrumbs={[{ label: 'À propos' }]} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>

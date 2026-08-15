@@ -10,16 +10,16 @@
 import { Suspense } from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
-import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
 import { BestiaryBrowser } from '@/components/bestiary/BestiaryBrowser';
+import { useHeaderContent } from '@/stores/headerContent';
 
 export default function BestiaryPage() {
+  useHeaderContent({ breadcrumbs: [{ label: 'Bestiaire' }] });
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>Bestiaire — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader breadcrumbs={[{ label: 'Bestiaire' }]} />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {/* Suspense requis : `BestiaryBrowser` lit la sélection dans l'URL (`?c=`) via

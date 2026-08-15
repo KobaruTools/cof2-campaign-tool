@@ -41,7 +41,6 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { AppHeader } from '@/components/AppHeader';
 import { AccountUnlockSection } from '@/components/account/AccountUnlockSection';
 import { useToast } from '@/components/toast/ToastProvider';
 import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
@@ -52,6 +51,7 @@ import { HomeBackground } from '@/components/HomeBackground';
 import { ProviderIcon } from '@/components/icons/ProviderIcons';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { OAUTH_PROVIDERS } from '@/lib/auth/providers';
+import { useHeaderContent } from '@/stores/headerContent';
 import { fetchMyProfile, setMyHandle } from '@/lib/friends/repo';
 import { deleteAccount } from './actions';
 
@@ -118,6 +118,7 @@ function identitySubtitle(identity: UserIdentity): string | undefined {
 }
 
 export default function AccountPage() {
+  useHeaderContent({ breadcrumbs: [{ label: 'Réglages du compte' }] });
 
   // Initial : chargement uniquement si Supabase est configuré (sinon rien à charger,
   // et pas de setState synchrone en effet — cf. react-hooks/set-state-in-effect).
@@ -304,7 +305,6 @@ export default function AccountPage() {
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>Réglages du compte — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader breadcrumbs={[{ label: 'Réglages du compte' }]} />
 
       <Container maxWidth="sm" sx={{ py: 4 }}>
         {!IS_CONFIGURED ? (

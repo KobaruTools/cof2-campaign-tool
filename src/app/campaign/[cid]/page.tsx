@@ -43,7 +43,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AppHeader } from '@/components/AppHeader';
 import {
   CharacterList,
   type CharacterListAction,
@@ -57,6 +56,7 @@ import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { storageKeys } from '@/lib/storage/keys';
 import { AttachCharacterDialog } from '@/components/home/AttachCharacterDialog';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
+import { useHeaderContent } from '@/stores/headerContent';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarizeInCampaign } from '@/lib/character/summary';
 import { useContentVersion } from '@/lib/content/useContentVersion';
@@ -86,6 +86,19 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   // Force le recalcul de `rows` quand le contenu payant (peuples/classes du
   // Compagnon) arrive APRÈS le premier rendu (PER-321, cf. characters/page.tsx).
   const contentVersion = useContentVersion();
+  const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
+  // Tant que la campagne (donc son nom) n'est pas résolue, ou introuvable : pas de fil
+  // d'Ariane ni de lien Écran de MJ (le sous-header reste masqué) — seul le chrome
+  // statique (logo, nav, compte) persiste, désormais toujours monté par le layout.
+  useHeaderContent(
+    !charactersHydrated || campaignsLoading || !campaign
+      ? {}
+      : {
+          breadcrumbs: [{ label: 'Campagnes', href: '/campaigns' }, { label: campaign.name }],
+          // Vue campagne = owner-only (gating proxy) : l'utilisateur est toujours le MJ ici.
+          gmScreenCampaignId: cid,
+        },
+  );
 
   // Charge les campagnes possédées au montage : la campagne courante est résolue
   // depuis ce cache cloud (RLS `owner_id`), le CRUD vivant sur `/campaigns`.
@@ -241,7 +254,6 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     />
   );
 
-  const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
   if (!charactersHydrated || campaignsLoading) {
     // La campagne (donc son nom) n'est pas encore résolue : pas d'en-tête ici, mais
     // on préfigure la liste dans la même zone de contenu (largeur/position finales)
@@ -274,14 +286,6 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     <>
       <title>{`${campaign.name} — Éditeur de personnage CO2`}</title>
       <HomeBackground />
-      <AppHeader
-        breadcrumbs={[
-          { label: 'Campagnes', href: '/campaigns' },
-          { label: campaign.name },
-        ]}
-        // Vue campagne = owner-only (gating proxy) : l'utilisateur est toujours le MJ ici.
-        gmScreenCampaignId={cid}
-      />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} useFlexGap sx={{ mb: 3, flexWrap: 'wrap' }}>

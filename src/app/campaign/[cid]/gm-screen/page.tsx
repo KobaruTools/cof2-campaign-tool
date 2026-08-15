@@ -53,7 +53,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { type Theme } from '@mui/material/styles';
-import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
 import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
@@ -86,6 +85,7 @@ import {
 import { groupBuffFeatureId, groupBuffIntensityFor } from '@/lib/character/groupBuffs';
 import { GroupBuffDialog, type GroupBuffCandidate } from '@/components/campaign/GroupBuffDialog';
 import type { BeneficialEffectId } from '@/data/schema';
+import { useHeaderContent } from '@/stores/headerContent';
 import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
 
 /**
@@ -291,6 +291,24 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     resetCombat,
     restartRounds,
   } = useGmScreenCombat(cid, 'gm');
+
+  // Tant que le nom de campagne n'est pas résolu, ou introuvable : pas de fil d'Ariane ni
+  // de voyant de session (le sous-header reste masqué) — seul le chrome statique persiste.
+  useHeaderContent(
+    !charactersHydrated || campaignsLoading || !campaign
+      ? {}
+      : {
+          breadcrumbs: [
+            { label: campaign.name, href: `/campaign/${cid}` },
+            { label: 'Écran de MJ' },
+          ],
+          // Cycle de vie de la session synchronisée (PER-264), compacté dans l'en-tête
+          // (comme le voyant de la fiche, PER-269) : démarrer/terminer + état « session
+          // en cours ». C'est le gate du temps réel (PER-265+ s'y accrochent).
+          sessionIndicator: <GmSessionHeaderIndicator campaignId={cid} />,
+        },
+  );
+
   // Modale de créature, partagée entre l'ajout et l'édition : `creatureDialogOpen` pilote son
   // ouverture, `editingId` dit LAQUELLE on modifie (`null` = ajout d'une nouvelle créature).
   const [creatureDialogOpen, setCreatureDialogOpen] = useState(false);
@@ -509,16 +527,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     <>
       <title>{`Écran de MJ — ${campaign.name} — Éditeur de personnage CO2`}</title>
       <HomeBackground />
-      <AppHeader
-        breadcrumbs={[
-          { label: campaign.name, href: `/campaign/${cid}` },
-          { label: 'Écran de MJ' },
-        ]}
-        // Cycle de vie de la session synchronisée (PER-264), compacté dans l'en-tête
-        // (comme le voyant de la fiche, PER-269) : démarrer/terminer + état « session
-        // en cours ». C'est le gate du temps réel (PER-265+ s'y accrochent).
-        sessionIndicator={<GmSessionHeaderIndicator campaignId={cid} />}
-      />
 
       {/* Volontairement HORS du `Container` habituel du site : l'écran de MJ occupe
           toute la largeur pour afficher un maximum de cartes de front. Padding

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import Providers from './providers';
 import { AppFooter } from '@/components/AppFooter';
+import { AppHeaderShell } from '@/components/AppHeader';
 
 // Roboto auto-hébergé (fichiers latin, `next/font/google`) : évite la dépendance
 // réseau vers fonts.gstatic.com au build (Turbopack a échoué en prod sur des
@@ -36,8 +37,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children, viewer }: LayoutProps<'/'>) {
   return (
     <html lang="fr" className={roboto.variable} style={{ colorScheme: 'dark' }}>
-      <body>
+      <body suppressHydrationWarning>
         <Providers>
+          {/* Monté UNE SEULE FOIS ici (pas par chaque page) : ne se démonte/remonte plus à
+              chaque navigation. Son contenu propre à la page courante (fil d'Ariane, action…)
+              transite par `useHeaderContentStore`, pas par des props — voir `AppHeader.tsx`. */}
+          <AppHeaderShell />
           {/* Sticky footer : colonne pleine hauteur, le contenu prend l'espace
               disponible (`flex: 1 0 auto`) et pousse le footer tout en bas même
               quand la page est trop courte pour remplir l'écran.

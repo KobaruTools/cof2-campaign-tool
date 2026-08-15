@@ -35,7 +35,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignListSkeleton } from '@/components/campaign/CampaignListSkeleton';
 import { HomeBackground } from '@/components/HomeBackground';
@@ -44,8 +43,10 @@ import { useCampaignsStore } from '@/stores/campaigns';
 import { useCampaignDraftStore } from '@/stores/campaignDraft';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
+import { useHeaderContent } from '@/stores/headerContent';
 
 export default function CampaignsPage() {
+  useHeaderContent({ breadcrumbs: [{ label: 'Campagnes' }] });
   const status = useCampaignsStore((s) => s.status);
   const error = useCampaignsStore((s) => s.error);
   const campaigns = useCampaignsStore((s) => s.campaigns);
@@ -101,7 +102,6 @@ export default function CampaignsPage() {
     <>
       <title>Campagnes — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader breadcrumbs={[{ label: 'Campagnes' }]} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>

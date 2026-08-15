@@ -13,16 +13,16 @@
 import { Suspense } from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
-import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ReferenceBrowser } from '@/components/reference/ReferenceBrowser';
+import { useHeaderContent } from '@/stores/headerContent';
 
 export default function ReferencePage() {
+  useHeaderContent({ breadcrumbs: [{ label: 'Aide-mémoire' }] });
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>Aide-mémoire — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader breadcrumbs={[{ label: 'Aide-mémoire' }]} />
 
       {/* `xl` (et non `lg` comme les autres pages) : depuis PER-311 le contenu d'un onglet se lit sur
           DEUX COLONNES à côté du sommaire — en `lg` chaque colonne tomberait sous les 450 px, où une

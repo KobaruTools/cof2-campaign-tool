@@ -30,9 +30,9 @@ import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
 import { useToast } from '@/components/toast/ToastProvider';
+import { useHeaderContent } from '@/stores/headerContent';
 import { exportMyData } from './actions';
 import { EXPORT_ERRORS } from './exportTypes';
 
@@ -79,6 +79,7 @@ function MailLink() {
 }
 
 export default function PrivacyPage() {
+  useHeaderContent({ breadcrumbs: [{ label: 'Politique de vie privée' }] });
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const { showToast } = useToast();
@@ -121,7 +122,6 @@ export default function PrivacyPage() {
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>Politique de vie privée — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader breadcrumbs={[{ label: 'Politique de vie privée' }]} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>

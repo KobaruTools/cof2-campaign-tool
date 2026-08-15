@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { AppHeader } from '@/components/AppHeader';
+import { HeaderContentSync } from '@/components/HeaderContentSync';
 import { HomeBackground } from '@/components/HomeBackground';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { PlayClient } from './PlayClient';
@@ -60,7 +60,7 @@ export default async function PlayPage() {
           `sessionRole` est passé en dur : les claims viennent d'être validés ci-dessus,
           la session EST joueur — la nav est donc juste dès le premier rendu, sans
           attendre la résolution côté client. */}
-      <AppHeader
+      <HeaderContentSync
         breadcrumbs={[{ label: campaign?.name ?? 'Ma campagne' }]}
         sessionRole="player"
       />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import LoginIcon from '@mui/icons-material/Login';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -12,7 +12,7 @@ import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
 import { alpha, darken } from '@mui/material/styles';
 import { AccountMenu } from '@/components/AccountMenu';
-import { AppBreadcrumbs, type Crumb } from '@/components/AppBreadcrumbs';
+import { AppBreadcrumbs } from '@/components/AppBreadcrumbs';
 import { AppHeaderBrand } from '@/components/AppHeaderBrand';
 import { AppHeaderNavDrawer } from '@/components/AppHeaderNavDrawer';
 import { FriendsWidget } from '@/components/friends/FriendsWidget';
@@ -21,99 +21,26 @@ import { HeaderNavButton } from '@/components/HeaderNavButton';
 import { QuestIcon } from '@/components/QuestIcon';
 import { RulesBookSplitButton } from '@/components/RulesBookSplitButton';
 import { SectionIcon } from '@/components/SectionIcon';
-import type { SessionRole } from '@/lib/auth/sessionRole';
 import { HEADER_BURGER_BREAKPOINT } from '@/lib/ui/headerBreakpoints';
+import { HEADER_EXTRA_ROW_SLOT_ID } from '@/lib/ui/useHeaderExtraRowSlot';
 import { useAppSession } from '@/lib/supabase/useAppSession';
-
-interface AppHeaderProps {
-  /**
-   * Fil d'Ariane de la page (PER-239) : chaîne parent → page courante, SANS maillon
-   * « Accueil » (couvert par le logo). Le dernier maillon est rendu en `<h1>`. Absent
-   * ou vide = pas de fil (accueil) : la zone centrale reste vide.
-   */
-  breadcrumbs?: Crumb[];
-  /**
-   * Contenu optionnel SPÉCIFIQUE à la page, aligné à droite AVANT le cluster global
-   * « Campagnes + compte » (ex. bouton « Modifier / Terminer » de la fiche). Les liens
-   * globaux (Bestiaire, Campagnes, menu compte) sont désormais injectés en dur par
-   * l'en-tête et n'ont plus à être passés ici.
-   */
-  action?: ReactNode;
-  /**
-   * Libellé AU REPOS du dernier maillon du fil (ex. « Fiche de personnage »), tant que
-   * `subtitleVisible` est faux : « {campagne} / Fiche de personnage » en haut de page,
-   * puis fondu croisé vers le libellé réel du maillon au défilement. Absent = le dernier
-   * maillon est affiché tel quel en permanence (accueil, wizard, listes).
-   */
-  restingLabel?: ReactNode;
-  /**
-   * Sous-titre optionnel ajouté à la SUITE du fil d'Ariane (ex. « peuple · profil ·
-   * niveau » de la fiche), séparé par une barre verticale — pas par un « / », qui le
-   * ferait passer pour un niveau de navigation. Reste monté en permanence pour pouvoir
-   * s'animer dans les deux sens ; sa visibilité est pilotée par `subtitleVisible`.
-   */
-  subtitle?: ReactNode;
-  /**
-   * Pilote la bascule repos → révélé au défilement : fondu croisé du dernier maillon
-   * (`restingLabel` → libellé réel) puis apparition du `subtitle` (slide depuis le bas +
-   * fondu). Animation inverse au retour. Sans effet si ni `restingLabel` ni `subtitle`.
-   */
-  subtitleVisible?: boolean;
-  /**
-   * Couleur d'accent (couleur de profil principal), utilisée pour teinter l'en-tête
-   * de la fiche : dégradé partant de la droite (25 % d'opacité) vers la transparence,
-   * bordure basse en variante plus foncée, et légère ombre portée. Absent = en-tête
-   * neutre (accueil, wizard).
-   */
-  accentColor?: string;
-  /**
-   * Id de campagne dont l'utilisateur courant est le MJ (propriétaire). Présent → un
-   * lien « Écran de MJ » apparaît dans le cluster de droite de l'étage 1 (entre
-   * « Campagnes » et le menu compte), pointant vers `/campaign/{id}/gm-screen`. À passer
-   * par les pages où l'on sait l'utilisateur MJ de la campagne du contexte : vue campagne
-   * (owner-only) et fiche d'un personnage rattaché à une campagne qu'il possède. Absent =
-   * pas de lien (joueur, ou hors contexte campagne).
-   */
-  gmScreenCampaignId?: string;
-  /**
-   * Voyant de session temps réel (PER-269), inséré dans le cluster droit de l'étage 1
-   * ENTRE le livre des règles et le menu compte. Réservé aux pages où l'on sait résoudre
-   * la campagne + l'identité de présence du spectateur (fiche de personnage) ou piloter
-   * le cycle de vie de la session (écran de MJ) ; sur la fiche il s'auto-efface hors
-   * session active, sur l'écran de MJ il expose un bouton « Démarrer la session » à la
-   * place. Absent ailleurs (le voyant vit alors dans la barre inline de la page, ex.
-   * `/play`).
-   */
-  sessionIndicator?: ReactNode;
-  /**
-   * Rôle de session déjà résolu par la page, quand elle le connaît de source sûre
-   * (rendu serveur de la vitrine `/`, claims validés de `/play`) : la navigation est
-   * alors juste dès le premier rendu, sans attendre la résolution côté client. Absent
-   * ailleurs = résolu par `useAppSession` (lecture locale, sans réseau).
-   *
-   * Nommé `sessionRole` et non `role` : sur un composant d'en-tête, `role` se lirait
-   * comme l'attribut ARIA.
-   */
-  sessionRole?: SessionRole;
-  /**
-   * Troisième étage, SOUS le sous-header (fil d'Ariane), rattaché à l'en-tête SANS wrapper propre
-   * (ni fond, ni bordure, ni ombre : il hérite du verre dépoli de l'`AppBar`) — le condensé
-   * PV/mana/chance + Défense/Initiative/touches de la fiche de personnage (`StickySheetStatusBar`),
-   * qui gère lui-même sa révélation progressive et son propre filet séparateur. Absent ailleurs.
-   */
-  extraRow?: ReactNode;
-}
+import { useHeaderContentStore } from '@/stores/headerContent';
 
 /**
- * Barre de navigation globale de l'application (PER-239). Collée en haut de page
- * (`position: sticky`), en verre dépoli, présente sur toutes les pages avec trois
- * zones constantes :
+ * Barre de navigation globale de l'application (PER-239), montée UNE SEULE FOIS par
+ * `layout.tsx` — jamais démontée en navigant. Collée en haut de page (`position: sticky`),
+ * en verre dépoli, avec trois zones constantes :
  *   • gauche : logo de marque → accueil + liens de contenu (Bestiaire, Aide-mémoire) ;
- *   • centre : fil d'Ariane (`breadcrumbs`), page courante en `<h1>`, + sous-titre
- *     optionnel révélé au défilement (ligne d'identité de la fiche) ;
- *   • droite : `action` spécifique à la page, puis le cluster propre au rôle et le
+ *   • centre : fil d'Ariane, page courante en `<h1>`, + sous-titre optionnel révélé au
+ *     défilement (ligne d'identité de la fiche) ;
+ *   • droite : action spécifique à la page, puis le cluster propre au rôle et le
  *     menu compte.
  * Reste visible au défilement.
+ *
+ * Le contenu propre à la page courante (fil d'Ariane, action, couleur d'accent, etc.) ne
+ * peut pas transiter par des props — `layout.tsx` n'en reçoit aucune des pages enfants
+ * (limite Next App Router). Il est lu depuis `useHeaderContentStore`, alimenté par chaque
+ * page via `useHeaderContent()` (voir `src/stores/headerContent.ts`).
  *
  * **Navigation selon le rôle** de la session. Vitrine, atelier de personnage et contenu
  * de règles étant publics, l'écart entre les rôles s'est réduit à ce qui suppose
@@ -124,23 +51,24 @@ interface AppHeaderProps {
  *     `/characters`) + menu de session joueur ;
  *   • propriétaire : contenu + « Mes personnages », « Campagnes », [Écran de MJ],
  *     menu compte ;
- *   • projection : rien (vue dépouillée, l'en-tête n'y est pas monté).
+ *   • projection : rien — le composant se cache lui-même (`return null`) puisqu'il est
+ *     désormais toujours monté par le layout.
  * Le périmètre réel est porté par le proxy (`decideRouteAccess`) : ici on ne fait que
  * ne pas proposer de portes fermées.
  */
-export function AppHeader({
-  breadcrumbs,
-  action,
-  accentColor,
-  restingLabel,
-  subtitle,
-  subtitleVisible = false,
-  gmScreenCampaignId,
-  sessionIndicator,
-  sessionRole,
-  extraRow,
-}: AppHeaderProps) {
+export function AppHeaderShell() {
   const session = useAppSession();
+  const {
+    breadcrumbs,
+    action,
+    accentColor,
+    restingLabel,
+    subtitle,
+    subtitleVisible = false,
+    gmScreenCampaignId,
+    sessionIndicator,
+    sessionRole,
+  } = useHeaderContentStore((s) => s.content);
   const effectiveRole = sessionRole ?? session.role;
   // Tant que la session n'est pas résolue, `useAppSession` répond `owner` (cas
   // dominant) : la nav ne clignote pas, et un visiteur anonyme voit les liens gatés
@@ -183,12 +111,21 @@ export function AppHeader({
     window.addEventListener('resize', onResize, { passive: true });
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  // Rien à montrer dans la nav (cas projection, où l'en-tête n'est de toute façon pas
-  // monté) : pas de bouton burger creux.
+  // Rien à montrer dans la nav en projection : pas de bouton burger creux.
   const hasNavContent = showContentLinks || showCharacterLink || showOwnerLinks || isPlayer;
+
+  // Vue projection (spectateur, `/project`) : dépouillée, pas d'en-tête. Auparavant obtenu par
+  // OMISSION (la page ne montait jamais `<AppHeader>`) ; comme le composant est désormais
+  // TOUJOURS monté par `layout.tsx`, il doit se cacher lui-même. Après tous les hooks
+  // ci-dessus : leur nombre/ordre ne doit jamais dépendre du rôle.
+  if (isProjection) return null;
 
   return (
     <AppBar
+      // Ancre DOM stable : sert à mesurer sa hauteur RENDUE (variable — 3ᵉ étage optionnel) au clic
+      // sur un élément de la barre condensée de la fiche, pour caler le défilement sous elle plutôt
+      // que sous son bord haut (cf. `scrollToSection` de la page personnage).
+      id="app-header"
       position="sticky"
       // Verre dépoli, plus sombre que les sections de la fiche : gris quasi-noir à
       // peine transparent + le même flou d'arrière-plan (blur 10px) que les sections
@@ -353,8 +290,12 @@ export function AppHeader({
 
       {/* Étage 3 — SANS wrapper propre (ni fond, ni bordure, ni ombre) : le contenu hérite tel
           quel du verre dépoli de l'`AppBar` ci-dessus. Sa révélation progressive et son filet
-          séparateur sont portés par le contenu lui-même (cf. `StickySheetStatusBar`). */}
-      {extraRow}
+          séparateur sont portés par le contenu lui-même (cf. `StickySheetStatusBar`).
+          TOUJOURS rendue (même vide, donc de hauteur nulle) : ancre stable pour le portail
+          `useHeaderExtraRowSlot` de la fiche personnage — sa dérivation dépend de données
+          disponibles seulement après ses propres retours anticipés, trop tard pour un Hook
+          comme `useHeaderContent` (voir ce hook pour le détail). */}
+      <Box id={HEADER_EXTRA_ROW_SLOT_ID} />
     </AppBar>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -59,7 +60,12 @@ import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { useAppSession } from '@/lib/supabase/useAppSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
-import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
+import {
+  canUndoLastLevelUp,
+  manualFeatureIds,
+  recordManualFeatureChange,
+  undoLastLevelUp,
+} from '@/lib/character/levelUp';
 import {
   pruneEffectInputs,
   pruneEffectToggles,
@@ -76,7 +82,6 @@ import {
 import { isMountMounted, listOwnedMounts } from '@/lib/character/mounts';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
-import { AppHeader } from '@/components/AppHeader';
 import { SessionHeaderIndicator } from '@/components/session/SessionHeaderIndicator';
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
@@ -116,6 +121,7 @@ import { classColor } from '@/lib/ui/classColors';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { storageKeys } from '@/lib/storage/keys';
 import { usePersistedState } from '@/lib/ui/usePersistedState';
+import { useHeaderExtraRowSlot } from '@/lib/ui/useHeaderExtraRowSlot';
 import { SheetInitiativeBar } from '@/components/sheet/SheetInitiativeBar';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
@@ -167,6 +173,7 @@ import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
 import { useBuffOptOutStore } from '@/stores/buffOptOut';
+import { useHeaderContent } from '@/stores/headerContent';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -585,6 +592,71 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [portraitBusy, setPortraitBusy] = useState(false);
   const [portraitError, setPortraitError] = useState<string | null>(null);
 
+  // Nœud DOM du 3ᵉ étage de l'en-tête (`StickySheetStatusBar`, portée plus bas) : Hook, donc
+  // ICI, avant les retours anticipés — la garde `masterDerived` ne s'applique qu'au CONTENU
+  // du portail, jamais à cet appel.
+  const headerExtraRowSlot = useHeaderExtraRowSlot();
+  // Contenu du header (fil d'Ariane, accent, action « Modifier », voyant de session) : calculé
+  // ICI à partir de doublons LÉGERS des dérivations post-garde ci-dessous (`characterClass`,
+  // `ancestry`, `currentCampaign`, `firearmsAllowed` — de simples lectures de Map/tableau déjà
+  // chargés, aucun recalcul de règles), car un Hook comme `useHeaderContent` doit s'appeler
+  // AVANT tout retour anticipé, alors que `character`/`game` n'y sont pas encore garantis.
+  const headerCharacterClass = character ? classById.get(character.classId) : undefined;
+  const headerAncestry = character ? ancestryById.get(character.ancestryId) : undefined;
+  const headerCurrentCampaign = character?.campaignId
+    ? campaigns.find((c) => c.id === character.campaignId)
+    : undefined;
+  useHeaderContent(
+    !character
+      ? {}
+      : {
+          breadcrumbs: character.campaignId
+            ? [
+                {
+                  label: headerCurrentCampaign?.name ?? 'la campagne',
+                  href: `/campaign/${character.campaignId}`,
+                },
+                { label: character.name || 'Sans nom' },
+              ]
+            : [{ label: character.name || 'Sans nom' }],
+          // Teinte l'en-tête à la couleur du profil principal — repli neutre tant que le
+          // profil n'est pas défini.
+          accentColor: headerCharacterClass ? classColor(headerCharacterClass.id) : undefined,
+          // Lien « Écran de MJ » si l'utilisateur est le MJ de la campagne du personnage :
+          // `currentCampaign` n'est résolu que depuis le store des campagnes POSSÉDÉES (RLS
+          // owner), donc défini ⟺ utilisateur propriétaire/MJ. Absent pour un joueur.
+          gmScreenCampaignId: headerCurrentCampaign?.id,
+          sessionIndicator: (
+            <SessionHeaderIndicator campaignId={character.campaignId} identity={sessionIdentity} />
+          ),
+          restingLabel: 'Fiche de personnage',
+          subtitle: (
+            <CharacterIdentityLine
+              dense
+              ancestryName={headerAncestry?.name}
+              characterClass={headerCharacterClass}
+              firearmsAllowed={firearmsEffective(character, headerCurrentCampaign)}
+              priestVocation={character.priestVocation}
+              level={character.level}
+            />
+          ),
+          subtitleVisible: scrolledPastHeader,
+          action: readOnly ? undefined : (
+            <Button
+              color="inherit"
+              size="small"
+              startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
+              onClick={toggleAllEditing}
+              // Compact : n'impose pas la hauteur du sous-header (sinon la hauteur de ce
+              // bouton devient le plancher et `minHeight` de la barre n'a plus d'effet).
+              sx={{ py: 0.25, minHeight: 0 }}
+            >
+              {allEditing ? 'Terminer' : 'Modifier'}
+            </Button>
+          ),
+        },
+  );
+
   // Spinner tant que le staging local n'est pas relu, ou que le chargement cloud
   // est en cours sans avoir encore trouvé la fiche (évite un « introuvable » fugace
   // sur accès direct à l'URL avant que le cloud ait répondu).
@@ -817,6 +889,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     const companionInstances = pruneCompanionInstances(character.companionInstances, { ...character, featureIds });
     update({
       featureIds,
+      levelUpHistory: recordManualFeatureChange(character, featureIds),
       featureChoices: pruneFeatureChoices(character.featureChoices, featureIds),
       effectToggles: pruneEffectToggles(character.effectToggles, featureIds),
       effectInputs: pruneEffectInputs(character.effectInputs, featureIds),
@@ -977,116 +1050,56 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           la métadonnée en streaming de Next réécrase le titre après hydratation
           (clignotement nom → titre de base). Réactif : suit l'édition du nom. */}
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
-      <AppHeader
-        // Barre condensée Caractéristiques/Statistiques dérivées/État du personnage (retour
-        // propriétaire) : rattachée à l'en-tête lui-même plutôt qu'à un bloc séparé de la fiche,
-        // pour hériter de son verre dépoli sans wrapper propre (cf. `StickySheetStatusBar`). Chaque
-        // groupe n'y apparaît que si SON `PinSectionButton` est actif (retour propriétaire).
-        extraRow={
-          masterDerived ? (
-            <StickySheetStatusBar
-              showAbilities={pinAbilities}
-              abilities={character.abilities}
-              onJumpToAbilities={() => scrollToSection('abilities-section')}
-              showDerivedStats={pinDerivedStats}
-              onJumpToDerivedStats={() => scrollToSection('derived-stats-section')}
-              showStatusGauges={pinStatusGauges}
-              onJumpToStatusGauges={() => scrollToSection('status-section')}
-              showInventory={pinInventory}
-              onJumpToInventory={() => scrollToSection('equipment-section')}
-              inventoryItemCount={character.equipment.length}
-              purse={character.purse}
-              showPurse={pinInventoryPurse}
-              showCustomItemButton={pinInventoryCustomItem}
-              onOpenCustomItem={() => setCustomItemOpenNonce((n) => n + 1)}
-              maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
-              depletion={character.depletion}
-              manaMax={manaMax}
-              luckMax={luckMax}
-              recoveryDiceMax={recoveryDiceMax}
-              recoveryDiceCurrent={currentRecoveryDice(recoveryDiceMax, character.depletion)}
-              recoveryDie={recoveryDie}
-              onOpenShortRest={() => setShortRestOpen(true)}
-              onOpenLongRest={() => setLongRestOpen(true)}
-              pinnedRestItems={pinnedRestItemIds}
-              defense={stickyDefense}
-              initiative={stickyInitiative}
-              meleeAttack={stickyMeleeAttack}
-              rangedAttack={stickyRangedAttack}
-              magicAttack={stickyMagicAttack}
-              pinnedDerivedStatIds={pinnedDerivedStatIds}
-              testBonuses={display.testBonuses}
-              abilityTestBonus={display.abilityTestBonus}
-              statusTestBonus={display.statusTestBonus}
-              perAbilityTestBonus={display.perAbilityTestBonus}
-              magicTestBonuses={display.magicTestBonuses}
-              bonusDice={display.bonusDieSources}
-              armorPenalty={display.armorPenalty}
-            />
-          ) : undefined
-        }
-        // Fil d'Ariane : rattaché à une campagne → « {campagne} / {nom} » (le parent
-        // pointe vers la vue campagne) ; sinon le nom seul (page de premier niveau).
-        // Le fil se DÉPLIE au défilement : « {campagne} / Fiche de personnage » en haut
-        // de page → « {campagne} / {nom} | {peuple · profil · niveau} » ensuite.
-        breadcrumbs={
-          character.campaignId
-            ? [
-                {
-                  label: currentCampaign?.name ?? 'la campagne',
-                  href: `/campaign/${character.campaignId}`,
-                },
-                { label: character.name || 'Sans nom' },
-              ]
-            : [{ label: character.name || 'Sans nom' }]
-        }
-        // Teinte l'en-tête à la couleur du profil principal (dégradé, bordure basse
-        // foncée, ombre portée) — repli neutre tant que le profil n'est pas défini.
-        accentColor={characterClass ? classColor(characterClass.id) : undefined}
-        // Lien « Écran de MJ » si l'utilisateur est le MJ de la campagne du personnage :
-        // `currentCampaign` n'est résolu que depuis le store des campagnes POSSÉDÉES
-        // (RLS owner), donc défini ⟺ utilisateur propriétaire/MJ. Absent pour un joueur.
-        gmScreenCampaignId={currentCampaign?.id}
-        // Voyant de session compact (PER-269) dans l'en-tête, entre le livre des règles et
-        // le menu compte : point 3 états (connecté / reconnexion… / hors ligne), détail des
-        // connectés au survol. C'est LUI qui ouvre le canal + le battement sur la fiche
-        // (plus la barre inline) : un seul point de montage. S'auto-efface hors session.
-        sessionIndicator={
-          <SessionHeaderIndicator campaignId={character.campaignId} identity={sessionIdentity} />
-        }
-        // Au repos (en haut de page), le dernier maillon annonce la nature de la page ; au
-        // défilement il cède la place au nom du personnage (fondu croisé), puis la ligne
-        // d'identité s'ajoute à la suite du fil.
-        restingLabel="Fiche de personnage"
-        // Ligne « peuple · profil · niveau » révélée une fois l'en-tête dépassé
-        // (même mise en forme que dans l'en-tête de la fiche, composant partagé).
-        subtitle={
-          <CharacterIdentityLine
-            dense
-            ancestryName={ancestry?.name}
-            characterClass={characterClass}
-            firearmsAllowed={firearmsAllowed}
-            priestVocation={character.priestVocation}
-            level={character.level}
-          />
-        }
-        subtitleVisible={scrolledPastHeader}
-        action={
-          readOnly ? undefined : (
-            <Button
-              color="inherit"
-              size="small"
-              startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
-              onClick={toggleAllEditing}
-              // Compact : n'impose pas la hauteur du sous-header (sinon la hauteur de ce
-              // bouton devient le plancher et `minHeight` de la barre n'a plus d'effet).
-              sx={{ py: 0.25, minHeight: 0 }}
-            >
-              {allEditing ? 'Terminer' : 'Modifier'}
-            </Button>
-          )
-        }
-      />
+      {/* Barre condensée Caractéristiques/Statistiques dérivées/État du personnage (retour
+          propriétaire) : PORTÉE (`createPortal`) dans le 3ᵉ étage de l'en-tête global, désormais
+          monté par `layout.tsx` — voir `useHeaderExtraRowSlot` pour le pourquoi (dérivation trop
+          tardive pour transiter par le Hook `useHeaderContent`). Hérite ainsi du verre dépoli de
+          l'`AppBar` sans wrapper propre. Chaque groupe n'y apparaît que si SON `PinSectionButton`
+          est actif (retour propriétaire). */}
+      {headerExtraRowSlot &&
+        masterDerived &&
+        createPortal(
+          <StickySheetStatusBar
+            showAbilities={pinAbilities}
+            abilities={character.abilities}
+            onJumpToAbilities={() => scrollToSection('abilities-section')}
+            showDerivedStats={pinDerivedStats}
+            onJumpToDerivedStats={() => scrollToSection('derived-stats-section')}
+            showStatusGauges={pinStatusGauges}
+            onJumpToStatusGauges={() => scrollToSection('status-section')}
+            showInventory={pinInventory}
+            onJumpToInventory={() => scrollToSection('equipment-section')}
+            inventoryItemCount={character.equipment.length}
+            purse={character.purse}
+            showPurse={pinInventoryPurse}
+            showCustomItemButton={pinInventoryCustomItem}
+            onOpenCustomItem={() => setCustomItemOpenNonce((n) => n + 1)}
+            maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
+            depletion={character.depletion}
+            manaMax={manaMax}
+            luckMax={luckMax}
+            recoveryDiceMax={recoveryDiceMax}
+            recoveryDiceCurrent={currentRecoveryDice(recoveryDiceMax, character.depletion)}
+            recoveryDie={recoveryDie}
+            onOpenShortRest={() => setShortRestOpen(true)}
+            onOpenLongRest={() => setLongRestOpen(true)}
+            pinnedRestItems={pinnedRestItemIds}
+            defense={stickyDefense}
+            initiative={stickyInitiative}
+            meleeAttack={stickyMeleeAttack}
+            rangedAttack={stickyRangedAttack}
+            magicAttack={stickyMagicAttack}
+            pinnedDerivedStatIds={pinnedDerivedStatIds}
+            testBonuses={display.testBonuses}
+            abilityTestBonus={display.abilityTestBonus}
+            statusTestBonus={display.statusTestBonus}
+            perAbilityTestBonus={display.perAbilityTestBonus}
+            magicTestBonuses={display.magicTestBonuses}
+            bonusDice={display.bonusDieSources}
+            armorPenalty={display.armorPenalty}
+          />,
+          headerExtraRowSlot,
+        )}
 
       {/* Fond de couverture (variante footer) : illustration ancrée au BAS DE LA
           PAGE. Rendue en `position: absolute` (voir HomeBackground) calée sur la
@@ -2127,7 +2140,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               ) : null
             }
           >
-            <LevelHistory history={character.levelUpHistory} />
+            <LevelHistory character={character} />
             {!readOnly && canUndoLastLevelUp(character) && (
               // Miroir du bouton de l'en-tête, ancré à droite en bas du bloc.
               <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 2 }}>

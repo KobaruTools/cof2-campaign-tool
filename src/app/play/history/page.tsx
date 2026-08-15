@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
-import { AppHeader } from '@/components/AppHeader';
+import { HeaderContentSync } from '@/components/HeaderContentSync';
 import { HomeBackground } from '@/components/HomeBackground';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { PlayHistoryClient } from './PlayHistoryClient';
@@ -43,7 +43,7 @@ export default async function PlayHistoryPage() {
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <HomeBackground />
-      <AppHeader
+      <HeaderContentSync
         breadcrumbs={[
           { label: campaign?.name ?? 'Ma campagne', href: '/play' },
           { label: 'Historique des parties' },

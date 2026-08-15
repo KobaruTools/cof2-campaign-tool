@@ -30,7 +30,6 @@ import { useWizardStore } from '@/stores/wizard';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { uploadCharacterPortrait, type PortraitCropRect } from '@/lib/storage/characterPortrait';
 import { AppAlert } from '@/components/AppAlert';
-import { AppHeader } from '@/components/AppHeader';
 import { ClassStep, PathsStep, IdentityStep } from '@/components/wizard/steps';
 import { AncestryStep } from '@/components/wizard/AncestryStep';
 import { AbilitiesStep } from '@/components/wizard/AbilitiesStep';
@@ -39,6 +38,7 @@ import { SummaryStep } from '@/components/wizard/SummaryStep';
 import type { StepProps } from '@/components/wizard/types';
 import { HomeBackground } from '@/components/HomeBackground';
 import { FirearmsAllowedProvider } from '@/components/ClassIcon';
+import { useHeaderContent } from '@/stores/headerContent';
 
 interface StepDef {
   label: string;
@@ -148,6 +148,7 @@ const STEPS: StepDef[] = [
 ];
 
 export default function CreatePage() {
+  useHeaderContent({ breadcrumbs: [{ label: 'Nouveau personnage' }] });
   const router = useRouter();
   const hasHydrated = useWizardStore((s) => s.hasHydrated);
   const draft = useWizardStore((s) => s.draft);
@@ -339,7 +340,6 @@ export default function CreatePage() {
       {/* Même illustration de fond que l'accueil : la couverture scindée en deux
           moitiés encadrant le contenu (fixe, parallaxe + léger suivi de la souris). */}
       <HomeBackground />
-      <AppHeader breadcrumbs={[{ label: 'Nouveau personnage' }]} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         {compactStepper ? (
