@@ -40,7 +40,7 @@ import Popover from '@mui/material/Popover';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { featureById, pathById, progression } from '@/data';
-import type { Feature, Path } from '@/data/schema';
+import type { Feature } from '@/data/schema';
 import { featureCost } from '@/lib/engine';
 import type { Character } from '@/lib/character/types';
 import { AncestryIcon } from '@/components/AncestryIcon';
@@ -49,32 +49,7 @@ import { PathCard } from '@/components/PathCard';
 import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { prestigeCategoryColor } from '@/lib/ui/classColors';
-import { PATH_COLUMN_COUNT, PATH_RANK_COUNT, pathColor, pathColumns } from '@/lib/ui/pathColumns';
-
-/**
- * Teinte + icône (profil/peuple/mage/prestige) d'une voie — même repli que la liste
- * avancée (`AvailablePathGroup` / groupe « Capacités sélectionnées », `LevelUpDialog`) :
- * `classId` prioritaire, sinon `ancestryId` (clés hors-peuple dédiées 'mage'/'prestige').
- * Partagé entre l'en-tête de colonne survolée et la carte d'aperçu de rang ci-dessous.
- */
-function pathVisuals(path: Path | undefined, characterClassId: string) {
-  const prestigePath = path?.type === 'prestige' ? path : undefined;
-  const color = prestigePath
-    ? prestigeCategoryColor(prestigePath.category)
-    : path
-      ? pathColor(path, characterClassId)
-      : undefined;
-  const classId =
-    path?.type === 'class'
-      ? path.classIds.includes(characterClassId)
-        ? characterClassId
-        : path.classIds[0]
-      : undefined;
-  const rawAncestryId = path?.type === 'ancestry' ? path.id : undefined;
-  const ancestryId = rawAncestryId ?? (prestigePath ? 'prestige' : path?.type === 'mage' ? 'mage' : undefined);
-  const prestigeTint = prestigePath && prestigePath.category !== 'generic' ? color : undefined;
-  return { color, classId, ancestryId, isPrestige: !!prestigePath, prestigeTint };
-}
+import { PATH_COLUMN_COUNT, PATH_RANK_COUNT, pathColumns, pathVisuals } from '@/lib/ui/pathColumns';
 
 /** Écart entre les cases (px). */
 const CELL_GAP = 3;

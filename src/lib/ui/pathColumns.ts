@@ -61,6 +61,31 @@ export function pathColor(path: Path | undefined, classId: string): string {
 }
 
 /**
+ * Teinte + icône (profil/peuple/mage/prestige) d'une voie — partagé entre le graphe de voies
+ * du wizard de montée de niveau (`LevelUpPathsGrid`) et son pendant lecture seule du
+ * récapitulatif de création (`AcquiredPathsGrid`). `classId` prioritaire, sinon `ancestryId`
+ * (clés hors-peuple dédiées 'mage'/'prestige').
+ */
+export function pathVisuals(path: Path | undefined, characterClassId: string) {
+  const prestigePath = path?.type === 'prestige' ? path : undefined;
+  const color = prestigePath
+    ? prestigeCategoryColor(prestigePath.category)
+    : path
+      ? pathColor(path, characterClassId)
+      : undefined;
+  const classId =
+    path?.type === 'class'
+      ? path.classIds.includes(characterClassId)
+        ? characterClassId
+        : path.classIds[0]
+      : undefined;
+  const rawAncestryId = path?.type === 'ancestry' ? path.id : undefined;
+  const ancestryId = rawAncestryId ?? (prestigePath ? 'prestige' : path?.type === 'mage' ? 'mage' : undefined);
+  const prestigeTint = prestigePath && prestigePath.category !== 'generic' ? color : undefined;
+  return { color, classId, ancestryId, isPrestige: !!prestigePath, prestigeTint };
+}
+
+/**
  * Couleur du profil de la capacité EMPRUNTÉE par une capacité (choix
  * `feature-from-path` résolu — PER-120, ex. Combattant aguerri prenant une
  * capacité de rang 1 d'une autre voie), ou `undefined` si la capacité n'emprunte
