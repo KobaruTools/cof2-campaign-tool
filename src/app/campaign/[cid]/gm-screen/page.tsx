@@ -30,10 +30,12 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
+import { type Step } from 'react-joyride';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HandymanIcon from '@mui/icons-material/Handyman';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import HistoryIcon from '@mui/icons-material/History';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
@@ -48,13 +50,18 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { type Theme } from '@mui/material/styles';
+import { GuidedTour } from '@/components/tour/GuidedTour';
+import { useGuidedTour } from '@/lib/tours/useGuidedTour';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
+import { CollapsibleLabelButton } from '@/components/CollapsibleLabelButton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
 import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
@@ -147,18 +154,24 @@ function CollapsibleSection({
   storageKey,
   count,
   children,
+  dataTour,
 }: {
   label: string;
   color?: string;
   storageKey: string;
   count: number;
   children: React.ReactNode;
+  /** Cible du tour guidé (PER-425) — posée sur le seul EN-TÊTE (compact), jamais sur la grille de
+   * cartes qu'il déplie : un target aussi haut que toute la grille poussait la bulle hors écran
+   * (react-joyride la place au-dessus d'un target géant, ici juste sous la barre collée). */
+  dataTour?: string;
 }) {
   const [open, setOpen] = usePersistedBoolean(storageKey, true);
   const accent = color ?? 'text.secondary';
   return (
     <Box>
       <Box
+        data-tour={dataTour}
         role="button"
         tabIndex={0}
         aria-expanded={open}
@@ -208,6 +221,85 @@ function CollapsibleSection({
       </Collapse>
     </Box>
   );
+}
+
+/**
+ * Étapes du tour guidé de l'écran MJ (PER-425) : navigation générale entre les tiroirs
+ * principaux (bestiaire, aide-mémoire, historique, outils du MJ, fiche de personnage) et
+ * le tracker d'initiative, plus les deux actions courantes de la barre (ajout de
+ * créature, repos de groupe) — jamais le détail du contenu de chaque tiroir, hors
+ * périmètre du ticket (voir aussi PER-426 pour la fiche personnage elle-même).
+ *
+ * Chaque cible ciblée ici est soit TOUJOURS présente dans le DOM une fois l'écran prêt
+ * (boutons de la barre d'actions, tracker — jamais conditionnés au contenu de la
+ * campagne), soit son étape est explicitement omise quand rien ne le justifie (`showPlayersStep`
+ * — inutile d'expliquer un clic sur une carte de joueur qu'aucune campagne clairsemée
+ * n'affiche). Ne JAMAIS cibler un élément qui disparaît selon un état éphémère (ex. bouton
+ * « Réinitialiser le combat », visible seulement si des combattants sont en piste, ou
+ * `BuffRequestsControl`, absent tant qu'aucune annonce de joueur n'attend) : le tour
+ * casserait au premier passage sans ce contenu précis.
+ */
+function buildGmScreenTourSteps({ showPlayersStep }: { showPlayersStep: boolean }): Step[] {
+  const steps: Step[] = [
+    {
+      target: '[data-tour="gm-screen-add-creature"]',
+      title: 'Ajouter une créature',
+      content:
+        'Ajoute une créature du bestiaire, ou créée à la main, au combat en cours — alliée ou adverse, visible ou masquée aux joueurs.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="gm-screen-group-rest"]',
+      title: 'Repos de groupe',
+      content:
+        'Propose une récupération rapide ou un repos long à toute la table. Chaque joueur répond depuis sa fiche : vous voyez le relevé se remplir, puis validez pour appliquer la récupération d’un coup. Nécessite une session de table en cours.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="gm-screen-bestiary"]',
+      title: 'Bestiaire',
+      content:
+        'Ouvre le bestiaire dans un tiroir latéral, sans quitter l’écran de MJ : pratique pour consulter une créature en cours de combat.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="gm-screen-reference"]',
+      title: 'Aide-mémoire',
+      content:
+        'Ouvre le référentiel de règles dans un tiroir latéral, pour vérifier une règle sans quitter l’écran.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="gm-screen-history"]',
+      title: 'Historique des parties',
+      content:
+        'Ouvre l’historique des sessions closes de cette campagne dans un tiroir latéral — utile pour retrouver ce qui s’est passé lors d’une précédente séance.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="gm-screen-tools"]',
+      title: 'Outils du MJ',
+      content: 'Ouvre un tiroir à onglets rassemblant vos outils de session (rumeurs, butin, et d’autres à venir).',
+      placement: 'auto',
+    },
+  ];
+  if (showPlayersStep) {
+    steps.push({
+      target: '[data-tour="gm-screen-players"]',
+      title: 'Fiches de personnage',
+      content:
+        'Cliquez sur la carte d’un joueur pour ouvrir sa fiche complète dans un panneau latéral, sans quitter cet écran.',
+      placement: 'auto',
+    });
+  }
+  steps.push({
+    target: '[data-tour="gm-screen-tracker"]',
+    title: 'Ordre d’initiative',
+    content:
+      'Le tracker liste tous les combattants classés par initiative : personnages, compagnons et créatures. Tour courant, manche et états de combat se pilotent ici.',
+    placement: 'auto',
+  });
+  return steps;
 }
 
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
@@ -300,6 +392,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     restartRounds,
   } = useGmScreenCombat(cid, 'gm');
 
+  // Tour guidé (PER-425) : les cibles (tiroirs + tracker) n'existent que sur l'écran final —
+  // mêmes conditions que les deux `return` anticipés plus bas (chargement / campagne
+  // introuvable). Désactivé sous mobile/tactile (`!smUp`), comme le tour pilote (PER-423).
+  const tourReady = charactersHydrated && !campaignsLoading && !!campaign;
+  const tour = useGuidedTour('gmScreen', { ready: tourReady, enabled: smUp });
+
   // Tant que le nom de campagne n'est pas résolu, ou introuvable : pas de fil d'Ariane ni
   // de voyant de session (le sous-header reste masqué) — seul le chrome statique persiste.
   useHeaderContent(
@@ -314,6 +412,24 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           // (comme le voyant de la fiche, PER-269) : démarrer/terminer + état « session
           // en cours ». C'est le gate du temps réel (PER-265+ s'y accrochent).
           sessionIndicator: <GmSessionHeaderIndicator campaignId={cid} />,
+          // Icône d'aide permanente (PER-425) : relance le tour guidé de navigation de l'écran
+          // de MJ à tout moment, même déjà vu/passé. Dans le fil d'Ariane (action de page),
+          // pas la barre d'actions collée — demande du propriétaire, pour ne pas la faire
+          // défiler avec le reste des actions. Absente sous mobile/tactile (tour désactivé).
+          action: tour.helpVisible && (
+            <Tooltip title="Revoir le tutoriel" disableInteractive>
+              <span>
+                <IconButton
+                  aria-label="Revoir le tutoriel"
+                  onClick={tour.replay}
+                  disabled={!tourReady}
+                  size="small"
+                >
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          ),
         },
   );
 
@@ -599,6 +715,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           sx={{ position: 'relative', zIndex: 1, width: '100%', flexWrap: 'wrap', rowGap: 1 }}
         >
           <Button
+            data-tour="gm-screen-add-creature"
             variant="outlined"
             size="small"
             startIcon={<AddIcon />}
@@ -607,17 +724,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           >
             Ajouter une créature
           </Button>
-          {hasCombatants && (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<RestartAltIcon />}
-              onClick={() => setResetOpen(true)}
-              sx={(theme) => glassButtonSx(theme, 'error')}
-            >
-              Réinitialiser le combat
-            </Button>
-          )}
           {/* Repos de groupe (PER-312) : propose une récupération à toute la table sur le canal
               de session, et tient le relevé des réponses. Inerte hors session. */}
           <GroupRestControl
@@ -625,6 +731,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             tableCharacters={restTableCharacters}
             sessionActive={sessionActive}
             buttonSx={(theme) => glassButtonSx(theme, 'info')}
+            dataTour="gm-screen-group-rest"
           />
           {/* Effets de groupe annoncés par les joueurs (PER-358) : le barde annonce depuis sa fiche,
               le MJ pose. Adopter ouvre la fenêtre de pose habituelle au nom du lanceur — d'où le
@@ -644,6 +751,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               sans quitter l'écran de MJ. Vraie ancre (`?bestiary=1`) → Ctrl/⌘+Clic ouvre dans un
               nouvel onglet, le bouton Retour ferme le tiroir. Même patron que le tiroir « Aide-mémoire ». */}
           <Button
+            data-tour="gm-screen-bestiary"
             variant="outlined"
             size="small"
             startIcon={<PetsOutlinedIcon />}
@@ -658,6 +766,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               sans quitter l'écran de MJ. Vraie ancre (`?reference=1`) → Ctrl/⌘+Clic ouvre dans un
               nouvel onglet, le bouton Retour ferme le tiroir. */}
           <Button
+            data-tour="gm-screen-reference"
             variant="outlined"
             size="small"
             startIcon={<MenuBookOutlinedIcon />}
@@ -673,6 +782,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               (`?history=1`) → Ctrl/⌘+Clic ouvre dans un nouvel onglet, le bouton Retour ferme le
               tiroir. Même patron que les tiroirs Bestiaire/Aide-mémoire. */}
           <Button
+            data-tour="gm-screen-history"
             variant="outlined"
             size="small"
             startIcon={<HistoryIcon />}
@@ -687,6 +797,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               taverne, butin, et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic
               ouvre dans un nouvel onglet, le bouton Retour ferme le tiroir. */}
           <Button
+            data-tour="gm-screen-tools"
             variant="outlined"
             size="small"
             startIcon={<HandymanIcon />}
@@ -728,6 +839,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                 label="Joueurs"
                 storageKey={storageKeys.campaign.gmScreenPlayersOpen}
                 count={claimed.length}
+                dataTour="gm-screen-players"
               >
                 {claimed.map((character) => (
                   <GmScreenCard
@@ -836,6 +948,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           onDragEnd={onDragEnd}
           onDragCancel={() => setActiveStatus(null)}
         >
+          <Box data-tour="gm-screen-tracker">
           <InitiativeTracker
             rows={initiativeRows}
             currentTurnKey={currentTurnKey}
@@ -843,6 +956,18 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             roundNumber={roundNumber}
             onRoundNumberChange={setRoundNumber}
             onRestartRounds={restartRounds}
+            resetCombatAction={
+              hasCombatants && (
+                <CollapsibleLabelButton
+                  variant="outlined"
+                  size="small"
+                  icon={<RestartAltIcon />}
+                  label="Réinitialiser le combat"
+                  onClick={() => setResetOpen(true)}
+                  sx={(theme) => glassButtonSx(theme, 'error')}
+                />
+              )
+            }
             headerAction={
               <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
                 <OpenTrackerWindowButton cid={cid} />
@@ -871,6 +996,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             }
             stickyBottom
           />
+          </Box>
           {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}
           <DragOverlay>
             {activeStatus ? <StatusChipVisual id={activeStatus} withTooltip={false} dragging /> : null}
@@ -980,6 +1106,13 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       <Suspense>
         <GmHistoryDrawerHost campaignId={cid} />
       </Suspense>
+
+      {/* Tour guidé de navigation (PER-425) : tiroirs principaux + tracker d'initiative. */}
+      <GuidedTour
+        run={tour.run}
+        steps={buildGmScreenTourSteps({ showPlayersStep: claimed.length > 0 })}
+        onTourEnd={tour.onTourEnd}
+      />
     </>
   );
 }

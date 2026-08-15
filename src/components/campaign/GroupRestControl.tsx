@@ -97,6 +97,8 @@ export interface GroupRestControlProps {
   sessionActive: boolean;
   /** Style du bouton, pour l'aligner sur la barre d'actions de l'écran de MJ. */
   buttonSx?: SxProps<Theme>;
+  /** Cible du tour guidé (PER-425) — posée sur le bouton, présent que la session soit active ou non. */
+  dataTour?: string;
 }
 
 export function GroupRestControl({
@@ -104,6 +106,7 @@ export function GroupRestControl({
   tableCharacters,
   sessionActive,
   buttonSx,
+  dataTour,
 }: GroupRestControlProps) {
   const [open, setOpen] = useState(false);
   const [purgeStatuses, setPurgeStatuses] = useState(true);
@@ -171,6 +174,7 @@ export function GroupRestControl({
 
   const button = (
     <Button
+      data-tour={dataTour}
       variant="outlined"
       size="small"
       startIcon={<HotelIcon />}

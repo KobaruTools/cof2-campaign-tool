@@ -18,6 +18,11 @@ export const TOUR_REGISTRY = {
     label: 'Création d’objet personnalisé',
     version: 1,
   },
+  gmScreen: {
+    key: 'gm-screen',
+    label: 'Écran de MJ',
+    version: 1,
+  },
 } as const satisfies Record<string, TourDefinition>;
 
 export type TourId = keyof typeof TOUR_REGISTRY;
