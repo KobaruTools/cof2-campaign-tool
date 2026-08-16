@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Database, Json } from '@/lib/supabase/types';
-import { parseGmInventory, parseLoot, parseRules, parseRumors, rowToCampaign } from './repo';
+import { parseGmInventory, parseLoot, parseRules, parseRumors, rowToCampaign, rowToNpc } from './repo';
 import type { CampaignRules } from './types';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
@@ -186,6 +186,39 @@ describe('parseGmInventory', () => {
     expect(parseGmInventory(raw as unknown as Json)).toEqual({
       categories: [],
       items: [{ id: 'orphan', line: { itemId: 'dague', quantity: 1 }, categoryId: null }],
+    });
+  });
+});
+
+describe('rowToNpc', () => {
+  it('mappe toutes les colonnes de la fiche complète (PER-429) vers l’entité Npc', () => {
+    const row: Database['public']['Tables']['campaign_npcs']['Row'] = {
+      id: 'n1',
+      campaign_id: 'c1',
+      name: 'Gorak',
+      role: 'Aubergiste',
+      location: 'Taverne du Sanglier',
+      disposition: 'ally',
+      status: 'encountered',
+      description: 'Un aubergiste jovial.',
+      description_visible_to_players: true,
+      gm_notes: 'En réalité un espion.',
+      linked_character_ids: ['pj1', 'pj2'],
+      created_at: '2026-08-15T10:00:00Z',
+    };
+    expect(rowToNpc(row)).toEqual({
+      id: 'n1',
+      campaignId: 'c1',
+      name: 'Gorak',
+      role: 'Aubergiste',
+      location: 'Taverne du Sanglier',
+      disposition: 'ally',
+      status: 'encountered',
+      description: 'Un aubergiste jovial.',
+      descriptionVisibleToPlayers: true,
+      gmNotes: 'En réalité un espion.',
+      linkedCharacterIds: ['pj1', 'pj2'],
+      createdAt: '2026-08-15T10:00:00Z',
     });
   });
 });

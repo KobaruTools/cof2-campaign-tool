@@ -14,6 +14,7 @@
  * cloud de la campagne : la vue campagne les filtre par cette FK.
  */
 import type { EquipmentLine } from '../character/types';
+import { SIDE_ACCENT } from '../ui/creature';
 
 /**
  * Règles de table d'une campagne. Objet **typé** — un champ par règle, pas de
@@ -137,21 +138,76 @@ export interface GmInventory {
 }
 
 /**
- * PNJ du MJ (PER-428, socle) — nom seul pour l'instant. Persisté dans une table
+ * Disposition d'un PNJ envers les PJ (PER-429) — badge coloré sur sa carte.
+ * `NPC_DISPOSITION_ACCENT`/`NPC_DISPOSITION_LABELS` en portent l'affichage.
+ */
+export type NpcDisposition = 'ally' | 'enemy' | 'neutral';
+
+/** Statut de rencontre d'un PNJ (PER-429). Voir `NPC_STATUS_LABELS`. */
+export type NpcStatus = 'not-encountered' | 'encountered' | 'dead';
+
+/**
+ * Couleurs d'accent par disposition (PER-429) — allié/ennemi RÉUTILISENT
+ * `SIDE_ACCENT` (écran de MJ, PER-249) ; neutre ambre nouveau pour ce ticket.
+ */
+export const NPC_DISPOSITION_ACCENT: Record<NpcDisposition, string> = {
+  ally: SIDE_ACCENT.ally,
+  enemy: SIDE_ACCENT.enemy,
+  neutral: '#ffb74d',
+};
+
+/** Libellés français de la disposition (badges + formulaire). */
+export const NPC_DISPOSITION_LABELS: Record<NpcDisposition, string> = {
+  ally: 'Allié',
+  enemy: 'Ennemi',
+  neutral: 'Neutre',
+};
+
+/** Libellés français du statut de rencontre (badges + formulaire). */
+export const NPC_STATUS_LABELS: Record<NpcStatus, string> = {
+  'not-encountered': 'Pas encore rencontré',
+  encountered: 'Rencontré',
+  dead: 'Mort',
+};
+
+/**
+ * PNJ du MJ (PER-428 socle + PER-429 fiche complète). Persisté dans une table
  * DÉDIÉE `campaign_npcs` — PAS un jsonb sur `Campaign` comme les entités
- * ci-dessus (rumeurs/butin/inventaire) — car les champs riches à venir (PER-429 :
- * `gm_notes` privées, statistiques de combat) ne doivent JAMAIS fuiter à un
- * joueur : la RLS Postgres filtre par LIGNE, pas par colonne dans un jsonb. Voir
- * le commentaire de la migration 0029 et de `fetchNpcs`/`rowToNpc` (`repo.ts`)
- * pour la règle complète. 100% MJ tant qu'aucun écran joueur n'existe pour les PNJ.
+ * ci-dessus (rumeurs/butin/inventaire) — car `gmNotes` (privées) et les futures
+ * statistiques de combat ne doivent JAMAIS fuiter à un joueur : la RLS Postgres
+ * filtre par LIGNE, pas par colonne dans un jsonb. Voir le commentaire des
+ * migrations 0029/0030 et de `fetchNpcs`/`rowToNpc` (`repo.ts`) pour la règle
+ * complète. 100% MJ tant qu'aucun écran joueur n'existe pour les PNJ.
  */
 export interface Npc {
   /** Clé stable (UUID, générée par la base). */
   id: string;
   /** Campagne propriétaire (FK `campaign_npcs.campaign_id`). */
   campaignId: string;
-  /** Nom affiché, seul champ obligatoire de ce socle. */
+  /** Nom affiché, seul champ obligatoire. */
   name: string;
+  /** Rôle court, affiché en sous-titre de la carte (ex. « Aubergiste »). */
+  role: string | null;
+  /** Lieu libre, SÉPARÉ de la description — pont volontaire vers un futur système de Lieux. */
+  location: string | null;
+  /** Disposition envers les PJ — badge coloré sur la carte. */
+  disposition: NpcDisposition;
+  /** Statut de rencontre. */
+  status: NpcStatus;
+  /**
+   * Description libre, POTENTIELLEMENT publique un jour (`descriptionVisibleToPlayers`).
+   * Personne ne la lit côté joueur aujourd'hui — aucun écran joueur PNJ n'existe.
+   */
+  description: string | null;
+  /** Bascule de publication de `description` — désactivée par défaut, aucun consommateur pour l'instant. */
+  descriptionVisibleToPlayers: boolean;
+  /**
+   * Notes du MJ — TOUJOURS privées, SANS bascule, jamais destinées à un joueur.
+   * Visuellement séparées de `description` dans le formulaire (encart « MJ seul »).
+   */
+  gmNotes: string | null;
+  /** Personnages joueurs de la campagne liés à ce PNJ (`Character.id[]`), sans FK en base. */
+  linkedCharacterIds: string[];
   /** Horodatage ISO recopié de la base. */
   createdAt: string;
 }

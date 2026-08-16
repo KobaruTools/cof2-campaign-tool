@@ -1,41 +1,45 @@
 'use client';
 
 /**
- * Contenu de l'onglet « PNJ » du tiroir d'outils du MJ (PER-428, socle) : liste
- * minimale — nom seul, création, suppression.
+ * Contenu de l'onglet « PNJ » du tiroir d'outils du MJ (PER-428 socle + PER-429
+ * fiche complète) : liste de cartes (badge de disposition + sous-titre de rôle),
+ * création/édition via `NpcFormDialog`, suppression par ligne.
  *
  * Données persistées dans la table DÉDIÉE `campaign_npcs` (RLS propriétaire,
- * migration 0029) — PAS le blob `Campaign` comme les autres onglets (rumeurs,
- * butin) : chaque mutation passe par `repo.ts` (`fetchNpcs`/`insertNpc`/
- * `deleteNpc`), jamais par `useCampaignsStore().update`. L'état local n'est
- * synchronisé qu'à la réponse serveur (pas d'id généré côté client, la base
- * s'en charge) via les réducteurs purs de `npc.ts`.
- *
- * Les champs riches (description, `gm_notes`, disposition, statut, stats…)
- * arrivent en PER-429/431 ; ce composant ne porte que le strict socle.
+ * migrations 0029/0030) — PAS le blob `Campaign` comme les autres onglets
+ * (rumeurs, butin) : chaque mutation passe par `repo.ts` (`fetchNpcs`/
+ * `insertNpc`/`updateNpc`/`deleteNpc`), jamais par `useCampaignsStore().update`.
+ * L'état local n'est synchronisé qu'à la réponse serveur via les réducteurs
+ * purs de `npc.ts`.
  */
 import { useEffect, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { useToast } from '@/components/toast/ToastProvider';
-import { addNpc, removeNpc, sortNpcsByName } from '@/lib/campaign/npc';
-import { deleteNpc, fetchNpcs, insertNpc } from '@/lib/campaign/repo';
-import type { Npc } from '@/lib/campaign/types';
+import { addNpc, removeNpc, replaceNpc, sortNpcsByName } from '@/lib/campaign/npc';
+import { deleteNpc, fetchNpcs, insertNpc, updateNpc, type NpcInput } from '@/lib/campaign/repo';
+import { NPC_DISPOSITION_ACCENT, NPC_DISPOSITION_LABELS, NPC_STATUS_LABELS, type Npc } from '@/lib/campaign/types';
+import { useCharactersStore } from '@/stores/characters';
+import { NpcFormDialog } from './NpcFormDialog';
 
 export function NpcPanel({ campaignId }: { campaignId: string }) {
   const { showToast } = useToast();
+  const characters = useCharactersStore((s) => s.characters);
+  const campaignCharacters = characters.filter((c) => c.campaignId === campaignId);
+
   const [npcs, setNpcs] = useState<Npc[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [dialogTarget, setDialogTarget] = useState<'create' | Npc | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,19 +64,14 @@ export function NpcPanel({ campaignId }: { campaignId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId]);
 
-  const handleCreate = async () => {
-    const name = newName.trim();
-    if (!name) return;
-    setBusy(true);
-    try {
-      const created = await insertNpc(campaignId, name);
-      setNpcs((prev) => sortNpcsByName(addNpc(prev, created)));
-      setNewName('');
-    } catch (e) {
-      showToast(`Création impossible : ${e instanceof Error ? e.message : String(e)}`, 'error');
-    } finally {
-      setBusy(false);
-    }
+  const handleCreate = async (input: NpcInput) => {
+    const created = await insertNpc(campaignId, input);
+    setNpcs((prev) => sortNpcsByName(addNpc(prev, created)));
+  };
+
+  const handleUpdate = async (npc: Npc, input: NpcInput) => {
+    const updated = await updateNpc(npc.id, input);
+    setNpcs((prev) => sortNpcsByName(replaceNpc(prev, updated)));
   };
 
   const handleDelete = async (id: string) => {
@@ -90,30 +89,14 @@ export function NpcPanel({ campaignId }: { campaignId: string }) {
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-        <TextField
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              void handleCreate();
-            }
-          }}
-          size="small"
-          fullWidth
-          placeholder="Nom du PNJ (ex. « Gorak le forgeron »)"
-        />
-        <Button
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={handleCreate}
-          disabled={busy || !newName.trim()}
-          sx={{ flexShrink: 0 }}
-        >
-          Créer
-        </Button>
-      </Stack>
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => setDialogTarget('create')}
+        sx={{ alignSelf: 'flex-start' }}
+      >
+        Nouveau PNJ
+      </Button>
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
@@ -126,8 +109,52 @@ export function NpcPanel({ campaignId }: { campaignId: string }) {
       ) : (
         <Stack spacing={1}>
           {npcs.map((npc) => (
-            <Box key={npc.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography sx={{ flexGrow: 1 }}>{npc.name}</Typography>
+            <Box
+              key={npc.id}
+              sx={(theme) => ({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                p: 1,
+                borderRadius: 1,
+                border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+                borderLeft: `4px solid ${NPC_DISPOSITION_ACCENT[npc.disposition]}`,
+              })}
+            >
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Typography sx={{ fontWeight: 600 }}>{npc.name}</Typography>
+                  <Box
+                    component="span"
+                    sx={{
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      px: 0.75,
+                      py: 0.125,
+                      borderRadius: 0.5,
+                      color: NPC_DISPOSITION_ACCENT[npc.disposition],
+                      border: `1px solid ${alpha(NPC_DISPOSITION_ACCENT[npc.disposition], 0.5)}`,
+                    }}
+                  >
+                    {NPC_DISPOSITION_LABELS[npc.disposition]}
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    {NPC_STATUS_LABELS[npc.status]}
+                  </Typography>
+                </Stack>
+                {npc.role && (
+                  <Typography variant="body2" color="text.secondary" noWrap>
+                    {npc.role}
+                  </Typography>
+                )}
+              </Box>
+              <Tooltip title="Modifier">
+                <span>
+                  <IconButton size="small" onClick={() => setDialogTarget(npc)} disabled={busy}>
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
               <Tooltip title="Supprimer">
                 <span>
                   <IconButton
@@ -143,6 +170,32 @@ export function NpcPanel({ campaignId }: { campaignId: string }) {
             </Box>
           ))}
         </Stack>
+      )}
+
+      {dialogTarget !== null && (
+        <NpcFormDialog
+          open
+          onClose={() => setDialogTarget(null)}
+          npc={dialogTarget === 'create' ? undefined : dialogTarget}
+          campaignCharacters={campaignCharacters}
+          onSubmit={async (input) => {
+            try {
+              if (dialogTarget === 'create') {
+                await handleCreate(input);
+                showToast('PNJ créé.', 'success');
+              } else {
+                await handleUpdate(dialogTarget, input);
+                showToast('PNJ enregistré.', 'success');
+              }
+            } catch (e) {
+              showToast(
+                `Enregistrement impossible : ${e instanceof Error ? e.message : String(e)}`,
+                'error',
+              );
+              throw e;
+            }
+          }}
+        />
       )}
     </Stack>
   );

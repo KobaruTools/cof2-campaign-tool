@@ -44,20 +44,44 @@ export type Database = {
         Row: {
           campaign_id: string
           created_at: string
+          description: string | null
+          description_visible_to_players: boolean
+          disposition: string
+          gm_notes: string | null
           id: string
+          linked_character_ids: string[]
+          location: string | null
           name: string
+          role: string | null
+          status: string
         }
         Insert: {
           campaign_id: string
           created_at?: string
+          description?: string | null
+          description_visible_to_players?: boolean
+          disposition?: string
+          gm_notes?: string | null
           id?: string
+          linked_character_ids?: string[]
+          location?: string | null
           name: string
+          role?: string | null
+          status?: string
         }
         Update: {
           campaign_id?: string
           created_at?: string
+          description?: string | null
+          description_visible_to_players?: boolean
+          disposition?: string
+          gm_notes?: string | null
           id?: string
+          linked_character_ids?: string[]
+          location?: string | null
           name?: string
+          role?: string | null
+          status?: string
         }
         Relationships: [
           {

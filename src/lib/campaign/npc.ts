@@ -18,6 +18,11 @@ export function removeNpc(npcs: Npc[], id: string): Npc[] {
   return npcs.filter((n) => n.id !== id);
 }
 
+/** Remplace un PNJ par sa version à jour (typiquement celle renvoyée par `updateNpc`). */
+export function replaceNpc(npcs: Npc[], updated: Npc): Npc[] {
+  return npcs.map((n) => (n.id === updated.id ? updated : n));
+}
+
 /** Trie les PNJ par nom (ordre français), pour un affichage stable après création. */
 export function sortNpcsByName(npcs: Npc[]): Npc[] {
   return [...npcs].sort((a, b) => a.name.localeCompare(b.name, 'fr'));

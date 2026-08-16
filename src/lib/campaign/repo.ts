@@ -249,8 +249,48 @@ export function rowToNpc(row: NpcRow): Npc {
     id: row.id,
     campaignId: row.campaign_id,
     name: row.name,
+    role: row.role,
+    location: row.location,
+    disposition: row.disposition as Npc['disposition'],
+    status: row.status as Npc['status'],
+    description: row.description,
+    descriptionVisibleToPlayers: row.description_visible_to_players,
+    gmNotes: row.gm_notes,
+    linkedCharacterIds: row.linked_character_ids,
     createdAt: row.created_at,
   };
+}
+
+/** Champs éditables d'un PNJ (formulaire PER-429), tous optionnels à la création. */
+export interface NpcInput {
+  name: string;
+  role?: string | null;
+  location?: string | null;
+  disposition?: Npc['disposition'];
+  status?: Npc['status'];
+  description?: string | null;
+  descriptionVisibleToPlayers?: boolean;
+  gmNotes?: string | null;
+  linkedCharacterIds?: string[];
+}
+
+type NpcRowUpdate = Database['public']['Tables']['campaign_npcs']['Update'];
+
+/** Mappe un `NpcInput` (partiel) vers les colonnes SQL correspondantes. */
+function npcInputToRow(input: Partial<NpcInput>): NpcRowUpdate {
+  const row: NpcRowUpdate = {};
+  if (input.name !== undefined) row.name = input.name;
+  if (input.role !== undefined) row.role = input.role;
+  if (input.location !== undefined) row.location = input.location;
+  if (input.disposition !== undefined) row.disposition = input.disposition;
+  if (input.status !== undefined) row.status = input.status;
+  if (input.description !== undefined) row.description = input.description;
+  if (input.descriptionVisibleToPlayers !== undefined) {
+    row.description_visible_to_players = input.descriptionVisibleToPlayers;
+  }
+  if (input.gmNotes !== undefined) row.gm_notes = input.gmNotes;
+  if (input.linkedCharacterIds !== undefined) row.linked_character_ids = input.linkedCharacterIds;
+  return row;
 }
 
 /**
@@ -274,12 +314,25 @@ export async function fetchNpcs(campaignId: string): Promise<Npc[]> {
   return (data ?? []).map(rowToNpc);
 }
 
-/** Crée un PNJ (nom seul, socle PER-428) pour une campagne possédée par l'utilisateur courant. */
-export async function insertNpc(campaignId: string, name: string): Promise<Npc> {
+/** Crée un PNJ pour une campagne possédée par l'utilisateur courant (fiche complète, PER-429). */
+export async function insertNpc(campaignId: string, input: NpcInput): Promise<Npc> {
   const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase
     .from('campaign_npcs')
-    .insert({ campaign_id: campaignId, name })
+    .insert({ ...npcInputToRow(input), campaign_id: campaignId, name: input.name })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return rowToNpc(data);
+}
+
+/** Met à jour un PNJ (édition de la fiche complète, PER-429). Écriture simple, pas de verrou optimiste. */
+export async function updateNpc(id: string, patch: Partial<NpcInput>): Promise<Npc> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase
+    .from('campaign_npcs')
+    .update(npcInputToRow(patch))
+    .eq('id', id)
     .select('*')
     .single();
   if (error) throw error;
