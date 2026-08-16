@@ -34,6 +34,11 @@ export interface CodexBorrowableFeature {
   path: Path;
 }
 
+const pathById = new Map<string, Path>(paths.map((p) => [p.id, p]));
+/** Position de chaque profil dans `classes` (PER-419 retours) — déjà groupé par famille dans
+ * l'ordre du livre (aventurier, combattant, mage, mystique — cf. `src/data/index.ts`). */
+const classOrderIndex = new Map<string, number>(classes.map((c, i) => [c.id, i]));
+
 export interface CodexChoiceSummary {
   kind: FeatureChoice['kind'];
   prompt: string;
@@ -60,6 +65,27 @@ function testDomainItems(includeCombat: boolean | undefined): string[] {
 }
 
 /**
+ * Rang « livre » d'une voie de profil (PER-419 retours) : position de son premier profil dans
+ * `classes`, déjà groupé par famille dans l'ordre du livre (aventurier, combattant, mage,
+ * mystique — cf. `src/data/index.ts`). Voies de prestige/peuple/mage (sans profil) en repli à la
+ * fin, départagées par id.
+ */
+function pathBookOrder(pathId: string): number {
+  const path = pathById.get(pathId);
+  if (path?.type === 'class') {
+    for (const classId of path.classIds) {
+      const index = classOrderIndex.get(classId);
+      if (index !== undefined) return index;
+    }
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
+function byBookOrder(a: Feature, b: Feature): number {
+  return pathBookOrder(a.pathId) - pathBookOrder(b.pathId) || a.pathId.localeCompare(b.pathId) || a.rank - b.rank;
+}
+
+/**
  * Partie STATIQUE de `featuresInChoiceDomain` (`choices.ts:415`) — même filtre, sans les axes
  * qui exigent un `Character` (ceux-là sont traités en amont, dans `summarizeCodexChoice`).
  */
@@ -70,7 +96,7 @@ function staticFeaturesForChoiceDomain(hostFeatureId: string, choice: PathFeatur
     return choice.featureIds
       .map((id) => featureById.get(id))
       .filter((f): f is Feature => !!f && f.id !== hostFeatureId)
-      .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank);
+      .sort(byBookOrder);
   }
 
   const classPathIds = new Set<string>();
@@ -104,10 +130,8 @@ function staticFeaturesForChoiceDomain(hostFeatureId: string, choice: PathFeatur
         !(choice.spellsOnly && !f.isSpell) &&
         !(choice.excludeDefBonus && featureGrantsDefBonus(f.id)),
     )
-    .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank);
+    .sort(byBookOrder);
 }
-
-const pathById = new Map<string, Path>(paths.map((p) => [p.id, p]));
 
 function pathFeatureChoiceSummary(
   hostFeatureId: string,

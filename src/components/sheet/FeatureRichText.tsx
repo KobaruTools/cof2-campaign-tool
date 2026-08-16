@@ -1630,7 +1630,13 @@ export function FeatureText({
       </Typography>
     );
   }
-  const enriched = feature.richText && abilities && level != null;
+  const hasRichText = !!feature.richText;
+  const enriched = hasRichText && abilities && level != null;
+  // Pas de personnage (Codex des voies, PER-419 retours) mais un `richText` déjà écrit : plutôt que
+  // de retomber sur le `text` verbatim brut (aucun dé affiché), rendu SYMBOLIQUE du `richText`
+  // (`GlossaryRichText`, même moteur que `CustomItem.description`) — dés à leur face de base, codes
+  // de caractéristique en puces, SANS total calculé (pas d'`abilities` pour ça).
+  const symbolic = hasRichText && !enriched;
   // Les « Note : » sont rendues plus petites/grises (`NoteSpan`), dans les deux
   // modes ; le balisage interne (puces, dés, formules) reste actif.
   const rank = pathRank ?? feature.rank;
@@ -1646,6 +1652,8 @@ export function FeatureText({
         abilitySubstitutions={abilitySubstitutions}
         scalingTierBonus={scalingTierBonus}
       />
+    ) : symbolic ? (
+      <GlossaryRichText>{value}</GlossaryRichText>
     ) : (
       <RichTextRun value={value} />
     );
@@ -1695,7 +1703,7 @@ export function FeatureText({
       </Fragment>
     ));
   };
-  const source = enriched ? richText : feature.text;
+  const source = hasRichText ? richText : feature.text;
 
   // Une NOTE est rendue en BLOC (`NoteSpan` = div) : c'est ce qui lui donne son
   // propre interligne. En inline, la hauteur de ligne reste imposée par le « strut »
@@ -1712,7 +1720,7 @@ export function FeatureText({
         whiteSpace: 'pre-line',
         // Compact (`dense`) : ~−10 % sur la taille et l'interligne pour les blocs encadrés (PER-163).
         fontSize: dense ? '0.9rem' : '1rem',
-        ...(enriched && { lineHeight: dense ? 1.71 : 1.9 }),
+        ...((enriched || symbolic) && { lineHeight: dense ? 1.71 : 1.9 }),
       }}
     >
       {chunks.map((chunk, i) => {

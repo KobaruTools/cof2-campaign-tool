@@ -9,7 +9,9 @@
  * `ReferenceBrowser`, une frontière évite de déporter tout l'arbre en rendu client au prérendu.
  */
 import { Suspense } from 'react';
+import NextLink from 'next/link';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import { HomeBackground } from '@/components/HomeBackground';
 import { CodexPathBrowser } from '@/components/codex/CodexPathBrowser';
@@ -24,6 +26,9 @@ export default function CodexPathsPage() {
       <title>Voies — Codex — Éditeur de personnage CO2</title>
       <HomeBackground />
       <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Button variant="text" color="inherit" component={NextLink} href="/codex" sx={{ mb: 2 }}>
+          ← Retour au Codex
+        </Button>
         <Suspense>
           <CodexPathBrowser />
         </Suspense>

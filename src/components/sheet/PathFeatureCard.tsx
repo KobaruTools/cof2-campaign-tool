@@ -46,6 +46,8 @@ export function WipChip({ feature, compact = false }: { feature: Feature; compac
 
 export interface PathFeatureCardProps extends FeatureTextProps {
   feature: Feature;
+  /** Masque la référence de page source du rang (PER-419, Codex des voies : déjà sur la voie). */
+  hideSourcePage?: boolean;
 }
 
 /**
@@ -56,11 +58,11 @@ export interface PathFeatureCardProps extends FeatureTextProps {
  * `PathBlock` s'en sert en interne pour l'accordéon (vue liste) et la modale de détail, sans
  * changer leur rendu visuel.
  */
-export function PathFeatureCard(props: PathFeatureCardProps) {
+export function PathFeatureCard({ hideSourcePage, ...props }: PathFeatureCardProps) {
   return (
     <>
       <FeatureText {...props} />
-      <FeatureSourcePage feature={props.feature} />
+      {!hideSourcePage && <FeatureSourcePage feature={props.feature} />}
     </>
   );
 }

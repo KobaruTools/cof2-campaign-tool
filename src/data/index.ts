@@ -64,6 +64,7 @@ import {
 import {
   mergeEntries,
   mergeAncestryPathLinks,
+  markPathsPaid,
   bumpContentVersion,
   type ContentBundle,
   type MergeReport,
@@ -182,6 +183,10 @@ export function registerContentBundle(bundle: ContentBundle): MergeReport {
   // (`ancestryById` porte les mêmes instances que la base — la mutation est vue par tous les
   // consommateurs). Compté dans le total pour qu'un lot qui n'apporterait QUE des liens bump quand même.
   const linksAdded = mergeAncestryPathLinks(ancestryById, bundle.ancestryPathLinks);
+  // Badge « Compagnon » (PER-419 retours) : toute voie d'un lot payant est marquée, que son
+  // entrée ait été effectivement ajoutée ou ignorée (déjà présente — cas non censé arriver
+  // vu la politique additive, mais sans risque de la marquer quand même dans ce cas).
+  if (bundle.paths) markPathsPaid(bundle.paths.map((p) => p.id));
   const added = reports.reduce((sum, r) => sum + r.added, 0) + linksAdded;
   const skipped = reports.flatMap((r) => r.skipped);
   if (added > 0) {
@@ -230,6 +235,7 @@ export {
   subscribeContent,
   isContentLoading,
   setContentLoading,
+  isPaidPathId,
 } from './contentRegistry';
 export type { ContentBundle };
 

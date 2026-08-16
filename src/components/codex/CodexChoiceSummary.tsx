@@ -14,10 +14,18 @@ import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import type { Feature, FeatureChoice } from '@/data/schema';
+import type { Feature, FeatureChoice, Path } from '@/data/schema';
 import { summarizeCodexChoice } from '@/lib/codex/codexChoiceSummary';
 import { codexPathHref } from '@/lib/ui/codex';
-import { PageRefText } from '@/components/SourceRef';
+import { ANCESTRY_MARKER_COLOR, classColor } from '@/lib/ui/classColors';
+import { ClassIcon } from '@/components/ClassIcon';
+
+/** Couleur du profil d'une voie empruntable (PER-419 retours) : `classColor` de son premier
+ * profil pour une voie de profil (le seul cas produit par `staticFeaturesForChoiceDomain`),
+ * repli neutre sinon (défensif, pas censé arriver). */
+function borrowablePathColor(path: Path): string {
+  return path.type === 'class' ? classColor(path.classIds[0]) : ANCESTRY_MARKER_COLOR;
+}
 
 const boxSx = {
   mt: 1.5,
@@ -50,36 +58,62 @@ function CodexChoiceBlock({ hostFeature, choice }: { hostFeature: Feature; choic
 
       {summary.borrowable ? (
         summary.borrowable.length > 0 ? (
-          <Stack spacing={1} sx={{ mt: 1 }}>
-            {summary.borrowable.map(({ feature, path }) => (
-              <Box
-                key={feature.id}
-                component={NextLink}
-                href={codexPathHref(path.id)}
-                sx={(theme) => ({
-                  display: 'block',
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  p: 1,
-                  borderRadius: 1,
-                  border: `1px solid ${alpha(theme.palette.info.main, 0.25)}`,
-                  '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.08) },
-                })}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {feature.name}{' '}
-                  <Typography component="span" variant="caption" color="text.secondary">
-                    — {path.name} (rang {feature.rank})
+          <Box
+            sx={{
+              mt: 1,
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+              gap: 1,
+            }}
+          >
+            {summary.borrowable.map(({ feature, path }) => {
+              const color = borrowablePathColor(path);
+              return (
+                <Box
+                  key={feature.id}
+                  component={NextLink}
+                  href={codexPathHref(path.id)}
+                  sx={{
+                    display: 'block',
+                    minWidth: 0,
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    p: 1,
+                    borderRadius: 1,
+                    border: `1px solid ${alpha(color, 0.5)}`,
+                    '&:hover': { bgcolor: alpha(color, 0.12) },
+                  }}
+                >
+                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                    <Box
+                      component="span"
+                      sx={{
+                        px: 0.75,
+                        py: 0.1,
+                        borderRadius: 0.75,
+                        border: `1px solid ${color}`,
+                        bgcolor: alpha(color, 0.14),
+                        color,
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        lineHeight: 1.6,
+                        flexShrink: 0,
+                      }}
+                    >
+                      Rang {feature.rank}
+                    </Box>
+                    {path.type === 'class' && <ClassIcon classId={path.classIds[0]} size={16} color={color} />}
+                    <Typography variant="caption" sx={{ color, fontWeight: 600 }}>
+                      {path.name}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
+                    {feature.name}
                   </Typography>
-                </Typography>
-                {path.borrowedNote ? (
-                  <Typography variant="caption" color="text.secondary" component="div">
-                    <PageRefText>{path.borrowedNote}</PageRefText>
-                  </Typography>
-                ) : null}
-              </Box>
-            ))}
-          </Stack>
+                </Box>
+              );
+            })}
+          </Box>
         ) : (
           <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.5 }}>
             Aucune capacité éligible dans le contenu chargé.

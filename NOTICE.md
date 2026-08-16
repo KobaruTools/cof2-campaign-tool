@@ -45,6 +45,7 @@ conservée dans `ANCESTRY_ICON_SOURCES` (même fichier) et dans
 
 | Peuple | Fichier game-icons.net | Auteur |
 | --- | --- | --- |
+| Demi-elfe | `delapouite/elf-ear.svg` | Delapouite |
 | Demi-orc | `delapouite/orc-head.svg` | Delapouite |
 | Elfe haut | `delapouite/woman-elf-face.svg` | Delapouite |
 | Elfe sylvain | `delapouite/bow-arrow.svg` | Delapouite |

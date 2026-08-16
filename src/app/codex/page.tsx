@@ -5,8 +5,8 @@
  * personnage, publique (accessible sans connexion, comme `/reference`). Sur le modèle de
  * `src/app/reference/page.tsx` : ossature seule ici, le comportement vit dans un composant dédié.
  *
- * Sous-page fonctionnelle à ce jour : Voies. Les autres (objets magiques, dieux, familiers/
- * montures, équipement — PER-419→422) apparaissent en entrées désactivées « à venir », sans
+ * Sous-pages fonctionnelles à ce jour : Voies, Objets magiques. Les autres (dieux, familiers/
+ * montures, équipement — PER-420→422) apparaissent en entrées désactivées « à venir », sans
  * route propre pour l'instant.
  */
 import Box from '@mui/material/Box';
@@ -16,12 +16,12 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import NextLink from 'next/link';
 import { HomeBackground } from '@/components/HomeBackground';
-import { SectionIcon } from '@/components/SectionIcon';
+import { CodexSubpageIcon } from '@/components/codex/CodexSubpageIcon';
 import { useHeaderContent } from '@/stores/headerContent';
 
 const ENTRIES: { label: string; href?: string }[] = [
   { label: 'Voies', href: '/codex/voies' },
-  { label: 'Objets magiques' },
+  { label: 'Objets magiques', href: '/codex/objets-magiques' },
   { label: 'Dieux' },
   { label: 'Familiers & montures' },
   { label: 'Équipement' },
@@ -61,7 +61,7 @@ export default function CodexPage() {
                   : { cursor: 'default' }),
               })}
             >
-              <SectionIcon name="paths" size={22} />
+              <CodexSubpageIcon label={entry.label} size={22} />
               <Typography sx={{ fontWeight: 600 }}>{entry.label}</Typography>
               {!entry.href && (
                 <Typography variant="caption" color="text.disabled" sx={{ ml: 'auto' }}>

@@ -23,6 +23,7 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import { CodexDrawerItems } from '@/components/CodexDrawerItems';
 import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { QuestIcon } from '@/components/QuestIcon';
 import { RulesBookDrawerItems } from '@/components/RulesBookDrawerItems';
@@ -131,12 +132,7 @@ export function AppHeaderNavDrawer({
               </ListItemIcon>
               <ListItemText>Aide-mémoire</ListItemText>
             </ListItemButton>
-            <ListItemButton component={Link} href="/codex" onClick={onClose}>
-              <ListItemIcon>
-                <SectionIcon name="paths" size={24} />
-              </ListItemIcon>
-              <ListItemText>Codex</ListItemText>
-            </ListItemButton>
+            <CodexDrawerItems onNavigate={onClose} />
             <Divider sx={{ my: 0.5 }} />
             <RulesBookDrawerItems onNavigate={onClose} />
           </>

@@ -18,15 +18,17 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Drawer from '@mui/material/Drawer';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { ancestries, classes, families, featureById, pathById, paths } from '@/data';
+import { ancestries, classes, families, featureById, isPaidPathId, pathById, paths } from '@/data';
 import { PRESTIGE_CATEGORIES, type Path, type PrestigeCategory } from '@/data/schema';
 import { useContentVersion } from '@/lib/content/useContentVersion';
 import { codexPathHref } from '@/lib/ui/codex';
@@ -39,6 +41,7 @@ import {
 } from '@/lib/ui/classColors';
 import { prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
 import { AncestryIcon } from '@/components/AncestryIcon';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { RankBadge } from '@/components/RankBadge';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
@@ -84,9 +87,12 @@ const panelSx = {
 function SelectorGroup({
   group,
   selectedPathId,
+  onNavigate,
 }: {
   group: PathGroup;
   selectedPathId: string | undefined;
+  /** Appelé au clic sur une voie (ferme le tiroir mobile) ; sans effet sur le sélecteur desktop. */
+  onNavigate?: () => void;
 }) {
   if (group.items.length === 0) return null;
   return (
@@ -105,6 +111,7 @@ function SelectorGroup({
               key={path.id}
               component={NextLink}
               href={codexPathHref(path.id)}
+              onClick={onNavigate}
               sx={{
                 display: 'block',
                 px: 1,
@@ -117,9 +124,16 @@ function SelectorGroup({
                 '&:hover': { bgcolor: alpha(group.color, 0.1) },
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: active ? 700 : 400 }}>
-                {path.name}
-              </Typography>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ fontWeight: active ? 700 : 400, flexGrow: 1, minWidth: 0 }}>
+                  {path.name}
+                </Typography>
+                {isPaidPathId(path.id) && (
+                  <AppTooltip title="Voie du Compagnon">
+                    <AutoStoriesOutlinedIcon sx={{ fontSize: 15, flexShrink: 0, opacity: 0.8 }} />
+                  </AppTooltip>
+                )}
+              </Stack>
             </Box>
           );
         })}
@@ -139,7 +153,12 @@ function useAncestryGroups(contentVersion: number): PathGroup[] {
       label: a.name,
       color: ANCESTRY_COLOR,
       icon: (size: number) => <AncestryIcon ancestryId={a.id} size={size} color={ANCESTRY_COLOR} />,
-      items: a.ancestryPathIds.map((id) => pathById.get(id)).filter((p): p is Path => !!p),
+      // `a.id` en plus de `ancestryPathIds` (dédoublonné) : certaines voies payantes de
+      // REMPLACEMENT (PER-324, voie du demi-elfe du Compagnon) portent le MÊME id que le
+      // peuple lui-même plutôt qu'un rattachement `ancestryPathLinks` — absentes sinon.
+      items: [...new Set([...a.ancestryPathIds, a.id])]
+        .map((id) => pathById.get(id))
+        .filter((p): p is Path => !!p),
     }));
     const mage = paths.filter((p) => p.type === 'mage');
     if (mage.length > 0) {
@@ -204,6 +223,9 @@ export function CodexPathBrowser() {
   // (fetch réseau, cf. PER-321) doit apparaître sans rechargement manuel — passé aux groupes
   // ci-dessous en dépendance de memo (PER-419 retours, sinon ignoré, cf. commentaires des hooks).
   const contentVersion = useContentVersion();
+  // Tiroir du sélecteur mobile (PER-419 retours) : fermé par défaut, ouvert au clic sur le
+  // bouton compact, refermé après le choix d'une voie (`SelectorGroup.onNavigate`).
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const requestedId = searchParams.get('id');
@@ -250,23 +272,70 @@ export function CodexPathBrowser() {
         .sort((a, b) => a.rank - b.rank)
     : [];
 
+  const tabsNode = (
+    <Tabs
+      value={tab}
+      onChange={(_, value: CodexTab) => setTab(value)}
+      variant="fullWidth"
+      sx={{ minHeight: 36 }}
+    >
+      <Tab value="ancestry" label="Peuple" sx={{ minHeight: 36 }} />
+      <Tab value="class" label="Profil" sx={{ minHeight: 36 }} />
+      <Tab value="prestige" label="Prestige" sx={{ minHeight: 36 }} />
+    </Tabs>
+  );
+
   return (
     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: 'flex-start' }}>
-      <Box sx={{ ...panelSx, p: 2, width: { xs: '100%', md: 320 }, flexShrink: 0 }}>
-        <Tabs
-          value={tab}
-          onChange={(_, value: CodexTab) => setTab(value)}
-          variant="fullWidth"
-          sx={{ mb: 1.5, minHeight: 36 }}
-        >
-          <Tab value="ancestry" label="Peuple" sx={{ minHeight: 36 }} />
-          <Tab value="class" label="Profil" sx={{ minHeight: 36 }} />
-          <Tab value="prestige" label="Prestige" sx={{ minHeight: 36 }} />
-        </Tabs>
+      {/* Desktop : sélecteur toujours visible. Mobile (retour PER-419, table des matières trop
+          longue) : remplacé par un bouton compact ouvrant le même sélecteur en tiroir. */}
+      <Box sx={{ ...panelSx, p: 2, width: 320, flexShrink: 0, display: { xs: 'none', md: 'block' } }}>
+        <Box sx={{ mb: 1.5 }}>{tabsNode}</Box>
         {groups.map((group) => (
           <SelectorGroup key={group.key} group={group} selectedPathId={selectedPath?.id} />
         ))}
       </Box>
+
+      <Button
+        onClick={() => setMobileNavOpen(true)}
+        variant="outlined"
+        color="inherit"
+        fullWidth
+        endIcon={<ExpandMoreIcon fontSize="small" />}
+        sx={{
+          display: { xs: 'flex', md: 'none' },
+          justifyContent: 'space-between',
+          textTransform: 'none',
+          px: 2,
+          py: 1,
+        }}
+      >
+        {selectedPath ? `Voie : ${selectedPath.name}` : 'Choisir une voie'}
+      </Button>
+      <Drawer
+        anchor="bottom"
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        sx={{ display: { xs: 'block', md: 'none' } }}
+      >
+        {/* Bloc séparé de la liste (retour PER-419) : collé en haut du tiroir, pleine largeur —
+            impossible avec les onglets dans le conteneur repoussé par le padding de la liste.
+            `maxHeight` sur l'ENVELOPPE (pas la seule liste) pour que tiroir + onglets ne dépassent
+            jamais 80 % de la fenêtre. */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: '80vh' }}>
+          <Box sx={{ bgcolor: 'grey.800', flexShrink: 0 }}>{tabsNode}</Box>
+          <Box sx={{ px: 2, pt: 1.5, pb: 2, overflowY: 'auto' }}>
+            {groups.map((group) => (
+              <SelectorGroup
+                key={group.key}
+                group={group}
+                selectedPathId={selectedPath?.id}
+                onNavigate={() => setMobileNavOpen(false)}
+              />
+            ))}
+          </Box>
+        </Box>
+      </Drawer>
 
       <Box sx={{ ...panelSx, p: 3, flexGrow: 1, minWidth: 0 }}>
         {!selectedPath ? (
@@ -279,6 +348,11 @@ export function CodexPathBrowser() {
                 {selectedPath.name}
               </Typography>
               <SourceRef page={selectedPath.sourcePage} term={selectedPath.name} />
+              {isPaidPathId(selectedPath.id) && (
+                <AppTooltip title="Voie du Compagnon">
+                  <AutoStoriesOutlinedIcon sx={{ fontSize: 20, opacity: 0.8 }} />
+                </AppTooltip>
+              )}
             </Stack>
             {selectedPath.type === 'prestige' && selectedPath.prerequisites ? (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import LoginIcon from '@mui/icons-material/Login';
 import MenuIcon from '@mui/icons-material/Menu';
 import AppBar from '@mui/material/AppBar';
@@ -15,6 +16,7 @@ import { AccountMenu } from '@/components/AccountMenu';
 import { AppBreadcrumbs } from '@/components/AppBreadcrumbs';
 import { AppHeaderBrand } from '@/components/AppHeaderBrand';
 import { AppHeaderNavDrawer } from '@/components/AppHeaderNavDrawer';
+import { CodexSplitButton } from '@/components/CodexSplitButton';
 import { FriendsWidget } from '@/components/friends/FriendsWidget';
 import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { HeaderNavButton } from '@/components/HeaderNavButton';
@@ -23,6 +25,7 @@ import { RulesBookSplitButton } from '@/components/RulesBookSplitButton';
 import { SectionIcon } from '@/components/SectionIcon';
 import { HEADER_BURGER_BREAKPOINT } from '@/lib/ui/headerBreakpoints';
 import { HEADER_EXTRA_ROW_SLOT_ID } from '@/lib/ui/useHeaderExtraRowSlot';
+import { isProjectionRoute } from '@/lib/routing/projectionRoutes';
 import { useAppSession } from '@/lib/supabase/useAppSession';
 import { useHeaderContentStore } from '@/stores/headerContent';
 
@@ -58,6 +61,7 @@ import { useHeaderContentStore } from '@/stores/headerContent';
  */
 export function AppHeaderShell() {
   const session = useAppSession();
+  const pathname = usePathname();
   const {
     breadcrumbs,
     action,
@@ -75,7 +79,10 @@ export function AppHeaderShell() {
   // disparaître dès la résolution (lecture locale, quasi immédiate).
   const isPlayer = effectiveRole === 'player';
   const isAnonymous = effectiveRole === 'anonymous';
-  const isProjection = effectiveRole === 'projection';
+  // Le rôle de session seul ne suffit pas : la fenêtre projetée OWNER
+  // (`/campaign/<cid>/gm-screen/tracker`) tourne sous la propre session du MJ (rôle `owner`), pas
+  // sous une session `projection` — d'où le filtre par CHEMIN en renfort (cf. `projectionRoutes.ts`).
+  const isProjection = effectiveRole === 'projection' || isProjectionRoute(pathname);
   // Contenu de règles (DRS libre) : ouvert à tous, visiteur sans compte compris.
   const showContentLinks = !isProjection;
   // Atelier de personnage : ouvert à tous, visiteur sans compte compris (l'app est
@@ -114,9 +121,10 @@ export function AppHeaderShell() {
   // Rien à montrer dans la nav en projection : pas de bouton burger creux.
   const hasNavContent = showContentLinks || showCharacterLink || showOwnerLinks || isPlayer;
 
-  // Vue projection (spectateur, `/project`) : dépouillée, pas d'en-tête. Auparavant obtenu par
-  // OMISSION (la page ne montait jamais `<AppHeader>`) ; comme le composant est désormais
-  // TOUJOURS monté par `layout.tsx`, il doit se cacher lui-même. Après tous les hooks
+  // Les 3 vues de projection du tracker (spectateur `/project`, joueur `/play/initiative`,
+  // fenêtre owner `/campaign/<cid>/gm-screen/tracker`) : dépouillées, pas d'en-tête. Auparavant
+  // obtenu par OMISSION (la page ne montait jamais `<AppHeader>`) ; comme le composant est
+  // désormais TOUJOURS monté par `layout.tsx`, il doit se cacher lui-même. Après tous les hooks
   // ci-dessus : leur nombre/ordre ne doit jamais dépendre du rôle.
   if (isProjection) return null;
 
@@ -167,11 +175,7 @@ export function AppHeaderShell() {
               icon={<SectionIcon name="notes" size={20} />}
               label="Aide-mémoire"
             />
-            <HeaderNavButton
-              href="/codex"
-              icon={<SectionIcon name="paths" size={20} />}
-              label="Codex"
-            />
+            <CodexSplitButton />
           </>
         )}
 

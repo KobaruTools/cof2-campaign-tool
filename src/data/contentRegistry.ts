@@ -127,6 +127,27 @@ export function mergeAncestryPathLinks(
 export type { Ancestry, CharacterClass, Path, Feature, EquipmentItem };
 
 // ────────────────────────────────────────────────────────────────────────────
+// Origine payante d'une voie — badge « Compagnon » (PER-419 retours).
+//
+// `mergeEntries` n'est appelée QUE pour un lot payant (jamais pour les données de base,
+// construites par import littéral) : tout id de `bundle.paths` est donc, par construction,
+// une voie payante. On le note ici plutôt que de faire porter un champ `book`/`source` au
+// schéma `Path` (qui n'en a pas — cf. `src/lib/ui/books.ts`), pour rester data-agnostique.
+// ────────────────────────────────────────────────────────────────────────────
+
+const paidPathIds = new Set<string>();
+
+/** Marque ces ids de voie comme payants (appelé par `registerContentBundle` sur `bundle.paths`). */
+export function markPathsPaid(pathIds: string[]): void {
+  for (const id of pathIds) paidPathIds.add(id);
+}
+
+/** La voie `pathId` vient-elle d'un lot de contenu payant (Le Compagnon) ? */
+export function isPaidPathId(pathId: string): boolean {
+  return paidPathIds.has(pathId);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Version de contenu — pub/sub minimal (aucune dépendance React).
 //
 // Chaque fusion réelle incrémente la version ; les composants qui doivent se
