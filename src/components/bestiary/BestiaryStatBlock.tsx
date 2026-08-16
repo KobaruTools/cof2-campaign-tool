@@ -471,15 +471,15 @@ function StatChip({
         // dragon) : la cellule les fait RETOMBER à la ligne plutôt que d'écraser le chiffre.
         flexWrap: 'wrap',
         rowGap: 0.5,
-        px: dense ? 0.75 : 1,
-        py: dense ? 0.5 : 0.75,
+        px: 1,
+        py: 0.75,
         borderRadius: 1,
         border: 1,
         borderColor: 'divider',
         bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
       }}
     >
-      <DerivedStatIcon statId={statId} size={dense ? 20 : 28} title />
+      <DerivedStatIcon statId={statId} size={28} title />
       <Box
         component="span"
         sx={{
@@ -884,7 +884,7 @@ export function BestiaryStatBlock({
                       Agrandie hors mode dense (bestiaire) — retour proprio : trop petit à l'origine. */}
                   {atk.bonus && (
                     <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                      <DerivedStatIcon statId={atk.range ? 'rangedAttack' : 'meleeAttack'} size={dense ? 18 : 24} title />
+                      <DerivedStatIcon statId={atk.range ? 'rangedAttack' : 'meleeAttack'} size={24} title />
                       <Typography
                         component="span"
                         sx={{

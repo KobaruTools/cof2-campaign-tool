@@ -547,8 +547,8 @@ function DerivedStatBlock({
         alignItems: 'center',
         justifyContent: 'center',
         minWidth: 0,
-        px: 0.6,
-        py: mobileEnlarge ? { xs: 0.7, sm: 0.4 } : 0.4,
+        px: 0.75,
+        py: mobileEnlarge ? { xs: 0.7, sm: 0.6 } : 0.6,
         borderRadius: 1,
         border: 1,
         borderColor: 'divider',
@@ -559,9 +559,9 @@ function DerivedStatBlock({
           `children`) agrandie sur mobile — largeur libre ici (2-3 blocs par ligne, pas 7). */}
       <DerivedStatIcon
         statId={statId}
-        size={20}
+        size={28}
         title
-        sx={mobileEnlarge ? { width: { xs: 26, sm: 20 }, height: { xs: 26, sm: 20 } } : undefined}
+        sx={mobileEnlarge ? { width: { xs: 32, sm: 28 }, height: { xs: 32, sm: 28 } } : undefined}
       />
       <Box
         component="span"
