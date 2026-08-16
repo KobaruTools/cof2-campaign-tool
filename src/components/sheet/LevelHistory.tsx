@@ -23,35 +23,10 @@ import {
   ANCESTRY_MARKER_COLOR,
 } from '@/lib/ui/classColors';
 import { prestigeMetalGradient, prestigeGemStops } from '@/lib/ui/prestigeStyle';
+import { RankBadge } from '@/components/RankBadge';
 
 export interface LevelHistoryProps {
   character: Character;
-}
-
-/** Badge custom (≠ Chip MUI, cf. `DefenseBadge`) : rang de voie, teinté de la couleur du profil. */
-function RankBadge({ rank, color }: { rank: number; color?: string }) {
-  return (
-    <Box
-      sx={(theme) => ({
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 22,
-        px: 0.9,
-        borderRadius: 1,
-        flexShrink: 0,
-        lineHeight: 1,
-        fontSize: '0.72rem',
-        fontWeight: 700,
-        whiteSpace: 'nowrap',
-        color: color ?? theme.palette.text.secondary,
-        bgcolor: alpha(color ?? theme.palette.text.secondary, 0.12),
-        border: `1px solid ${alpha(color ?? theme.palette.text.secondary, 0.45)}`,
-      })}
-    >
-      Rang {rank}
-    </Box>
-  );
 }
 
 /**

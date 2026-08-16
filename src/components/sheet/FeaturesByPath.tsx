@@ -145,6 +145,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { PoisonWeaponLoadoutField } from '@/components/sheet/PoisonWeaponLoadoutField';
 import { WeaponModificationField } from '@/components/sheet/WeaponModificationField';
 import { SourceRef, PageRefText } from '@/components/SourceRef';
+import { RankBadge } from '@/components/RankBadge';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -349,6 +350,9 @@ function FeaturePathTitle({
   fallbackAncestryId,
   fallbackPathName,
   fallbackColor,
+  fallbackIsMagePath = false,
+  fallbackIsPrestigePath = false,
+  fallbackPrestigeTint,
 }: {
   feature: Feature;
   isReplacement: boolean;
@@ -356,21 +360,55 @@ function FeaturePathTitle({
   fallbackAncestryId?: string;
   fallbackPathName: string;
   fallbackColor?: string;
+  /** Voie du mage (PER-73) — jamais actif en repli si `isReplacement` (une capacité divine ne vient
+   * jamais de la voie du mage). */
+  fallbackIsMagePath?: boolean;
+  /** Voie de PRESTIGE (PER-74) : le nom est rendu en DÉGRADÉ métal (teinte de famille), comme le
+   * titre de la voie et les cartes de rang — pas en teinte pleine. */
+  fallbackIsPrestigePath?: boolean;
+  /** Teinte de la famille de prestige (`undefined` = générique, dégradé or par défaut). */
+  fallbackPrestigeTint?: string;
 }) {
   const origin = isReplacement ? pathTitleInfo(feature) : null;
   const classId = origin?.classId ?? fallbackClassId;
   const pathName = origin?.pathName ?? fallbackPathName;
   const color = origin?.color ?? fallbackColor;
-  // Voie de peuple : pas d'icône de profil, mais l'icône neutre de peuple (comme
-  // l'en-tête de groupe), afin que la modale/l'accordéon de détail la rappellent.
+  // Une capacité divine remplacée vient toujours d'une voie de PROFIL (jamais mage/prestige) :
+  // le dégradé de prestige ne s'applique donc qu'en repli (voie du groupe elle-même).
+  const isMagePath = !origin && fallbackIsMagePath;
+  const isPrestigePath = !origin && fallbackIsPrestigePath;
+  const nameGradient = isPrestigePath ? prestigeMetalGradient(fallbackPrestigeTint) : undefined;
+  // Voie de peuple (ou mage/prestige, mêmes icônes neutres, PER-74) : pas d'icône de profil, mais
+  // l'icône neutre correspondante (comme l'en-tête de groupe), afin que la modale/l'accordéon de
+  // détail la rappellent.
   const ancestryId = !classId ? fallbackAncestryId : undefined;
   return (
     <>
       {classId && <ClassIcon classId={classId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />}
       {ancestryId && (
-        <AncestryIcon ancestryId={ancestryId} size={18} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+        <AncestryIcon
+          ancestryId={ancestryId}
+          size={18}
+          gradientStops={isPrestigePath ? prestigeGemStops(fallbackPrestigeTint) : undefined}
+          sx={{ color: isMagePath ? MAGE_PATH_COLOR : 'text.secondary', flexShrink: 0 }}
+        />
       )}
-      <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
+      <Typography
+        component="span"
+        variant="body2"
+        sx={{
+          fontWeight: 700,
+          ...(nameGradient
+            ? {
+                backgroundImage: nameGradient,
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                color: 'transparent',
+                WebkitTextFillColor: 'transparent',
+              }
+            : { color: color ?? 'text.primary' }),
+        }}
+      >
         {pathName}
       </Typography>
       {origin?.className && (
@@ -4015,33 +4053,49 @@ function PathBlock({
           maxWidth="sm"
           fullWidth
         >
-          {openFeature && (
+          {openFeature && (() => {
+            // Capacité divine remplaçant ce rang (prêtre spécialiste, p. 122) : titre/couleur/marqueurs
+            // suivent alors sa voie D'ORIGINE, pas la voie du groupe (`FeaturePathTitle`, même logique).
+            const isDivineReplacement = !!replacements?.has(openFeature.id);
+            const rankColor = isDivineReplacement ? pathTitleInfo(openFeature).color : titleColor;
+            return (
             <>
               <DialogTitle sx={{ pr: 6 }}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                  <FeaturePathTitle
-                    feature={openFeature}
-                    isReplacement={!!replacements?.has(openFeature.id)}
-                    fallbackClassId={ownerClassId ?? undefined}
-                    fallbackAncestryId={ancestryId ?? undefined}
-                    fallbackPathName={path?.name ?? group.pathId}
-                    fallbackColor={color ?? undefined}
-                  />
-                  <Chip
-                    label={`Rang ${openFeature.rank}`}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontWeight: 600 }}
-                  />
-                  <Box component="span" sx={{ fontWeight: 600 }}>
-                    <FeatureLabel
+                {/* Deux lignes propres (`Stack` vertical, pas de hack `flexBasis`) : la marge que
+                    `Stack` `spacing` pose entre enfants ne devait pas apparaître en DÉBUT de ligne
+                    à chaque retour — un enfant « saut de ligne » restait quand même un enfant suivant
+                    au sens CSS, donc marginé (retour proprio). Deux `Stack` row séparés = plus de souci. */}
+                <Stack spacing={0.5}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <FeaturePathTitle
                       feature={openFeature}
+                      isReplacement={isDivineReplacement}
+                      fallbackClassId={ownerClassId ?? undefined}
+                      fallbackAncestryId={iconAncestryId ?? undefined}
+                      fallbackPathName={path?.name ?? group.pathId}
+                      fallbackColor={color ?? undefined}
+                      fallbackIsMagePath={isMagePath}
+                      fallbackIsPrestigePath={isPrestigePath}
+                      fallbackPrestigeTint={prestigeTint}
+                    />
+                    <RankBadge rank={openFeature.rank} color={rankColor ?? undefined} />
+                  </Stack>
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Box component="span" sx={{ fontWeight: 600 }}>
+                      <DeclinedFeatureName feature={openFeature} />
+                    </Box>
+                    {/* Marqueurs `*`/(A)/(L)/(M)/(G) en hexagones (PER-74) — plus le verbatim textuel
+                        de `FeatureLabel`, remplacé ici pour cohérence avec le reste des cartes. */}
+                    <FeatureMarkerHexes
+                      feature={openFeature}
+                      color={rankColor ?? markerColor}
                       concentration={concentration}
                       promoteToAttack={fabulousFor(openFeature).promoteToAttack}
                       pathRank={pathRank}
+                      size={28}
                     />
-                  </Box>
-                  <WipChip feature={openFeature} />
+                    <WipChip feature={openFeature} />
+                  </Stack>
                 </Stack>
                 <IconButton
                   aria-label="Fermer"
@@ -4534,7 +4588,8 @@ function PathBlock({
                 )}
               </DialogContent>
             </>
-          )}
+            );
+          })()}
         </Dialog>
 
         {/* Modale d'édition du choix (vue colonne) : ouverte par le crayon, le

@@ -18,8 +18,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
+import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -31,6 +32,7 @@ import { useContentVersion } from '@/lib/content/useContentVersion';
 import { codexPathHref } from '@/lib/ui/codex';
 import {
   ANCESTRY_COLOR,
+  ANCESTRY_MARKER_COLOR,
   MAGE_PATH_COLOR,
   classColor,
   prestigeCategoryColor,
@@ -38,10 +40,12 @@ import {
 import { prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { ClassIcon } from '@/components/ClassIcon';
+import { RankBadge } from '@/components/RankBadge';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
 import { PathFeatureCard } from '@/components/sheet/PathFeatureCard';
 import { CodexFeatureChoices } from '@/components/codex/CodexChoiceSummary';
+import { CollapsibleFeatureBody } from '@/components/codex/CollapsibleFeatureBody';
 
 type CodexTab = 'ancestry' | 'class' | 'prestige';
 
@@ -57,7 +61,9 @@ interface PathGroup {
   key: string;
   label: string;
   color: string;
-  icon: ReactNode;
+  /** Fonction plutôt qu'élément figé : permet de redemander l'icône à une AUTRE taille (en-tête
+   * de la voie sélectionnée, doublée par rapport au sélecteur) sans dupliquer sa construction. */
+  icon: (size: number) => ReactNode;
   items: Path[];
 }
 
@@ -86,7 +92,7 @@ function SelectorGroup({
   return (
     <Box sx={{ mb: 1.5 }}>
       <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.5, color: group.color }}>
-        {group.icon}
+        {group.icon(18)}
         <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>
           {group.label}
         </Typography>
@@ -122,14 +128,17 @@ function SelectorGroup({
   );
 }
 
-/** Groupes de la voie du peuple : un par `Ancestry` + la voie du mage à part. */
-function useAncestryGroups(): PathGroup[] {
+/** Groupes de la voie du peuple : un par `Ancestry` + la voie du mage à part. `contentVersion` en
+ * dépendance (PER-419 retours) : `ancestryPathLinks` payant (PER-324, ex. voie du demi-elfe du
+ * Compagnon) MUTE `ancestryPathIds` EN PLACE sur l'instance déjà lue ici — sans cette dépendance,
+ * le memo reste figé sur le premier rendu et ignore la voie rattachée après coup. */
+function useAncestryGroups(contentVersion: number): PathGroup[] {
   return useMemo(() => {
     const groups: PathGroup[] = ancestries.map((a) => ({
       key: a.id,
       label: a.name,
       color: ANCESTRY_COLOR,
-      icon: <AncestryIcon ancestryId={a.id} size={18} color={ANCESTRY_COLOR} />,
+      icon: (size: number) => <AncestryIcon ancestryId={a.id} size={size} color={ANCESTRY_COLOR} />,
       items: a.ancestryPathIds.map((id) => pathById.get(id)).filter((p): p is Path => !!p),
     }));
     const mage = paths.filter((p) => p.type === 'mage');
@@ -138,16 +147,18 @@ function useAncestryGroups(): PathGroup[] {
         key: 'mage',
         label: 'Voie du mage',
         color: MAGE_PATH_COLOR,
-        icon: <AncestryIcon ancestryId="mage" size={18} color={MAGE_PATH_COLOR} />,
+        icon: (size: number) => <AncestryIcon ancestryId="mage" size={size} color={MAGE_PATH_COLOR} />,
         items: mage,
       });
     }
     return groups;
-  }, []);
+  }, [contentVersion]);
 }
 
-/** Groupes de la voie de profil : un par `CharacterClass`, familles dans l'ordre du livre. */
-function useClassGroups(): PathGroup[] {
+/** Groupes de la voie de profil : un par `CharacterClass`, familles dans l'ordre du livre.
+ * `contentVersion` en dépendance : mêmes raisons que `useAncestryGroups` (registres payants
+ * fusionnés en place après le premier rendu). */
+function useClassGroups(contentVersion: number): PathGroup[] {
   return useMemo(() => {
     const groups: PathGroup[] = [];
     for (const family of families) {
@@ -158,17 +169,18 @@ function useClassGroups(): PathGroup[] {
           key: cls.id,
           label: cls.name,
           color: classColor(cls.id),
-          icon: <ClassIcon classId={cls.id} size={18} color={classColor(cls.id)} />,
+          icon: (size: number) => <ClassIcon classId={cls.id} size={size} color={classColor(cls.id)} />,
           items,
         });
       }
     }
     return groups;
-  }, []);
+  }, [contentVersion]);
 }
 
-/** Groupes de la voie de prestige : une par famille (table récapitulative p. 128). */
-function usePrestigeGroups(): PathGroup[] {
+/** Groupes de la voie de prestige : une par famille (table récapitulative p. 128).
+ * `contentVersion` en dépendance : mêmes raisons que `useAncestryGroups`. */
+function usePrestigeGroups(contentVersion: number): PathGroup[] {
   return useMemo(() => {
     return PRESTIGE_CATEGORIES.map((category) => {
       const color = prestigeCategoryColor(category);
@@ -176,29 +188,30 @@ function usePrestigeGroups(): PathGroup[] {
         key: category,
         label: PRESTIGE_CATEGORY_LABELS[category],
         color,
-        icon: (
-          <Box sx={{ width: 18, height: 18, borderRadius: '50%', ...prestigeStaticBorderSx(1.5, '50%', color) }}>
-            <AncestryIcon ancestryId="prestige" size={18} color={color} />
+        icon: (size: number) => (
+          <Box sx={{ width: size, height: size, borderRadius: '50%', ...prestigeStaticBorderSx(1.5, '50%', color) }}>
+            <AncestryIcon ancestryId="prestige" size={size} color={color} />
           </Box>
         ),
         items: paths.filter((p) => p.type === 'prestige' && p.category === category),
       };
     });
-  }, []);
+  }, [contentVersion]);
 }
 
 export function CodexPathBrowser() {
   // Réactivité au contenu payant : une voie du Compagnon qui arrive APRÈS le premier rendu
-  // (fetch réseau, cf. PER-321) doit apparaître sans rechargement manuel.
-  useContentVersion();
+  // (fetch réseau, cf. PER-321) doit apparaître sans rechargement manuel — passé aux groupes
+  // ci-dessous en dépendance de memo (PER-419 retours, sinon ignoré, cf. commentaires des hooks).
+  const contentVersion = useContentVersion();
 
   const searchParams = useSearchParams();
   const requestedId = searchParams.get('id');
   const requestedPath = requestedId ? pathById.get(requestedId) : undefined;
 
-  const ancestryGroups = useAncestryGroups();
-  const classGroups = useClassGroups();
-  const prestigeGroups = usePrestigeGroups();
+  const ancestryGroups = useAncestryGroups(contentVersion);
+  const classGroups = useClassGroups(contentVersion);
+  const prestigeGroups = usePrestigeGroups(contentVersion);
 
   const firstAncestryPath = ancestryGroups.flatMap((g) => g.items)[0];
   const selectedPath = requestedPath ?? firstAncestryPath;
@@ -217,6 +230,18 @@ export function CodexPathBrowser() {
   }
 
   const groups = tab === 'ancestry' ? ancestryGroups : tab === 'class' ? classGroups : prestigeGroups;
+
+  // Groupe (couleur + icône) de la voie sélectionnée — même groupe que sa ligne dans le
+  // sélecteur, cherché plutôt que recalculé pour rester identique en tout point. Le groupe DÉDIÉ
+  // (`key` = id de la voie, ex. « elfe-haut ») est prioritaire sur un simple match par `items` :
+  // certains peuples sans voie propre (demi-elfe, encadré p. 46) LISTENT les voies d'un autre
+  // peuple parmi leurs choix (`ancestryPathIds: ['humain', 'elfe-sylvain', 'elfe-haut']`) — sans
+  // cette priorité, une voie partagée retombait sur le premier groupe qui la liste (« Demi-elfe »,
+  // sans icône) au lieu de son groupe dédié.
+  const selectedGroup =
+    groups.find((g) => g.key === selectedPath?.id) ??
+    groups.find((g) => g.items.some((p) => p.id === selectedPath?.id));
+  const pathColor = selectedGroup?.color ?? ANCESTRY_MARKER_COLOR;
 
   const rankFeatures = selectedPath
     ? selectedPath.featureIds
@@ -249,21 +274,11 @@ export function CodexPathBrowser() {
         ) : (
           <>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              {selectedGroup?.icon(36)}
               <Typography variant="h5" component="h2" sx={{ fontWeight: 700 }}>
                 {selectedPath.name}
               </Typography>
               <SourceRef page={selectedPath.sourcePage} term={selectedPath.name} />
-              {selectedPath.type === 'prestige' && (
-                <Chip
-                  size="small"
-                  label={PRESTIGE_CATEGORY_LABELS[selectedPath.category]}
-                  sx={{
-                    borderColor: prestigeCategoryColor(selectedPath.category),
-                    color: prestigeCategoryColor(selectedPath.category),
-                  }}
-                  variant="outlined"
-                />
-              )}
             </Stack>
             {selectedPath.type === 'prestige' && selectedPath.prerequisites ? (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -282,22 +297,41 @@ export function CodexPathBrowser() {
                   key={feature.id}
                   sx={{ pb: 2, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}
                 >
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Rang {feature.rank}
-                    </Typography>
-                    <Typography variant="h6" component="h3">
-                      {feature.name}
-                    </Typography>
-                    {feature.isSpell && <ActionMarkerHex marker="spell" />}
-                    {feature.actionTypes.map((a) => (
-                      <ActionMarkerHex key={a} marker={a} />
-                    ))}
-                  </Stack>
-                  <Box sx={{ mt: 1 }}>
-                    <PathFeatureCard feature={feature} />
-                  </Box>
-                  <CodexFeatureChoices feature={feature} />
+                  <CollapsibleFeatureBody
+                    header={({ overflows, expanded, onToggle }) => (
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                        <RankBadge rank={feature.rank} color={pathColor} />
+                        <Typography variant="h6" component="h3">
+                          {feature.name}
+                        </Typography>
+                        {feature.isSpell && <ActionMarkerHex marker="spell" />}
+                        {feature.actionTypes.map((a) => (
+                          <ActionMarkerHex key={a} marker={a} />
+                        ))}
+                        {overflows && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={onToggle}
+                            aria-expanded={expanded}
+                            startIcon={
+                              <ExpandMoreIcon
+                                fontSize="small"
+                                sx={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}
+                              />
+                            }
+                          >
+                            {expanded ? 'Replier' : 'Afficher plus'}
+                          </Button>
+                        )}
+                      </Stack>
+                    )}
+                    extra={<CodexFeatureChoices feature={feature} />}
+                  >
+                    <Box sx={{ mt: 1 }}>
+                      <PathFeatureCard feature={feature} hideSourcePage />
+                    </Box>
+                  </CollapsibleFeatureBody>
                 </Box>
               ))}
             </Stack>
