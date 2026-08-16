@@ -42,6 +42,7 @@ export type Database = {
       }
       campaign_npcs: {
         Row: {
+          ancestry_id: string | null
           campaign_id: string
           created_at: string
           description: string | null
@@ -56,6 +57,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          ancestry_id?: string | null
           campaign_id: string
           created_at?: string
           description?: string | null
@@ -70,6 +72,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          ancestry_id?: string | null
           campaign_id?: string
           created_at?: string
           description?: string | null

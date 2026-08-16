@@ -33,6 +33,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { RichTextEditor } from '@/components/sheet/RichTextEditor';
+import { ancestries } from '@/data';
 import type { Character } from '@/lib/character/types';
 import {
   NPC_DISPOSITION_LABELS,
@@ -65,6 +66,7 @@ export function NpcFormDialog({
 }: NpcFormDialogProps) {
   const [name, setName] = useState(npc?.name ?? '');
   const [role, setRole] = useState(npc?.role ?? '');
+  const [ancestryId, setAncestryId] = useState(npc?.ancestryId ?? '');
   const [location, setLocation] = useState(npc?.location ?? '');
   const [disposition, setDisposition] = useState<NpcDisposition>(npc?.disposition ?? 'neutral');
   const [status, setStatus] = useState<NpcStatus>(npc?.status ?? 'not-encountered');
@@ -88,6 +90,7 @@ export function NpcFormDialog({
       await onSubmit({
         name: trimmedName,
         role: role.trim() || null,
+        ancestryId: ancestryId || null,
         location: location.trim() || null,
         disposition,
         status,
@@ -135,6 +138,23 @@ export function NpcFormDialog({
               fullWidth
             />
           </Stack>
+
+          <TextField
+            select
+            label="Peuple"
+            value={ancestryId}
+            onChange={(e) => setAncestryId(e.target.value)}
+            fullWidth
+          >
+            <MenuItem value="">
+              <em>Non renseigné</em>
+            </MenuItem>
+            {ancestries.map((a) => (
+              <MenuItem key={a.id} value={a.id}>
+                {a.name}
+              </MenuItem>
+            ))}
+          </TextField>
 
           <Stack direction="row" spacing={2}>
             <TextField

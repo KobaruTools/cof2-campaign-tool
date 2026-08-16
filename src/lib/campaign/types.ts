@@ -188,6 +188,14 @@ export interface Npc {
   name: string;
   /** Rôle court, affiché en sous-titre de la carte (ex. « Aubergiste »). */
   role: string | null;
+  /**
+   * Peuple (PER-432) — purement narratif, AUCUNE carac/stat dérivée n'en dépend
+   * (contrairement à `Character.ancestryId`). Référence un id du registre
+   * `ancestries` (`src/data/ancestries.ts`, `@/data`), SANS FK en base — même
+   * motif que `linkedCharacterIds`. `null` = non renseigné, ou id d'un peuple
+   * payant non chargé côté client (traité comme absent par l'UI).
+   */
+  ancestryId: string | null;
   /** Lieu libre, SÉPARÉ de la description — pont volontaire vers un futur système de Lieux. */
   location: string | null;
   /** Disposition envers les PJ — badge coloré sur la carte. */

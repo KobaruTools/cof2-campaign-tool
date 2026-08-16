@@ -25,6 +25,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useToast } from '@/components/toast/ToastProvider';
+import { ancestryById } from '@/data';
 import { addNpc, removeNpc, replaceNpc, sortNpcsByName } from '@/lib/campaign/npc';
 import { deleteNpc, fetchNpcs, insertNpc, updateNpc, type NpcInput } from '@/lib/campaign/repo';
 import { NPC_DISPOSITION_ACCENT, NPC_DISPOSITION_LABELS, NPC_STATUS_LABELS, type Npc } from '@/lib/campaign/types';
@@ -142,9 +143,11 @@ export function NpcPanel({ campaignId }: { campaignId: string }) {
                     {NPC_STATUS_LABELS[npc.status]}
                   </Typography>
                 </Stack>
-                {npc.role && (
+                {(npc.role || npc.ancestryId) && (
                   <Typography variant="body2" color="text.secondary" noWrap>
-                    {npc.role}
+                    {[npc.role, npc.ancestryId ? ancestryById.get(npc.ancestryId)?.name : null]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </Typography>
                 )}
               </Box>
