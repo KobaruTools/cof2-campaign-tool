@@ -18,10 +18,12 @@ import {
   type CampaignRules,
   type GmInventory,
   type LootItem,
+  type Npc,
   type TavernRumor,
 } from './types';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
+type NpcRow = Database['public']['Tables']['campaign_npcs']['Row'];
 
 /**
  * Parse défensif de la colonne `rules` (jsonb) vers `CampaignRules`. La valeur
@@ -238,5 +240,55 @@ export async function updateCampaign(
 export async function deleteCampaign(id: string): Promise<void> {
   const supabase = createBrowserSupabaseClient();
   const { error } = await supabase.from('campaigns').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** Mappe une ligne SQL `campaign_npcs` vers l'entité `Npc` de l'application. */
+export function rowToNpc(row: NpcRow): Npc {
+  return {
+    id: row.id,
+    campaignId: row.campaign_id,
+    name: row.name,
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Tous les PNJ d'une campagne (RLS propriétaire, migration 0029), triés par nom.
+ *
+ * ⚠️ Cette fonction — comme toute lecture de `campaign_npcs` — ne doit JAMAIS
+ * être exposée telle quelle à un écran joueur : les champs riches à venir
+ * (PER-429, `gm_notes` privées et statistiques de combat) sont sensibles, et la
+ * RLS Postgres filtre par LIGNE, pas par colonne. Le jour où un écran joueur doit
+ * afficher un PNJ, il DOIT passer par une vue/RPC serveur ne sélectionnant que
+ * `name`+`description` (et seulement si publiée) — jamais cet accès client brut.
+ */
+export async function fetchNpcs(campaignId: string): Promise<Npc[]> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase
+    .from('campaign_npcs')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToNpc);
+}
+
+/** Crée un PNJ (nom seul, socle PER-428) pour une campagne possédée par l'utilisateur courant. */
+export async function insertNpc(campaignId: string, name: string): Promise<Npc> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase
+    .from('campaign_npcs')
+    .insert({ campaign_id: campaignId, name })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return rowToNpc(data);
+}
+
+/** Supprime un PNJ. */
+export async function deleteNpc(id: string): Promise<void> {
+  const supabase = createBrowserSupabaseClient();
+  const { error } = await supabase.from('campaign_npcs').delete().eq('id', id);
   if (error) throw error;
 }

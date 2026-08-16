@@ -137,6 +137,26 @@ export interface GmInventory {
 }
 
 /**
+ * PNJ du MJ (PER-428, socle) — nom seul pour l'instant. Persisté dans une table
+ * DÉDIÉE `campaign_npcs` — PAS un jsonb sur `Campaign` comme les entités
+ * ci-dessus (rumeurs/butin/inventaire) — car les champs riches à venir (PER-429 :
+ * `gm_notes` privées, statistiques de combat) ne doivent JAMAIS fuiter à un
+ * joueur : la RLS Postgres filtre par LIGNE, pas par colonne dans un jsonb. Voir
+ * le commentaire de la migration 0029 et de `fetchNpcs`/`rowToNpc` (`repo.ts`)
+ * pour la règle complète. 100% MJ tant qu'aucun écran joueur n'existe pour les PNJ.
+ */
+export interface Npc {
+  /** Clé stable (UUID, générée par la base). */
+  id: string;
+  /** Campagne propriétaire (FK `campaign_npcs.campaign_id`). */
+  campaignId: string;
+  /** Nom affiché, seul champ obligatoire de ce socle. */
+  name: string;
+  /** Horodatage ISO recopié de la base. */
+  createdAt: string;
+}
+
+/**
  * Campagne : ses notes de MJ et ses règles de table. Regroupe des personnages via
  * la clé étrangère `Character.campaignId`. `id` = UUID généré par la base.
  */

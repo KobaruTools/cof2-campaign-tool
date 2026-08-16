@@ -40,6 +40,35 @@ export type Database = {
           },
         ]
       }
+      campaign_npcs: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_npcs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           created_at: string
@@ -48,6 +77,7 @@ export type Database = {
           id: string
           loot: Json
           name: string
+          npc_categories: Json
           owner_id: string
           rules: Json
           rumors: Json
@@ -60,6 +90,7 @@ export type Database = {
           id?: string
           loot?: Json
           name: string
+          npc_categories?: Json
           owner_id: string
           rules?: Json
           rumors?: Json
@@ -72,6 +103,7 @@ export type Database = {
           id?: string
           loot?: Json
           name?: string
+          npc_categories?: Json
           owner_id?: string
           rules?: Json
           rumors?: Json

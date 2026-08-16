@@ -22,6 +22,7 @@ import { useState } from 'react';
 import CloseIcon from '@mui/icons-material/Close';
 import DiamondIcon from '@mui/icons-material/Diamond';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import GroupsIcon from '@mui/icons-material/Groups';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import LocalBarIcon from '@mui/icons-material/LocalBar';
 import Box from '@mui/material/Box';
@@ -36,6 +37,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import type { Campaign } from '@/lib/campaign/types';
 import { GM_INVENTORY_PANEL_WIDTH, GmInventoryPanel } from './GmInventoryPanel';
 import { LootTreasurePanel } from './LootTreasurePanel';
+import { NpcPanel } from './NpcPanel';
 import { SessionLiveNotesPanel } from './SessionLiveNotesPanel';
 import { TavernRumorsPanel } from './TavernRumorsPanel';
 
@@ -43,12 +45,13 @@ import { TavernRumorsPanel } from './TavernRumorsPanel';
 const TOOLS_WIDTH = 560;
 
 /** Identifiants d'onglet du tiroir — servent aussi de valeur au paramètre d'URL `?tools=`. */
-export type GmToolId = 'rumors' | 'loot' | 'notes';
+export type GmToolId = 'rumors' | 'loot' | 'npc' | 'notes';
 
 /** Onglets déclarés, dans l'ordre d'affichage. Étendre ici pour ajouter un outil. */
 const TOOLS: { id: GmToolId; label: string; icon: React.ReactElement }[] = [
   { id: 'rumors', label: 'Rumeurs de taverne', icon: <LocalBarIcon fontSize="small" /> },
   { id: 'loot', label: 'Butin', icon: <DiamondIcon fontSize="small" /> },
+  { id: 'npc', label: 'PNJ', icon: <GroupsIcon fontSize="small" /> },
   { id: 'notes', label: 'Notes de session', icon: <EditNoteIcon fontSize="small" /> },
 ];
 
@@ -268,6 +271,7 @@ export function GmToolsDrawer({
           {activeTab === 'loot' && (
             <LootTreasurePanel campaign={campaign} pending={pendingTarget?.pool === 'random'} />
           )}
+          {activeTab === 'npc' && <NpcPanel campaignId={campaign.id} />}
           {activeTab === 'notes' && <SessionLiveNotesPanel campaignId={campaign.id} />}
         </Box>
       </Box>

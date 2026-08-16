@@ -15,6 +15,7 @@ const row = (over: Partial<CampaignRow> = {}): CampaignRow => ({
   rumors: [],
   loot: [],
   gm_inventory: { categories: [], items: [] },
+  npc_categories: [],
   created_at: '2026-07-01T10:00:00Z',
   updated_at: '2026-07-02T11:00:00Z',
   ...over,
