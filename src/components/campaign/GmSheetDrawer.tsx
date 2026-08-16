@@ -52,7 +52,7 @@ import { isCustomItem, type Character, type EquipmentLine } from '@/lib/characte
 import type { Campaign } from '@/lib/campaign/types';
 import type { Player } from '@/lib/player/types';
 import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
-import { companionMountEnSelle, listCompanions } from '@/lib/character/companions';
+import { activeTransformationWithHp, companionMountEnSelle, listCompanions } from '@/lib/character/companions';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
 import { manualFeatureIds } from '@/lib/character/levelUp';
@@ -311,6 +311,8 @@ function GmSheetDrawerContent({
   // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185) : sans
   // ce fournisseur, les icônes de profil de l'arquebusier seraient fausses (arbalétrier).
   const firearmsAllowed = firearmsEffective(character, campaign);
+  // PER-374 — forme active à PV propres (formes élémentaires), même wiring que la fiche perso.
+  const activeTransformation = activeTransformationWithHp(character);
   // Toggles d'affichage de « Compétences & tests » (`TestDomainsPanel`) : mêmes clés que la
   // fiche complète, donc la préférence est PARTAGÉE entre les deux vues (mêmes onglets).
   const [testsIncludeAbility, setTestsIncludeAbility] = usePersistedBoolean(
@@ -575,6 +577,23 @@ function GmSheetDrawerContent({
                 onDamage={game.setHpDamage}
                 onHeal={game.setHpHeal}
                 onResetHp={game.setHpReset}
+                activeTransformation={activeTransformation}
+                transformationDepletion={
+                  activeTransformation ? (character.transformationDepletion[activeTransformation.featureId] ?? {}) : {}
+                }
+                onTransformationDamage={
+                  activeTransformation
+                    ? (amount, kind) => game.setTransformationDamage(activeTransformation.featureId, amount, kind)
+                    : undefined
+                }
+                onTransformationHeal={
+                  activeTransformation
+                    ? (amount) => game.setTransformationHeal(activeTransformation.featureId, amount)
+                    : undefined
+                }
+                onTransformationReset={
+                  activeTransformation ? () => game.setTransformationReset(activeTransformation.featureId) : undefined
+                }
                 manaMax={manaMax}
                 onSpendMana={game.setManaSpend}
                 onRestoreMana={game.setManaRestore}

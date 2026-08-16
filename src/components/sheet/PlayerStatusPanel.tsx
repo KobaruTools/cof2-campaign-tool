@@ -7,12 +7,16 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
+import { pathById } from '@/data';
 import type { Depletion } from '@/lib/character/types';
 import type { Die } from '@/data/schema';
+import type { ActiveTransformationHp } from '@/lib/character/companions';
 import type { CapacityResourceGauge, RestRecoveryHealBonus } from '@/lib/character/effects';
 import { currentLuck, currentMana, currentRecoveryDice } from '@/lib/character/gauges';
-import { classColor } from '@/lib/ui/classColors';
+import { classColor, prestigeCategoryColor } from '@/lib/ui/classColors';
+import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
@@ -65,6 +69,21 @@ export interface PlayerStatusPanelProps {
   onHeal: (amount: number) => void;
   /** Remet les PV à plein. */
   onResetHp: () => void;
+  /**
+   * Forme active du personnage à PV PROPRES (PER-374, formes élémentaires), ou `null` si aucune.
+   * Présent → la barre de PV du personnage se GRISE (RAW : ses PV sont gelés tant que la forme est
+   * active) et une SECONDE jauge apparaît pour les PV de la forme, alimentée par
+   * `transformationDepletion`/`onTransformationDamage`/`onTransformationHeal`/`onTransformationReset`.
+   */
+  activeTransformation?: ActiveTransformationHp | null;
+  /** Dépletion transitoire des PV de la forme active (`Character.transformationDepletion[key]`). */
+  transformationDepletion?: Depletion;
+  /** Inflige `amount` dégâts à la forme active. */
+  onTransformationDamage?: (amount: number, kind: DamageKind) => void;
+  /** Soigne `amount` PV de la forme active. */
+  onTransformationHeal?: (amount: number) => void;
+  /** Remet les PV de la forme active à plein. */
+  onTransformationReset?: () => void;
   /**
    * Réserve de mana maximale (stat dérivée `manaPoints`), ou `null` si le personnage
    * ne connaît aucun sort — dans ce cas la jauge de mana n'est pas affichée (PER-149).
@@ -160,6 +179,11 @@ export function PlayerStatusPanel({
   onDamage,
   onHeal,
   onResetHp,
+  activeTransformation = null,
+  transformationDepletion = {},
+  onTransformationDamage,
+  onTransformationHeal,
+  onTransformationReset,
   manaMax,
   onSpendMana,
   onRestoreMana,
@@ -194,11 +218,48 @@ export function PlayerStatusPanel({
   const luckColor = theme.palette.secondary.main;
 
   const lethal = Math.max(0, depletion.hp?.lethal ?? 0);
+  // PER-374 — teinte de la jauge de PV d'une forme active = celle de sa voie de prestige porteuse
+  // (patron `prestigeCategoryColor`/`CLASS_COLORS`, cf. `FeaturesByPath`), pas le vert générique.
+  const transformationPath = activeTransformation ? pathById.get(activeTransformation.pathId) : undefined;
+  const transformationColor = prestigeCategoryColor(
+    transformationPath?.type === 'prestige' ? transformationPath.category : undefined,
+  );
 
   return (
     <Stack spacing={1.25}>
+      {/* Jauge de PV DÉDIÉE à la forme active (PER-374, formes élémentaires), EN PREMIER (retour
+          propriétaire) : PV propres, distincts de ceux du personnage (barre normale, gelée juste en
+          dessous). Titre = nom de la capacité ; remplissage en DÉGRADÉ « métal précieux » de la
+          voie de prestige porteuse (`prestigeMetalGradient`, patron des cartes de rang), SANS cadre
+          (retour propriétaire — le liseré `prestigeStaticBorderSx` alourdissait la jauge).
+          N'apparaît que si la forme active déclare des PV chiffrés. */}
+      {activeTransformation && onTransformationDamage && onTransformationHeal && onTransformationReset && (
+        <Box>
+          <Typography
+            variant="caption"
+            sx={{ display: 'block', mb: 0.5, ml: 0.5, fontWeight: 700, color: transformationColor }}
+          >
+            {activeTransformation.featureName}
+          </Typography>
+          <HpGauge
+            depletion={transformationDepletion}
+            maxHp={activeTransformation.maxHp}
+            onDamage={onTransformationDamage}
+            onHeal={onTransformationHeal}
+            onReset={onTransformationReset}
+            persistKey={storageKeys.gauge.transformation(activeTransformation.featureId)}
+            iconLabel={`Points de vie — ${activeTransformation.creatureName}`}
+            color={transformationColor}
+            gradient={prestigeMetalGradient(transformationColor, '270deg')}
+          />
+        </Box>
+      )}
+
       {/* Barre de vie interactive (PV actuels / temp / létaux + état préjudiciable),
-          composant partagé avec les compagnons (PER-233). */}
+          composant partagé avec les compagnons (PER-233). GRISÉE tant qu'une forme à PV propres
+          est active (PER-374, formes élémentaires) : ses PV sont GELÉS (RAW : « il reprend sa
+          forme initiale avec les PV qu'il avait au moment de la transformation »), c'est la jauge
+          de la forme ci-dessus qui reçoit les dégâts. */}
       <HpGauge
         depletion={depletion}
         maxHp={maxHp}
@@ -206,6 +267,8 @@ export function PlayerStatusPanel({
         onHeal={onHeal}
         onReset={onResetHp}
         persistKey={storageKeys.gauge.hp}
+        disabled={activeTransformation !== null}
+        disabledReason={activeTransformation ? `PV gelés — ${activeTransformation.featureName} active.` : undefined}
       />
 
       {/* Jauge de mana — seulement pour un lanceur de sorts (manaMax non nul), PER-149. */}

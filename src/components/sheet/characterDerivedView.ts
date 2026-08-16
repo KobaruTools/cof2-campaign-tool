@@ -16,6 +16,7 @@ import { deriveStats, type DerivedInput } from '@/lib/engine';
 import { currentHp } from '@/lib/character/gauges';
 import { isCustomItem, type Character, type EquipmentRef } from '@/lib/character/types';
 import {
+  activeDefenseOverride,
   activeFeatureIdsForMods,
   activeRangedTargetMalusDieSources,
   aggregateImmunities,
@@ -67,7 +68,7 @@ import {
 } from '@/lib/character/magicItemEffects';
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { unarmedStrike, type UnarmedStrikeView } from '@/lib/character/unarmedStrike';
-import { rangedReplacingFormAttack, type FormAttackView } from '@/lib/character/formAttack';
+import { meleeReplacingFormAttack, rangedReplacingFormAttack, type FormAttackView } from '@/lib/character/formAttack';
 import type { AbilityId, ResistibleDamageType, Weapon } from '@/data/schema';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
@@ -362,6 +363,18 @@ export interface CharacterDerivedView {
    */
   rangedReplacingFormAttack: FormAttackView | null;
   /**
+   * PER-374 — attaque conférée par une FORME active qui CONFISQUE l'attaque au contact (Frappe des
+   * formes élémentaires, p. 166-170 : la bascule arme ⇄ mains nues, PER-141, disparaît au profit d'une
+   * attaque unique fixe). Symétrique de `rangedReplacingFormAttack`. `null` = aucune forme de ce
+   * genre active → la carte « Attaque au contact » (avec sa bascule) reste affichée normalement.
+   */
+  meleeReplacingFormAttack: FormAttackView | null;
+  /**
+   * PER-374 — DEF imposée par une transformation active (nombre fixe imprimé, ex. Forme élémentaire
+   * d'air « Défense 25 »), indépendante de la formule habituelle. `null` = DEF recalculée normalement.
+   */
+  activeDefenseOverride: number | null;
+  /**
    * PER-226 — sous-termes de breakdown des bonus à la touche conditionnés à l'arme portée (maître
    * d'armes : +1 au contact / à distance avec une arme de prédilection). Le TOTAL est déjà FONDU dans
    * `derivedInput.mods` (donc dans le score affiché) — ceci ne sert qu'à l'attribution dans l'infobulle
@@ -604,6 +617,22 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         : [],
     );
   });
+  // PER-330 — Parano (frouïn, `frouin-r3`, Le Compagnon p. 21) : « il ne subit que la moitié des DM des
+  // attaques sournoises (ou autres bonus de DM dus à la surprise) ». Aucune primitive de RD conditionnée
+  // à la surprise (le moteur ne simule aucun jet ni la notion d'attaque sournoise) : rappel AMBRE
+  // situationnel (`situational-immunity`) sur la carte Défense, la règle exacte restant au verbatim.
+  const frouinParanoBadges: DefenseBadgeData[] = modFeatureIds.includes('frouin-r3')
+    ? [
+        {
+          key: 'situational-frouin-r3',
+          variant: 'situational-immunity' as const,
+          text: 'sournoise ÷2',
+          title: 'Parano — attaques sournoises',
+          note: 'Ne subit que la moitié des DM des attaques sournoises (ou autres bonus de DM dus à la surprise).',
+          sources: [{ name: 'Parano', featureId: 'frouin-r3' }],
+        },
+      ]
+    : [];
   // Ordre voulu : immunités d'abord, réductions, puis effets défensifs situationnels (dé malus, riposte).
   const defenseBadges: DefenseBadgeData[] = [
     ...statusImmunityBadges,
@@ -616,6 +645,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ...fireVoieRetaliationBadges,
     ...deflectionBadges,
     ...situationalTestDieBadges,
+    ...frouinParanoBadges,
   ];
 
   // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')
@@ -715,6 +745,12 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // lycanthrope perd l'usage des armes à distance mais gagne une morsure au contact → la carte
   // « Attaque à distance » de la fiche est remplacée par celle de la morsure tant que la forme est ON.
   const formAttackReplacingRanged = rangedReplacingFormAttack(character);
+  // Attaque conférée par une FORME active qui confisque la bascule arme ⇄ mains nues (PER-374, formes
+  // élémentaires) : sous forme élémentaire, la carte « Attaque au contact » est remplacée par la
+  // Frappe fixe de la créature (touche = attaque magique du personnage) tant que la forme est ON.
+  const formAttackReplacingMelee = meleeReplacingFormAttack(character);
+  // DEF imposée par une transformation active (PER-374, formes élémentaires) — voir `activeDefenseOverride`.
+  const defenseOverride = activeDefenseOverride(character);
   // Bonus à la touche conditionnés à l'arme portée (PER-226) : maître d'armes +1 au contact avec une
   // arme de prédilection, +1 à distance avec une arme de jet de prédilection. Le total est FONDU dans
   // les mods (score) plus bas ; on garde le détail des sources pour l'infobulle de la touche.
@@ -889,6 +925,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedAttackMagicalSourceId: rangedAttackMagical,
     rangedAttackElement: rangedAttackEl,
     rangedReplacingFormAttack: formAttackReplacingRanged,
+    meleeReplacingFormAttack: formAttackReplacingMelee,
+    activeDefenseOverride: defenseOverride,
     attackBonusModSources,
     itemDerivedModSources,
   };

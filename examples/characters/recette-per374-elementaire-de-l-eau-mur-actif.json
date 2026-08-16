@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per374-elementaire-de-l-eau-mur-actif",
+  "name": "Recette PER-374 — Prêtre (Mur acide actif)",
+  "identity": {
+    "description": "ATTENDU : interrupteur « Mur d'acide actif » activé sur r5. Aucune RD/stat dérivée modifiée (marqueur pur) — sert seulement à savoir si le mur est encore dressé, comme Mur de feu/Mur de pierre."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "foi-r1",
+    "prestige-elementaire-de-l-eau-r4",
+    "prestige-elementaire-de-l-eau-r5",
+    "prestige-elementaire-de-l-eau-r6",
+    "prestige-elementaire-de-l-eau-r7",
+    "prestige-elementaire-de-l-eau-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "prestige-elementaire-de-l-eau-r5": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-374 — Mur acide actif (r5), marqueur pur sans stat modifiée.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

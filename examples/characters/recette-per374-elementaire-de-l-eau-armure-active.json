@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per374-elementaire-de-l-eau-armure-active",
+  "name": "Recette PER-374 — Prêtre (Armure d'eau active)",
+  "identity": {
+    "description": "ATTENDU : interrupteur « Armure d'eau active » activé sur r6. `damageReductionSources()` doit remonter DEUX entrées : RD 3 (physical) et RD 10 (fire + acid), toutes deux actives. Désactivé sur la baseline, ces entrées ne doivent PAS apparaître (contrôle négatif via recette-per374-elementaire-de-l-eau.json)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "foi-r1",
+    "prestige-elementaire-de-l-eau-r4",
+    "prestige-elementaire-de-l-eau-r5",
+    "prestige-elementaire-de-l-eau-r6",
+    "prestige-elementaire-de-l-eau-r7",
+    "prestige-elementaire-de-l-eau-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "prestige-elementaire-de-l-eau-r6": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-374 — Armure d'eau active (r6), RD 3 physique + RD 10 feu/acide.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

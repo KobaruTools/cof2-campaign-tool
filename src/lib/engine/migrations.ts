@@ -476,6 +476,19 @@ function migrateV21toV22(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v22 → v23 : ajout de `transformationDepletion` (dépletion transitoire des PV de la FORME active
+ * du personnage lui-même — formes élémentaires, PER-374). Purement additif : on initialise une map
+ * vide (aucune forme blessée au chargement) si le champ est absent, en préservant une éventuelle
+ * valeur déjà présente.
+ */
+function migrateV22toV23(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.transformationDepletion) === null) next.transformationDepletion = {};
+  next.schemaVersion = 23;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -501,6 +514,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   19: migrateV19toV20,
   20: migrateV20toV21,
   21: migrateV21toV22,
+  22: migrateV22toV23,
 };
 
 export class MigrationError extends Error {}
@@ -580,6 +594,9 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
   if (typeof data.companionDepletion !== 'object' || data.companionDepletion === null) {
     fail('Champ « companionDepletion » manquant ou invalide.');
+  }
+  if (typeof data.transformationDepletion !== 'object' || data.transformationDepletion === null) {
+    fail('Champ « transformationDepletion » manquant ou invalide.');
   }
   if (typeof data.companionInstances !== 'object' || data.companionInstances === null) {
     fail('Champ « companionInstances » manquant ou invalide.');

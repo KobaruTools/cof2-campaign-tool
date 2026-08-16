@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per374-elementaire-de-l-eau-variante-mage",
+  "name": "Recette PER-374 — Magicien (variante mage, voie élémentaire de l'eau)",
+  "identity": {
+    "description": "ATTENDU : magicien niveau 16 prenant la voie de prestige élémentaire de l'eau en variante MAGE (prérequis : « mage qui maîtrise au moins un sort d'eau », proxy magie-elementaire-r1 faute de sort d'eau dédié chez les mages — même convention que la terre PER-372). Vérifier sur la fiche : r4 Brouillard, r5 Mur acide, r6 Armure d'eau, r7 Écartement des eaux et r8 Forme élémentaire d'eau affichent tous la durée enrichie avec INTELLIGENCE (pas Charisme), marquée « remplace Charisme » — CONTRASTE avec l'air (r4/r5 restaient inchangés faute de CHA natif) : ICI TOUS les rangs portent du CHA donc TOUS basculent en INT."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -2,
+    "AGI": 0,
+    "CON": 0,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 5,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": -2,
+    "AGI": 0,
+    "CON": 0,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 5,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "magie-elementaire-r1",
+    "prestige-elementaire-de-l-eau-r4",
+    "prestige-elementaire-de-l-eau-r5",
+    "prestige-elementaire-de-l-eau-r6",
+    "prestige-elementaire-de-l-eau-r7",
+    "prestige-elementaire-de-l-eau-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "prestige-elementaire-de-l-eau-r8": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-374 — variante mage de la voie élémentaire de l'eau (CHA→INT), p. 169-170.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

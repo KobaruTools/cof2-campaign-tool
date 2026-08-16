@@ -33,6 +33,7 @@ export interface FormAttackView {
   actionTypes: ActionType[];
   frequency?: string;
   replacesRangedAttack: boolean;
+  replacesMeleeAttack: boolean;
 }
 
 /**
@@ -60,6 +61,7 @@ export function activeFormAttacks(character: Character): FormAttackView[] {
       actionTypes: attack.actionTypes,
       frequency: attack.frequency,
       replacesRangedAttack: attack.replacesRangedAttack ?? false,
+      replacesMeleeAttack: attack.replacesMeleeAttack ?? false,
     });
   }
   return out;
@@ -72,6 +74,15 @@ export function activeFormAttacks(character: Character): FormAttackView[] {
  */
 export function rangedReplacingFormAttack(character: Character): FormAttackView | null {
   return activeFormAttacks(character).find((a) => a.replacesRangedAttack) ?? null;
+}
+
+/**
+ * Attaque de forme qui REMPLACE la carte « Attaque au contact » de la fiche (PER-374, formes
+ * élémentaires : confisque la bascule arme ⇄ mains nues au profit d'une attaque unique). `null` =
+ * aucune → la carte au contact reste affichée normalement. Symétrique de `rangedReplacingFormAttack`.
+ */
+export function meleeReplacingFormAttack(character: Character): FormAttackView | null {
+  return activeFormAttacks(character).find((a) => a.replacesMeleeAttack) ?? null;
 }
 
 /**

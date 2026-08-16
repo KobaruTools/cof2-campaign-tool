@@ -63,6 +63,7 @@ export const storageKeys = {
     homeDemoMana: key('gauge', 'home-demo-mana'),
     usage: (statKey: string) => key('gauge', 'usage', statKey),
     companion: (entryKey: string) => key('gauge', 'companion', entryKey),
+    transformation: (featureId: string) => key('gauge', 'transformation', featureId),
     mount: (ownedId: string) => key('gauge', 'mount', ownedId),
     gmInit: (characterId: string) => key('gauge', 'gm-init', characterId),
     gmInitCompact: (characterId: string) => key('gauge', 'gm-init', `${characterId}:compact`),
@@ -80,6 +81,7 @@ export const storageKeys = {
     gmCollapsed: key('initiative', 'gm-collapsed'),
     paletteDetailed: key('initiative', 'palette-detailed'),
     paletteCompact: key('initiative', 'palette-compact'),
+    stickyPinned: key('initiative', 'sticky-pinned'),
   },
   home: {
     sort: key('home', 'sort'),

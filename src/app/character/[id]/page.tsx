@@ -4,9 +4,11 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { type Step } from 'react-joyride';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import HistoryIcon from '@mui/icons-material/History';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
@@ -36,6 +38,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
 import { ancestryById, classById, families, pathById, progression } from '@/data';
 import { checkCompliance, deriveStats } from '@/lib/engine';
+import { ABILITY_IDS } from '@/data/schema';
 import type {
   AbilityId,
   BeneficialEffectId,
@@ -77,14 +80,18 @@ import {
 import { pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
 import { currentRecoveryDice, pruneDepletion } from '@/lib/character/gauges';
 import {
+  activeTransformationWithHp,
   companionMountEnSelle,
   listCompanions,
   pruneCompanionDepletion,
   pruneCompanionInstances,
+  pruneTransformationDepletion,
 } from '@/lib/character/companions';
 import { isMountMounted, listOwnedMounts } from '@/lib/character/mounts';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
+import { GuidedTour } from '@/components/tour/GuidedTour';
+import { useGuidedTour } from '@/lib/tours/useGuidedTour';
 import { SessionHeaderIndicator } from '@/components/session/SessionHeaderIndicator';
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
@@ -165,7 +172,7 @@ import { boundWeaponPathFor } from '@/lib/character/boundWeapon';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
 import { RichTextEditor } from '@/components/sheet/RichTextEditor';
-import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
+import { AbilityCodeChip, GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { DemiElfeAncestryDialog } from '@/components/sheet/DemiElfeAncestryDialog';
 import { AncestryChoicesDialog } from '@/components/sheet/AncestryChoicesDialog';
 import { setDemiElfeAncestryPath } from '@/lib/character/sheetActions';
@@ -216,6 +223,94 @@ const NO_EDIT: Record<EditBlock, boolean> = {
   identity: false,
   notes: false,
 };
+
+/**
+ * Étapes du tour guidé de la fiche de personnage (PER-426) : UN SEUL tour long couvrant les
+ * grandes zones de la page, dans l'ordre où elles apparaissent à l'écran — pas de mini-tours
+ * par section (cadrage explicite du ticket, l'utilisateur peut Passer à tout moment). Chaque
+ * cible vise le CONTENU réel de sa section (grille de caractéristiques, panneau de stats,
+ * barre de vie…), jamais son en-tête ni son bandeau d'onglets (retour propriétaire — le tour
+ * doit montrer CE QUE la section fait, pas juste la nommer). « Statistiques dérivées » et
+ * « Voies & capacités » ont chacune deux étapes (un onglet chacune) : l'onglet secondaire
+ * (Compétences & tests / Manœuvres) est basculé PROGRAMMATIQUEMENT par `onStepBefore` du
+ * `<GuidedTour>` plus bas, le tour ne connaissant pas ces états contrôlés par la page.
+ * « État du personnage » est absente si le profil est incomplet (`masterDerived` nul, la
+ * section elle-même ne rend rien) : step conditionnelle, comme `showPlayersStep` de
+ * l'écran de MJ (PER-425).
+ */
+function buildCharacterSheetTourSteps({ showStatusStep }: { showStatusStep: boolean }): Step[] {
+  const steps: Step[] = [
+    {
+      target: '[data-tour="character-sheet-abilities"]',
+      title: 'Caractéristiques',
+      content: (
+        <>
+          Vos {ABILITY_IDS.map((id, i) => (
+            <span key={id}>
+              <AbilityCodeChip ability={id} noTooltip />
+              {i < ABILITY_IDS.length - 1 ? ' ' : ''}
+            </span>
+          ))}{' '}
+          sont déjà saisies pour ce personnage — les dés se lancent en vrai à la table, rien
+          n’est tiré automatiquement.
+        </>
+      ),
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="character-sheet-derived"]',
+      title: 'Statistiques dérivées',
+      content:
+        'Défense, initiative, attaques et jauges (PV, mana…) se calculent à partir de vos caractéristiques et capacités.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="character-sheet-tests"]',
+      title: 'Compétences & tests',
+      content:
+        'Le détail de vos bonus de test par domaine (bonus d’aptitude, dés supplémentaires, malus d’armure…) — le second onglet de « Statistiques dérivées ».',
+      placement: 'auto',
+    },
+  ];
+  if (showStatusStep) {
+    steps.push({
+      target: '[data-tour="character-sheet-status"]',
+      title: 'État du personnage',
+      content:
+        'Votre barre de vie affiche les points de vie actuels et se met à jour selon vos capacités. En dessous, Repos court et Repos long appliquent votre récupération — dés de récupération, mana et chance inclus.',
+      placement: 'auto',
+    });
+  }
+  steps.push(
+    {
+      target: '[data-tour="character-sheet-features"]',
+      title: 'Voies & capacités',
+      content: 'Vos voies et capacités acquises, avec leurs règles et effets à activer directement depuis la fiche.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="character-sheet-maneuvers"]',
+      title: 'Manœuvres',
+      content:
+        'Un aide-mémoire des manœuvres de combat (feinte, bousculade, désarmement…), en lecture seule — le second onglet de « Voies & capacités ».',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="character-sheet-purse"]',
+      title: 'Bourse',
+      content: 'Vos pièces d’or, d’argent et de cuivre — modifiables directement ici, hors mode Modifier.',
+      placement: 'auto',
+    },
+    {
+      target: '[data-tour="character-sheet-inventory"]',
+      title: 'Inventaire',
+      content:
+        'Vos armes, armures et objets portés ou transportés — équipez, utilisez ou donnez un objet directement depuis cette liste.',
+      placement: 'auto',
+    },
+  );
+  return steps;
+}
 
 export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: idParam } = use(params);
@@ -605,6 +700,39 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [portraitBusy, setPortraitBusy] = useState(false);
   const [portraitError, setPortraitError] = useState<string | null>(null);
 
+  // Tour guidé (PER-426) : les quatre cibles (caractéristiques, statistiques dérivées, voies &
+  // capacités, équipement) n'existent que sur la fiche finale — même garde que les deux retours
+  // anticipés ci-dessous (chargement / personnage introuvable). Désactivé sous mobile/tactile
+  // (`isNarrowViewport`), comme les tours pilote et écran de MJ (PER-423/425).
+  const tourReady = !!character && !!game;
+  const tour = useGuidedTour('characterSheet', { ready: tourReady, enabled: !isNarrowViewport });
+  // Index CONTRÔLÉ du tour (PER-426) : deux étapes (Compétences & tests, Manœuvres) ciblent un
+  // panneau qui n'est monté qu'une fois l'onglet de sa section basculé — un simple `onStepBefore`
+  // (comme pour le dépliage de l'inventaire, qui lui ne fait que RÉVÉLER un nœud déjà monté) ne
+  // suffit pas : `react-joyride` cherche la cible avant que React ait committé le changement
+  // d'onglet, et l'étape est sautée. `tourPendingIndexRef` mémorise l'index à appliquer UNE FOIS
+  // l'onglet basculé : `tourStepIndex` n'est mis à jour qu'après coup, par l'effet ci-dessous
+  // (déclenché par le VRAI changement de `statsView`/`voiesView`, donc après leur commit).
+  const [tourStepIndex, setTourStepIndex] = useState(0);
+  const tourPendingIndexRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (tourPendingIndexRef.current !== null) {
+      setTourStepIndex(tourPendingIndexRef.current);
+      tourPendingIndexRef.current = null;
+    }
+  }, [statsView, voiesView]);
+  // Relance (première fois ou rejouée via l'icône d'aide) : repart TOUJOURS de la première étape,
+  // sinon un tour rejoué après être allé au bout reprendrait à la dernière étape vue. Ajustement
+  // PENDANT le rendu (idiome React officiel pour dériver un état d'un changement de valeur, cf.
+  // « You Might Not Need An Effect ») plutôt qu'un effet : aucune synchronisation avec le DOM/une
+  // timeline externe n'est nécessaire ici, contrairement à l'effet juste au-dessus — et un `ref`
+  // ne peut pas être lu pendant le rendu (règle du compilateur React de ce dépôt), d'où un état
+  // (`prevTourRun`) pour mémoriser la valeur précédente plutôt qu'un `useRef`.
+  const [prevTourRun, setPrevTourRun] = useState(tour.run);
+  if (prevTourRun !== tour.run) {
+    setPrevTourRun(tour.run);
+    if (tour.run) setTourStepIndex(0);
+  }
   // Nœud DOM du 3ᵉ étage de l'en-tête (`StickySheetStatusBar`, portée plus bas) : Hook, donc
   // ICI, avant les retours anticipés — la garde `masterDerived` ne s'applique qu'au CONTENU
   // du portail, jamais à cet appel.
@@ -654,19 +782,41 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             />
           ),
           subtitleVisible: scrolledPastHeader,
-          action: readOnly ? undefined : (
-            <Button
-              color="inherit"
-              size="small"
-              startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
-              onClick={toggleAllEditing}
-              // Compact : n'impose pas la hauteur du sous-header (sinon la hauteur de ce
-              // bouton devient le plancher et `minHeight` de la barre n'a plus d'effet).
-              sx={{ py: 0.25, minHeight: 0 }}
-            >
-              {allEditing ? 'Terminer' : 'Modifier'}
-            </Button>
-          ),
+          // Icône de relance du tour guidé (PER-426) + bouton « Modifier »/« Terminer » : COMPOSÉS
+          // dans un même `Stack` plutôt que l'un écrasant l'autre (retour propriétaire, PER-425) —
+          // l'icône d'aide reste absente en lecture seule sous mobile/tactile (tour désactivé).
+          action:
+            tour.helpVisible || !readOnly ? (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                {tour.helpVisible && (
+                  <AppTooltip title="Revoir le tutoriel" disableInteractive>
+                    <span>
+                      <IconButton
+                        aria-label="Revoir le tutoriel"
+                        onClick={tour.replay}
+                        disabled={!tourReady}
+                        size="small"
+                      >
+                        <HelpOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </AppTooltip>
+                )}
+                {!readOnly && (
+                  <Button
+                    color="inherit"
+                    size="small"
+                    startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
+                    onClick={toggleAllEditing}
+                    // Compact : n'impose pas la hauteur du sous-header (sinon la hauteur de ce
+                    // bouton devient le plancher et `minHeight` de la barre n'a plus d'effet).
+                    sx={{ py: 0.25, minHeight: 0 }}
+                  >
+                    {allEditing ? 'Terminer' : 'Modifier'}
+                  </Button>
+                )}
+              </Stack>
+            ) : undefined,
         },
   );
 
@@ -758,6 +908,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       rangedAttackMagicalSourceId,
       rangedAttackElement,
       rangedReplacingFormAttack: formAttackReplacingRanged,
+      meleeReplacingFormAttack: formAttackReplacingMelee,
+      activeDefenseOverride: defenseOverride,
     },
     derivedCharacter,
     masterDerived,
@@ -806,6 +958,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setCompanionReset,
     summonCompanionInstance,
     deleteCompanionInstance,
+    setTransformationDamage,
+    setTransformationHeal,
+    setTransformationReset,
     addMount,
     removeMount,
     setMountBarde,
@@ -815,6 +970,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setMountMounted,
     setMountedTarget,
   } = game;
+  // Étapes du tour guidé (PER-426) : calculées ici (accès à `masterDerived`, dont dépend l'étape
+  // conditionnelle « État du personnage ») et réutilisées telles quelles par `stepIndex`/
+  // `onRequestStepChange` du `<GuidedTour>` plus bas (index de l'étape CIBLE → cible réelle).
+  const tourSteps = buildCharacterSheetTourSteps({ showStatusStep: !!masterDerived });
   // Attribution de campagne (PER-180) : rattache le personnage à une campagne ou le
   // remet « Non attribué » (`null`). Le joueur étant local à la campagne, on le
   // réinitialise à chaque changement (l'attribution d'un joueur relève de PER-184).
@@ -917,6 +1076,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         companionInstances,
       }),
       companionInstances,
+      // Purge les PV de la forme active si sa capacité vient d'être perdue (respec / baisse de
+      // niveau) — cf. `pruneTransformationDepletion` (PER-374).
+      transformationDepletion: pruneTransformationDepletion(character.transformationDepletion, {
+        ...character,
+        featureIds,
+      }),
     });
   };
   // Résolution rétroactive d'un choix porté par une capacité (PER-66/68). La
@@ -1013,11 +1178,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     ? [...statusImpact.allTestsMalusDie, ...statusImpact.attackTestsMalusDie]
     : [];
 
+  // PER-374 — forme active à PV propres (formes élémentaires) : grise la barre de PV réelle et
+  // fait apparaître une jauge dédiée, alimentée sous la clé du rang qui octroie la transformation.
+  const activeTransformation = activeTransformationWithHp(character);
+
   // Valeurs EFFECTIVES (surcharge manuelle incluse) pour la barre condensée collée au défilement
   // (`StickySheetStatusBar`) : même logique que les cartes de « Statistiques dérivées », dupliquée
   // ici en miniature plutôt que remontée depuis `DerivedStatsGrid`, qui ne renvoie rien à l'appelant.
   const stickyDerived = adjustedDerivedInput ? deriveStats(adjustedDerivedInput) : null;
-  const stickyDefense = character.overrides.def ?? stickyDerived?.defense ?? null;
+  // PER-374 : DEF imposée par une transformation active (`defenseOverride`) prime sur le calcul
+  // normal, mais reste dominée par une surcharge manuelle du joueur/MJ — même ordre de priorité
+  // que `DerivedStatsGrid` (cf. `formForced`).
+  const stickyDefense = character.overrides.def ?? defenseOverride ?? stickyDerived?.defense ?? null;
   const stickyInitiative = character.overrides.initiative ?? stickyDerived?.initiative ?? null;
   const stickyMeleeAttack = character.overrides.meleeAttack ?? stickyDerived?.meleeAttack ?? null;
   const stickyRangedAttack = character.overrides.rangedAttack ?? stickyDerived?.rangedAttack ?? null;
@@ -1074,7 +1246,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         createPortal(
           <StickySheetStatusBar
             showAbilities={pinAbilities}
-            abilities={character.abilities}
+            abilities={effectCtx.abilities}
             onJumpToAbilities={() => scrollToSection('abilities-section')}
             showDerivedStats={pinDerivedStats}
             onJumpToDerivedStats={() => scrollToSection('derived-stats-section')}
@@ -1451,20 +1623,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </Stack>
             )}
           >
-            <AbilitiesGrid
-              abilities={character.abilities}
-              onChange={editingBlocks.abilities ? setAbility : undefined}
-              baseAbilities={character.baseAbilities}
-              ancestry={ancestry}
-              ancestryChoices={character.ancestryChoices}
-              abilityMods={display.abilityMods}
-              abilityModSources={display.abilityModSources}
-              abilityOverrides={display.abilityOverrides}
-              abilityFormBonuses={display.abilityFormBonuses}
-              abilityEquipmentBonuses={display.abilityEquipmentBonuses}
-              abilityCrystalBonuses={display.abilityCrystalBonuses}
-              bonusDieSources={display.bonusDieSourcesDetailed}
-            />
+            {/* Cible du tour guidé (PER-426) posée ICI, sur la grille elle-même, et non sur
+                l'en-tête (exception à la règle générale des autres sections, cf. `dataTour` de
+                `SheetSection`) : la grille des 7 caractéristiques est compacte, jamais assez
+                haute pour faire sortir la bulle de l'écran (contrairement à une grille de
+                capacités ou un tableau d'inventaire) — le focus peut donc porter sur les valeurs
+                elles-mêmes plutôt que sur le titre de la section. */}
+            <Box data-tour="character-sheet-abilities">
+              <AbilitiesGrid
+                abilities={character.abilities}
+                onChange={editingBlocks.abilities ? setAbility : undefined}
+                baseAbilities={character.baseAbilities}
+                ancestry={ancestry}
+                ancestryChoices={character.ancestryChoices}
+                abilityMods={display.abilityMods}
+                abilityModSources={display.abilityModSources}
+                abilityOverrides={display.abilityOverrides}
+                abilityFormBonuses={display.abilityFormBonuses}
+                abilityEquipmentBonuses={display.abilityEquipmentBonuses}
+                abilityCrystalBonuses={display.abilityCrystalBonuses}
+                bonusDieSources={display.bonusDieSourcesDetailed}
+              />
+            </Box>
           </SheetSection>
 
           {/* Section « Statistiques dérivées » avec un sélecteur de vue, même idiome que « Voies &
@@ -1506,59 +1686,65 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             }
           >
             {statsView === 'tests' ? (
-              <TestDomainsPanel
-                bonuses={display.testBonuses}
-                abilities={effectCtx.abilities}
-                abilityTestBonus={display.abilityTestBonus}
-                statusTestBonus={display.statusTestBonus}
-                statusDomainBonus={display.statusDomainBonus}
-                perAbilityTestBonus={display.perAbilityTestBonus}
-                magicTestBonuses={display.magicTestBonuses}
-                bonusDice={display.bonusDieSources}
-                universalBonus={display.universalBonus}
-                testDice={display.testDice}
-                armorPenalty={display.armorPenalty}
-                armorMaxAgi={display.armorMaxAgi}
-                includeAbility={testsIncludeAbility}
-                onIncludeAbilityChange={setTestsIncludeAbility}
-                hideZero={testsHideZero}
-                onHideZeroChange={setTestsHideZero}
-              />
+              <Box data-tour="character-sheet-tests">
+                <TestDomainsPanel
+                  bonuses={display.testBonuses}
+                  abilities={effectCtx.abilities}
+                  abilityTestBonus={display.abilityTestBonus}
+                  statusTestBonus={display.statusTestBonus}
+                  statusDomainBonus={display.statusDomainBonus}
+                  perAbilityTestBonus={display.perAbilityTestBonus}
+                  magicTestBonuses={display.magicTestBonuses}
+                  bonusDice={display.bonusDieSources}
+                  universalBonus={display.universalBonus}
+                  testDice={display.testDice}
+                  armorPenalty={display.armorPenalty}
+                  armorMaxAgi={display.armorMaxAgi}
+                  includeAbility={testsIncludeAbility}
+                  onIncludeAbilityChange={setTestsIncludeAbility}
+                  hideZero={testsHideZero}
+                  onHideZeroChange={setTestsHideZero}
+                />
+              </Box>
             ) : adjustedDerivedInput ? (
-              <DerivedStatsGrid
-                input={adjustedDerivedInput}
-                featureIds={modFeatureIds}
-                effectContext={effectCtx}
-                extraModSources={display.extraModSources}
-                overrides={character.overrides}
-                onOverride={editingBlocks.derived ? setOverride : undefined}
-                defenseBadges={defenseBadges}
-                meleeCriticalRanges={meleeCriticalRanges}
-                rangedCriticalRanges={rangedCriticalRanges}
-                unarmedStrike={unarmed}
-                meleeWeaponDamage={meleeWeaponDamage}
-                offHandMeleeWeaponDamage={offHandMeleeWeaponDamage}
-                offHandCriticalRanges={offHandCriticalRanges}
-                offHandTouchDelta={offHandTouchDelta}
-                twoWeaponPenaltyDie={twoWeaponPenaltyDie}
-                onScrollToWeapon={scrollToEquipmentWeapon}
-                unarmedCriticalRanges={unarmedCriticalRanges}
-                rangedWeaponDamage={rangedWeaponDamage}
-                meleeSituationalDamage={meleeSituationalDamage}
-                offHandMeleeSituationalDamage={offHandMeleeSituationalDamage}
-                rangedSituationalDamage={rangedSituationalDamage}
-                rangedAttackMagicalSourceId={rangedAttackMagicalSourceId}
-                rangedAttackElement={rangedAttackElement}
-                rangedReplacingFormAttack={formAttackReplacingRanged}
-                attackBonusDie={display.attackBonusDieSources}
-                boundWeaponAttackDie={display.boundWeaponAttackDie}
-                attackMalusDie={attackMalusDie}
-                meleeAttackNotes={meleeAttackNotes}
-                rangedAttackNotes={rangedAttackNotes}
-                onToggleBarPin={toggleDerivedStatItemPin}
-                barPinnedIds={pinnedDerivedStatIds}
-                barSectionPinned={pinDerivedStats}
-              />
+              <Box data-tour="character-sheet-derived">
+                <DerivedStatsGrid
+                  input={adjustedDerivedInput}
+                  featureIds={modFeatureIds}
+                  effectContext={effectCtx}
+                  extraModSources={display.extraModSources}
+                  overrides={character.overrides}
+                  onOverride={editingBlocks.derived ? setOverride : undefined}
+                  defenseBadges={defenseBadges}
+                  meleeCriticalRanges={meleeCriticalRanges}
+                  rangedCriticalRanges={rangedCriticalRanges}
+                  unarmedStrike={unarmed}
+                  meleeWeaponDamage={meleeWeaponDamage}
+                  offHandMeleeWeaponDamage={offHandMeleeWeaponDamage}
+                  offHandCriticalRanges={offHandCriticalRanges}
+                  offHandTouchDelta={offHandTouchDelta}
+                  twoWeaponPenaltyDie={twoWeaponPenaltyDie}
+                  onScrollToWeapon={scrollToEquipmentWeapon}
+                  unarmedCriticalRanges={unarmedCriticalRanges}
+                  rangedWeaponDamage={rangedWeaponDamage}
+                  meleeSituationalDamage={meleeSituationalDamage}
+                  offHandMeleeSituationalDamage={offHandMeleeSituationalDamage}
+                  rangedSituationalDamage={rangedSituationalDamage}
+                  rangedAttackMagicalSourceId={rangedAttackMagicalSourceId}
+                  rangedAttackElement={rangedAttackElement}
+                  rangedReplacingFormAttack={formAttackReplacingRanged}
+                  meleeReplacingFormAttack={formAttackReplacingMelee}
+                  activeDefenseOverride={defenseOverride}
+                  attackBonusDie={display.attackBonusDieSources}
+                  boundWeaponAttackDie={display.boundWeaponAttackDie}
+                  attackMalusDie={attackMalusDie}
+                  meleeAttackNotes={meleeAttackNotes}
+                  rangedAttackNotes={rangedAttackNotes}
+                  onToggleBarPin={toggleDerivedStatItemPin}
+                  barPinnedIds={pinnedDerivedStatIds}
+                  barSectionPinned={pinDerivedStats}
+                />
+              </Box>
             ) : (
               <Typography variant="body2" color="text.secondary">
                 Profil incomplet : statistiques dérivées indisponibles.
@@ -1586,6 +1772,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   l'annonce d'un effet de groupe. Le chiffre est déjà répercuté sur les stats/attaques
                   plus haut — on le rappelle ici pour que le joueur n'ait pas à recouper trois blocs. */}
               {sessionStatusBlock && <Box sx={{ mb: 2 }}>{sessionStatusBlock}</Box>}
+              <Box data-tour="character-sheet-status">
               <PlayerStatusPanel
                 depletion={character.depletion}
                 // Max EFFECTIF : surcharge manuelle de « Statistiques dérivées » si présente,
@@ -1594,6 +1781,23 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onDamage={setHpDamage}
                 onHeal={setHpHeal}
                 onResetHp={setHpReset}
+                activeTransformation={activeTransformation}
+                transformationDepletion={
+                  activeTransformation ? (character.transformationDepletion[activeTransformation.featureId] ?? {}) : {}
+                }
+                onTransformationDamage={
+                  activeTransformation
+                    ? (amount, kind) => setTransformationDamage(activeTransformation.featureId, amount, kind)
+                    : undefined
+                }
+                onTransformationHeal={
+                  activeTransformation
+                    ? (amount) => setTransformationHeal(activeTransformation.featureId, amount)
+                    : undefined
+                }
+                onTransformationReset={
+                  activeTransformation ? () => setTransformationReset(activeTransformation.featureId) : undefined
+                }
                 manaMax={manaMax}
                 onSpendMana={setManaSpend}
                 onRestoreMana={setManaRestore}
@@ -1636,6 +1840,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 barPinnedIds={pinnedRestItemIds}
                 barSectionPinned={pinStatusGauges}
               />
+              </Box>
               {/* Repos de groupe (PER-312) : quand le MJ propose une récupération à toute la
                   table, l'annonce s'ouvre ici — sur la fiche, là où le joueur applique son repos.
                   Réservée au joueur qui incarne CE personnage : le MJ pilote la proposition depuis
@@ -1764,7 +1969,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             }
           >
             {voiesView === 'maneuvers' ? (
-              <ManeuversPanel abilities={effectCtx.abilities} level={character.level} />
+              <Box data-tour="character-sheet-maneuvers">
+                <ManeuversPanel abilities={effectCtx.abilities} level={character.level} />
+              </Box>
             ) : (
             <>
             {pendingPaidFeatures ? (
@@ -1782,6 +1989,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 ))}
               </Stack>
             ) : (
+            <Box data-tour="character-sheet-features">
             <FeaturesByPath
               featureIds={character.featureIds}
               classId={character.classId}
@@ -1836,6 +2044,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // bonus de test est DOMINÉ (ne se cumule pas) — barré + capacité qui le domine (PER-73).
               testBonuses={display.testBonuses}
             />
+            </Box>
             )}
             {/* Annonce d'un effet de groupe (PER-358), SOUS le tableau des voies : c'est là que le
                 barde lit « Chant des héros », donc là qu'il pense à le lancer. Le composant ne rend
@@ -1869,6 +2078,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             // PER-116 — dépliage forcé depuis l'icône d'arme de la carte d'attaque (ci-dessous).
             expandSignal={equipmentJumpNonce}
             onExpanded={() => {
+              // Tour guidé (PER-426) : les étapes Bourse/Inventaire ciblent un contenu qui n'est
+              // VISIBLE (au sens de `react-joyride`, `isElementVisible` — la section repliée le
+              // laisse monté mais `visibility: hidden`) qu'une fois la section dépliée. En mode
+              // contrôlé, le tour ne peut pas attendre l'événement `STEP_BEFORE` de la lib pour
+              // déclencher ce dépliage : cet événement lui-même EXIGE la cible déjà visible — un
+              // cercle vicieux qui bloquait le tour pour de bon (`TARGET_NOT_FOUND` ne fait rien
+              // en mode contrôlé). D'où `onExpanded`, indépendant du cycle de vie de la lib :
+              // c'est SEULEMENT une fois le dépliage RÉELLEMENT terminé (ou déjà ouvert, cf.
+              // `SheetSection`) qu'on répercute l'index en attente sur `tourStepIndex`.
+              if (tourPendingIndexRef.current !== null) {
+                setTourStepIndex(tourPendingIndexRef.current);
+                tourPendingIndexRef.current = null;
+              }
               if (!equipmentJumpSlot) return;
               // Le contenu est garanti visible (animation de dépliage terminée, ou déjà ouvert) mais
               // pas forcément encore PEINT dans ce frame → un `requestAnimationFrame` avant de mesurer
@@ -1930,6 +2152,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 n'apparaissent qu'en mode édition du bloc. En tête du bloc inventaire. Le pin de la
                 bourse vers la barre condensée (retour propriétaire) n'apparaît que si la section
                 Inventaire y est elle-même épinglée (`pinInventory`). */}
+            <Box data-tour="character-sheet-purse">
             <PurseField
               purse={character.purse}
               onChange={setPurse}
@@ -1938,7 +2161,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               barPinned={pinInventoryPurse}
               barSectionPinned={pinInventory}
             />
+            </Box>
             <Divider sx={{ my: 1.5 }} />
+            <Box data-tour="character-sheet-inventory">
             <EquipmentList
               equipment={character.equipment}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
@@ -2007,6 +2232,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               barPinned={pinInventoryCustomItem}
               barSectionPinned={pinInventory}
             />
+            </Box>
           </SheetSection>
 
           <SheetSection
@@ -2236,6 +2462,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         open={notesHistoryOpen}
         onClose={() => setNotesHistoryOpen(false)}
         characterName={character.name || 'Personnage'}
+        characterId={character.id}
+        campaignId={characterCampaignId}
+        playerId={character.playerId}
+        currentSessionId={sessionActive ? (activeSession?.id ?? null) : null}
+        currentSessionStartedAt={sessionActive ? (activeSession?.startedAt ?? null) : null}
+        readOnly={readOnly}
       />
 
       <LevelUpDialog
@@ -2326,6 +2558,64 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Tour guidé de la fiche de personnage (PER-426) : caractéristiques, statistiques
+          dérivées (+ compétences & tests), état du personnage, voies & capacités
+          (+ manœuvres), bourse et inventaire. Index CONTRÔLÉ (`tourStepIndex`) : les étapes qui
+          ciblent un contenu pas encore VISIBLE (onglet secondaire à basculer, inventaire replié
+          à déplier) retardent l'avancée du tour le temps que ce changement ait réellement
+          committé (cf. `tourPendingIndexRef` plus haut, et `onExpanded` de la section Inventaire
+          ci-dessus) — `onStepBefore` seul ne suffit pas : son événement source (`STEP_BEFORE`)
+          exige justement la cible déjà visible pour être émis par `react-joyride`. */}
+      <GuidedTour
+        run={tour.run}
+        steps={tourSteps}
+        stepIndex={tourStepIndex}
+        onTourEnd={tour.onTourEnd}
+        onRequestStepChange={(nextIndex, action) => {
+          const nextTarget = tourSteps[nextIndex]?.target;
+          // eslint-disable-next-line no-console
+          console.debug('[TOURDEBUG] onRequestStepChange', { nextIndex, action, nextTarget, statsView, voiesView, tourStepIndex });
+          // Étapes à onglet secondaire : bascule l'onglet UNIQUEMENT s'il diffère RÉELLEMENT de
+          // l'onglet courant, et alors seulement mémorise l'index à appliquer une fois ce
+          // changement committé (l'effet sur `[statsView, voiesView]`, plus haut, le fera).
+          // Piège vécu : basculer inconditionnellement (même vers l'onglet déjà actif, ex.
+          // Caractéristiques → Statistiques dérivées, `statsView` déjà `'derived'`) ne déclenche
+          // aucun re-render sur une valeur INCHANGÉE — l'effet qui applique l'index en attente ne
+          // se déclenche alors JAMAIS, et le tour reste figé pour de bon. Chaque étape fixe
+          // explicitement l'onglet qu'elle attend (jamais une bascule relative au dernier onglet
+          // vu) : fonctionne pareil en avant (Suivant) qu'en arrière (Précédent).
+          if (nextTarget === '[data-tour="character-sheet-tests"]' && statsView !== 'tests') {
+            tourPendingIndexRef.current = nextIndex;
+            setStatsView('tests');
+          } else if (nextTarget === '[data-tour="character-sheet-derived"]' && statsView !== 'derived') {
+            tourPendingIndexRef.current = nextIndex;
+            setStatsView('derived');
+          } else if (nextTarget === '[data-tour="character-sheet-maneuvers"]' && voiesView !== 'maneuvers') {
+            tourPendingIndexRef.current = nextIndex;
+            setVoiesView('maneuvers');
+          } else if (nextTarget === '[data-tour="character-sheet-features"]' && voiesView !== 'features') {
+            tourPendingIndexRef.current = nextIndex;
+            setVoiesView('features');
+          } else if (
+            nextTarget === '[data-tour="character-sheet-purse"]' ||
+            nextTarget === '[data-tour="character-sheet-inventory"]'
+          ) {
+            // Inventaire replié par défaut (`defaultCollapsed`) : même dépliage forcé que l'icône
+            // d'arme (PER-116, `equipmentJumpNonce`). PAS `onStepBefore` (essayé, deadlock) : une
+            // section repliée est montée mais `visibility: hidden` (`Collapse` de MUI) — l'événement
+            // `STEP_BEFORE` de `react-joyride`, qui aurait déclenché ce dépliage, EXIGE justement
+            // la cible déjà visible pour être émis. `tourPendingIndexRef` est donc appliqué par
+            // `onExpanded` de la section (cf. `SheetSection` ci-dessus), pas par la lib elle-même.
+            tourPendingIndexRef.current = nextIndex;
+            setEquipmentJumpNonce((n) => n + 1);
+          } else {
+            // Aucune bascule/dépliage requis (pas concerné, ou déjà dans le bon état) : rien à
+            // attendre, on avance tout de suite comme le reste des étapes.
+            setTourStepIndex(nextIndex);
+          }
+        }}
+      />
       </CapabilityScrollProvider>
       </FeatureDeclensionContext.Provider>
     </FirearmsAllowedProvider>

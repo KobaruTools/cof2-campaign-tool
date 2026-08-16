@@ -37,6 +37,7 @@ export const GAME_STATE_KEYS = [
   'effectInputs',
   'usageCounters',
   'companionDepletion',
+  'transformationDepletion',
   'companionInstances',
   'mountedKey',
   'mounts',

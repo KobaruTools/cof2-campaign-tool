@@ -36,6 +36,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     usageCounters: {},
     depletion: {},
     companionDepletion: {},
+    transformationDepletion: {},
     companionInstances: {},
     mounts: [],
     purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },

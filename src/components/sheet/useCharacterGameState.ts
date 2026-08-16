@@ -180,6 +180,11 @@ export interface CharacterGameState {
   summonCompanionInstance: (featureId: string) => void;
   deleteCompanionInstance: (key: string) => void;
 
+  // --- PV de la forme active du personnage lui-même (PER-374, formes élémentaires) ---------
+  setTransformationDamage: (key: string, amount: number, kind: 'lethal' | 'temp') => void;
+  setTransformationHeal: (key: string, amount: number) => void;
+  setTransformationReset: (key: string) => void;
+
   // --- Montures & véhicules possédés (PER-216) ---------------------------------------------
   addMount: (catalogId: string) => void;
   removeMount: (id: string) => void;
@@ -424,6 +429,10 @@ export function useCharacterGameState(
     setCompanionReset: bind(actions.resetCompanionHp),
     summonCompanionInstance: (featureId) => update(actions.summonCompanionInstance(target, featureId)),
     deleteCompanionInstance: bind(actions.removeCompanionInstance),
+
+    setTransformationDamage: bind(actions.damageTransformation),
+    setTransformationHeal: bind(actions.healTransformation),
+    setTransformationReset: bind(actions.resetTransformationHp),
 
     addMount: (catalogId) => update(actions.addMount(target, catalogId)),
     removeMount: bind(actions.removeMount),

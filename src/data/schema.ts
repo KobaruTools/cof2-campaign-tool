@@ -1014,6 +1014,15 @@ export interface ConditionalStatBonusEffect {
    */
   abilityOverrides?: Partial<Record<AbilityId, number>>;
   /**
+   * SURCHARGE ABSOLUE de la DÉFENSE tant que cet interrupteur est ACTIF (PER-374) : une transformation
+   * en créature dont la DEF est un nombre FIXE imprimé (ex. Forme élémentaire d'air, p. 169 : « Défense
+   * 25 »), indépendant de la formule habituelle (10 + AGI plafonnée + équipement) — `abilityOverrides`
+   * seul ne suffit pas ici, la formule appliquée à l'AGI surchargée ne retombe pas sur le nombre
+   * imprimé. REMPLACE la valeur affichée (comme une épingle manuelle du joueur, `Character.overrides`,
+   * qui garde priorité si les deux sont posées). Absent = DEF recalculée normalement.
+   */
+  defenseOverride?: number;
+  /**
    * Quand CET interrupteur est ACTIF, désactive TOUTES les capacités ACQUISES d'une voie de PROFIL
    * (`Path.type === 'class'`) du personnage — patron d'une TRANSFORMATION qui prive de l'accès aux
    * capacités de classe (PER-74, Métamorphose de la voie de l'ours, p. 152 : « ne peut plus utiliser
@@ -1865,6 +1874,7 @@ export const BENEFICIAL_EFFECT_IDS = [
   'towering-argument',
   'shield-ally',
   'precision-strike',
+  'frouin-stench',
 ] as const;
 export type BeneficialEffectId = (typeof BENEFICIAL_EFFECT_IDS)[number];
 
@@ -1983,6 +1993,38 @@ export const BENEFICIAL_EFFECTS: Record<BeneficialEffectId, StatusEffectEntry> =
     // Valeur FIXE (+10) : ni escalade ni palier, donc aucun `stacking` ni `intensityFrom`.
     modifiers: { derived: { meleeAttack: 10, rangedAttack: 10, magicAttack: 10 } },
     scope: 'single-ally',
+  },
+  // « Avarié » (frouïn, `frouin-r1`, Le Compagnon p. 21). PREMIER effet de camp qui est un MALUS et non
+  // un buff : « la seule présence du frouïn impose -1 à tous les tests d'interaction sociale de ses
+  // compagnons (CHA) ». Même canal que les buffs de camp (scope 'group' + `excludesCarrier` — le frouïn
+  // ne se pénalise pas lui-même), mais `testDomains.value` NÉGATIF sur le cluster social CHA (arbitrage
+  // propriétaire, PER-330 : baratin, séduction, persuasion, négociation, supercherie, commerce,
+  // étiquette, harangue, prêche — l'intimidation est gouvernée par la FOR, donc hors « CHA »). Valeur
+  // FIXE (−1) : ni escalade ni palier, donc aucun `stacking` ni `intensityFrom`. Aura PERMANENTE (pas un
+  // sort) : le MJ la pose sur les alliés au contact du frouïn et la lève quand le groupe se disperse.
+  'frouin-stench': {
+    label: 'Avarié (puanteur du frouïn)',
+    effect:
+      'À cause, entre autres, de l’odeur, la seule présence du frouïn impose -1 à tous les tests d’interaction sociale de ses compagnons (CHA).',
+    sourcePage: 21,
+    modifiers: {
+      testDomains: {
+        domains: [
+          'fast-talk',
+          'seduction',
+          'persuasion',
+          'negotiation',
+          'deception',
+          'commerce',
+          'etiquette',
+          'haranguing',
+          'preaching',
+        ],
+        value: -1,
+      },
+    },
+    scope: 'group',
+    excludesCarrier: true,
   },
 };
 
@@ -2715,18 +2757,28 @@ export interface FormAttack {
    * livre). Vide = dé seul.
    */
   damageAbilities: AbilityId[];
-  /** Portée de l'attaque → valeur de touche employée (contact ou distance). */
-  scope: 'melee' | 'ranged';
+  /**
+   * Portée de l'attaque → valeur de touche employée. `'magic'` (PER-374, formes élémentaires,
+   * p. 166-170 : « Frappe [attaque magique] ») = attaque magique HABITUELLE du personnage — comme
+   * `'melee'`/`'ranged'`, ce n'est PAS un stat-block de créature recalculé, juste la stat dérivée du
+   * personnage lui-même sous ce nom.
+   */
+  scope: 'melee' | 'ranged' | 'magic';
   /** Types d'action de l'attaque elle-même (`['G']` = action gratuite). Vide = non précisé. */
   actionTypes: ActionType[];
   /** Cadence VERBATIM de l'attaque (« une fois par round »). Absent = aucune limite énoncée. */
   frequency?: string;
   /**
    * L'attaque REMPLACE la carte « Attaque à distance » de la fiche : la forme interdit d'utiliser
-   * une arme à distance (verbatim). Absent = l'attaque s'ajoute sans rien remplacer (non rendu
-   * à ce jour — aucune donnée du livre n'en a besoin).
+   * une arme à distance (verbatim). Absent = l'attaque s'ajoute sans rien remplacer.
    */
   replacesRangedAttack?: boolean;
+  /**
+   * L'attaque REMPLACE la carte « Attaque au contact » de la fiche (PER-374, formes élémentaires) :
+   * la forme confisque l'arme ⇄ mains nues (bascule PER-141) au profit d'une attaque UNIQUE et fixe.
+   * Symétrique de `replacesRangedAttack`. Absent = l'attaque s'ajoute sans rien remplacer.
+   */
+  replacesMeleeAttack?: boolean;
   /**
    * Interrupteur (`conditional-stat-bonus`) qui doit être ACTIF pour que l'attaque existe — même
    * patron que `DamageReduction.requiresActiveEffect`. Pointe normalement l'interrupteur de forme

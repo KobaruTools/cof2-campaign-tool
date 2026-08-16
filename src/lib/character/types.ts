@@ -86,8 +86,12 @@ import type { RestorableResourceKind } from './restorableResources';
  * v22 : ajout de `poisonedWeapons` (armes enduites de poison — voie du maître des poisons, p. 143,
  *   PER-74). Liste de `PoisonApplication` (instanceId d'arme + nature du poison + dépensé). La
  *   migration ajoute `[]` (aucune arme enduite au chargement).
+ * v23 : ajout de `transformationDepletion` (dépletion transitoire des PV de la FORME active du
+ *   personnage lui-même — formes élémentaires, PER-374). Distinct de `companionDepletion`, purgé
+ *   séparément (une transformation n'est pas un compagnon). La migration ajoute `{}` (aucune forme
+ *   blessée au chargement).
  */
-export const SCHEMA_VERSION = 22;
+export const SCHEMA_VERSION = 23;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -1064,6 +1068,22 @@ export interface Character {
    * compagnons à PV pleins. Énumération et max dans `src/lib/character/companions.ts`.
    */
   companionDepletion: Record<string, Depletion>;
+
+  /**
+   * Dépletion transitoire des PV de la FORME active du personnage lui-même (PER-374, formes
+   * élémentaires : « 80 PV » propres à l'élémentaire, distincts des PV du personnage sous sa forme
+   * normale). Clé = `id` du rang de voie qui octroie la transformation (`CreatureProfile.transformation`
+   * true, ex. `prestige-elementaire-de-l-eau-r8`). DISTINCT de `companionDepletion` (`listCompanions`
+   * exclut exprès les transformations, qui n'en sont pas — un compagnon existe À CÔTÉ du personnage,
+   * une transformation le REMPLACE temporairement) : réutiliser `companionDepletion` ferait purger ces
+   * PV à la moindre sauvegarde (`pruneCompanionDepletion` ne retient que les clés de `listCompanions`).
+   * Les PV du personnage sous sa forme NORMALE (`depletion`) restent GELÉS tels quels pendant que la
+   * forme est active (RAW p. 166-170 : « il reprend sa forme initiale avec les PV qu'il avait au moment
+   * de la transformation »). État de jeu transitoire, comme `companionDepletion` : modifiable hors mode
+   * « Modifier », purgé quand la transformation n'est plus active (interrupteur éteint, capacité perdue).
+   * `{}` = aucune forme blessée. Voir `src/lib/character/companions.ts`.
+   */
+  transformationDepletion: Record<string, Depletion>;
 
   /**
    * Compagnons MULTI-INSTANCES (PER-235) : clé = `id` de la capacité qui les octroie (ex.

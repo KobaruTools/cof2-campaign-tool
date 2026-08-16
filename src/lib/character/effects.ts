@@ -83,6 +83,7 @@ import {
 } from './equipment';
 import { magicDamageReductions, magicImmunities } from './magicItemEffects';
 import { extraMasteredWeaponIds, isWeaponMastered, masteredClassIds } from './mastery';
+import { baseAncestrySize } from './size';
 import { currentHp } from './gauges';
 import { ridingMountOptionIds } from './mounts';
 import { rulesContext } from './rulesContext';
@@ -572,6 +573,25 @@ export function activeAbilityOverrides(character: Character): Partial<Record<Abi
   return out;
 }
 
+/**
+ * DEF imposée par une transformation ACTIVE (PER-374, formes élémentaires : « Défense 25 » fixe,
+ * indépendante de la formule habituelle 10 + AGI + équipement). `null` = aucune surcharge active.
+ * Une seule forme peut être active à la fois (interrupteurs mutuellement exclusifs) ; en cas de
+ * conflit la dernière rencontrée l'emporte, comme `activeAbilityOverrideSources`.
+ */
+export function activeDefenseOverride(character: Character): number | null {
+  let out: number | null = null;
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    feature?.effects?.forEach((e, index) => {
+      if (e.kind !== 'conditional-stat-bonus' || e.defenseOverride === undefined) return;
+      if (!isEffectActive(character, id, index)) return;
+      out = e.defenseOverride;
+    });
+  }
+  return out;
+}
+
 /** Une capacité apportant un bonus de carac EN DELTA conditionné à une forme active (PER-74). */
 export interface AbilityFormBonusSource {
   featureId: string;
@@ -651,6 +671,7 @@ export function effectContext(character: Character): EffectContext {
     twoHandedMeleeWielded: isTwoHandedMeleeWeaponWielded(
       character.equipment,
       oneHandableWeaponFamilies(character.featureIds),
+      baseAncestrySize(character.ancestryId) === 'petite',
     ),
     staffWielded: isStaffWielded(character.equipment),
     ridingOptionIds: ridingMountOptionIds(character),
@@ -3532,6 +3553,7 @@ function weaponCriticalConditionMet(
       return isTwoHandedMeleeWeaponWielded(
         character.equipment,
         oneHandableWeaponFamilies(character.featureIds),
+        baseAncestrySize(character.ancestryId) === 'petite',
       );
     case 'rangedKinds':
       return (

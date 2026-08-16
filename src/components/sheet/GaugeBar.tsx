@@ -13,6 +13,11 @@ export interface GaugeSegment {
   value: number;
   /** Couleur CSS de remplissage. */
   color: string;
+  /**
+   * Remplissage EN DÉGRADÉ (`linear-gradient(...)`), prime sur `color` (PER-374 : jauge de PV
+   * d'une forme active, teinte de la voie de prestige porteuse). Absent = remplissage plat (`color`).
+   */
+  background?: string;
   /** Libellé d'info-bulle du segment (ex. « PV actuels : 18 »). */
   label?: string;
 }
@@ -82,20 +87,31 @@ export function GaugeBar({ max, segments, height = 24, roundedLeft = true, overl
               }),
         })}
       >
-        {segments.map((seg) =>
-          seg.value <= 0 ? null : (
+        {segments.map((seg) => {
+          if (seg.value <= 0) return null;
+          // Dégradé ANCRÉ à la largeur de la PISTE ENTIÈRE (pas celle, rétrécie, du segment) —
+          // sans ça, un dégradé horizontal se recomprimerait entièrement (clair → sombre) dans la
+          // largeur qui reste au fil des PV perdus, au lieu de rester une simple FENÊTRE sur un
+          // dégradé fixe. `backgroundSize` étire le dégradé à `max/valeur` fois la largeur du
+          // segment (= la largeur de la piste complète), ancré à son bord GAUCHE — valable pour le
+          // PREMIER segment de la pile (ex. « PV actuels »), qui démarre au bord gauche de la piste.
+          const gradientSizeSx = seg.background
+            ? { backgroundSize: `${(safeMax / seg.value) * 100}% 100%`, backgroundPosition: 'left center' }
+            : undefined;
+          return (
             <AppTooltip key={seg.key} title={seg.label ?? ''} disableInteractive>
               <Box
                 sx={{
                   width: pct(seg.value),
                   height: '100%',
-                  bgcolor: seg.color,
+                  ...(seg.background ? { background: seg.background } : { bgcolor: seg.color }),
+                  ...gradientSizeSx,
                   transition: 'width 0.2s',
                 }}
               />
             </AppTooltip>
-          ),
-        )}
+          );
+        })}
       </Box>
       {overlay != null && (
         <Box

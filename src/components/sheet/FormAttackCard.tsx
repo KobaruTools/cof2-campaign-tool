@@ -87,14 +87,14 @@ export interface FormAttackCardProps {
  * (p. 130). Même gabarit que les cartes d'attaque de la fiche : icône de l'attaque (celle du
  * `scope`), libellé, valeur de touche (avec son détail au survol) et DM (dé + caractéristique).
  *
- * Elle REMPLACE la carte « Attaque à distance » tant que la forme est active : sous cette forme le
- * personnage ne peut pas utiliser d'arme pour attaquer à distance, mais gagne cette attaque — le
- * libellé et son info-bulle le disent explicitement. Aucune bascule (contrairement à arme ⇄ mains
- * nues, PER-141) : ce n'est pas un choix du joueur mais l'état de sa forme.
+ * Elle REMPLACE la carte « Attaque à distance » OU « Attaque au contact » (PER-374, formes
+ * élémentaires) tant que la forme est active — le libellé et son info-bulle disent explicitement
+ * laquelle. Aucune bascule (contrairement à arme ⇄ mains nues, PER-141) : ce n'est pas un choix du
+ * joueur mais l'état de sa forme.
  */
 export function FormAttackCard({ attack, touch, forced, wrapTouch, abilities, attackMalusDie = [] }: FormAttackCardProps) {
-  const statId = attack.scope === 'melee' ? 'meleeAttack' : 'rangedAttack';
-  const scopeLabel = attack.scope === 'melee' ? 'au contact' : 'à distance';
+  const statId = attack.scope === 'melee' ? 'meleeAttack' : attack.scope === 'magic' ? 'magicAttack' : 'rangedAttack';
+  const scopeLabel = attack.scope === 'melee' ? 'au contact' : attack.scope === 'magic' ? 'magique' : 'à distance';
   const titleTooltip = (
     <Box sx={{ minWidth: 200 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -107,6 +107,12 @@ export function FormAttackCard({ attack, touch, forced, wrapTouch, abilities, at
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
           Remplace l’attaque à distance : sous cette forme, le personnage ne peut pas utiliser d’arme
           pour attaquer à distance.
+        </Typography>
+      )}
+      {attack.replacesMeleeAttack && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+          Remplace l’attaque au contact : sous cette forme, le personnage ne peut plus utiliser d’arme
+          ni ses mains nues, seulement cette attaque.
         </Typography>
       )}
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>

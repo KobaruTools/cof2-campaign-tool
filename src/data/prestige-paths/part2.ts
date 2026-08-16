@@ -554,6 +554,12 @@ export const prestigePaths2: PrestigePath[] = [
     category: 'mystic',
     prerequisites:
       "Cette voie peut aussi être choisie par un mage qui maîtrise au moins un sort d'eau. Remplacer le Charisme par l'Intelligence dans le texte des capacités.",
+    // PER-374 : remplacement CHA→INT mécanisé pour les personnages de famille 'mages' (cf.
+    // `mageAlternateAbilitySubstitutions`, effects.ts). Sans effet pour un mystique (CHA conservé).
+    // Sur cette voie, TOUS les rangs (r4→r8) portent du CHA — contrairement à l'air (r4/r5 n'en
+    // portaient pas) : r4 (durée du brouillard), r5 (durée + DM du mur d'acide), r6 (durée de
+    // l'armure d'eau), r7 (durée en heures de l'écartement des eaux), r8 (durée de la forme).
+    mageAlternateAbility: 'INT',
     note: "Les voies élémentaires ont tendance à changer profondément ceux qui les suivent, tant physiquement que mentalement. Dans le cas de l'eau, les cheveux semblent toujours mouillés et les yeux prennent une couleur délavée, tandis que le tempérament devient plus changeant.",
     featureIds: [
       'prestige-elementaire-de-l-eau-r4',
@@ -3827,6 +3833,15 @@ export const prestigeFeatures2: Feature[] = [
     // déjà permanent (cumulatif) ; Immolation (r7) est normalement un sort à interrupteur → la forme
     // active AUSSI son badge de riposte (`immolationRetaliationBadge`, OR sur les 2 interrupteurs).
     // « ne peut pas parler » / retour à 0 PV : verbatim seul, aucune primitive de mutisme/rollback de PV.
+    // PER-374 — retours propriétaire (recette PER-373/374 étendue à feu/terre/air) : DEF FIXE non
+    // recalculée depuis l'AGI surchargée → `defenseOverride` (nouvelle primitive, remplace la DEF
+    // affichée comme une épingle manuelle, mais dominée par elle). Initiative « [mystique] » SANS
+    // décalage → aucun `bonuses` nécessaire (delta 0). Frappe REMPLACE la carte « Attaque au contact »
+    // (bascule arme ⇄ mains nues confisquée) → `formAttack` scope 'magic' (nouvelle valeur de scope),
+    // dés du DM entre CROCHETS (convention du livre, pas des accolades — cf. Morsure lycanthrope
+    // `[1d4 + 3]`) pour que la mini-fiche ET la carte d'attaque parsent le dé. Immunité au feu déjà
+    // PERMANENTE via Insensible au feu (r6, cumulatif) → PAS redéclarée ici (éviterait un doublon de
+    // puce Défense, cf. commentaire d'Immolation r7 ci-dessus).
     richText:
       "Une fois par jour, le personnage peut se transformer en élémentaire de feu (taille grande), pendant un maximum de [=CHA] minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire du feu et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.",
     effects: [
@@ -3836,9 +3851,20 @@ export const prestigeFeatures2: Feature[] = [
         activation: { kind: 'temporary', label: 'Forme élémentaire de feu active', activeByDefault: false },
         abilityOverrides: { AGI: 3, CON: 5, FOR: 5 },
         disablesProfileFeatures: true,
+        defenseOverride: 20,
       },
     ],
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    formAttack: {
+      name: 'Frappe de feu',
+      damage: { count: 2, die: 'd4', modifier: 5 },
+      evolving: true,
+      damageAbilities: [],
+      scope: 'magic',
+      actionTypes: [],
+      replacesMeleeAttack: true,
+      requiresActiveEffect: { featureId: 'prestige-elementaire-du-feu-r8', index: 0 },
+    },
     creatureProfile: {
       name: 'Élémentaire de feu',
       transformation: true,
@@ -3849,7 +3875,7 @@ export const prestigeFeatures2: Feature[] = [
       defense: '20',
       hitPoints: '[=niveau × 4]',
       initiative: { fromMaster: 'initiative' },
-      attack: { label: 'Frappe de feu', fromMaster: 'magicAttack', damage: '2d4° + 5' },
+      attack: { label: 'Frappe de feu', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
       note: "La forme élémentaire de feu profite en permanence des effets des capacités Insensible au feu et Immolation.",
     },
     sourcePage: 167,
@@ -3944,6 +3970,10 @@ export const prestigeFeatures2: Feature[] = [
     // « ne peut plus utiliser ses capacités de profil » → `disablesProfileFeatures`. Pas de clause
     // « profite en permanence de… » ici (contrairement au feu r7/r8) : aucun rang terre n'est un
     // buff personnel permanent/à interrupteur combinable, donc pas de `note` ni de badge de riposte.
+    // PER-374 — mêmes ajouts que feu/air/eau : DEF FIXE 23 → `defenseOverride` ; Initiative
+    // « [mystique] » SANS décalage → aucun `bonuses` ; Coup de poing REMPLACE la carte « Attaque au
+    // contact » → `formAttack` scope 'magic', dé entre crochets ; PAS d'immunité (aucune n'est
+    // imprimée pour la terre, contrairement au feu/air/eau).
     richText:
       "Une fois par jour, le personnage peut se transformer en élémentaire de terre (taille grande), pendant un maximum de [=CHA] minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de terre et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.",
     effects: [
@@ -3953,9 +3983,20 @@ export const prestigeFeatures2: Feature[] = [
         activation: { kind: 'temporary', label: 'Forme élémentaire de terre active', activeByDefault: false },
         abilityOverrides: { AGI: 1, CON: 6, FOR: 6 },
         disablesProfileFeatures: true,
+        defenseOverride: 23,
       },
     ],
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    formAttack: {
+      name: 'Coup de poing',
+      damage: { count: 2, die: 'd4', modifier: 6 },
+      evolving: true,
+      damageAbilities: [],
+      scope: 'magic',
+      actionTypes: [],
+      replacesMeleeAttack: true,
+      requiresActiveEffect: { featureId: 'prestige-elementaire-de-la-terre-r8', index: 0 },
+    },
     creatureProfile: {
       name: 'Élémentaire de terre',
       transformation: true,
@@ -3966,7 +4007,7 @@ export const prestigeFeatures2: Feature[] = [
       defense: '23',
       hitPoints: '[=niveau × 5]',
       initiative: { fromMaster: 'initiative' },
-      attack: { label: 'Coup de poing', fromMaster: 'magicAttack', damage: '2d4° + 6' },
+      attack: { label: 'Coup de poing', fromMaster: 'magicAttack', damage: '[2d4° + 6]' },
     },
     sourcePage: 168,
   },
@@ -4102,19 +4143,36 @@ export const prestigeFeatures2: Feature[] = [
     // (schema.ts) + branchement dans `CreatureStatBlock.tsx` (2 sites de rendu natif de `MasterStatValue`).
     // DM de foudre + immunité au même élément : même écart RAW assumé que le feu (le type élémentaire
     // du dé n'est pas porté par `attack.damage`, verbatim seul) ; l'immunité passe en `note` (patron
-    // « profite en permanence de… » du feu).
+    // « profite en permanence de… » du feu) ET en `damageReduction` (PER-374, badge Défense — aucun
+    // rang antérieur de la voie air ne l'accorde déjà, contrairement au feu où Insensible au feu, r6,
+    // couvre déjà l'immunité, cf. commentaire de la forme élémentaire de feu). PER-374 — mêmes ajouts
+    // que feu/terre/eau : DEF FIXE 25 → `defenseOverride` ; Initiative « [mystique + 3] » → DELTA +3 en
+    // `bonuses` (le seul élémentaire à porter un décalage non nul) ; Frappe REMPLACE la carte
+    // « Attaque au contact » → `formAttack` scope 'magic', dé entre crochets.
     richText:
       "Une fois par jour, le personnage peut se transformer en élémentaire d'air (taille grande), pendant un maximum de [=CHA] minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de l'air et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.",
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        bonuses: [],
+        bonuses: [{ stat: 'initiative', value: 3 }],
         activation: { kind: 'temporary', label: "Forme élémentaire d'air active", activeByDefault: false },
         abilityOverrides: { AGI: 5, CON: 4, FOR: 4 },
         disablesProfileFeatures: true,
+        defenseOverride: 25,
       },
     ],
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    damageReduction: { kind: 'immunity', scopes: ['lightning'] },
+    formAttack: {
+      name: 'Frappe',
+      damage: { count: 2, die: 'd4', modifier: 4 },
+      evolving: true,
+      damageAbilities: [],
+      scope: 'magic',
+      actionTypes: [],
+      replacesMeleeAttack: true,
+      requiresActiveEffect: { featureId: 'prestige-elementaire-de-l-air-r8', index: 0 },
+    },
     creatureProfile: {
       name: "Élémentaire d'air",
       transformation: true,
@@ -4125,7 +4183,7 @@ export const prestigeFeatures2: Feature[] = [
       defense: '25',
       hitPoints: '[=niveau × 5]',
       initiative: { fromMaster: 'initiative', offset: 3 },
-      attack: { label: 'Frappe', fromMaster: 'magicAttack', damage: '2d4° + 4' },
+      attack: { label: 'Frappe', fromMaster: 'magicAttack', damage: '[2d4° + 4]' },
       note: "Immunité aux DM de foudre.",
     },
     sourcePage: 169,
@@ -4141,6 +4199,19 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage lève un brouillard dense (pénombre dans un rayon de 10 m, puis équivalent au noir total) dans un rayon de 20 m autour de lui. S'il maintient sa concentration, il peut continuer à augmenter le rayon de la zone de 20 m par action limitée à chaque round suivant pendant un maximum de round égal à son niveau. Une fois qu'il cesse sa concentration, le brouillard dure pendant CHA minutes.",
+    // Zone de concealment à usage tactique (bloque la vue, patron Mur de vent/Mur de pierre) →
+    // interrupteur de SUIVI, marqueur seul (le rayon croissant par concentration n'est pas une
+    // stat dérivée). Niveau du personnage bracketé (« un round égal à son niveau » → [=niveau]) ;
+    // durée CHA après fin de concentration → [=CHA].
+    richText:
+      "Le personnage lève un brouillard dense (pénombre dans un rayon de 10 m, puis équivalent au noir total) dans un rayon de 20 m autour de lui. S'il maintient sa concentration, il peut continuer à augmenter le rayon de la zone de 20 m par action limitée à chaque round suivant pendant un maximum de [=niveau] rounds. Une fois qu'il cesse sa concentration, le brouillard dure pendant [=CHA] minutes.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Brouillard actif', activeByDefault: false },
+      },
+    ],
     sourcePage: 169,
   },
   {
@@ -4152,6 +4223,18 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut créer un mur d'acide rectiligne de 20 m de long pour 4 m de haut (portée 20 m, épaisseur 30 cm). Toute créature qui franchit le mur subit [3d4° + CHA] DM d'acide. Le sort a une durée de CHA minutes.",
+    // Interrupteur de SUIVI (patron Mur de feu, identique à l'élément près) : marqueur seul, aucune
+    // valeur chiffrée — permet au joueur de savoir si son mur est encore dressé. Formule de DM déjà
+    // bracketée dans le livre ([3d4° + CHA]) reprise telle quelle ; durée CHA minutes → [=CHA].
+    richText:
+      "Le personnage peut créer un mur d'acide rectiligne de 20 m de long pour 4 m de haut (portée 20 m, épaisseur 30 cm). Toute créature qui franchit le mur subit [3d4° + CHA] DM d'acide. Le sort a une durée de [=CHA] minutes.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: "Mur d'acide actif", activeByDefault: false },
+      },
+    ],
     sourcePage: 169,
   },
   {
@@ -4163,6 +4246,24 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une couche d'eau de quelques centimètres d'épaisseur recouvre le corps du personnage pendant CHA minutes, elle lui donne une RD 3 contre tous les DM physiques et RD 10 contre les DM de feu et d'acide. Enfin le personnage est glissant comme un poisson et ne peut être saisi.",
+    // Interrupteur de SUIVI (patron Armure de pierre, magie-elementaire-r5) : la RD chiffrée vit dans
+    // `Feature.damageReduction` (deux entrées, PER-137 : physique 3, feu/acide 10), gatée par ce même
+    // interrupteur. Pas de plafond d'absorption ni de compteur : le livre n'en donne aucun ici
+    // (contrairement à Armure de pierre). « Ne peut être saisi » : aucune portée/primitive dédiée à
+    // l'immunité à la saisie n'existe au catalogue — reste en texte descriptif verbatim seul.
+    richText:
+      "Une couche d'eau de quelques centimètres d'épaisseur recouvre le corps du personnage pendant [=CHA] minutes, elle lui donne une RD 3 contre tous les DM physiques et RD 10 contre les DM de feu et d'acide. Enfin le personnage est glissant comme un poisson et ne peut être saisi.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: "Armure d'eau active", activeByDefault: false },
+      },
+    ],
+    damageReduction: [
+      { kind: 'flat', value: 3, scopes: ['physical'] },
+      { kind: 'flat', value: 10, scopes: ['fire', 'acid'] },
+    ],
     sourcePage: 169,
   },
   {
@@ -4174,6 +4275,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut stopper le cours d'une rivière ou écarter les eaux d'un lac. L'eau s'ouvre devant le personnage et se referme derrière lui sur une distance maximale de 1 km (moins selon son choix). Lui et ses compagnons peuvent alors traverser à pied sec pendant une durée de CHA heures.",
+    // Pas d'interrupteur de suivi : sort utilitaire/exploration (ouvre un passage, ne bloque ni ne
+    // protège en combat), même famille que Litomorphose (terre r5) et Chevaucher les nuées (air r5).
+    // Durée CHA heures → [=CHA].
+    richText:
+      "Le personnage peut stopper le cours d'une rivière ou écarter les eaux d'un lac. L'eau s'ouvre devant le personnage et se referme derrière lui sur une distance maximale de 1 km (moins selon son choix). Lui et ses compagnons peuvent alors traverser à pied sec pendant une durée de [=CHA] heures.",
     sourcePage: 169,
   },
   {
@@ -4185,6 +4291,55 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par jour, le personnage peut se transformer en élémentaire d'eau (taille grand), pendant un maximum de CHA minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de l'eau et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.\n\nÉLÉMENTAIRE D'EAU\nAGI +3* | CON +5 | FOR +5 | PER [mystique] | CHA [mystique] | INT [mystique] | VOL [mystique]\nDéfense 23 · Points de vigueur [Niv. x 5] · Initiative [mystique]\nFrappe [attaque magique] · DM 2d4°+ 5 d'acide Immunité aux DM d'acide.",
+    // Même patron que Forme élémentaire d'air/de terre (r8) : bloc de stats SORTI du texte affiché
+    // vers creatureProfile, `text` verbatim conservé comme source. AGI/CON/FOR = valeurs ABSOLUES
+    // imprimées (« +3* »/« +5 »/« +5 ») → `abilityOverrides`. AGI porte l'astérisque →
+    // `bonusDieAbilities: ['AGI']`. PER/CHA/INT/VOL « [mystique] » = identiques au personnage →
+    // `abilitiesFromMaster` (delta 0). Initiative « [mystique] » SANS décalage (contrairement à
+    // l'air, « [mystique + 3] ») → pas d'`offset`, ni de `bonuses`. DM d'acide + immunité au même
+    // élément : même écart RAW assumé que le feu/l'air (le type élémentaire du dé n'est pas porté par
+    // `attack.damage`, verbatim seul) ; l'immunité passe en `note` ET en `damageReduction` (PER-374,
+    // badge Défense — aucun rang antérieur de la voie eau ne l'accorde déjà : Armure d'eau r6 est
+    // temporaire et RD seulement, pas une immunité permanente). PER-374 — mêmes ajouts que feu/terre/
+    // air : DEF FIXE 23 → `defenseOverride` ; Frappe REMPLACE la carte « Attaque au contact » →
+    // `formAttack` scope 'magic', dé entre crochets.
+    richText:
+      "Une fois par jour, le personnage peut se transformer en élémentaire d'eau (taille grande), pendant un maximum de [=CHA] minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de l'eau et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: "Forme élémentaire d'eau active", activeByDefault: false },
+        abilityOverrides: { AGI: 3, CON: 5, FOR: 5 },
+        disablesProfileFeatures: true,
+        defenseOverride: 23,
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    damageReduction: { kind: 'immunity', scopes: ['acid'] },
+    formAttack: {
+      name: 'Frappe',
+      damage: { count: 2, die: 'd4', modifier: 5 },
+      evolving: true,
+      damageAbilities: [],
+      scope: 'magic',
+      actionTypes: [],
+      replacesMeleeAttack: true,
+      requiresActiveEffect: { featureId: 'prestige-elementaire-de-l-eau-r8', index: 0 },
+    },
+    creatureProfile: {
+      name: "Élémentaire d'eau",
+      transformation: true,
+      size: 'grande',
+      abilities: { AGI: 3, CON: 5, FOR: 5 },
+      bonusDieAbilities: ['AGI'],
+      abilitiesFromMaster: { PER: 0, CHA: 0, INT: 0, VOL: 0 },
+      defense: '23',
+      hitPoints: '[=niveau × 5]',
+      initiative: { fromMaster: 'initiative' },
+      attack: { label: 'Frappe', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
+      note: "Immunité aux DM d'acide.",
+    },
     sourcePage: 170,
   },
 

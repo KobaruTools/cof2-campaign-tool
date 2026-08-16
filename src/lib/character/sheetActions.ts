@@ -46,6 +46,7 @@ import { isCustomItem } from './types';
 import {
   conditionalEffectsOf,
   effectContext,
+  isEffectActive,
   resetUsageCounters,
   setEffectToggle,
   shortRestLockKey,
@@ -68,6 +69,7 @@ import {
 import { RAGE_RESOURCE_KEY, type RestorableResourceKind } from './restorableResources';
 import { longRest, shortRest } from './rest';
 import { oneHandableWeaponFamiliesForCharacter, setWornAt } from './equipment';
+import { baseAncestrySize } from './size';
 import {
   hasItemCharges,
   refillItemCharges as refillCharges,
@@ -83,6 +85,7 @@ import {
 } from './weaponLoading';
 import { elixirItemName, isElixirItemName } from './elixirs';
 import {
+  activeTransformationWithHp,
   companionMountEnSelle,
   effectiveCreatureProfile,
   listCompanions,
@@ -180,6 +183,16 @@ export function toggleEffect(
     const nextCounters = { ...character.usageCounters };
     delete nextCounters[key];
     patch.usageCounters = nextCounters;
+  }
+  // PER-374 — DÉSACTIVER une transformation à PV propres (formes élémentaires) efface son suivi de
+  // dégâts : au prochain déclenchement, l'élémentaire repart à PV pleins (le livre ne prévoit aucune
+  // blessure persistante d'une transformation à l'autre). Ne concerne QUE les capacités porteuses
+  // d'un `creatureProfile.transformation` avec des PV chiffrés — les autres interrupteurs (mur,
+  // armure…) ne touchent jamais `transformationDepletion`.
+  if (!active && feature?.creatureProfile?.transformation && feature.creatureProfile.hitPoints != null) {
+    const nextTransformationDepletion = { ...character.transformationDepletion };
+    delete nextTransformationDepletion[featureId];
+    patch.transformationDepletion = nextTransformationDepletion;
   }
   return patch;
 }
@@ -489,6 +502,9 @@ export function setEquipmentWorn(
       index,
       worn,
       oneHandableWeaponFamiliesForCharacter(character),
+      // PER-330 : un peuple de taille petite équipe une arme 1d8–1d10 à deux mains par défaut → poser
+      // l'arme renvoie le bouclier / la seconde arme au sac, comme une arme intrinsèquement à deux mains.
+      baseAncestrySize(character.ancestryId) === 'petite',
     ),
   };
 }
@@ -904,6 +920,79 @@ export function healCompanion(
 
 export function resetCompanionHp(character: Character, key: string): Partial<Character> {
   return setCompanionDepletion(character, key, resetHp(character.companionDepletion[key] ?? {}));
+}
+
+// ---------------------------------------------------------------------------
+// PV de la FORME active du personnage lui-même (PER-374, formes élémentaires)
+// ---------------------------------------------------------------------------
+
+/**
+ * PV des PROPRES FORMES du personnage (PER-374) : même mécanique que la barre du joueur et celle
+ * des compagnons, indexée par l'id du rang qui octroie la transformation active. DISTINCT de
+ * `companionDepletion` : une transformation n'est pas un compagnon (`listCompanions` l'exclut
+ * exprès), donc `pruneCompanionDepletion` la purgerait — cf. doc de `Character.transformationDepletion`.
+ */
+export function setTransformationDepletion(
+  character: Character,
+  key: string,
+  next: Depletion,
+): Partial<Character> {
+  const transformationDepletion = { ...character.transformationDepletion };
+  const pruned = pruneDepletion(next);
+  if (Object.keys(pruned).length === 0) delete transformationDepletion[key];
+  else transformationDepletion[key] = pruned;
+  return { transformationDepletion };
+}
+
+/**
+ * Éteint l'interrupteur de forme (`conditional-stat-bonus`/`temporary` actif) de la capacité
+ * `featureId` — équivaut à un clic manuel sur son toggle (mêmes effets de bord : `toggleEffect`,
+ * dont l'effacement de `transformationDepletion`). `null` si la capacité n'a aucun toggle de ce
+ * genre actuellement actif (rien à éteindre).
+ */
+function deactivateTransformationFeature(character: Character, featureId: string): Partial<Character> | null {
+  const effects = featureById.get(featureId)?.effects ?? [];
+  const index = effects.findIndex(
+    (e, i) => e.kind === 'conditional-stat-bonus' && e.activation.kind === 'temporary' && isEffectActive(character, featureId, i),
+  );
+  if (index < 0) return null;
+  return toggleEffect(character, featureId, index, false);
+}
+
+/**
+ * Dégâts sur la forme active du personnage. Le manque est plafonné au max de la créature.
+ *
+ * RAW (formes élémentaires, p. 166-170) : « S'il est réduit à 0 PV sous cette forme, il reprend sa
+ * forme initiale avec les PV qu'il avait au moment de la transformation. » — à 0 PV, on ÉTEINT
+ * l'interrupteur de la forme (au lieu d'afficher « à terre / mourant », qui ne s'applique pas :
+ * le personnage ne tombe pas inconscient, il REDEVIENT lui-même). `toggleEffect` efface au passage
+ * `transformationDepletion` : le prochain déclenchement repart à PV pleins (aucune blessure
+ * persistante d'une transformation à l'autre, RAW muet là-dessus).
+ */
+export function damageTransformation(
+  character: Character,
+  key: string,
+  amount: number,
+  kind: 'lethal' | 'temp',
+): Partial<Character> {
+  const max = activeTransformationWithHp(character)?.maxHp;
+  const next = applyDamage(character.transformationDepletion[key] ?? {}, amount, kind, max);
+  if (max !== undefined) {
+    const current = max - (next.hp?.lethal ?? 0) - (next.hp?.temp ?? 0);
+    if (current <= 0) {
+      const revert = deactivateTransformationFeature(character, key);
+      if (revert) return revert;
+    }
+  }
+  return setTransformationDepletion(character, key, next);
+}
+
+export function healTransformation(character: Character, key: string, amount: number): Partial<Character> {
+  return setTransformationDepletion(character, key, healHp(character.transformationDepletion[key] ?? {}, amount));
+}
+
+export function resetTransformationHp(character: Character, key: string): Partial<Character> {
+  return setTransformationDepletion(character, key, resetHp(character.transformationDepletion[key] ?? {}));
 }
 
 /**

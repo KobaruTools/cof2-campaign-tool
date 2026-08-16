@@ -174,6 +174,18 @@ export interface DerivedStatsGridProps {
    */
   rangedReplacingFormAttack?: FormAttackView | null;
   /**
+   * PER-374 — attaque conférée par une FORME active qui REMPLACE l'attaque au contact (Frappe des
+   * formes élémentaires : la bascule arme ⇄ mains nues, PER-141, cède la place à une attaque unique
+   * fixe). Symétrique de `rangedReplacingFormAttack`. Absent / `null` → carte au contact inchangée.
+   */
+  meleeReplacingFormAttack?: FormAttackView | null;
+  /**
+   * PER-374 — DEF imposée par une FORME active (nombre fixe imprimé, ex. Forme élémentaire d'air
+   * « Défense 25 ») indépendamment de la formule habituelle. `null` = aucune surcharge, DEF recalculée
+   * normalement. Priorité la plus BASSE : une surcharge manuelle (`overrides.def`) l'emporte toujours.
+   */
+  activeDefenseOverride?: number | null;
+  /**
    * PER-74 — dé bonus à TOUTES les attaques (contact/distance/magie), auto tant que PV < niveau
    * (flibustier r8 « Pas de quartier »). Affiche un badge double-d20 sur les cartes d'attaque. Vide
    * ou absent = aucun.
@@ -260,6 +272,8 @@ export function DerivedStatsGrid({
   rangedAttackMagicalSourceId,
   rangedAttackElement,
   rangedReplacingFormAttack,
+  meleeReplacingFormAttack,
+  activeDefenseOverride = null,
   attackBonusDie = [],
   boundWeaponAttackDie = null,
   attackMalusDie = [],
@@ -338,8 +352,12 @@ export function DerivedStatsGrid({
     <Grid container spacing={1}>
       {statLines.map(({ id, computed, suffix }) => {
         const key = OVERRIDE_KEY[id];
-        const forced = overrides ? key in overrides : false;
-        const overrideValue = forced ? (overrides![key] ?? 0) : null;
+        const manualForced = overrides ? key in overrides : false;
+        // PER-374 — DEF imposée par une forme active (transformation) : priorité la plus BASSE, une
+        // surcharge manuelle du joueur/MJ (`overrides.def`) l'emporte toujours si les deux sont posées.
+        const formForced = id === 'defense' && !manualForced && activeDefenseOverride !== null;
+        const forced = manualForced || formForced;
+        const overrideValue = manualForced ? (overrides![key] ?? 0) : formForced ? activeDefenseOverride : null;
         const display = forced ? overrideValue : computed;
         // Vue compacte à 2 colonnes (mobile) réservée aux stats SIMPLES en lecture : titre
         // masqué et icône réduite pour gagner de la place. Les lignes d'attaque restent en
@@ -377,6 +395,41 @@ export function DerivedStatsGrid({
           extraModSources,
           enterDelay: 200,
         };
+
+        // PER-374 — une FORME active peut CONFISQUER l'attaque au contact (bascule arme ⇄ mains nues,
+        // PER-141) et la remplacer par une attaque unique et fixe (Frappe des formes élémentaires,
+        // touche = attaque magique du personnage). Même patron que le remplacement de l'attaque à
+        // distance ci-dessus : on relit la stat du `scope` de l'attaque (et sa surcharge éventuelle).
+        if (id === 'meleeAttack' && meleeReplacingFormAttack && !onOverride) {
+          const attackStatId =
+            meleeReplacingFormAttack.scope === 'ranged'
+              ? 'rangedAttack'
+              : meleeReplacingFormAttack.scope === 'magic'
+                ? 'magicAttack'
+                : 'meleeAttack';
+          const attackKey = OVERRIDE_KEY[attackStatId];
+          const attackForced = overrides ? attackKey in overrides : false;
+          const attackTouch = attackForced ? (overrides![attackKey] ?? 0) : stats[attackStatId];
+          return (
+            <Grid key={id} size={cardSize}>
+              {withBarPin(
+                id,
+                <FormAttackCard
+                  attack={meleeReplacingFormAttack}
+                  touch={attackTouch}
+                  forced={attackForced}
+                  wrapTouch={(child) => (
+                    <DerivedStatBreakdownTooltip {...breakdownProps} statId={attackStatId}>
+                      {child}
+                    </DerivedStatBreakdownTooltip>
+                  )}
+                  abilities={input.abilities}
+                  attackMalusDie={attackMalusDie}
+                />,
+              )}
+            </Grid>
+          );
+        }
 
         // PER-141 — carte « Attaque au contact » avec bascule arme ⇄ mains nues : double cadre
         // superposé qui s'échangent avec animation. Réservée à la vue (pas en mode édition des

@@ -940,7 +940,7 @@ for (const c of features) {
     err(`[capacite ${c.id}] formAttack: dé inconnu : ${fa.damage?.die}`);
   for (const a of fa.damageAbilities ?? [])
     if (!validAbilities.has(a)) err(`[capacite ${c.id}] formAttack: caractéristique inconnue : ${a}`);
-  if (fa.scope !== 'melee' && fa.scope !== 'ranged')
+  if (fa.scope !== 'melee' && fa.scope !== 'ranged' && fa.scope !== 'magic')
     err(`[capacite ${c.id}] formAttack: scope inconnu : ${fa.scope}`);
   for (const a of fa.actionTypes ?? [])
     if (!ACTION_TYPES.includes(a)) err(`[capacite ${c.id}] formAttack: type d'action invalide : ${a}`);

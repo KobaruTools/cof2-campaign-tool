@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per374-elementaire-de-l-eau",
+  "name": "Recette PER-374 — Prêtre (voie élémentaire de l'eau)",
+  "identity": {
+    "description": "ATTENDU : prêtre niveau 16 avec la voie de prestige élémentaire de l'eau (r4→r8) acquise, AUCUN toggle actif. r4 Brouillard/r5 Mur acide/r6 Armure d'eau/r8 Forme portent chacun un interrupteur inactif par défaut ; r7 Écartement des eaux N'A PAS d'interrupteur (utilitaire). Aucune RD affichée, aucune stat modifiée, aucun compagnon."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": -1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "foi-r1",
+    "prestige-elementaire-de-l-eau-r4",
+    "prestige-elementaire-de-l-eau-r5",
+    "prestige-elementaire-de-l-eau-r6",
+    "prestige-elementaire-de-l-eau-r7",
+    "prestige-elementaire-de-l-eau-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-374 — voie de prestige élémentaire de l'eau (p. 169-170), catégorie mystique, baseline sans toggle.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

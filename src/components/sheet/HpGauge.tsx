@@ -121,6 +121,18 @@ export interface HpGaugeProps {
   /** Libellé de l'icône cœur (info-bulle du cap). Défaut « Points de vie ». */
   iconLabel?: string;
   /**
+   * Teinte du CAP (icône cœur + chevron), défaut vert (`success.main`) — PER-374 : la jauge de PV
+   * d'une forme active (formes élémentaires) reprend la teinte de la voie de prestige porteuse
+   * (`prestigeCategoryColor`) au lieu du vert générique.
+   */
+  color?: string;
+  /**
+   * Remplissage EN DÉGRADÉ du segment « PV actuels » (`linear-gradient(...)`), prime sur `color`
+   * pour ce seul segment — PER-374 : dégradé « métal précieux » de la voie de prestige porteuse
+   * (`prestigeMetalGradient`), plutôt qu'un aplat. Absent = remplissage plat (`color`).
+   */
+  gradient?: string;
+  /**
    * Place les boutons rapides (−1 / +1 / remise à plein) sur une ligne DÉDIÉE sous la barre,
    * plutôt qu'à sa droite (défaut). Sert aux dispositions étroites (colonnes du tracker
    * d'initiative de l'écran de MJ, PER-236) où la barre a besoin de toute la largeur.
@@ -139,6 +151,15 @@ export interface HpGaugeProps {
    * un chevron ne promettrait qu'un dépliage qui ne tient pas dans le bloc.
    */
   hideDetails?: boolean;
+  /**
+   * GRISE la jauge et désactive tous ses contrôles (PER-374) : sert à la barre de PV du
+   * personnage quand une transformation à PV PROPRES (formes élémentaires) est active — les PV
+   * réels sont GELÉS (RAW : « il reprend sa forme initiale avec les PV qu'il avait au moment de
+   * la transformation »), c'est la jauge de la forme (rendue à côté) qui reçoit les dégâts.
+   */
+  disabled?: boolean;
+  /** Raison du grisage, en info-bulle sur la jauge (ex. « Forme élémentaire d'eau active »). */
+  disabledReason?: string;
 }
 
 /**
@@ -151,9 +172,9 @@ export interface HpGaugeProps {
  * Le maximum est piloté ailleurs. Sert à la fois au personnage (`PlayerStatusPanel`) et à
  * chaque compagnon (`CompanionCard`), pour un comportement de suivi de PV identique.
  */
-export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', controlsBelow = false, defaultExpanded = false, hideDetails = false }: HpGaugeProps) {
+export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', color, gradient, controlsBelow = false, defaultExpanded = false, hideDetails = false, disabled = false, disabledReason }: HpGaugeProps) {
   const theme = useTheme();
-  const hpColor = theme.palette.success.main;
+  const hpColor = color ?? theme.palette.success.main;
   const [amount, setAmount] = useState('1');
   const [kind, setKind] = useState<DamageKind>('lethal');
   const [expanded, toggleExpanded] = usePersistentBoolean(persistKey, defaultExpanded);
@@ -169,7 +190,7 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
   // Barre : PV actuels (vert), puis dégâts temporaires (ambre, récupérés à 1/min),
   // puis dégâts létaux (rouge). La somme des trois vaut le max → barre pleine à neuf.
   const segments: GaugeSegment[] = [
-    { key: 'current', value: current, color: 'success.main', label: `PV actuels : ${current}` },
+    { key: 'current', value: current, color: hpColor, background: gradient, label: `PV actuels : ${current}` },
     { key: 'temp', value: temp, color: 'warning.main', label: `Dégâts temporaires : ${temp}` },
     { key: 'lethal', value: lethal, color: 'error.main', label: `Dégâts létaux : ${lethal}` },
   ];
@@ -209,8 +230,11 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
     </>
   );
 
-  return (
-    <Stack spacing={1.25}>
+  // PER-374 — GRISAGE complet (opacité + interactions coupées) plutôt que désactiver chaque
+  // contrôle un par un : la jauge entière devient un simple AFFICHAGE (dernière valeur connue
+  // avant le gel) tant qu'une forme à PV propres est active. `AppTooltip` porte la raison.
+  const content = (
+    <Stack spacing={1.25} sx={disabled ? { opacity: 0.5, pointerEvents: 'none' } : undefined}>
       {/* Cap d'expansion + icône cœur (libellé en tooltip) + barre (courant/max intégré +
           badge d'état) + ajustement fin (±1, reset) accolés à sa droite (ou en dessous). */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
@@ -272,4 +296,6 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
       )}
     </Stack>
   );
+  if (!disabled) return content;
+  return disabledReason ? <AppTooltip title={disabledReason}>{content}</AppTooltip> : content;
 }

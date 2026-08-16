@@ -595,6 +595,52 @@ export function listCompanions(character: Character): CompanionEntry[] {
   return out;
 }
 
+/** Une FORME active du personnage lui-même (PER-374) qui déclare ses propres PV. */
+export interface ActiveTransformationHp {
+  /** Id du rang de voie qui octroie la transformation (ex. `prestige-elementaire-de-l-eau-r8`) — clé
+   *  de PV dans `Character.transformationDepletion`. */
+  featureId: string;
+  /** Nom de la capacité (« Forme élémentaire d'eau »), pour l'affichage. */
+  featureName: string;
+  /** Nom de la créature (« Élémentaire d'eau »), pour le libellé de la jauge. */
+  creatureName: string;
+  /** Id de la voie porteuse (« prestige-elementaire-de-l-eau »), pour la teinte de la jauge (PER-374). */
+  pathId: string;
+  /** PV maximum résolus de la forme (ex. `[=niveau × 5]` → 80 à niveau 16). */
+  maxHp: number;
+}
+
+/**
+ * Transformation ACTIVE du personnage lui-même qui déclare des PV propres (PER-374, formes
+ * élémentaires : « 80 PV » distincts de ceux du personnage sous sa forme normale). `null` si aucune
+ * transformation active n'en déclare (forme inactive, ou dont le profil n'a pas de PV chiffrés —
+ * dé dans la formule). Une seule forme peut être active à la fois (interrupteurs mutuellement
+ * exclusifs), donc la première trouvée suffit.
+ */
+export function activeTransformationWithHp(character: Character): ActiveTransformationHp | null {
+  const disabled = disabledFeatureIds(character);
+  const abilities = effectContext(character).abilities;
+  const maxRankByPath = new Map<string, number>();
+  for (const id of character.featureIds) {
+    const f = featureById.get(id);
+    if (!f) continue;
+    maxRankByPath.set(f.pathId, Math.max(maxRankByPath.get(f.pathId) ?? 0, f.rank));
+  }
+  for (const id of character.featureIds) {
+    if (disabled.has(id)) continue;
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    const profile = effectiveCreatureProfile(feature, character);
+    if (!profile?.transformation) continue;
+    if (!companionPresent(feature, character)) continue;
+    const pathRank = maxRankByPath.get(feature.pathId) ?? feature.rank;
+    const maxHp = resolveCreatureMaxHp(profile, abilities, character.level, pathRank);
+    if (maxHp == null) continue;
+    return { featureId: id, featureName: feature.name, creatureName: profile.name, pathId: feature.pathId, maxHp };
+  }
+  return null;
+}
+
 /**
  * Limite d'instances simultanées d'un compagnon multi-instances (PER-235). Pour le zombie
  * (outre-tombe-r3, p. 109) : 1 + une par voie de sorcier au rang 5 — comptage cross-voie
@@ -735,6 +781,26 @@ export function pruneCompanionDepletion(
     if (!liveKeys.has(key)) continue;
     const pruned = pruneDepletion(dep);
     if (Object.keys(pruned).length > 0) next[key] = pruned;
+  }
+  return next;
+}
+
+/**
+ * Élague la dépletion de PV des FORMES du personnage (PER-374, formes élémentaires) : ne retient
+ * que la clé de la transformation ACTUELLEMENT active (au plus une, interrupteurs mutuellement
+ * exclusifs) — désactivée (ou capacité perdue), ses PV n'ont plus de sens. Même contrat que
+ * `pruneCompanionDepletion` (fonction pure, appelée aux mêmes mutations structurelles), mais
+ * indexée sur `activeTransformationWithHp` plutôt que `listCompanions`.
+ */
+export function pruneTransformationDepletion(
+  transformationDepletion: Record<string, Depletion>,
+  character: Character,
+): Record<string, Depletion> {
+  const active = activeTransformationWithHp(character);
+  const next: Record<string, Depletion> = {};
+  if (active) {
+    const pruned = pruneDepletion(transformationDepletion[active.featureId] ?? {});
+    if (Object.keys(pruned).length > 0) next[active.featureId] = pruned;
   }
   return next;
 }
