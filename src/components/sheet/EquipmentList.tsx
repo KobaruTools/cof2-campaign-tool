@@ -59,6 +59,7 @@ import type { GrantedItem } from '@/lib/character/grantedEquipment';
 import { weaponLoadingState } from '@/lib/character/weaponLoading';
 import { MAX_CHARGE_DOTS, itemChargeState, type ItemChargeState } from '@/lib/character/itemCharges';
 import { isCustomItem } from '@/lib/character/types';
+import { baseAncestrySize } from '@/lib/character/size';
 import {
   effectiveItem,
   groupEquipmentByType,
@@ -108,6 +109,7 @@ import { CapabilityChip, GlossaryRichText, GlossaryText } from '@/components/she
 import {
   ArmorRestrictionBadge,
   EquipConflictsAlert,
+  SmallSizeWeaponAlert,
   TwoWeaponPenaltyBadge,
   WeaponAffinityBadge,
   WeaponMasteryBadge,
@@ -637,6 +639,11 @@ function GroupHeader({ type, count }: { type: ItemType; count: number }) {
 
 export interface EquipmentListProps {
   equipment: EquipmentLine[];
+  /**
+   * Peuple du personnage (PER-330) : sert l'avertissement non bloquant de TAILLE PETITE sur les armes
+   * inadaptées (halfelin, frouïn — cf. `SmallSizeWeaponAlert`). Absent → aucun avertissement de taille.
+   */
+  ancestryId?: string;
   /** Édition en place : si fourni, ajout / suppression / quantité / objet libre. */
   onChange?: (equipment: EquipmentLine[]) => void;
   /**
@@ -793,6 +800,13 @@ export interface EquipmentListProps {
   onToggleBarPin?: () => void;
   barPinned?: boolean;
   barSectionPinned?: boolean;
+  /**
+   * Cible du tour guidé (PER-426), posée sur la bascule d'affichage EN HAUT de la liste (ou sur
+   * le texte « Aucun équipement » si l'inventaire est vide) — jamais sur la liste elle-même,
+   * potentiellement très longue (des dizaines d'objets) : une cible aussi haute ferait sortir la
+   * bulle de l'écran, voire la laisserait pointer vers un contenu hors du viewport (leçon PER-425).
+   */
+  dataTour?: string;
 }
 
 /**
@@ -900,6 +914,7 @@ function SortableEquipmentCard({
 /** Liste de l'équipement possédé, en lecture ou en édition. */
 export function EquipmentList({
   equipment,
+  ancestryId,
   onChange,
   onUse,
   weaponLoading,
@@ -931,7 +946,11 @@ export function EquipmentList({
   onToggleBarPin,
   barPinned = false,
   barSectionPinned = false,
+  dataTour,
 }: EquipmentListProps) {
+  // PER-330 — taille petite (halfelin, frouïn) : ouvre le choix « Deux mains » sur les armes 1d8–1d10
+  // (défaut deux mains) et fait compter leur port sur les deux mains dans les conflits.
+  const isSmallSize = baseAncestrySize(ancestryId) === 'petite';
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
   const [itemEdit, setItemEdit] = useState<'new' | number | null>(null);
@@ -1026,7 +1045,7 @@ export function EquipmentList({
 
   if (equipment.length === 0 && !onChange) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" data-tour={dataTour}>
         Aucun équipement.
       </Typography>
     );
@@ -1269,6 +1288,7 @@ export function EquipmentList({
               line={line}
               onWear={(w) => onWear(i, w)}
               oneHandableFamilies={oneHandableFamilies}
+              smallSize={isSmallSize}
             />
           </Box>
         )}
@@ -1701,7 +1721,9 @@ export function EquipmentList({
   return (
     <Stack spacing={onChange ? 1.5 : 0}>
       {/* Conflits de port DURS (bouclier + arme à 2 mains, >1 armure/bouclier) — non bloquant (PER-77). */}
-      <EquipConflictsAlert equipment={equipment} oneHandableFamilies={oneHandableFamilies} />
+      <EquipConflictsAlert equipment={equipment} oneHandableFamilies={oneHandableFamilies} smallSize={isSmallSize} />
+      {/* PER-330 — armes inadaptées à une créature de taille petite (halfelin, frouïn) — non bloquant. */}
+      <SmallSizeWeaponAlert ancestryId={ancestryId} equipment={equipment} />
       {/* PER-286 : une capacité octroie un objet absent de l'inventaire (couleuvrine du rang 5 de
           l'artilleur acquis avant la règle, ou objet supprimé). On PROPOSE, on ne réimpose pas. */}
       {grantedMissing && grantedMissing.length > 0 && onAddGranted && (
@@ -1734,9 +1756,15 @@ export function EquipmentList({
         // dans TOUS les cas, au même gabarit qu'au-dessus de ces boutons (`Divider` `my: 1.5` du bloc
         // appelant). En édition le `spacing` du Stack fournit déjà ce même espace (`onChange` vrai) :
         // pas de `mb` ici, sous peine de le CUMULER avec le `gap` du Stack et doubler l'écart.
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mb: onChange ? 0 : 1.5 }}>
-          <InventoryViewToggle cards={cards} onChange={setCards} />
-          <InventoryLayoutToggle grouped={grouped} onChange={setGrouped} />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: onChange ? 0 : 1.5 }}>
+          {/* `data-tour` posé ICI, sur un `inline-flex` qui n'enveloppe QUE les deux boutons —
+              pas sur le conteneur englobant ci-dessus (`display:'flex'` sans largeur contrainte,
+              qui prend toute la largeur de la rangée malgré `justifyContent:'flex-end'` ; le
+              tour guidé, PER-426, visait alors une zone bien plus large que les boutons visibles). */}
+          <Box data-tour={dataTour} sx={{ display: 'inline-flex', gap: 1 }}>
+            <InventoryViewToggle cards={cards} onChange={setCards} />
+            <InventoryLayoutToggle grouped={grouped} onChange={setGrouped} />
+          </Box>
         </Box>
       )}
       {grouped && equipment.length > 0 ? (

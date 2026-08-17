@@ -23,6 +23,11 @@ export const TOUR_REGISTRY = {
     label: 'Écran de MJ',
     version: 1,
   },
+  characterSheet: {
+    key: 'character-sheet',
+    label: 'Fiche de personnage',
+    version: 1,
+  },
 } as const satisfies Record<string, TourDefinition>;
 
 export type TourId = keyof typeof TOUR_REGISTRY;

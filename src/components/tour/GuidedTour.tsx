@@ -31,7 +31,12 @@ export function GuidedTour({
    * Appelé juste avant l'affichage de chaque étape, avec la définition de cette étape.
    * Sert à déplier une section (accordéon) dont la cible dépend d'un état contrôlé par le
    * composant hôte plutôt que par le tour lui-même (ex. `Enchantement` dans `ItemDialog`,
-   * PER-424bis) — le tour ne connaît pas cet état, seul l'hôte peut le faire.
+   * PER-424bis) — le tour ne connaît pas cet état, seul l'hôte peut le faire. Purement
+   * informatif (fire-and-forget) : pour une cible qui doit être ATTENDUE (pas seulement
+   * révélée) avant que le tour ne se positionne dessus, préférer le hook natif `Step.before`
+   * (Promise), que `react-joyride` attend nativement — cf. PER-426 sur la fiche de personnage,
+   * où un mécanisme maison équivalent à celui-ci (avancée différée bricolée à la main) s'est
+   * révélé fragile (blocage si l'utilisateur cliquait pendant la transition).
    */
   onStepBefore?: (step: Step) => void;
 }) {

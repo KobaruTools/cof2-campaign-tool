@@ -87,6 +87,13 @@ export interface SheetSectionProps {
   activeTab?: string;
   /** Notifie le changement d'onglet (n'a d'effet qu'avec `tabs`). */
   onTabChange?: (value: string) => void;
+  /**
+   * Cible du tour guidé (PER-426), posée sur le seul EN-TÊTE (bandeau d'onglets ou ligne de
+   * titre), jamais sur le `Paper` entier de la section : un target aussi haut que toute la
+   * section (grille de capacités, tableau d'inventaire…) fait sortir la bulle de l'écran (leçon
+   * PER-425, voir `CollapsibleSection` de l'écran de MJ).
+   */
+  dataTour?: string;
   children: ReactNode;
 }
 
@@ -121,6 +128,7 @@ export function SheetSection({
   tabs,
   activeTab,
   onTabChange,
+  dataTour,
   children,
 }: SheetSectionProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -251,10 +259,20 @@ export function SheetSection({
         // L'onglet actif chevauche le liseré (`mb: -1px`) et se rattache ainsi au corps (accent primary
         // en tête + fond léger) ; l'inactif reste en retrait. L'action (toggles/crayon/source) à droite.
         <Box
+          data-tour={dataTour}
           sx={(theme) => ({
             display: 'flex',
             alignItems: 'flex-end',
             gap: 1,
+            // Marge de défilement (PER-426) : lue par `react-joyride` via `getComputedStyle`
+            // au moment du défilement automatique vers une étape ciblant cet en-tête — sans
+            // elle, une section en haut de page défile pile SOUS l'`AppHeader` collé (bulle
+            // du tour ancrée loin de sa cible réelle, cachée derrière l'en-tête). Valeur fixe
+            // généreuse (pas calée au pixel près sur la hauteur RÉELLE, qui varie selon les
+            // étages actifs de l'en-tête) : un peu de marge en trop est sans conséquence,
+            // alors qu'une mesure JS calée dessus s'était révélée fragile (course avec le
+            // montage du tour avant que l'en-tête ait fini de se composer).
+            ...(dataTour ? { scrollMarginTop: '170px' } : {}),
             // En très petit écran, l'action (jusqu'à 4 boutons sur « Voies & capacités ») ne
             // tient plus à côté des onglets sur une seule ligne et finit par les chevaucher :
             // on autorise le retour à la ligne (l'action bascule alors seule sur sa ligne, cf.
@@ -388,6 +406,7 @@ export function SheetSection({
       ) : (
         <Stack
           className="section-header"
+          data-tour={dataTour}
           direction="row"
           spacing={1}
           // Comportement caché mais cohérent : cliquer le titre replie la section quand elle est
@@ -400,6 +419,9 @@ export function SheetSection({
             userSelect: collapsible ? 'none' : undefined,
             // Pas de marge conditionnelle ici : l'espace titre→contenu vit DANS le Collapse
             // (cf. `pt` ci-dessous) pour s'animer avec le contenu au lieu de sauter au clic.
+            // Marge de défilement du tour (PER-426), cf. l'autre en-tête (bandeau d'onglets)
+            // ci-dessus pour le détail.
+            ...(dataTour ? { scrollMarginTop: '170px' } : {}),
           }}
         >
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>

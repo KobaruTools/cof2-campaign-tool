@@ -223,94 +223,15 @@ const NO_EDIT: Record<EditBlock, boolean> = {
   identity: false,
   notes: false,
 };
-
-/**
- * Étapes du tour guidé de la fiche de personnage (PER-426) : UN SEUL tour long couvrant les
- * grandes zones de la page, dans l'ordre où elles apparaissent à l'écran — pas de mini-tours
- * par section (cadrage explicite du ticket, l'utilisateur peut Passer à tout moment). Chaque
- * cible vise le CONTENU réel de sa section (grille de caractéristiques, panneau de stats,
- * barre de vie…), jamais son en-tête ni son bandeau d'onglets (retour propriétaire — le tour
- * doit montrer CE QUE la section fait, pas juste la nommer). « Statistiques dérivées » et
- * « Voies & capacités » ont chacune deux étapes (un onglet chacune) : l'onglet secondaire
- * (Compétences & tests / Manœuvres) est basculé PROGRAMMATIQUEMENT par `onStepBefore` du
- * `<GuidedTour>` plus bas, le tour ne connaissant pas ces états contrôlés par la page.
- * « État du personnage » est absente si le profil est incomplet (`masterDerived` nul, la
- * section elle-même ne rend rien) : step conditionnelle, comme `showPlayersStep` de
- * l'écran de MJ (PER-425).
- */
-function buildCharacterSheetTourSteps({ showStatusStep }: { showStatusStep: boolean }): Step[] {
-  const steps: Step[] = [
-    {
-      target: '[data-tour="character-sheet-abilities"]',
-      title: 'Caractéristiques',
-      content: (
-        <>
-          Vos {ABILITY_IDS.map((id, i) => (
-            <span key={id}>
-              <AbilityCodeChip ability={id} noTooltip />
-              {i < ABILITY_IDS.length - 1 ? ' ' : ''}
-            </span>
-          ))}{' '}
-          sont déjà saisies pour ce personnage — les dés se lancent en vrai à la table, rien
-          n’est tiré automatiquement.
-        </>
-      ),
-      placement: 'auto',
-    },
-    {
-      target: '[data-tour="character-sheet-derived"]',
-      title: 'Statistiques dérivées',
-      content:
-        'Défense, initiative, attaques et jauges (PV, mana…) se calculent à partir de vos caractéristiques et capacités.',
-      placement: 'auto',
-    },
-    {
-      target: '[data-tour="character-sheet-tests"]',
-      title: 'Compétences & tests',
-      content:
-        'Le détail de vos bonus de test par domaine (bonus d’aptitude, dés supplémentaires, malus d’armure…) — le second onglet de « Statistiques dérivées ».',
-      placement: 'auto',
-    },
-  ];
-  if (showStatusStep) {
-    steps.push({
-      target: '[data-tour="character-sheet-status"]',
-      title: 'État du personnage',
-      content:
-        'Votre barre de vie affiche les points de vie actuels et se met à jour selon vos capacités. En dessous, Repos court et Repos long appliquent votre récupération — dés de récupération, mana et chance inclus.',
-      placement: 'auto',
-    });
-  }
-  steps.push(
-    {
-      target: '[data-tour="character-sheet-features"]',
-      title: 'Voies & capacités',
-      content: 'Vos voies et capacités acquises, avec leurs règles et effets à activer directement depuis la fiche.',
-      placement: 'auto',
-    },
-    {
-      target: '[data-tour="character-sheet-maneuvers"]',
-      title: 'Manœuvres',
-      content:
-        'Un aide-mémoire des manœuvres de combat (feinte, bousculade, désarmement…), en lecture seule — le second onglet de « Voies & capacités ».',
-      placement: 'auto',
-    },
-    {
-      target: '[data-tour="character-sheet-purse"]',
-      title: 'Bourse',
-      content: 'Vos pièces d’or, d’argent et de cuivre — modifiables directement ici, hors mode Modifier.',
-      placement: 'auto',
-    },
-    {
-      target: '[data-tour="character-sheet-inventory"]',
-      title: 'Inventaire',
-      content:
-        'Vos armes, armures et objets portés ou transportés — équipez, utilisez ou donnez un objet directement depuis cette liste.',
-      placement: 'auto',
-    },
-  );
-  return steps;
-}
+/** Symétrique de `NO_EDIT` — tous les blocs en édition (PER-426, étape « Modifier la page »). */
+const ALL_EDIT: Record<EditBlock, boolean> = {
+  abilities: true,
+  derived: true,
+  features: true,
+  equipment: true,
+  identity: true,
+  notes: true,
+};
 
 export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: idParam } = use(params);
@@ -439,6 +360,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setEquipmentJumpSlot(slot);
     setEquipmentJumpNonce((n) => n + 1);
   };
+  // Tour guidé (PER-426) — deux étapes distinctes, deux sections repliées par défaut,
+  // INDÉPENDANTES l'une de l'autre (deux compteurs séparés, même principe que
+  // `equipmentJumpNonce` : toute incrémentation déplie SA section).
+  const [notesJumpNonce, setNotesJumpNonce] = useState(0);
+  const [historyJumpNonce, setHistoryJumpNonce] = useState(0);
   // Édition par bloc : chaque bloc a son propre scope, activable via son crayon.
   const [editingBlocks, setEditingBlocks] = useState<Record<EditBlock, boolean>>(NO_EDIT);
   const allEditing = EDIT_BLOCKS.every((k) => editingBlocks[k]);
@@ -706,33 +632,58 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // (`isNarrowViewport`), comme les tours pilote et écran de MJ (PER-423/425).
   const tourReady = !!character && !!game;
   const tour = useGuidedTour('characterSheet', { ready: tourReady, enabled: !isNarrowViewport });
-  // Index CONTRÔLÉ du tour (PER-426) : deux étapes (Compétences & tests, Manœuvres) ciblent un
-  // panneau qui n'est monté qu'une fois l'onglet de sa section basculé — un simple `onStepBefore`
-  // (comme pour le dépliage de l'inventaire, qui lui ne fait que RÉVÉLER un nœud déjà monté) ne
-  // suffit pas : `react-joyride` cherche la cible avant que React ait committé le changement
-  // d'onglet, et l'étape est sautée. `tourPendingIndexRef` mémorise l'index à appliquer UNE FOIS
-  // l'onglet basculé : `tourStepIndex` n'est mis à jour qu'après coup, par l'effet ci-dessous
-  // (déclenché par le VRAI changement de `statsView`/`voiesView`, donc après leur commit).
-  const [tourStepIndex, setTourStepIndex] = useState(0);
-  const tourPendingIndexRef = useRef<number | null>(null);
+  // Étapes à onglet secondaire (Compétences & tests, Manœuvres) et Inventaire replié : la cible
+  // n'existe/n'est visible qu'une fois un état contrôlé par la page basculé (onglet) ou une
+  // section MUI `Collapse` dépliée (`visibility: hidden` tant que fermée). Chaque étape concernée
+  // porte un hook natif `Step.before` (Promise), que `react-joyride` ATTEND nativement avant de se
+  // positionner — l'étape n'est simplement pas encore affichée tant que la promesse ne résout pas
+  // (aucun bouton cliquable pendant ce temps, donc aucun risque de double-clic pendant la
+  // transition). PREMIER essai (abandonné) : un index de tour CONTRÔLÉ + une avancée différée
+  // maison — fragile, un clic « Suivant » pendant que `react-joyride` scrollait encore vers
+  // l'étape courante ne déclenchait jamais l'événement dont dépendait l'avancée, bloquant le tour
+  // pour de bon (confirmé par une vraie run Playwright, pas un artefact de test). `pendingTourResolvers`
+  // mémorise, PAR CLÉ ('stats' | 'voies' | 'equipment'), la fonction qui débloque le `before` en
+  // attente ; les effets ci-dessous (déclenchés par le VRAI changement d'état, donc après commit)
+  // et `onExpanded` de la section Inventaire (plus bas) l'appellent une fois la cible réellement prête.
+  const pendingTourResolvers = useRef(
+    new Map<'stats' | 'voies' | 'equipment' | 'notes' | 'history' | 'editing', () => void>(),
+  );
+  // Lues (jamais capturées par valeur) au moment où `Step.before` s'exécute, cf. `switchTab`
+  // plus bas : `react-joyride` ne rafraîchit pas forcément son tableau `steps` interne rien
+  // qu'au changement des fermetures (`before`) — son égalité ignore probablement les fonctions —
+  // et pouvait donc rejouer une fermeture PÉRIMÉE capturée tôt (`statsView`/`voiesView` par
+  // valeur), qui résolvait la promesse SANS que l'onglet ait réellement basculé (bug vécu sur le
+  // retour en arrière : « Voies & capacités » sautée en repassant par « Manœuvres »). Un ref lu à
+  // l'INVOCATION n'a pas ce problème, quel que soit le tableau `steps` que la lib utilise.
+  const statsViewRef = useRef(statsView);
+  const voiesViewRef = useRef(voiesView);
   useEffect(() => {
-    if (tourPendingIndexRef.current !== null) {
-      setTourStepIndex(tourPendingIndexRef.current);
-      tourPendingIndexRef.current = null;
+    statsViewRef.current = statsView;
+    const resolve = pendingTourResolvers.current.get('stats');
+    if (resolve) {
+      pendingTourResolvers.current.delete('stats');
+      resolve();
     }
-  }, [statsView, voiesView]);
-  // Relance (première fois ou rejouée via l'icône d'aide) : repart TOUJOURS de la première étape,
-  // sinon un tour rejoué après être allé au bout reprendrait à la dernière étape vue. Ajustement
-  // PENDANT le rendu (idiome React officiel pour dériver un état d'un changement de valeur, cf.
-  // « You Might Not Need An Effect ») plutôt qu'un effet : aucune synchronisation avec le DOM/une
-  // timeline externe n'est nécessaire ici, contrairement à l'effet juste au-dessus — et un `ref`
-  // ne peut pas être lu pendant le rendu (règle du compilateur React de ce dépôt), d'où un état
-  // (`prevTourRun`) pour mémoriser la valeur précédente plutôt qu'un `useRef`.
-  const [prevTourRun, setPrevTourRun] = useState(tour.run);
-  if (prevTourRun !== tour.run) {
-    setPrevTourRun(tour.run);
-    if (tour.run) setTourStepIndex(0);
-  }
+  }, [statsView]);
+  useEffect(() => {
+    voiesViewRef.current = voiesView;
+    const resolve = pendingTourResolvers.current.get('voies');
+    if (resolve) {
+      pendingTourResolvers.current.delete('voies');
+      resolve();
+    }
+  }, [voiesView]);
+  // Même idiome que `statsViewRef`/`voiesViewRef` ci-dessus, pour les étapes du tour qui basculent
+  // le mode édition global (« Modifier la fiche », « Illustration », « Modifier un bloc »).
+  const editingBlocksRef = useRef(editingBlocks);
+  useEffect(() => {
+    editingBlocksRef.current = editingBlocks;
+    const resolve = pendingTourResolvers.current.get('editing');
+    if (resolve) {
+      pendingTourResolvers.current.delete('editing');
+      resolve();
+    }
+  }, [editingBlocks]);
   // Nœud DOM du 3ᵉ étage de l'en-tête (`StickySheetStatusBar`, portée plus bas) : Hook, donc
   // ICI, avant les retours anticipés — la garde `masterDerived` ne s'applique qu'au CONTENU
   // du portail, jamais à cet appel.
@@ -804,6 +755,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 )}
                 {!readOnly && (
                   <Button
+                    data-tour="character-sheet-modify-page"
                     color="inherit"
                     size="small"
                     startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
@@ -970,10 +922,283 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setMountMounted,
     setMountedTarget,
   } = game;
-  // Étapes du tour guidé (PER-426) : calculées ici (accès à `masterDerived`, dont dépend l'étape
-  // conditionnelle « État du personnage ») et réutilisées telles quelles par `stepIndex`/
-  // `onRequestStepChange` du `<GuidedTour>` plus bas (index de l'étape CIBLE → cible réelle).
-  const tourSteps = buildCharacterSheetTourSteps({ showStatusStep: !!masterDerived });
+  // Bascule d'onglet (étapes du tour à onglet secondaire, cf. `tourSteps` plus bas) : résout
+  // IMMÉDIATEMENT si déjà sur le bon onglet (un `setState` sur une valeur INCHANGÉE ne déclenche
+  // aucun re-render, donc aucun effet à attendre — piège vécu), sinon mémorise le résolveur (clé
+  // `stats`/`voies`, une des deux sections à onglets) et bascule ; l'effet correspondant de la
+  // page (déclenché par le VRAI changement d'état) résout. `currentRef` (PAS la valeur captée par
+  // le rendu qui a créé cette fermeture) : `react-joyride` ne rafraîchit pas forcément son
+  // tableau `steps` interne au seul changement des fermetures `before` (son égalité ignore
+  // probablement les fonctions) et pouvait rejouer une fermeture PÉRIMÉE — un ref, lui, est
+  // toujours lu À L'INVOCATION, jamais périmé (bug vécu : retour en arrière sautant une étape).
+  // Simple CONST (jamais appelée pendant le rendu, seulement plus tard par `react-joyride` via
+  // `Step.before`) — contrairement à une fonction ELLE-MÊME appelée pendant le rendu, fermer sur
+  // un ref ici ne déclenche pas la règle ESLint de ce dépôt qui interdit d'accéder à un ref
+  // PENDANT le rendu (elle ne s'applique qu'aux accès qui se produisent AU MOMENT du rendu).
+  const switchTab = <V extends string>(
+    key: 'stats' | 'voies',
+    currentRef: { current: V },
+    target: V,
+    setView: (v: V) => void,
+  ): Promise<void> =>
+    new Promise((resolve) => {
+      if (currentRef.current === target) {
+        resolve();
+        return;
+      }
+      pendingTourResolvers.current.set(key, resolve);
+      setView(target);
+    });
+  // Dépliage de l'Inventaire (repliée par défaut) : toujours incrémenté (compteur monotone, donc
+  // TOUJOURS une valeur neuve) — que la section soit déjà ouverte ou non, `SheetSection` finit
+  // toujours par rappeler `onExpanded` (immédiatement si déjà ouverte, après l'animation sinon),
+  // qui résout la promesse (cf. son câblage sur la section « Inventaire » plus bas).
+  const expandEquipment = (): Promise<void> =>
+    new Promise((resolve) => {
+      pendingTourResolvers.current.set('equipment', resolve);
+      setEquipmentJumpNonce((n) => n + 1);
+    });
+  // Bascule le mode édition GLOBAL vers l'état voulu (étapes « Modifier la fiche »/« Illustration »/
+  // « Modifier un bloc ») — même idiome que `switchTab` : résout IMMÉDIATEMENT si déjà dans l'état
+  // voulu (piège vécu sur les onglets, cf. `switchTab`), sinon bascule et attend le VRAI commit
+  // (l'effet sur `[editingBlocks]` plus haut) avant de résoudre. Nécessaire pour « Illustration »
+  // en particulier : son menu (`PortraitVariantMenu`) n'est monté que si `editingBlocks.identity`
+  // est vrai — y arriver directement (ex. Précédent depuis « Modifier un bloc », lecture seule)
+  // doit attendre que le menu soit réellement monté avant que le tour ne s'y positionne.
+  const ensureEditing = (target: boolean): Promise<void> =>
+    new Promise((resolve) => {
+      const current = EDIT_BLOCKS.every((k) => editingBlocksRef.current[k]);
+      if (current === target) {
+        resolve();
+        return;
+      }
+      pendingTourResolvers.current.set('editing', resolve);
+      setEditingBlocks(target ? ALL_EDIT : NO_EDIT);
+    });
+  // Défilement MANUEL vers la cible d'une étape (chaque étape porte `skipScroll: true`, cf.
+  // `tourSteps` plus bas) — abandon complet du calcul de défilement de `react-joyride`
+  // (`getScrollTo`), qui s'est révélé peu fiable sur cette page : mesures à l'appui (retours
+  // manuels du propriétaire), deux cibles à la même position DOCUMENT (une paire d'onglets,
+  // même emplacement puisque l'une remplace l'autre) obtenaient des `scrollY` finaux
+  // incohérents, y compris une vraie RÉGRESSION du scroll sur Bourse→Inventaire (`scrollY` qui
+  // recule au lieu d'avancer). `scrollIntoView({block:'center'})` est le même mécanisme déjà
+  // éprouvé sur cette page pour l'icône d'arme (PER-116, « aller à l'arme ») — centrer plutôt que
+  // caler en haut évite aussi d'avoir à connaître la hauteur de l'en-tête collé. Pas d'événement
+  // de fin fiable multi-navigateurs pour un `scrollIntoView` fluide (pas d'événement `scrollend`
+  // universel à cette version de navigateurs ciblée) : on SONDE `window.scrollY` à chaque frame
+  // et on résout une fois qu'il n'a plus bougé pendant quelques frames d'affilée. Un délai FIXE
+  // (essayé d'abord, ~450 ms) s'est révélé insuffisant pour une cible lointaine (ex. « Notes »,
+  // ~4800px plus bas que « Inventaire ») : `react-joyride` positionnait alors sa bulle contre une
+  // cible encore en plein défilement. Le filet de sécurité (`MAX_WAIT_MS`) évite un blocage si le
+  // scroll ne se stabilise jamais (ex. cible déjà en place, `scrollIntoView` ne bouge rien).
+  const scrollToTarget = (target: string): Promise<void> =>
+    new Promise((resolve) => {
+      document.querySelector(target)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const STABLE_FRAMES_NEEDED = 5;
+      const MAX_WAIT_MS = 2000;
+      const startedAt = Date.now();
+      let lastY = window.scrollY;
+      let stableFrames = 0;
+      const check = () => {
+        const y = window.scrollY;
+        if (y === lastY) stableFrames += 1;
+        else {
+          stableFrames = 0;
+          lastY = y;
+        }
+        if (stableFrames >= STABLE_FRAMES_NEEDED || Date.now() - startedAt > MAX_WAIT_MS) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(check);
+      };
+      requestAnimationFrame(check);
+    });
+  // Étapes du tour guidé (PER-426) : UN SEUL tour long couvrant les grandes zones de la page,
+  // dans l'ordre où elles apparaissent à l'écran — pas de mini-tours par section (cadrage
+  // explicite du ticket, l'utilisateur peut Passer à tout moment). Chaque cible vise le CONTENU
+  // réel de sa section (grille de caractéristiques, panneau de stats, barre de vie…), jamais son
+  // en-tête ni son bandeau d'onglets (retour propriétaire — le tour doit montrer CE QUE la
+  // section fait, pas juste la nommer). « Statistiques dérivées » et « Voies & capacités » ont
+  // chacune deux étapes (un onglet chacune), et l'Inventaire est replié par défaut : ces quatre
+  // étapes portent un hook natif `Step.before` (Promise) qui bascule l'onglet/déplie la section
+  // et n'ATTEND que la cible soit RÉELLEMENT prête avant de résoudre — `react-joyride` attend
+  // nativement cette promesse (aucun bouton cliquable pendant ce temps, donc aucune course
+  // possible avec un clic de l'utilisateur, contrairement à un index de tour contrôlé bricolé à
+  // la main, essayé puis abandonné pour cette raison : un clic pendant que la lib scrollait
+  // encore vers l'étape courante ne déclenchait jamais l'événement dont dépendait l'avancée,
+  // bloquant le tour pour de bon — confirmé par une vraie run Playwright, pas un artefact de
+  // test). « État du personnage » est absente si le profil est incomplet (`masterDerived` nul,
+  // la section elle-même ne rend rien) : step conditionnelle, comme `showPlayersStep` de l'écran
+  // de MJ (PER-425).
+  const tourSteps: Step[] = [
+    {
+      target: '[data-tour="character-sheet-abilities"]',
+      title: 'Caractéristiques',
+      content: (
+        <>
+          Vos sept caractéristiques —{' '}
+          {ABILITY_IDS.map((id, i) => (
+            <span key={id}>
+              <AbilityCodeChip ability={id} noTooltip />
+              {i < ABILITY_IDS.length - 1 ? ' ' : ''}
+            </span>
+          ))}
+          , quatre physiques (AGI, CON, FOR, PER) et trois mentales (CHA, INT, VOL) — déterminent
+          la puissance globale de votre personnage : attaque et dégâts au contact, esquive,
+          résistance, initiative, magie… Elles sont déjà saisies ici — les dés se lancent en vrai
+          à la table, rien n’est tiré automatiquement.
+        </>
+      ),
+      placement: 'bottom',
+      skipScroll: true,
+      before: () => scrollToTarget('[data-tour="character-sheet-abilities"]'),
+    },
+    {
+      target: '[data-tour="character-sheet-derived"]',
+      title: 'Statistiques dérivées',
+      content:
+        'Défense, initiative, attaques et jauges (PV, mana…) se calculent à partir de vos caractéristiques et capacités.',
+      placement: 'bottom',
+      skipScroll: true,
+      before: () =>
+        switchTab('stats', statsViewRef, 'derived', setStatsView).then(() =>
+          scrollToTarget('[data-tour="character-sheet-derived"]'),
+        ),
+    },
+    {
+      target: '[data-tour="character-sheet-tests"]',
+      title: 'Compétences & tests',
+      content:
+        'Le détail de vos bonus de test par domaine (bonus d’aptitude, dés supplémentaires, malus d’armure…) — le second onglet de « Statistiques dérivées ».',
+      placement: 'bottom',
+      skipScroll: true,
+      before: () =>
+        switchTab('stats', statsViewRef, 'tests', setStatsView).then(() =>
+          scrollToTarget('[data-tour="character-sheet-tests"]'),
+        ),
+    },
+    ...(masterDerived
+      ? [
+          {
+            target: '[data-tour="character-sheet-status"]',
+            title: 'État du personnage',
+            content:
+              'Votre barre de vie affiche les points de vie actuels et se met à jour selon vos capacités. En dessous, Repos court et Repos long appliquent votre récupération — dés de récupération, mana et chance inclus.',
+            placement: 'bottom' as const,
+            skipScroll: true,
+            before: () => scrollToTarget('[data-tour="character-sheet-status"]'),
+          },
+        ]
+      : []),
+    {
+      target: '[data-tour="character-sheet-features"]',
+      title: 'Voies & capacités',
+      content: 'Vos voies et capacités acquises, avec leurs règles et effets à activer directement depuis la fiche.',
+      placement: 'bottom',
+      skipScroll: true,
+      before: () =>
+        switchTab('voies', voiesViewRef, 'features', setVoiesView).then(() =>
+          scrollToTarget('[data-tour="character-sheet-features"]'),
+        ),
+    },
+    {
+      target: '[data-tour="character-sheet-maneuvers"]',
+      title: 'Manœuvres',
+      content:
+        'Un aide-mémoire des manœuvres de combat (feinte, bousculade, désarmement…), en lecture seule — le second onglet de « Voies & capacités ».',
+      placement: 'bottom',
+      skipScroll: true,
+      before: () =>
+        switchTab('voies', voiesViewRef, 'maneuvers', setVoiesView).then(() =>
+          scrollToTarget('[data-tour="character-sheet-maneuvers"]'),
+        ),
+    },
+    {
+      target: '[data-tour="character-sheet-purse"]',
+      title: 'Bourse',
+      content: 'Vos pièces d’or, d’argent et de cuivre — modifiables directement ici, hors mode Modifier.',
+      placement: 'bottom',
+      skipScroll: true,
+      before: () => expandEquipment().then(() => scrollToTarget('[data-tour="character-sheet-purse"]')),
+    },
+    {
+      target: '[data-tour="character-sheet-inventory"]',
+      title: 'Inventaire',
+      content:
+        'Vos armes, armures et objets portés ou transportés — équipez, utilisez ou donnez un objet directement depuis cette liste.',
+      placement: 'bottom',
+      skipScroll: true,
+      before: () => expandEquipment().then(() => scrollToTarget('[data-tour="character-sheet-inventory"]')),
+    },
+    {
+      target: '[data-tour="character-sheet-notes"]',
+      title: 'Notes',
+      content: 'Vos notes libres — et vos notes de session pendant une partie en cours.',
+      placement: 'bottom',
+      skipScroll: true,
+      before: () =>
+        new Promise<void>((resolve) => {
+          pendingTourResolvers.current.set('notes', resolve);
+          setNotesJumpNonce((n) => n + 1);
+        }).then(() => scrollToTarget('[data-tour="character-sheet-notes"]')),
+    },
+    {
+      target: '[data-tour="character-sheet-history"]',
+      title: 'Historique des niveaux',
+      content: 'L’historique retrace vos choix à chaque montée de niveau.',
+      placement: 'bottom',
+      skipScroll: true,
+      before: () =>
+        new Promise<void>((resolve) => {
+          pendingTourResolvers.current.set('history', resolve);
+          setHistoryJumpNonce((n) => n + 1);
+        }).then(() => scrollToTarget('[data-tour="character-sheet-history"]')),
+    },
+    // Trois dernières étapes, PUREMENT informatives (cadrage propriétaire) : le mode édition de
+    // la page dans son ensemble, le changement d'illustration (qui exige ce mode édition, gaté
+    // par `editingBlocks.identity`), puis l'édition indépendante par bloc. La 1re et la 2e
+    // laissent TOUT en édition (`ensureEditing(true)`, idempotent — pas de re-bascule inutile en
+    // passant de l'une à l'autre) ; la 3e repasse TOUT en lecture avant de s'afficher, sans quoi
+    // le message « chaque bloc s'édite indépendamment » n'aurait pas de sens en pleine édition
+    // globale. Absentes en lecture seule (`readOnly`) : le bouton « Modifier », le menu
+    // d'illustration et les crayons par bloc ne sont eux-mêmes jamais rendus pour une fiche qu'on
+    // ne peut pas éditer — leur cible n'existe pas, ces trois étapes n'ont donc rien à montrer.
+    ...(readOnly
+      ? []
+      : [
+          {
+            target: '[data-tour="character-sheet-modify-page"]',
+            title: 'Modifier la fiche',
+            content:
+              'Ce bouton bascule toute la fiche en mode édition — caractéristiques, capacités, équipement, identité…',
+            placement: 'bottom' as const,
+            skipScroll: true,
+            before: () =>
+              ensureEditing(true).then(() => scrollToTarget('[data-tour="character-sheet-modify-page"]')),
+          },
+          {
+            target: '[data-tour="character-sheet-illustration"]',
+            title: 'Illustration',
+            content:
+              'En mode édition, cliquez sur le portrait pour changer l’illustration du personnage via ce menu.',
+            placement: 'bottom' as const,
+            skipScroll: true,
+            before: () =>
+              ensureEditing(true).then(() => scrollToTarget('[data-tour="character-sheet-illustration"]')),
+          },
+          {
+            target: '[data-tour="character-sheet-modify-block"]',
+            title: 'Modifier un seul bloc',
+            content:
+              'Chaque section de la fiche a aussi son propre crayon, comme celui-ci sur « Caractéristiques » — pratique pour ne modifier qu’un bloc sans passer toute la fiche en édition.',
+            placement: 'bottom' as const,
+            skipScroll: true,
+            before: () =>
+              ensureEditing(false).then(() => scrollToTarget('[data-tour="character-sheet-modify-block"]')),
+          },
+        ]),
+  ];
   // Attribution de campagne (PER-180) : rattache le personnage à une campagne ou le
   // remet « Non attribué » (`null`). Le joueur étant local à la campagne, on le
   // réinitialise à chaque changement (l'attribution d'un joueur relève de PER-184).
@@ -1527,6 +1752,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   </IconButton>
                 </AppTooltip>
                 {characterClass && (
+                  <Box component="span" data-tour="character-sheet-illustration">
                   <PortraitVariantMenu
                     variant={character.portraitVariant}
                     classId={character.classId}
@@ -1541,6 +1767,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                         : 'Disponible une fois le personnage synchronisé avec le cloud.'
                     }
                   />
+                  </Box>
                 )}
               </Stack>
             )}
@@ -1614,11 +1841,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   label="caractéristiques"
                 />
                 {!collapsed && !readOnly && (
-                  <BlockEditButton
-                    editing={editingBlocks.abilities}
-                    onToggle={() => toggleBlock('abilities')}
-                    label="caractéristiques"
-                  />
+                  <Box component="span" data-tour="character-sheet-modify-block">
+                    <BlockEditButton
+                      editing={editingBlocks.abilities}
+                      onToggle={() => toggleBlock('abilities')}
+                      label="caractéristiques"
+                    />
+                  </Box>
                 )}
               </Stack>
             )}
@@ -2078,18 +2307,21 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             // PER-116 — dépliage forcé depuis l'icône d'arme de la carte d'attaque (ci-dessous).
             expandSignal={equipmentJumpNonce}
             onExpanded={() => {
-              // Tour guidé (PER-426) : les étapes Bourse/Inventaire ciblent un contenu qui n'est
-              // VISIBLE (au sens de `react-joyride`, `isElementVisible` — la section repliée le
-              // laisse monté mais `visibility: hidden`) qu'une fois la section dépliée. En mode
-              // contrôlé, le tour ne peut pas attendre l'événement `STEP_BEFORE` de la lib pour
-              // déclencher ce dépliage : cet événement lui-même EXIGE la cible déjà visible — un
-              // cercle vicieux qui bloquait le tour pour de bon (`TARGET_NOT_FOUND` ne fait rien
-              // en mode contrôlé). D'où `onExpanded`, indépendant du cycle de vie de la lib :
-              // c'est SEULEMENT une fois le dépliage RÉELLEMENT terminé (ou déjà ouvert, cf.
-              // `SheetSection`) qu'on répercute l'index en attente sur `tourStepIndex`.
-              if (tourPendingIndexRef.current !== null) {
-                setTourStepIndex(tourPendingIndexRef.current);
-                tourPendingIndexRef.current = null;
+              // Tour guidé (PER-426) : les étapes Bourse/Inventaire (`Step.before`, cf.
+              // `buildCharacterSheetTourSteps`) attendent que la section soit RÉELLEMENT dépliée
+              // (ou déjà ouverte) avant que `react-joyride` ne se positionne dessus — une section
+              // repliée reste montée mais `visibility: hidden`, invisible pour la lib. `onExpanded`
+              // est le seul signal FIABLE de ce moment (indépendant du cycle de vie de la lib).
+              const resolveEquipment = pendingTourResolvers.current.get('equipment');
+              if (resolveEquipment) {
+                pendingTourResolvers.current.delete('equipment');
+                // Même précaution que le `requestAnimationFrame` de dépliage juste en dessous
+                // (« pas forcément encore PEINT dans ce frame ») : `onEntered` de MUI `Collapse`
+                // signale la fin de la TRANSITION, pas forcément que le navigateur a fini de
+                // peindre le nouveau layout — laisser passer un frame avant de résoudre (donc
+                // avant que `react-joyride` ne mesure sa cible) réduit le petit décalage final
+                // observé (bulle visée à une position pas tout à fait stabilisée).
+                requestAnimationFrame(resolveEquipment);
               }
               if (!equipmentJumpSlot) return;
               // Le contenu est garanti visible (animation de dépliage terminée, ou déjà ouvert) mais
@@ -2163,8 +2395,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             />
             </Box>
             <Divider sx={{ my: 1.5 }} />
-            <Box data-tour="character-sheet-inventory">
             <EquipmentList
+              dataTour="character-sheet-inventory"
               equipment={character.equipment}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
               characterId={character.id}
@@ -2232,7 +2464,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               barPinned={pinInventoryCustomItem}
               barSectionPinned={pinInventory}
             />
-            </Box>
           </SheetSection>
 
           <SheetSection
@@ -2337,6 +2568,15 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             collapsible
             defaultCollapsed
             persistKey={storageKeys.sheet.sectionCollapsed('notes')}
+            // Tour guidé (PER-426) : déplié de force par sa propre étape (`notesJumpNonce`).
+            expandSignal={notesJumpNonce}
+            onExpanded={() => {
+              const resolve = pendingTourResolvers.current.get('notes');
+              if (resolve) {
+                pendingTourResolvers.current.delete('notes');
+                requestAnimationFrame(resolve);
+              }
+            }}
             action={(collapsed) => (
               <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                 {/* Historique des parties de CE personnage (PER-415/416) : toujours proposé,
@@ -2360,6 +2600,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </Stack>
             )}
           >
+            <Box data-tour="character-sheet-notes">
             {sessionActive && activeSession ? (
               <>
                 <Tabs
@@ -2409,6 +2650,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 Aucune note.
               </Typography>
             )}
+            </Box>
           </SheetSection>
 
           <SheetSection
@@ -2417,6 +2659,15 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             collapsible
             defaultCollapsed
             persistKey={storageKeys.sheet.sectionCollapsed('level-history')}
+            // Tour guidé (PER-426) : déplié de force par sa propre étape (`historyJumpNonce`).
+            expandSignal={historyJumpNonce}
+            onExpanded={() => {
+              const resolve = pendingTourResolvers.current.get('history');
+              if (resolve) {
+                pendingTourResolvers.current.delete('history');
+                requestAnimationFrame(resolve);
+              }
+            }}
             action={(collapsed) =>
               !collapsed && !readOnly && canUndoLastLevelUp(character) ? (
                 <LevelUndoButton
@@ -2426,6 +2677,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               ) : null
             }
           >
+            <Box data-tour="character-sheet-history">
             <LevelHistory character={character} />
             {!readOnly && canUndoLastLevelUp(character) && (
               // Miroir du bouton de l'en-tête, ancré à droite en bas du bloc.
@@ -2436,6 +2688,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 />
               </Stack>
             )}
+            </Box>
           </SheetSection>
         </Stack>
       </Container>
@@ -2561,61 +2814,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
       {/* Tour guidé de la fiche de personnage (PER-426) : caractéristiques, statistiques
           dérivées (+ compétences & tests), état du personnage, voies & capacités
-          (+ manœuvres), bourse et inventaire. Index CONTRÔLÉ (`tourStepIndex`) : les étapes qui
-          ciblent un contenu pas encore VISIBLE (onglet secondaire à basculer, inventaire replié
-          à déplier) retardent l'avancée du tour le temps que ce changement ait réellement
-          committé (cf. `tourPendingIndexRef` plus haut, et `onExpanded` de la section Inventaire
-          ci-dessus) — `onStepBefore` seul ne suffit pas : son événement source (`STEP_BEFORE`)
-          exige justement la cible déjà visible pour être émis par `react-joyride`. */}
-      <GuidedTour
-        run={tour.run}
-        steps={tourSteps}
-        stepIndex={tourStepIndex}
-        onTourEnd={tour.onTourEnd}
-        onRequestStepChange={(nextIndex, action) => {
-          const nextTarget = tourSteps[nextIndex]?.target;
-          // eslint-disable-next-line no-console
-          console.debug('[TOURDEBUG] onRequestStepChange', { nextIndex, action, nextTarget, statsView, voiesView, tourStepIndex });
-          // Étapes à onglet secondaire : bascule l'onglet UNIQUEMENT s'il diffère RÉELLEMENT de
-          // l'onglet courant, et alors seulement mémorise l'index à appliquer une fois ce
-          // changement committé (l'effet sur `[statsView, voiesView]`, plus haut, le fera).
-          // Piège vécu : basculer inconditionnellement (même vers l'onglet déjà actif, ex.
-          // Caractéristiques → Statistiques dérivées, `statsView` déjà `'derived'`) ne déclenche
-          // aucun re-render sur une valeur INCHANGÉE — l'effet qui applique l'index en attente ne
-          // se déclenche alors JAMAIS, et le tour reste figé pour de bon. Chaque étape fixe
-          // explicitement l'onglet qu'elle attend (jamais une bascule relative au dernier onglet
-          // vu) : fonctionne pareil en avant (Suivant) qu'en arrière (Précédent).
-          if (nextTarget === '[data-tour="character-sheet-tests"]' && statsView !== 'tests') {
-            tourPendingIndexRef.current = nextIndex;
-            setStatsView('tests');
-          } else if (nextTarget === '[data-tour="character-sheet-derived"]' && statsView !== 'derived') {
-            tourPendingIndexRef.current = nextIndex;
-            setStatsView('derived');
-          } else if (nextTarget === '[data-tour="character-sheet-maneuvers"]' && voiesView !== 'maneuvers') {
-            tourPendingIndexRef.current = nextIndex;
-            setVoiesView('maneuvers');
-          } else if (nextTarget === '[data-tour="character-sheet-features"]' && voiesView !== 'features') {
-            tourPendingIndexRef.current = nextIndex;
-            setVoiesView('features');
-          } else if (
-            nextTarget === '[data-tour="character-sheet-purse"]' ||
-            nextTarget === '[data-tour="character-sheet-inventory"]'
-          ) {
-            // Inventaire replié par défaut (`defaultCollapsed`) : même dépliage forcé que l'icône
-            // d'arme (PER-116, `equipmentJumpNonce`). PAS `onStepBefore` (essayé, deadlock) : une
-            // section repliée est montée mais `visibility: hidden` (`Collapse` de MUI) — l'événement
-            // `STEP_BEFORE` de `react-joyride`, qui aurait déclenché ce dépliage, EXIGE justement
-            // la cible déjà visible pour être émis. `tourPendingIndexRef` est donc appliqué par
-            // `onExpanded` de la section (cf. `SheetSection` ci-dessus), pas par la lib elle-même.
-            tourPendingIndexRef.current = nextIndex;
-            setEquipmentJumpNonce((n) => n + 1);
-          } else {
-            // Aucune bascule/dépliage requis (pas concerné, ou déjà dans le bon état) : rien à
-            // attendre, on avance tout de suite comme le reste des étapes.
-            setTourStepIndex(nextIndex);
-          }
-        }}
-      />
+          (+ manœuvres), bourse et inventaire. Les bascules d'onglet et le dépliage de
+          l'Inventaire sont portés par `Step.before` de chaque étape concernée (cf.
+          `buildCharacterSheetTourSteps`), pas par ce composant — `react-joyride` attend
+          nativement cette promesse avant de se positionner. */}
+      <GuidedTour run={tour.run} steps={tourSteps} onTourEnd={tour.onTourEnd} />
       </CapabilityScrollProvider>
       </FeatureDeclensionContext.Provider>
     </FirearmsAllowedProvider>
