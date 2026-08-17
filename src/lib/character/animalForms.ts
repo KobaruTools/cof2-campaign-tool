@@ -11,10 +11,17 @@
  */
 import { featureById } from '@/data';
 import type { OptionFeatureChoice } from '@/data/schema';
+import { effectiveFeatureIdsForMods } from './choices';
 import type { Character } from './types';
 
 const LANGUAGE_FEATURE_ID = 'animaux-r1';
 const FORM_FEATURE_ID = 'animaux-r5';
+/**
+ * Choix de catégorie UNIQUE du changeforme (PER-375, r5, p. 170 : « il ne connaît qu'une seule
+ * catégorie d'animaux ») — à la différence d'`animaux-r1`, pas répétable. Fusionné avec les
+ * catégories du druide (cas d'un personnage multiclassé qui a les deux).
+ */
+const CHANGEFORME_CATEGORY_FEATURE_ID = 'prestige-changeforme-r5';
 /** Catégorie exclue de la métamorphose (Forme animale, p. 114). */
 const NO_FORM_CATEGORY = 'fantastic-animals';
 /** Communication innée du rang 1 (pas une option de choix). */
@@ -26,10 +33,15 @@ function categoryLabels(): Map<string, string> {
   return new Map((choice?.options ?? []).map((o) => [o.id, o.label]));
 }
 
-/** Ids des catégories supplémentaires retenues dans Langage des animaux. */
+/** Ids des catégories supplémentaires retenues dans Langage des animaux ET/OU le changeforme. */
 function chosenCategoryIds(character: Character): string[] {
-  const sel = character.featureChoices?.[LANGUAGE_FEATURE_ID]?.[0];
-  return Array.isArray(sel) ? sel : sel ? [sel] : [];
+  const druidSel = character.featureChoices?.[LANGUAGE_FEATURE_ID]?.[0];
+  const changeformeSel = character.featureChoices?.[CHANGEFORME_CATEGORY_FEATURE_ID]?.[0];
+  const ids = [
+    ...(Array.isArray(druidSel) ? druidSel : druidSel ? [druidSel] : []),
+    ...(Array.isArray(changeformeSel) ? changeformeSel : changeformeSel ? [changeformeSel] : []),
+  ];
+  return [...new Set(ids)];
 }
 
 /**
@@ -45,10 +57,12 @@ export function communicableAnimalCategories(character: Character): string[] {
 /**
  * Libellés des formes accessibles via « Forme animale » (animaux-r5) : comme la
  * communication, mais sans les animaux fantastiques. Renvoie `null` si le personnage
- * ne possède pas Forme animale (rien à afficher).
+ * ne possède pas Forme animale (rien à afficher) — via `effectiveFeatureIdsForMods` pour
+ * couvrir aussi l'octroi PAR le changeforme (PER-375, `grantedFeatures`), pas seulement
+ * l'acquisition native.
  */
 export function animalFormCategories(character: Character): string[] | null {
-  if (!character.featureIds.includes(FORM_FEATURE_ID)) return null;
+  if (!effectiveFeatureIdsForMods(character).includes(FORM_FEATURE_ID)) return null;
   const labels = categoryLabels();
   const chosen = new Set(chosenCategoryIds(character));
   return [

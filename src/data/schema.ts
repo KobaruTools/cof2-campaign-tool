@@ -4432,6 +4432,16 @@ export interface Feature {
    */
   groupBuffIds?: BeneficialEffectId[];
   /**
+   * AURA DE PRÉSENCE DE GROUPE (catalogue `BENEFICIAL_EFFECTS`, PER-438) que cette capacité confère
+   * par simple présence à la table — buff comme malus — SANS jamais être posée à la main : elle
+   * n'apparaît ni dans la palette de buffs manuelle ni dans `state.statuses` (comme `hpAutoStatuses`,
+   * dérivée à l'affichage). Distincte de `groupBuffIds` : pas de palier (valeur fixe du catalogue),
+   * pas de reset de combat à gérer, pas de double-compte PER-314 (aucun interrupteur de fiche
+   * concurrent). `excludesCarrier` du catalogue s'applique de la même façon (le frouïn ne se
+   * pénalise pas lui-même, Avarié, Le Compagnon p. 21).
+   */
+  passiveAuraIds?: BeneficialEffectId[];
+  /**
    * GESTION DE POISON APPLIQUÉ AUX ARMES (voie du maître des poisons, r5, p. 143, PER-74). Débloque, sous
    * cette capacité, une section « Poisons appliqués » : enduire jusqu'à `maxWeapons` armes de l'inventaire,
    * chacune d'un poison `quick` ou (si `weakeningUnlockedBy` acquis) `weakening`, dépensable à la première

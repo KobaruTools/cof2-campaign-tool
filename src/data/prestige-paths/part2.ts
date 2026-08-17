@@ -4353,6 +4353,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut prendre la forme d'un animal de son choix parmi chat, chien, chevreuil, saumon ou corbeau. Il doit choisir cet animal à l'acquisition de ce sort et ce sera toujours le même. La transformation dure PER minutes ou PER heures si le personnage connaît le sort de druide Forme animale de la voie des animaux. Il peut faire l'acquisition d'une forme de voyage supplémentaire par rang atteint dans la voie. Voir le sort de druide Forme animale pour les effets.",
+    richText:
+      "Le personnage peut prendre la forme d'un animal de son choix parmi chat, chien, chevreuil, saumon ou corbeau. Il doit choisir cet animal à l'acquisition de ce sort et ce sera toujours le même. La transformation dure [=PER] minutes ou [=PER] heures si le personnage connaît le sort de druide Forme animale de la voie des animaux. Il peut faire l'acquisition d'une forme de voyage supplémentaire par rang atteint dans la voie. Voir le sort de druide Forme animale pour les effets.",
     sourcePage: 170,
   },
   {
@@ -4364,6 +4366,29 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage fait l'acquisition de la capacité de druide Forme animale, mais il ne connaît qu'une seule catégorie d'animaux (parmi mammifère, poissons, arthropodes, reptiles ou oiseaux). Si le personnage connaît déjà la capacité de druide du même nom, il peut désormais rester sous forme animale pour une durée égale à sa PER en heures (au lieu de minutes) et à la fin de la transformation, il récupère 3d4° PV.",
+    richText:
+      "Le personnage fait l'acquisition de la capacité de druide Forme animale, mais il ne connaît qu'une seule catégorie d'animaux (parmi mammifère, poissons, arthropodes, reptiles ou oiseaux). Si le personnage connaît déjà la capacité de druide du même nom, il peut désormais rester sous forme animale pour une durée égale à sa [=PER] en heures (au lieu de minutes) et à la fin de la transformation, il récupère {3d4°} PV.",
+    // Octroie Forme animale (animaux-r5) — SANS doublon si le personnage l'a déjà nativement
+    // (druide, `grantedFeatureIds`), même patron que le cambion (PER-323). Le choix de
+    // catégorie UNIQUE (RAW : « une seule catégorie », contrairement au druide qui en cumule
+    // plusieurs via animaux-r1) alimente `animalFormCategories` (`animalForms.ts`, fusion des
+    // deux sources). Le rappel de soin « +3d4° PV » et la durée étendue (PER heures) sont
+    // portés par `animaux-r5` lui-même (`healOnDeactivate.requiresFeatureId`, mystics.ts) : un
+    // seul interrupteur physique, actif que le personnage l'ait par sa voie ou par cet octroi.
+    grantedFeatures: [{ featureId: 'animaux-r5' }],
+    choices: [
+      {
+        kind: 'option',
+        prompt: "Catégorie d'animaux (Forme animale)",
+        options: [
+          { id: 'mammals', label: 'Mammifères' },
+          { id: 'fish', label: 'Poissons (et mollusques)' },
+          { id: 'arthropods', label: 'Arthropodes (insectes, araignées, scorpions, etc.)' },
+          { id: 'reptiles', label: 'Reptiles (et amphibiens)' },
+          { id: 'birds', label: 'Oiseaux' },
+        ],
+      },
+    ],
     sourcePage: 170,
   },
   {
@@ -4375,6 +4400,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Lorsqu'il prend une forme animale, le personnage peut conserver sa propre DEF et utiliser sa valeur d'attaque magique pour attaquer si ceux-ci sont supérieurs au profil de la forme choisie. Désormais, le personnage peut prendre la forme des animaux géants ou préhistoriques (mais toujours sans dépasser la taille M).",
+    richText:
+      "Lorsqu'il prend une forme animale, le personnage peut conserver sa propre DEF et utiliser sa valeur d'attaque magique pour attaquer si ceux-ci sont supérieurs au profil de la forme choisie. Désormais, le personnage peut prendre la forme des animaux géants ou préhistoriques (mais toujours sans dépasser la taille M).",
+    // La comparaison DEF/attaque contre le profil réellement choisi est calculée par le
+    // sélecteur de forme (`AnimalFormChangeformeExtras`, FeaturesByPath.tsx) dès que ce rang
+    // est détecté — pas un effet de schéma, la valeur dépend d'une créature choisie en jeu.
     sourcePage: 170,
   },
   {
@@ -4386,6 +4416,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal de taille grande (ours, tigre, etc.). Il peut conserver sa DEF et utiliser sa valeur d'attaque magique pour attaquer s'il le souhaite. Le coût du sort est égal à 2 + NC de la créature en points de magie (ou NC PM en utilisant la concentration). Par exemple, une transformation en cheval coûte 3 PM (1 PM en concentration) tandis qu'une transformation en loup géant coûte 6 PM (4 PM en concentration).",
+    richText:
+      "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal de taille grande (ours, tigre, etc.). Il peut conserver sa DEF et utiliser sa valeur d'attaque magique pour attaquer s'il le souhaite. Le coût du sort est égal à 2 + NC de la créature en points de magie (ou NC PM en utilisant la concentration). Par exemple, une transformation en cheval coûte 3 PM (1 PM en concentration) tandis qu'une transformation en loup géant coûte 6 PM (4 PM en concentration).",
+    // Coût affiché automatiquement une fois une créature grande/énorme choisie (le sélecteur
+    // de forme connaît son NC réel) — voir r6. Élève le plafond de taille (`maxAnimalFormSize`,
+    // animalFormPicker.ts).
     sourcePage: 170,
   },
   {
@@ -4396,6 +4431,8 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: true,
     actionTypes: ['A'],
     text:
+      "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal ou d'un animal géant de taille énorme (par exemple, un éléphant). Il suit les mêmes règles que pour la capacité précédente.",
+    richText:
       "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal ou d'un animal géant de taille énorme (par exemple, un éléphant). Il suit les mêmes règles que pour la capacité précédente.",
     sourcePage: 170,
   },

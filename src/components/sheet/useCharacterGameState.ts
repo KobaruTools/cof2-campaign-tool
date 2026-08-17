@@ -26,10 +26,13 @@ import type { UseItemIntent } from '@/lib/character/sheetActions';
 import { containsGameStateKey } from '@/lib/character/gameState';
 import {
   capacityResourceGauges,
+  isEffectActive,
   restRecoveryDieHealBonuses,
   type CapacityResourceGauge,
   type RestRecoveryHealBonus,
 } from '@/lib/character/effects';
+import { featureById } from '@/data';
+import { useToast } from '@/components/toast/ToastProvider';
 import { withSupersededBuffTogglesOff } from '@/lib/character/groupBuffs';
 import {
   crystalsHeldByOthers,
@@ -214,6 +217,7 @@ export function useCharacterGameState(
   const upsert = useCharactersStore((s) => s.upsert);
   const applyGameState = useCharactersStore((s) => s.applyGameState);
   const giveItemAction = useCharactersStore((s) => s.giveItem);
+  const { showToast } = useToast();
   // Cristaux que CE personnage a confiés à d'autres (PER-360) : ils sortent de son calcul, leur effet
   // jouant désormais sur le porteur. Carte locale (jamais persistée) : c'est la couche OPTIMISTE, qui
   // fait quitter le bonus de la fiche à l'instant du clic, sans attendre l'aller-retour par le MJ.
@@ -315,7 +319,27 @@ export function useCharacterGameState(
     capacityGauges,
     elixirDosesToLose: actions.elixirDosesToLose(target),
 
-    setEffectToggleValue: bind(actions.toggleEffect),
+    setEffectToggleValue: (featureId: string, index: number, active: boolean) => {
+      // PER-375 : couper un interrupteur qui porte `healOnDeactivate` (ex. Transformation en
+      // animal du changeforme, quand le personnage a déjà Forme animale) déclenche un simple
+      // rappel — le moteur ne simule jamais de jet de dé (PRD #13), c'est au joueur d'appliquer
+      // le montant réellement lancé via le contrôle de PV.
+      const effect = featureById.get(featureId)?.effects?.[index];
+      const heal = effect?.kind === 'conditional-stat-bonus' ? effect.healOnDeactivate : undefined;
+      if (
+        !active &&
+        heal &&
+        // NATIF requis, pas seulement octroyé (PER-375 : un changeforme sans druide obtient
+        // `animaux-r5` par `grantedFeatures`, mais `character.featureIds` ne l'inclut jamais —
+        // seul un druide qui a VRAIMENT Forme animale par sa propre voie doit voir ce rappel).
+        target.featureIds.includes(featureId) &&
+        (!heal.requiresFeatureId || target.featureIds.includes(heal.requiresFeatureId)) &&
+        isEffectActive(target, featureId, index)
+      ) {
+        showToast(`Forme quittée — récupérez ${heal.dice} PV.`, 'info');
+      }
+      bind(actions.toggleEffect)(featureId, index, active);
+    },
     setEffectInputValue: bind(actions.setEffectInput),
     setUsageCounterValue: bind(actions.setUsageCounter),
     liftShortRestLock: bind(actions.liftShortRestLock),

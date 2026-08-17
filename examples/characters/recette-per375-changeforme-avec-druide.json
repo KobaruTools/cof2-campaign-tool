@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 23,
+  "id": "recette-per375-changeforme-avec-druide",
+  "name": "Recette PER-375/PER-435 — Druide (changeforme, avec Forme animale native)",
+  "identity": {
+    "description": "ATTENDU : druide niv. 16 avec animaux-r1→r5 natifs (Forme animale) ET la voie du changeforme (r4→r8). grantedFeatureIds ne doit PAS dupliquer animaux-r5 (déjà natif). Le rappel de soin (healOnDeactivate, +3d4° PV) DOIT se déclencher à la désactivation d'animaux-r5 (requiresFeatureId='prestige-changeforme-r5' satisfait). maxAnimalFormSize = 'enorme'."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "druide",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "animaux-r1",
+    "animaux-r2",
+    "animaux-r3",
+    "animaux-r4",
+    "animaux-r5",
+    "prestige-changeforme-r4",
+    "prestige-changeforme-r5",
+    "prestige-changeforme-r6",
+    "prestige-changeforme-r7",
+    "prestige-changeforme-r8"
+  ],
+  "featureChoices": {
+    "animaux-r1": [
+      [
+        "birds"
+      ]
+    ],
+    "prestige-changeforme-r5": [
+      "fish"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-375/PER-435 — voie du changeforme cumulée avec Forme animale native (druide) : durée étendue + soin au retour de forme.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

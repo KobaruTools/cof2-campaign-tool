@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 23,
+  "id": "recette-per375-changeforme-sans-druide",
+  "name": "Recette PER-375/PER-435 — Prêtre (changeforme, sans druide)",
+  "identity": {
+    "description": "ATTENDU : prêtre niv. 16, voie du changeforme (r4→r8) SANS animaux-r5 natif. animaux-r5 doit apparaître dans grantedFeatureIds (octroyé par r5), la catégorie choisie sur r5 doit se fusionner avec Mammifères dans animalFormCategories, maxAnimalFormSize = 'enorme' (r8), et le rappel de soin (healOnDeactivate) ne doit PAS se déclencher (animaux-r5 pas natif)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "foi-r1",
+    "prestige-changeforme-r4",
+    "prestige-changeforme-r5",
+    "prestige-changeforme-r6",
+    "prestige-changeforme-r7",
+    "prestige-changeforme-r8"
+  ],
+  "featureChoices": {
+    "prestige-changeforme-r5": [
+      "fish"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-375/PER-435 — voie du changeforme, catégorie mystique, sans druide natif (Forme animale octroyée par r5).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
