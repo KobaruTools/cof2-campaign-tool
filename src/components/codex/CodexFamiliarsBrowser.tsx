@@ -41,6 +41,7 @@ import type { Feature, FantasticFamiliar } from '@/data/schema';
 import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
 import { StatModifierTag } from '@/components/StatModifierTag';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { classColor } from '@/lib/ui/classColors';
 
 /** Hauteur fixe de toutes les cartes (retour propriétaire) : contenu variable → défilement interne. */
@@ -174,8 +175,12 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
         </Typography>
         <SourceRef page={familiar.sourcePage} term={familiar.name} />
       </Stack>
-      <Typography variant="body2" sx={{ mt: 1 }}>
-        {familiar.description}
+      <Typography variant="body2" component="div" sx={{ mt: 1 }}>
+        {familiar.descriptionRichText ? (
+          <GlossaryRichText>{familiar.descriptionRichText}</GlossaryRichText>
+        ) : (
+          familiar.description
+        )}
       </Typography>
       {(familiar.abilityOverrides || familiar.abilityNote) && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>

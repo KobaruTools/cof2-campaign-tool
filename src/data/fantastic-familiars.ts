@@ -67,6 +67,8 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     pathId: 'prestige-familier-fantastique',
     description:
       "Le personnage obtient la version morte-vivante d'un familier ordinaire (rat, chat, corbeau, etc.). Ce peut être un nouveau familier ou son ancien familier passé de vie à trépas et fidèle par-delà la mort. Le familier acquiert le type « non-vivant » et tous les avantages qui en découlent (voir les créatures). Il obtient une attaque qui draine la force vitale des créatures vivantes (attaque = attaque magique du personnage), l'attaque inflige 1d4° DM et permet au magicien ou au familier de récupérer 1 PV par attaque réussie.",
+    descriptionRichText:
+      "Le personnage obtient la version morte-vivante d'un familier ordinaire (rat, chat, corbeau, etc.). Ce peut être un nouveau familier ou son ancien familier passé de vie à trépas et fidèle par-delà la mort. Le familier acquiert le type « non-vivant » et tous les avantages qui en découlent (voir les créatures). Il obtient une attaque qui draine la force vitale des créatures vivantes (attaque = attaque magique du personnage), l'attaque inflige {1d4°} DM et permet au magicien ou au familier de récupérer 1 PV par attaque réussie.",
     minorPower: {
       text: "Le personnage obtient la capacité Siphon des âmes (rang 1, voie de la mort, sorcier). S'il possède déjà cette capacité, il double son effet.",
       grants: {
@@ -99,6 +101,8 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     pathId: 'prestige-familier-fantastique',
     description:
       "Une araignée de la taille d'un familier normal, c'est-à-dire un monstre d'environ 30 cm de diamètre pattes comprises ! L'araignée possède une attaque (attaque = attaque magique du personnage) qui inflige 1 DM et oblige la victime à faire un test de CON difficulté [10 + rang atteint dans la voie]. En cas d'échec, la cible subit 1d4° DM de poison. Elle est capable de grimper aux murs.",
+    descriptionRichText:
+      "Une araignée de la taille d'un familier normal, c'est-à-dire un monstre d'environ 30 cm de diamètre pattes comprises ! L'araignée possède une attaque (attaque = attaque magique du personnage) qui inflige 1 DM et oblige la victime à faire un test de CON difficulté [10 + rang]. En cas d'échec, la cible subit {1d4°} DM de poison. Elle est capable de grimper aux murs.",
     minorPower: {
       text: "Toile (L). Une fois par combat, le personnage peut projeter des toiles gluantes du bout de ses doigts sur une cible à une distance maximale de 5 m. Cette action lui demande la réussite d'un test d'attaque magique contre la DEF de la cible. La victime de cette attaque est immobilisée par la toile pour 1d6 rounds. À son tour, la victime peut tenter un test de FOR difficulté 12 pour se libérer par une action de mouvement (M). Une réussite lui restitue sa complète liberté d'action.",
       // PER-74 : pouvoir PROPRE au familier (aucune capacité de profil) → carte « pouvoir original ».
@@ -270,6 +274,8 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     pathId: 'prestige-familier-fantastique',
     description:
       "Plus grand que les autres créatures proposées (FOR -2), ce familier pèse une dizaine de kilogrammes et fait la taille d'un petit chien, un animal dont il partage le tempérament joueur et affectueux. Ce gros lézard de couleur bleue ou verte possède deux cornes qui produisent des arcs électriques. Le lézard voltaïque est immunisé aux DM d'électricité et il peut délivrer une décharge étourdissante à ses ennemis. Cette attaque de contact (attaque magique du personnage) inflige 1d4° DM et contraint à réussir un test de CON difficulté 10 pour ne pas être affaibli durant 1 tour.",
+    descriptionRichText:
+      "Plus grand que les autres créatures proposées (FOR -2), ce familier pèse une dizaine de kilogrammes et fait la taille d'un petit chien, un animal dont il partage le tempérament joueur et affectueux. Ce gros lézard de couleur bleue ou verte possède deux cornes qui produisent des arcs électriques. Le lézard voltaïque est immunisé aux DM d'électricité et il peut délivrer une décharge étourdissante à ses ennemis. Cette attaque de contact (attaque magique du personnage) inflige {1d4°} DM et contraint à réussir un test de CON difficulté 10 pour ne pas être affaibli durant 1 tour.",
     abilityOverrides: { FOR: -2 },
     minorPower: {
       text: "Le personnage obtient la capacité Sous tension (rang 1, voie de l'air, ensorceleur), 2 fois par jour.",
@@ -346,6 +352,8 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     pathId: 'prestige-familier-fantastique',
     description:
       "Le pseudo-dragon est un petit lézard ailé de 30 cm environ pourvu d'une longue queue de 60 cm qui se termine par un dard empoisonné. Le pseudo-dragon vole à une vitesse de 10 m par action de mouvement. Il est capable de communiquer par télépathie avec toutes les créatures comprenant le langage commun ou celui de la forêt (le sylvestre) à une portée de 20 m. Il attaque avec la valeur d'attaque magique du personnage et, en cas de réussite, son poison oblige la victime à réussir un test de CON difficulté 10 ou à s'endormir pendant 2d6 min. Les créatures de NC supérieur à 1 sont immunisées à ce poison.",
+    descriptionRichText:
+      "Le pseudo-dragon est un petit lézard ailé de 30 cm environ pourvu d'une longue queue de 60 cm qui se termine par un dard empoisonné. Le pseudo-dragon vole à une vitesse de 10 m par action de mouvement. Il est capable de communiquer par télépathie avec toutes les créatures comprenant le langage commun ou celui de la forêt (le sylvestre) à une portée de 20 m. Il attaque avec la valeur d'attaque magique du personnage et, en cas de réussite, son poison oblige la victime à réussir un test de CON difficulté 10 ou à s'endormir pendant {2d6} min. Les créatures de NC supérieur à 1 sont immunisées à ce poison.",
     minorPower: {
       text: 'Télépathie. Le personnage peut communiquer par télépathie à une distance de 50 m avec toutes les créatures douées de conscience avec lesquelles il partage un langage commun.',
       // PER-74 : pouvoir PROPRE au familier, passif (aucun type d'action). `richText` retire le libellé
@@ -422,6 +430,8 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     pathId: 'prestige-familier-fantastique',
     description:
       "La stique est une affreuse petite créature de couleur verte de 30 cm de haut, croisement entre un moustique géant et une chauve-souris pourvue de quatre ailes. Elle possède six pattes barbelées lui permettant de s'accrocher férocement à ses victimes pour leur sucer le sang. Son exosquelette est excessivement dur et très difficile à briser sans blesser ces dernières au passage. Une stique attaque avec la valeur d'attaque magique du personnage. Si elle réussit son attaque, elle s'agrippe à sa proie pour lui aspirer le sang et inflige ainsi 1d4° DM par round. La stique vole à une vitesse de 10 m par action de mouvement.",
+    descriptionRichText:
+      "La stique est une affreuse petite créature de couleur verte de 30 cm de haut, croisement entre un moustique géant et une chauve-souris pourvue de quatre ailes. Elle possède six pattes barbelées lui permettant de s'accrocher férocement à ses victimes pour leur sucer le sang. Son exosquelette est excessivement dur et très difficile à briser sans blesser ces dernières au passage. Une stique attaque avec la valeur d'attaque magique du personnage. Si elle réussit son attaque, elle s'agrippe à sa proie pour lui aspirer le sang et inflige ainsi {1d4°} DM par round. La stique vole à une vitesse de 10 m par action de mouvement.",
     minorPower: {
       text: 'Le personnage obtient la capacité Saignement (rang 1, voie du sang, sorcier), 3 fois par jour.',
       grants: {

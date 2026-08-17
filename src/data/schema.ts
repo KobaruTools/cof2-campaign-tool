@@ -3743,6 +3743,13 @@ export interface FantasticFamiliar {
   /** Texte de présentation verbatim (aspect, déplacement, attaque innée…). */
   description: string;
   /**
+   * Texte balisé (dés `{1d4°}`, formules `[10 + rang]`…) de `description`, pour le rendu
+   * enrichi hors personnage (`GlossaryRichText`, PER-421 : Codex des familiers — dés à leur face
+   * de base, termes symboliques, sans total calculé, faute de caractéristiques du joueur). Absent
+   * = `description` ne contient aucun token mécanique à baliser (rendu verbatim tel quel).
+   */
+  descriptionRichText?: string;
+  /**
    * Écarts au stat-block générique de rang 3 exprimables en valeurs fixes
    * (ex. lézard voltaïque `{ FOR: -2 }`, fée/lutin `{ CHA: 2 }`). Absent = suit le bloc
    * générique tel quel. Les écarts non réductibles à des valeurs fixes vont dans `abilityNote`.
