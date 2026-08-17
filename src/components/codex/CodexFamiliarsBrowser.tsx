@@ -6,12 +6,13 @@
  * p. 133-136), SANS personnage. Grille de blocs (patron `CodexGodsBrowser`, PER-420) : pas de
  * sélecteur maître-détail, tout affiché d'un coup.
  *
- * Contenu retenu (cadrage propriétaire) : description + les 3 éléments référencés par la voie
- * (R4 Pouvoir mineur, R5 Résistance/profil de sorts, R7 Pouvoir supérieur). Cartes à hauteur FIXE
- * (retour propriétaire : « toutes la même taille ») avec défilement interne si le contenu déborde
- * — la longueur du texte varie beaucoup d'un familier à l'autre (Toile/Poison très détaillés vs.
- * une phrase courte), un simple `alignItems: 'stretch'` ne suffit qu'à égaliser une même LIGNE de
- * grille, pas la grille entière.
+ * Contenu retenu (cadrage propriétaire) : les 3 blocs de capacité référencés par la voie (R4
+ * Pouvoir mineur, R5 Résistance/profil de sorts, R7 Pouvoir supérieur + bonus), PUIS la description
+ * (retour propriétaire : la mécanique d'abord, le texte d'ambiance ensuite — plus cohérent qu'une
+ * description en tête suivie de blocs). Hauteur de carte NATURELLE (`height: '100%'`, stretch de
+ * grille par LIGNE comme `CodexGodsBrowser`) : pas de hauteur fixe ni de défilement interne (retour
+ * propriétaire) — la carte grandit avec son contenu, quitte à ce que les lignes de la grille
+ * n'aient pas toutes la même hauteur.
  *
  * TOUTES les lignes de la carte partagent le MÊME bloc `PathCard` (retour propriétaire : garder les
  * blocs repliables existants, juste leur donner à tous la même forme) — pouvoir mineur, résistance
@@ -45,9 +46,6 @@ import { AbilityChipBox, GlossaryRichText } from '@/components/sheet/FeatureRich
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { classColor } from '@/lib/ui/classColors';
 
-/** Hauteur fixe de toutes les cartes (retour propriétaire) : contenu variable → défilement interne. */
-const CARD_HEIGHT = 660;
-
 const cardSx = {
   borderRadius: 2,
   border: '1px solid rgba(255, 255, 255, 0.10)',
@@ -55,8 +53,7 @@ const cardSx = {
   backdropFilter: 'blur(6px)',
   WebkitBackdropFilter: 'blur(6px)',
   p: 2.5,
-  height: CARD_HEIGHT,
-  overflowY: 'auto',
+  height: '100%',
   display: 'flex',
   flexDirection: 'column',
 } as const;
@@ -161,7 +158,6 @@ function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; s
       }
       feature={referenced}
       detail={referenced ? undefined : power.text}
-      sourcePage={referenced?.sourcePage}
       sx={{ height: 'auto', mt: 0.5 }}
     />
   );
@@ -197,22 +193,6 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
         </Typography>
         <SourceRef page={familiar.sourcePage} term={familiar.name} />
       </Stack>
-      <Typography variant="body2" component="div" sx={{ mt: 1 }}>
-        {familiar.descriptionRichText ? (
-          <GlossaryRichText>{familiar.descriptionRichText}</GlossaryRichText>
-        ) : (
-          familiar.description
-        )}
-      </Typography>
-      {(familiar.abilityOverrides || familiar.abilityNote) && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
-          {familiar.abilityNote ??
-            Object.entries(familiar.abilityOverrides!)
-              .map(([ability, value]) => `${ability} ${value > 0 ? '+' : ''}${value}`)
-              .join(', ')}
-        </Typography>
-      )}
-
       <SlotLabel>Rang 4 (pouvoir mineur)</SlotLabel>
       <FamiliarPowerBlock familiar={familiar} slot="minor" />
 
@@ -237,6 +217,24 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
       <SlotLabel>Rang 7 (pouvoir supérieur)</SlotLabel>
       <FamiliarPowerBlock familiar={familiar} slot="superior" />
       <FamiliarBonusBlock abilityBonus={familiar.superiorPower.abilityBonus} />
+
+      {/* Description APRÈS les blocs de capacité (retour propriétaire) : la mécanique d'abord,
+          l'ambiance ensuite — plus cohérent qu'une description en tête coupée des blocs. */}
+      <Typography variant="body2" component="div" sx={{ mt: 2 }}>
+        {familiar.descriptionRichText ? (
+          <GlossaryRichText>{familiar.descriptionRichText}</GlossaryRichText>
+        ) : (
+          familiar.description
+        )}
+      </Typography>
+      {(familiar.abilityOverrides || familiar.abilityNote) && (
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
+          {familiar.abilityNote ??
+            Object.entries(familiar.abilityOverrides!)
+              .map(([ability, value]) => `${ability} ${value > 0 ? '+' : ''}${value}`)
+              .join(', ')}
+        </Typography>
+      )}
     </Box>
   );
 }
