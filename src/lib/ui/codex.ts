@@ -16,10 +16,15 @@ export function codexPathHref(pathId: string): string {
  * règles », qui liste des livres payants débloqués). L'entrée « à venir » de
  * `src/app/codex/page.tsx` (Équipement, PER-422) n'y figure pas tant qu'elle n'a pas
  * de route propre.
+ *
+ * Familiers et Montures (PER-421) sont DEUX routes distinctes (retour propriétaire : un seul
+ * onglet commun ne servait à rien une fois les deux contenus enrichis) — plus de composant
+ * partagé à onglets.
  */
 export const CODEX_SUBPAGES: readonly { label: string; href: string }[] = [
   { label: 'Voies', href: '/codex/voies' },
   { label: 'Objets magiques', href: '/codex/objets-magiques' },
   { label: 'Dieux', href: '/codex/dieux' },
-  { label: 'Familiers & montures', href: '/codex/familiers-montures' },
+  { label: 'Familiers fantastiques', href: '/codex/familiers' },
+  { label: 'Montures & véhicules', href: '/codex/montures' },
 ];

@@ -2,12 +2,12 @@
 
 /**
  * Navigateur « Montures & véhicules » du Codex (PER-421) — consultation en LECTURE SEULE de la
- * table « Prix des montures » (`mounts.ts`, p. 191), SANS personnage. Contrairement à
- * `CodexFamiliarsBrowser` (grille), le catalogue n'a que 6 entrées avec peu de champs chacune :
- * une simple liste de lignes suffit (cadrage propriétaire). Le bloc de stats de combat (cheval de
- * selle/guerre) est rendu via `BestiaryStatBlock` — MÊME composant que le Bestiaire, aucune
- * duplication de rendu — dans un accordéon replié par défaut (cadrage propriétaire) pour ne pas
- * alourdir la liste.
+ * table « Prix des montures » (`mounts.ts`, p. 191), SANS personnage. Grille de blocs (retour
+ * propriétaire, 3 colonnes maximum) — même patron que `CodexFamiliarsBrowser` : `auto-fit`/
+ * `minmax` pour un nombre de colonnes dynamique selon la largeur, plafonné via `maxWidth`. Le
+ * bloc de stats de combat (cheval de selle/guerre) est rendu via `BestiaryStatBlock` — MÊME
+ * composant que le Bestiaire, aucune duplication de rendu — dans un accordéon replié par défaut
+ * (cadrage propriétaire) pour ne pas alourdir le bloc.
  *
  * Prix : jeton de monnaie (retour propriétaire) — MÊME langage visuel que le jeton « PA » de
  * `PurseField.tsx` (fiche personnage), en version statique (pas d'info-bulle/animation, catalogue
@@ -42,6 +42,17 @@ const rowSx = {
   bgcolor: 'rgba(0, 0, 0, 0.35)',
   backdropFilter: 'blur(6px)',
   WebkitBackdropFilter: 'blur(6px)',
+  height: '100%',
+} as const;
+
+/** Colonnes DYNAMIQUES selon la largeur (comme `CodexFamiliarsBrowser`), plafonnées à 3. */
+const gridSx = {
+  display: 'grid',
+  gap: 2,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  maxWidth: 1400,
+  mx: 'auto',
+  alignItems: 'stretch',
 } as const;
 
 /** Retrouve la monnaie (`CoinCurrency`) à partir de son abréviation (« pa » → `'silver'`). */
@@ -96,7 +107,7 @@ function PriceTag({ price }: { price: Price }) {
 function MountRow({ entry }: { entry: MountCatalogEntry }) {
   const kindLabel = entry.kind === 'vehicle' ? 'Véhicule' : 'Monture';
   return (
-    <Box sx={rowSx}>
+    <Box sx={{ ...rowSx, display: 'flex', flexDirection: 'column' }}>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', p: 2 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
           {entry.name}
@@ -158,21 +169,21 @@ function BardeRow({ barde }: { barde: BardeCatalogEntry }) {
 export function CodexMountsBrowser() {
   return (
     <Stack spacing={3}>
-      <Stack spacing={1.5}>
+      <Box sx={gridSx}>
         {mounts.map((entry) => (
           <MountRow key={entry.id} entry={entry} />
         ))}
-      </Stack>
+      </Box>
       <Box>
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700, mb: 1.5 }}>
           Bardes (protections de monture)
         </Typography>
         <Divider sx={{ mb: 1.5 }} />
-        <Stack spacing={1}>
+        <Box sx={gridSx}>
           {bardes.map((barde) => (
             <BardeRow key={barde.id} barde={barde} />
           ))}
-        </Stack>
+        </Box>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
           Apte au seul cheval de guerre.
         </Typography>

@@ -5,8 +5,9 @@
  * personnage, publique (accessible sans connexion, comme `/reference`). Sur le modèle de
  * `src/app/reference/page.tsx` : ossature seule ici, le comportement vit dans un composant dédié.
  *
- * Sous-pages fonctionnelles à ce jour : Voies, Objets magiques, Dieux, Familiers & montures.
- * Équipement (PER-422) apparaît en entrée désactivée « à venir », sans route propre pour l'instant.
+ * Sous-pages fonctionnelles à ce jour : Voies, Objets magiques, Dieux, Familiers fantastiques,
+ * Montures & véhicules. Équipement (PER-422) apparaît en entrée désactivée « à venir », sans
+ * route propre pour l'instant.
  */
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
@@ -22,7 +23,8 @@ const ENTRIES: { label: string; href?: string }[] = [
   { label: 'Voies', href: '/codex/voies' },
   { label: 'Objets magiques', href: '/codex/objets-magiques' },
   { label: 'Dieux', href: '/codex/dieux' },
-  { label: 'Familiers & montures', href: '/codex/familiers-montures' },
+  { label: 'Familiers fantastiques', href: '/codex/familiers' },
+  { label: 'Montures & véhicules', href: '/codex/montures' },
   { label: 'Équipement' },
 ];
 
