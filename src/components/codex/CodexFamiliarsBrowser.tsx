@@ -37,11 +37,12 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { classById, featureById, pathById } from '@/data';
 import { fantasticFamiliars } from '@/data/fantastic-familiars';
-import type { Feature, FantasticFamiliar } from '@/data/schema';
+import type { AbilityId, Feature, FantasticFamiliar } from '@/data/schema';
+import { ClassIcon } from '@/components/ClassIcon';
 import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
-import { StatModifierTag } from '@/components/StatModifierTag';
-import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
+import { AbilityChipBox, GlossaryRichText } from '@/components/sheet/FeatureRichText';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { classColor } from '@/lib/ui/classColors';
 
 /** Hauteur fixe de toutes les cartes (retour propriétaire) : contenu variable → défilement interne. */
@@ -67,10 +68,27 @@ function powerRank(slot: PowerSlot): number {
   return slot === 'minor' ? 4 : 7;
 }
 
-/** Nom du profil de sorts du rang 5 ; `'main-profile'` (minimoï) → « votre profil principal ». */
-function spellProfileLabel(profile: string): string {
-  if (profile === 'main-profile') return 'votre profil principal';
-  return classById.get(profile)?.name ?? profile;
+/** Id de classe du profil de sorts du rang 5, ou `undefined` pour le sentinel `'main-profile'`
+ * (minimoï — « votre profil principal », variable selon le personnage, pas de teinte/icône fixe). */
+function spellProfileClassId(profile: string): string | undefined {
+  return profile === 'main-profile' ? undefined : profile;
+}
+
+/** Nom du profil de sorts, EN LIGNE, teinté et précédé de son icône (retour propriétaire) —
+ * même traitement que les autres références de voie/profil de la carte. */
+function SpellProfileName({ profile }: { profile: string }) {
+  const classId = spellProfileClassId(profile);
+  if (!classId) return <>votre profil principal</>;
+  const color = classColor(classId);
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.4, verticalAlign: 'middle', color, fontWeight: 700 }}
+    >
+      <ClassIcon classId={classId} size={14} sx={{ color }} />
+      {classById.get(classId)?.name ?? classId}
+    </Box>
+  );
 }
 
 /**
@@ -150,8 +168,11 @@ function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; s
   );
 }
 
-/** Bloc « Bonus permanent » (rang 7) — même cadre `PathCard`, sans chevron (rien à déplier). */
-function FamiliarBonusBlock({ abilityBonus }: { abilityBonus: string }) {
+/** Bloc « Bonus permanent » (rang 7) — même cadre `PathCard`, sans chevron (rien à déplier). Le
+ * bonus lui-même reprend la puce de caractéristique (`AbilityChipBox`, PER-224 : teinte propre +
+ * bord tireté), même traitement que les carac dans le texte enrichi des voies — le signe/valeur
+ * (« +1 ») reste dans la puce (retour propriétaire). */
+function FamiliarBonusBlock({ abilityBonus }: { abilityBonus: AbilityId }) {
   return (
     <>
       <SlotLabel>Bonus permanent (rang 7)</SlotLabel>
@@ -159,7 +180,11 @@ function FamiliarBonusBlock({ abilityBonus }: { abilityBonus: string }) {
         name="Caractéristique bonifiée"
         checked
         selectable={false}
-        endAdornment={<StatModifierTag value={1} label={abilityBonus} />}
+        endAdornment={
+          <AbilityChipBox ability={abilityBonus} title={`${ABILITY_NAMES[abilityBonus]} (${abilityBonus}) : +1`}>
+            +1 {abilityBonus}
+          </AbilityChipBox>
+        }
         sx={{ height: 'auto', mt: 0.5 }}
       />
     </>
@@ -196,9 +221,16 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
       <SlotLabel>Résistance (rang 5)</SlotLabel>
       <PathCard
         name="Sort appris"
+        color={spellProfileClassId(familiar.spellProfile) ? classColor(spellProfileClassId(familiar.spellProfile)!) : undefined}
+        classId={spellProfileClassId(familiar.spellProfile)}
+        iconPosition="start"
         checked
         selectable={false}
-        detail={`Un ou deux sorts de rang 1 ou 2 du profil ${spellProfileLabel(familiar.spellProfile)}.`}
+        detail={
+          <>
+            Un ou deux sorts de rang 1 ou 2 du profil <SpellProfileName profile={familiar.spellProfile} />.
+          </>
+        }
         sx={{ height: 'auto', mt: 0.5 }}
       />
 

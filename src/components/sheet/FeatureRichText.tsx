@@ -104,7 +104,9 @@ type RefTone = 'ability' | 'derived';
  * Visuel PARTAGÉ entre l'affichage du TERME (« FOR », `RefChip`) et d'une VALEUR (« 3 »,
  * `AbilityValueChip`) : c'est la NORME d'affichage d'une caractéristique, terme comme valeur.
  */
-function AbilityChipBox({
+/** Puce visuelle d'une caractéristique — teinte propre + bord tireté (PER-224). Exportée pour être
+ * réutilisée hors texte enrichi (ex. Codex des familiers, PER-421 : bonus permanent de carac). */
+export function AbilityChipBox({
   ability,
   title,
   noTooltip = false,
