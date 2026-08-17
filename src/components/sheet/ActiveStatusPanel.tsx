@@ -25,6 +25,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { ClearStatusButton, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { statusLabel } from '@/lib/ui/statusPalette';
+import { isPassiveAuraId } from '@/lib/character/partyAuras';
 import {
   isBeneficialStatus,
   isCrystalStatus,
@@ -86,8 +87,15 @@ export function ActiveStatusPanel({
           // raison qu'un cristal : il ne « s'écarte » pas d'un effet, il DESCEND. Rien à éteindre côté
           // mage (contrairement au cristal), donc pas de message équivalent.
           const passenger = isMountPassengerStatus(s.id);
+          // Une AURA PASSIVE de groupe (PER-438, ex. Avarié du frouïn) est un état SUBI comme un
+          // autre, même si son id vit dans le même catalogue que les vrais buffs de groupe : jamais
+          // de croix de renoncement pour elle (cf. en-tête de fichier).
           const waivable =
-            !crystal && !passenger && onWaiveBuff !== undefined && isBeneficialStatus(s.id);
+            !crystal &&
+            !passenger &&
+            !isPassiveAuraId(s.id) &&
+            onWaiveBuff !== undefined &&
+            isBeneficialStatus(s.id);
           const releasable = crystal && onReleaseCrystal !== undefined;
           const dismountable = passenger && onDismountPassenger !== undefined;
           return (

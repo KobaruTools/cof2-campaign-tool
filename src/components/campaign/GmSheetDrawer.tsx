@@ -95,7 +95,8 @@ import { StartingChoiceDialog } from '@/components/sheet/StartingChoiceDialog';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
-import { statusSheetImpact, type AppliedStatus } from '@/lib/character/statusEffects';
+import { effectiveStatuses, statusSheetImpact, type AppliedStatus } from '@/lib/character/statusEffects';
+import { passiveAuraStatusesFor } from '@/lib/character/partyAuras';
 import { mergeMods } from '@/lib/character/orphanPoints';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 
@@ -133,7 +134,15 @@ export function GmSheetDrawer({
   const combatStatuses = useCampaignCombatStore((s) =>
     campaign && character ? s.byCampaign[campaign.id]?.statuses[character.id] : undefined,
   );
-  const appliedStatuses = combatStatuses ?? EMPTY_STATUSES;
+  // Porteurs d'aura passive de groupe (PER-438, `partyAuras.ts`) diffusés par l'écran de MJ — le
+  // tiroir MJ voit tout de suite l'Avarié du frouïn sur ses alliés, sans qu'il n'ait rien posé.
+  const partyAuraCarrierIds = useCampaignCombatStore((s) =>
+    campaign ? s.byCampaign[campaign.id]?.partyAuraCarrierIds : undefined,
+  );
+  const appliedStatuses = effectiveStatuses(
+    combatStatuses ?? EMPTY_STATUSES,
+    character ? passiveAuraStatusesFor(character.id, partyAuraCarrierIds ?? {}) : [],
+  );
   // Ids seuls, pour la neutralisation de l'interrupteur de fiche d'un buff posé en séance (PER-314).
   // Mémoïsé : `useCharacterGameState` le prend en entrée de calcul, un tableau neuf à chaque rendu
   // le relancerait pour rien.
@@ -248,7 +257,11 @@ interface GmSheetDrawerContentProps {
   campaign: Campaign | undefined;
   player: Player | null;
   game: NonNullable<ReturnType<typeof useCharacterGameState>>;
-  /** États de combat posés sur ce personnage (PER-358) — vides si le tracker n'en porte aucun. */
+  /**
+   * États de combat posés sur ce personnage (PER-358) + auras passives de groupe qu'il subit
+   * (PER-438, ex. Avarié du frouïn) — vides si le tracker n'en porte aucun et qu'aucune aura ne
+   * s'applique.
+   */
   appliedStatuses: AppliedStatus[];
   /** Manche courante du combat, dont se déduisent les tours restants des états (PER-305). */
   roundNumber: number;

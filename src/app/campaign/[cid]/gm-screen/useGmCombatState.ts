@@ -143,6 +143,12 @@ export interface GmCombatStateApi extends GmCombatState {
    */
   setCreatureInfo: (info: Record<string, CreatureDisplayInfo>) => void;
   /**
+   * Remplace la carte des porteurs d'aura passive de groupe (PER-438, `partyAuras.ts`) —
+   * `{ auraId: [characterId…] }`. À n'appeler que côté MJ (auteur unique), et seulement quand le
+   * contenu a réellement changé (garde `partyAuraCarrierIdsEqual`, même patron que `setCreatureInfo`).
+   */
+  setPartyAuraCarrierIds: (carrierIds: Record<string, string[]>) => void;
+  /**
    * Réinitialise le combat (PER-283) : vide tous les états, remet le tour courant à `null`,
    * recommence à la manche 1 et restaure les PV des créatures. Conserve le roster et ne touche
    * pas aux PV des joueurs.
@@ -321,6 +327,12 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const setPartyAuraCarrierIds = useCallback(
+    (carrierIds: Record<string, string[]>) =>
+      applyLocalCombat(cid, (prev) => ({ ...prev, partyAuraCarrierIds: carrierIds })),
+    [applyLocalCombat, cid],
+  );
+
   // Réinitialiser = nouveau combat : on en profite pour RETIRER une graine de départage à égalité
   // d'initiative (l'ordre entre joueurs à égalité parfaite est retiré au sort, cf. `initiativeOrder`).
   const resetCombat = useCallback(
@@ -376,6 +388,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     adjustStatus,
     adjustStatusDuration,
     setCreatureInfo,
+    setPartyAuraCarrierIds,
     resetCombat,
     restartRounds,
     setCombatantActed: setCombatantActedCb,

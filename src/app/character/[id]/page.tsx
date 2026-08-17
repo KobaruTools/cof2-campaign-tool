@@ -96,6 +96,7 @@ import { SessionHeaderIndicator } from '@/components/session/SessionHeaderIndica
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import { statusSheetImpact } from '@/lib/character/statusEffects';
+import { passiveAuraStatusesFor } from '@/lib/character/partyAuras';
 import { mergeMods } from '@/lib/character/orphanPoints';
 import { ActiveStatusPanel } from '@/components/sheet/ActiveStatusPanel';
 import type { SessionIdentity } from '@/lib/session/useSessionChannel';
@@ -286,6 +287,16 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   );
   // Hors session, la liste reste vide → aucune répercussion (les états sont propres au combat).
   const posedStatuses = sessionActive ? (combatStatuses ?? []) : [];
+  // Porteurs d'aura passive de groupe (PER-438, `partyAuras.ts`) diffusés par le MJ dans le même
+  // état de combat — la RLS empêche cette fiche de lire les autres personnages de la table pour
+  // savoir « y a-t-il un frouïn dans le groupe ? », d'où ce canal déjà RLS-safe. Même garde de
+  // session que `posedStatuses` : hors session, `campaign_combat` n'est pas chargé.
+  const partyAuraCarrierIds = useCampaignCombatStore((s) =>
+    characterCampaignId ? s.byCampaign[characterCampaignId]?.partyAuraCarrierIds : undefined,
+  );
+  const passiveAuraStatuses = sessionActive
+    ? passiveAuraStatusesFor(id, partyAuraCarrierIds ?? {})
+    : [];
   // Buffs que CE joueur a écartés de sa fiche (PER-358) : un buff de groupe est posé d'un geste sur
   // tout un camp, chacun reste libre de s'en passer. Purement local — le MJ reste seul auteur de
   // l'état de combat, et les camarades n'en savent rien.
@@ -299,10 +310,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     syncWaivedBuffs(id, posedStatusKey === '' ? [] : posedStatusKey.split('|'));
   }, [id, posedStatusKey, syncWaivedBuffs]);
-  const appliedStatuses =
-    waivedBuffIds.length > 0
+  const appliedStatuses = [
+    ...(waivedBuffIds.length > 0
       ? posedStatuses.filter((s) => !waivedBuffIds.includes(s.id as BeneficialEffectId))
-      : posedStatuses;
+      : posedStatuses),
+    // Auras passives de groupe (PER-438) : jamais posées, jamais écartables (aucun interrupteur,
+    // cf. `ActiveStatusPanel`) — ajoutées APRÈS le filtre de renoncement, qui ne les concerne pas.
+    ...passiveAuraStatuses,
+  ];
   // Ids seuls, pour les consommateurs qui n'ont besoin que de SAVOIR ce qui est posé : la neutralisation
   // de l'interrupteur de fiche d'un buff de groupe posé en séance (PER-314), au calcul comme à l'écran.
   // Un buff écarté en est ABSENT — le porteur retrouve alors son propre interrupteur.

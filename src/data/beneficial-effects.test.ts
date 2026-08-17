@@ -243,15 +243,27 @@ describe('PER-359 — buffs recensés', () => {
  * --------------------------------------------------------------------------- */
 
 describe('PER-359 — aucun buff ne double le bonus PERMANENT de son porteur', () => {
-  /** Capacité qui confère le buff (`groupBuffIds`), telle que la palette la débloque. */
+  /**
+   * Capacité qui confère le buff — posé à la main (`groupBuffIds`, débloque la palette) ou en aura
+   * passive de groupe (`passiveAuraIds`, PER-438, jamais posée). L'invariant de non-double-compte
+   * vaut pour les deux canaux : les deux partagent le même catalogue `BENEFICIAL_EFFECTS`.
+   */
   const carrierOf = (buffId: (typeof BENEFICIAL_EFFECT_IDS)[number]) =>
-    [...featureById.values()].find((f) => f.groupBuffIds?.includes(buffId));
+    [...featureById.values()].find(
+      (f) => f.groupBuffIds?.includes(buffId) || f.passiveAuraIds?.includes(buffId),
+    );
+
+  // Buffs dont la SEULE capacité porteuse vit dans le contenu PAYANT (gitignoré, absent en CI) : leur
+  // porteur et l'invariant de non-double-compte sont vérifiés par la recette du peuple (qui fusionne
+  // `companionContent`), pas ici. Ce test reste CI-safe (base seule) sans importer `private/`.
+  const PAID_CONTENT_BUFF_IDS = new Set<string>(['frouin-stench']);
 
   it('un recoupement de domaines avec un `test-bonus` du porteur impose `excludesCarrier`', () => {
     for (const id of BENEFICIAL_EFFECT_IDS) {
       const buffDomains = BENEFICIAL_EFFECTS[id].modifiers?.testDomains?.domains;
       if (!buffDomains) continue;
       const carrier = carrierOf(id);
+      if (!carrier && PAID_CONTENT_BUFF_IDS.has(id)) continue; // porteur payant → vérifié en recette
       expect(carrier, `aucune capacité ne confère ${id}`).toBeDefined();
       // `test-bonus` n'a ni `activation` ni durée : il vaut en permanence sur la fiche du porteur.
       const permanent = (carrier?.effects ?? []).flatMap((e) =>

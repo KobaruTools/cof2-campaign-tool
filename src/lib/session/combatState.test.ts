@@ -19,6 +19,7 @@ import {
   duplicateCreature,
   labelCreatureInstances,
   normalizeCreatureName,
+  partyAuraCarrierIdsEqual,
   purgeUnpinnedOrder,
   removeStatusFrom,
   removeStatusFromKeys,
@@ -68,6 +69,7 @@ describe('reviveStateObject', () => {
       actedKeys: ['c-1'],
       manualOrder: { 'c-2': 'c-1', 'char-9': null },
       pinnedOrderKeys: ['c-2'],
+      partyAuraCarrierIds: { 'frouin-stench': ['c-1'] },
     };
     expect(reviveStateObject(state)).toEqual(state);
   });
@@ -169,6 +171,22 @@ describe('reviveStateObject', () => {
     expect(revived.actedKeys).toEqual([]);
     expect(revived.manualOrder).toEqual({});
     expect(revived.pinnedOrderKeys).toEqual([]);
+  });
+
+  it('défaute partyAuraCarrierIds pour un combat antérieur à PER-438', () => {
+    expect(reviveStateObject({ creatures: [] }).partyAuraCarrierIds).toEqual({});
+  });
+
+  it('assainit partyAuraCarrierIds : écarte les entrées mal formées, déduplique (PER-438)', () => {
+    const revived = reviveStateObject({
+      creatures: [],
+      partyAuraCarrierIds: {
+        'frouin-stench': ['c-1', 42, 'c-1', null, 'c-2'],
+        empty: [],
+        malformed: 'not-an-array',
+      },
+    });
+    expect(revived.partyAuraCarrierIds).toEqual({ 'frouin-stench': ['c-1', 'c-2'] });
   });
 
   it('assainit actedKeys/pinnedOrderKeys : écarte les entrées non-chaînes et déduplique (PER-436)', () => {
@@ -629,6 +647,7 @@ describe('resetCombat', () => {
     actedKeys: ['c-1'],
     manualOrder: { 'c-1': 'c-2' },
     pinnedOrderKeys: ['c-1'],
+    partyAuraCarrierIds: {},
   };
 
   it('vide les états, restaure les PV des créatures, recommence à la manche 1 et met le tour courant à null', () => {
@@ -677,6 +696,7 @@ describe('restartRounds', () => {
     actedKeys: ['c-1'],
     manualOrder: { 'c-1': 'char-7', 'char-8': null },
     pinnedOrderKeys: ['c-1'],
+    partyAuraCarrierIds: {},
   };
 
   it('purge le badge « a déjà joué » et l’ordre manuel NON épinglé (PER-436)', () => {
@@ -957,6 +977,30 @@ describe('creatureInfoEquals (PER-293)', () => {
     const a = { x: { name: 'X', initiative: NaN, agility: NaN } };
     const b = { x: { name: 'X', initiative: NaN, agility: NaN } };
     expect(creatureInfoEquals(a, b)).toBe(true);
+  });
+});
+
+describe('partyAuraCarrierIdsEqual (PER-438)', () => {
+  it('vrai pour deux cartes de même contenu, ordre des clés/porteurs indifférent', () => {
+    const a = { 'frouin-stench': ['c-1', 'c-2'] };
+    const b = { 'frouin-stench': ['c-2', 'c-1'] };
+    // L'ORDRE des porteurs compte pour cette égalité de contenu (comparaison élément par élément,
+    // comme `creatureInfoEquals`) : deux listes aux mêmes ids mais réordonnées sont donc « différentes »
+    // ici. Le garde d'écriture reste correct car `passiveAuraCarrierIds` construit toujours ses listes
+    // dans le même ordre (celui des personnages réclamés) pour une même table.
+    expect(partyAuraCarrierIdsEqual(a, b)).toBe(false);
+    expect(partyAuraCarrierIdsEqual(a, { 'frouin-stench': ['c-1', 'c-2'] })).toBe(true);
+  });
+
+  it('vrai pour deux cartes vides', () => {
+    expect(partyAuraCarrierIdsEqual({}, {})).toBe(true);
+  });
+
+  it('faux si une aura est ajoutée/retirée ou si ses porteurs changent', () => {
+    const base = { 'frouin-stench': ['c-1'] };
+    expect(partyAuraCarrierIdsEqual(base, {})).toBe(false);
+    expect(partyAuraCarrierIdsEqual(base, { 'frouin-stench': ['c-1', 'c-2'] })).toBe(false);
+    expect(partyAuraCarrierIdsEqual(base, { 'frouin-stench': ['c-2'] })).toBe(false);
   });
 });
 

@@ -170,6 +170,17 @@ export interface GmCombatState {
    * seul auteur ; vide par défaut (migration douce).
    */
   pinnedOrderKeys: string[];
+  /**
+   * Ids de personnages PORTEURS de chaque AURA PASSIVE de groupe (PER-438, `partyAuras.ts`),
+   * indexés par id du catalogue `BENEFICIAL_EFFECTS` (ex. `frouin-stench`). Diffusé par le MJ
+   * (seul à voir tous les personnages réclamés) pour que la fiche d'un joueur — que la RLS
+   * empêche de lire les autres personnages de la table — sache appliquer elle-même l'aura des
+   * AUTRES sur elle (`passiveAuraStatusesFor`). Auto-maintenu (recalculé et réécrit dès que la
+   * composition de la table change), IMMUNISÉ au reset de combat : une aura passive n'est jamais
+   * un état posé (`statuses`), donc ni `resetCombat` ni `clearAllStatuses` n'y touchent. Vide par
+   * défaut (migration douce, table sans porteur d'aura passive).
+   */
+  partyAuraCarrierIds: Record<string, string[]>;
 }
 
 /**
@@ -199,6 +210,7 @@ export const EMPTY_COMBAT_STATE: GmCombatState = {
   actedKeys: [],
   manualOrder: {},
   pinnedOrderKeys: [],
+  partyAuraCarrierIds: {},
 };
 
 /** Clé `localStorage` dédiée au combat en cours d'une campagne. */
@@ -234,6 +246,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       actedKeys: reviveActedKeys(current.actedKeys),
       manualOrder: reviveManualOrder(current.manualOrder),
       pinnedOrderKeys: revivePinnedOrderKeys(current.pinnedOrderKeys),
+      partyAuraCarrierIds: revivePartyAuraCarrierIds(current.partyAuraCarrierIds),
     };
   }
 
@@ -264,6 +277,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       actedKeys: [],
       manualOrder: {},
       pinnedOrderKeys: [],
+      partyAuraCarrierIds: {},
     };
   }
 
@@ -395,6 +409,43 @@ export function creatureInfoEquals(
     ) {
       return false;
     }
+  }
+  return true;
+}
+
+/**
+ * Reconstruit défensivement la carte des porteurs d'aura passive (`state.partyAuraCarrierIds`,
+ * PER-438) : tolère l'absence (défaut `{}`, migration douce) et écarte les entrées mal formées
+ * (clé non string, valeur non tableau de strings). Dédupliquée par aura.
+ */
+function revivePartyAuraCarrierIds(raw: unknown): Record<string, string[]> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, string[]> = {};
+  for (const [auraId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    const ids = [...new Set(value.filter((id): id is string => typeof id === 'string'))];
+    if (ids.length > 0) out[auraId] = ids;
+  }
+  return out;
+}
+
+/**
+ * Égalité de contenu de deux cartes de porteurs d'aura passive (PER-438), même office que
+ * `creatureInfoEquals` : garde d'écriture de l'écran de MJ, qui ne persiste (donc diffuse) que
+ * lorsque la composition de la table a réellement changé — sans quoi chaque rendu réécrirait
+ * l'état de combat.
+ */
+export function partyAuraCarrierIdsEqual(
+  a: Record<string, string[]>,
+  b: Record<string, string[]>,
+): boolean {
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  for (const auraId of ka) {
+    const x = a[auraId];
+    const y = b[auraId];
+    if (!y || x.length !== y.length || x.some((id, i) => id !== y[i])) return false;
   }
   return true;
 }

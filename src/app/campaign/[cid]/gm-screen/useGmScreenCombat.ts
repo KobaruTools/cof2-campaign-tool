@@ -53,6 +53,7 @@ import {
 import {
   creatureInfoEquals,
   labelCreatureInstances,
+  partyAuraCarrierIdsEqual,
   type ApplyStatusToKeysOptions,
   type CreatureDisplayInfo,
 } from '@/lib/session/combatState';
@@ -65,6 +66,7 @@ import {
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
 import { unlockedGroupBuffIds } from '@/lib/character/groupBuffs';
+import { passiveAuraCarrierIds, passiveAuraStatusesFor } from '@/lib/character/partyAuras';
 import { effectiveFeatureIdsForMods } from '@/lib/character/choices';
 import { withReceivedCrystals } from '@/lib/character/crystals';
 import {
@@ -347,6 +349,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     roundNumber,
     tieBreakSeed,
     creatureInfo,
+    partyAuraCarrierIds,
+    setPartyAuraCarrierIds,
     addCreature,
     addCustomCreature,
     duplicateCreature,
@@ -543,6 +547,19 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
   // côté bénéfique. Une table sans barde ni prêtre n'a aucune puce verte à se voir proposer.
   const groupBuffIds = useMemo(() => unlockedGroupBuffIds(claimed), [claimed]);
 
+  // Porteurs d'AURA PASSIVE de groupe (PER-438, `partyAuras.ts`) parmi les personnages réclamés —
+  // ex. un frouïn (Avarié, Le Compagnon p. 21) impose son -1 social à ses compagnons par simple
+  // présence, sans que le MJ n'ait rien à poser. Diffusé côté MJ (auteur unique) dans l'état de
+  // combat partagé : la fiche d'un joueur, que la RLS empêche de lire les autres personnages,
+  // relit cette carte pour s'appliquer elle-même l'aura des AUTRES (`GmSheetDrawer`, fiche joueur).
+  const partyAuraCarriers = useMemo(() => passiveAuraCarrierIds(claimed), [claimed]);
+  useEffect(() => {
+    if (role !== 'gm') return;
+    if (!partyAuraCarrierIdsEqual(partyAuraCarrierIds, partyAuraCarriers)) {
+      setPartyAuraCarrierIds(partyAuraCarriers);
+    }
+  }, [role, partyAuraCarriers, partyAuraCarrierIds, setPartyAuraCarrierIds]);
+
   // Buffs de groupe RÉELLEMENT POSÉS sur au moins un combattant : ce que la croix de la palette a à
   // lever. Dérivé des états posés et NON du gating — un buff reste levable si son porteur a quitté
   // la table entre-temps, et il a pu être posé sur les deux camps (un MJ peut bénir une escouade).
@@ -578,12 +595,14 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         const summary = summarize(character);
         const maxHp = character.overrides.maxHp ?? derived?.maxHp ?? 0;
         const baseInitiative = character.overrides.initiative ?? derived?.initiative ?? 0;
-        // États EFFECTIFS : ceux que le MJ a posés + ceux DÉDUITS des PV (affaibli à 1 PV, p. 220).
-        // Ils alimentent indifféremment les badges du tracker et l'ajustement des stats affichées.
-        const appliedStatuses = effectiveStatuses(
-          statuses[character.id] ?? [],
-          hpAutoStatuses(maxHp, character.depletion),
-        );
+        // États EFFECTIFS : ceux que le MJ a posés + ceux DÉDUITS des PV (affaibli à 1 PV, p. 220)
+        // + les AURAS PASSIVES de groupe (PER-438, ex. Avarié du frouïn) conférées par la présence
+        // d'un AUTRE personnage réclamé. Ils alimentent indifféremment les badges du tracker et
+        // l'ajustement des stats affichées.
+        const appliedStatuses = effectiveStatuses(statuses[character.id] ?? [], [
+          ...hpAutoStatuses(maxHp, character.depletion),
+          ...passiveAuraStatusesFor(character.id, partyAuraCarriers),
+        ]);
         // Delta d'initiative des états (ex. Aveuglé -5) : baisse (ou remonte) l'initiative
         // EFFECTIVE, celle qui sert au tri de l'ordre ET à l'affichage (colorée quand modifiée).
         const initiativeDelta = resolveStatusModifiers(appliedStatuses).derived.initiative ?? 0;
@@ -711,7 +730,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         });
         return [characterRow, ...companionRows];
       }),
-    [claimed, upsert, playerNameById, statuses],
+    [claimed, upsert, playerNameById, statuses, partyAuraCarriers],
   );
 
   // Lignes des créatures ajoutées (PV suivis en local). Init./PV lus du blob du bestiaire ;
