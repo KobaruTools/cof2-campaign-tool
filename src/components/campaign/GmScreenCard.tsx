@@ -52,9 +52,11 @@ export interface GmScreenCardProps {
   href: string;
   /** Destination du panneau latéral de fiche — ancre couvrant toute la carte (PER-258). */
   panelHref: string;
+  /** Cible du tour guidé de l'écran de MJ (PER-425), posée sur cette carte précise. */
+  dataTour?: string;
 }
 
-export function GmScreenCard({ character, player, href, panelHref }: GmScreenCardProps) {
+export function GmScreenCard({ character, player, href, panelHref, dataTour }: GmScreenCardProps) {
   // Vue dérivée partagée avec la fiche (mêmes stats + puces). `null` si profil
   // incomplet : on n'affiche alors que l'aperçu.
   const view = buildCharacterDerivedView(character);
@@ -71,6 +73,7 @@ export function GmScreenCard({ character, player, href, panelHref }: GmScreenCar
   const armorLabel = wornArmorItemLabel(character.equipment);
   return (
     <Paper
+      data-tour={dataTour}
       sx={{
         position: 'relative',
         p: 2,

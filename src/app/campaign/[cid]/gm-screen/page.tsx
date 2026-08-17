@@ -19,6 +19,7 @@
  */
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   DndContext,
   DragOverlay,
@@ -28,6 +29,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { type Step } from 'react-joyride';
@@ -67,14 +69,20 @@ import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
 import { GmScreenCompanionCard } from '@/components/campaign/GmScreenCompanionCard';
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
-import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
+import { InitiativeTracker, type ReorderDragPreview } from '@/components/campaign/InitiativeTracker';
 import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { BuffRequestsControl } from '@/components/campaign/BuffRequestsControl';
 import { GroupRestControl } from '@/components/campaign/GroupRestControl';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
 import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
-import { DEFAULT_GM_TOOL, isGmToolId, type GmToolId } from '@/components/campaign/GmToolsDrawer';
+import {
+  DEFAULT_GM_TOOL,
+  TOOLS as GM_TOOLS_LIST,
+  gmScreenToolsTabTourTarget,
+  isGmToolId,
+  type GmToolId,
+} from '@/components/campaign/GmToolsDrawer';
 import { GmReferenceDrawerHost, REFERENCE_PARAM } from '@/components/campaign/GmReferenceDrawerHost';
 import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBestiaryDrawerHost';
 import { GmHistoryDrawerHost, HISTORY_PARAM } from '@/components/campaign/GmHistoryDrawerHost';
@@ -154,24 +162,18 @@ function CollapsibleSection({
   storageKey,
   count,
   children,
-  dataTour,
 }: {
   label: string;
   color?: string;
   storageKey: string;
   count: number;
   children: React.ReactNode;
-  /** Cible du tour guidé (PER-425) — posée sur le seul EN-TÊTE (compact), jamais sur la grille de
-   * cartes qu'il déplie : un target aussi haut que toute la grille poussait la bulle hors écran
-   * (react-joyride la place au-dessus d'un target géant, ici juste sous la barre collée). */
-  dataTour?: string;
 }) {
   const [open, setOpen] = usePersistedBoolean(storageKey, true);
   const accent = color ?? 'text.secondary';
   return (
     <Box>
       <Box
-        data-tour={dataTour}
         role="button"
         tabIndex={0}
         aria-expanded={open}
@@ -239,7 +241,66 @@ function CollapsibleSection({
  * `BuffRequestsControl`, absent tant qu'aucune annonce de joueur n'attend) : le tour
  * casserait au premier passage sans ce contenu précis.
  */
-function buildGmScreenTourSteps({ showPlayersStep }: { showPlayersStep: boolean }): Step[] {
+/** Cible de l'étape « Fiches de personnage » — partagée avec `handleTourStepBefore` ci-dessous,
+ * qui ramène la page tout en haut à cette étape (la première carte est juste sous la barre
+ * d'actions collée : sans ce recentrage, `scrollToFirstStep` de react-joyride ne remonte que
+ * jusqu'à ce qu'elle dépasse le bord — la carte reste coincée sous la barre). */
+const GM_SCREEN_PLAYERS_STEP_TARGET = '[data-tour="gm-screen-players"]';
+
+/** Cible de l'étape « Ordre d'initiative » — partagée avec `handleTourStepBefore`, qui force le
+ * dépli du tracker s'il est réduit (`InitiativeTracker.forceExpandedForTour`) : le texte de
+ * l'étape décrit les colonnes, invisibles en repli condensé. */
+const GM_SCREEN_TRACKER_STEP_TARGET = '[data-tour="gm-screen-tracker"]';
+
+/** Description de chaque onglet du tiroir « Outils du MJ », pour son étape dédiée du tour
+ * (PER-425ter) — une étape par onglet, cf. `buildGmScreenTourSteps`. */
+const GM_TOOL_TOUR_CONTENT: Record<GmToolId, string> = {
+  rumors:
+    'Une réserve de rumeurs propre à la campagne : piochez-en une au hasard pour improviser une scène, sans jamais retomber sur la même.',
+  loot:
+    'Une réserve de butin propre à la campagne : piochez un objet au hasard et attribuez-le d’un clic à l’inventaire d’un personnage.',
+  npc:
+    'Vos PNJ de campagne, regroupés en catégories repliables, triables et cherchables.',
+  notes:
+    'Des notes libres écrites pendant la partie en cours — toujours privées, MJ seul.',
+};
+
+/** Attend qu'un sélecteur apparaisse dans le DOM (poll par frame), pour le `before` de la
+ * première étape d'onglet — cf. son commentaire : le tiroir vient de s'ouvrir (via `router`, donc
+ * pas immédiat) et son premier `Tab` n'existe pas encore au moment de l'appel. */
+function waitForElement(selector: string, timeoutMs = 4000): Promise<void> {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const tick = () => {
+      if (document.querySelector(selector) || Date.now() - start > timeoutMs) {
+        resolve();
+        return;
+      }
+      window.requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+function buildGmScreenTourSteps({
+  showPlayersStep,
+  openFirstToolsTab,
+}: {
+  showPlayersStep: boolean;
+  /**
+   * Ouvre le tiroir « Outils du MJ » sur son PREMIER onglet et attend que le `Tab` correspondant
+   * existe réellement dans le DOM (PER-425ter) : posé en `before` (promesse NATIVEMENT attendue
+   * par react-joyride, cf. le commentaire de `GuidedTour.onStepBefore`), pas en `onStepBefore` —
+   * le tiroir est démonté quand fermé (`Drawer` sans `keepMounted`), donc son contenu n'existe
+   * PAS encore quand cette étape se présente ; `onStepBefore` ne se déclenche qu'une fois la
+   * cible déjà trouvée, ce qui ne serait jamais arrivé (constaté en recette : la résolution de
+   * cible de react-joyride échoue avant même d'appeler `onStepBefore`, et la séquence tout
+   * entière avortait). Les onglets SUIVANTS n'ont pas ce problème : une fois le tiroir ouvert,
+   * ses 4 `Tab` existent tous en permanence (seul le PANNEAU actif change) — leur bascule reste
+   * donc sur `handleTourStepBefore` (fire-and-forget), comme la fermeture en quittant la séquence.
+   */
+  openFirstToolsTab: () => Promise<void>;
+}): Step[] {
   const steps: Step[] = [
     {
       target: '[data-tour="gm-screen-add-creature"]',
@@ -279,21 +340,35 @@ function buildGmScreenTourSteps({ showPlayersStep }: { showPlayersStep: boolean 
     {
       target: '[data-tour="gm-screen-tools"]',
       title: 'Outils du MJ',
-      content: 'Ouvre un tiroir à onglets rassemblant vos outils de session (rumeurs, butin, et d’autres à venir).',
+      content: 'Ouvre un tiroir à onglets rassemblant vos outils de session : rumeurs, butin, PNJ, notes de session.',
       placement: 'auto',
     },
+    // Une étape par onglet (PER-425ter) : `handleTourStepBefore` ouvre le tiroir sur celui de la
+    // PREMIÈRE de ces étapes et bascule d'onglet à chacune des suivantes — jamais ici, ce fichier ne
+    // décrit QUE la séquence, pas l'ouverture (cf. le commentaire de `handleTourStepBefore`).
+    ...GM_TOOLS_LIST.map((tool, index) => ({
+      target: gmScreenToolsTabTourTarget(tool.id),
+      title: tool.label,
+      content: GM_TOOL_TOUR_CONTENT[tool.id],
+      placement: 'auto' as const,
+      ...(index === 0 ? { before: openFirstToolsTab } : {}),
+    })),
   ];
   if (showPlayersStep) {
     steps.push({
-      target: '[data-tour="gm-screen-players"]',
+      target: GM_SCREEN_PLAYERS_STEP_TARGET,
       title: 'Fiches de personnage',
       content:
         'Cliquez sur la carte d’un joueur pour ouvrir sa fiche complète dans un panneau latéral, sans quitter cet écran.',
       placement: 'auto',
+      // `handleTourStepBefore` remonte la page tout en haut pour cette étape ; sans `skipScroll`,
+      // react-joyride recalcule ENSUITE son propre scroll (aligner le spotlight), qui écrase notre
+      // position et redescend la page jusqu'à la carte — l'exact défilement qu'on veut éviter.
+      skipScroll: true,
     });
   }
   steps.push({
-    target: '[data-tour="gm-screen-tracker"]',
+    target: GM_SCREEN_TRACKER_STEP_TARGET,
     title: 'Ordre d’initiative',
     content:
       'Le tracker liste tous les combattants classés par initiative : personnages, compagnons et créatures. Tour courant, manche et états de combat se pilotent ici.',
@@ -390,13 +465,75 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     adjustStatusDuration,
     resetCombat,
     restartRounds,
+    actedKeys,
+    setCombatantActed,
+    manualOrder,
+    pinnedOrderKeys,
+    setManualPosition,
+    toggleCombatantPin,
+    resetCombatantOrder,
   } = useGmScreenCombat(cid, 'gm');
 
   // Tour guidé (PER-425) : les cibles (tiroirs + tracker) n'existent que sur l'écran final —
   // mêmes conditions que les deux `return` anticipés plus bas (chargement / campagne
   // introuvable). Désactivé sous mobile/tactile (`!smUp`), comme le tour pilote (PER-423).
+  const router = useRouter();
+  const pathname = usePathname();
   const tourReady = charactersHydrated && !campaignsLoading && !!campaign;
   const tour = useGuidedTour('gmScreen', { ready: tourReady, enabled: smUp });
+
+  // Ouverture RÉELLE du tiroir « Outils du MJ » pendant SES étapes de tour (PER-425bis, étendu
+  // PER-425ter à une étape par onglet) : react-joyride bloque par défaut le clic sur la cible
+  // spotlightée (`spotlightClicks: false`), donc rien ne s'ouvrait jamais sans ça. La toute
+  // PREMIÈRE étape d'onglet ouvre le tiroir sur cet onglet ; chacune des suivantes bascule
+  // simplement l'onglet affiché (même mécanisme, `?tools=<id>`) ; la première étape qui n'est PAS
+  // un onglet (fiches de personnage, ou directement le tracker si la campagne est clairsemée)
+  // referme le tiroir. Le ref retient qu'on a ouvert NOUS-MÊMES (pas le MJ à la main avant de
+  // lancer le tour), pour ne fermer que ce qu'on a ouvert en quittant la séquence d'onglets.
+  const tourOpenedToolsRef = useRef(false);
+  // `before` de la toute première étape d'onglet (cf. le commentaire de `buildGmScreenTourSteps`
+  // sur `openFirstToolsTab`) : ouvre le tiroir puis ATTEND que son `Tab` existe, react-joyride
+  // n'avançant vers l'étape qu'une fois cette promesse résolue.
+  const openFirstToolsTab = useCallback(async () => {
+    tourOpenedToolsRef.current = true;
+    const firstTab = GM_TOOLS_LIST[0].id;
+    router.replace(`${pathname}?${TOOLS_PARAM}=${firstTab}`, { scroll: false });
+    await waitForElement(gmScreenToolsTabTourTarget(firstTab));
+  }, [router, pathname]);
+  // Dépli FORCÉ du tracker pendant son étape (PER-425ter), s'il était réduit — cf. le commentaire
+  // de `InitiativeTracker.forceExpandedForTour`. Retombe à `false` dès qu'on quitte cette étape
+  // (toute autre valeur de cible), donc y compris via « Précédent » ou la fin du tour.
+  const [trackerForcedOpenForTour, setTrackerForcedOpenForTour] = useState(false);
+  const handleTourStepBefore = useCallback(
+    (step: Step) => {
+      const target = typeof step.target === 'string' ? step.target : '';
+      const isToolsTabStep = GM_TOOLS_LIST.some((tool) => gmScreenToolsTabTourTarget(tool.id) === target);
+      if (isToolsTabStep) {
+        const tab = GM_TOOLS_LIST.find((tool) => gmScreenToolsTabTourTarget(tool.id) === target)!.id;
+        tourOpenedToolsRef.current = true;
+        router.replace(`${pathname}?${TOOLS_PARAM}=${tab}`, { scroll: false });
+      } else if (tourOpenedToolsRef.current) {
+        tourOpenedToolsRef.current = false;
+        router.replace(pathname, { scroll: false });
+      }
+      // Fiches de personnage (PER-425quater) : remonte tout en haut de l'écran — la première carte
+      // suit immédiatement la barre d'actions collée, `scrollToFirstStep` seul ne recentrait pas
+      // assez et la laissait coincée sous cette barre.
+      if (target === GM_SCREEN_PLAYERS_STEP_TARGET) {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+      setTrackerForcedOpenForTour(target === GM_SCREEN_TRACKER_STEP_TARGET);
+    },
+    [router, pathname],
+  );
+  const handleTourEnd = useCallback(() => {
+    if (tourOpenedToolsRef.current) {
+      tourOpenedToolsRef.current = false;
+      router.replace(pathname, { scroll: false });
+    }
+    setTrackerForcedOpenForTour(false);
+    tour.onTourEnd();
+  }, [router, pathname, tour]);
 
   // Tant que le nom de campagne n'est pas résolu, ou introuvable : pas de fil d'Ariane ni
   // de voyant de session (le sous-header reste masqué) — seul le chrome statique persiste.
@@ -516,21 +653,48 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
   );
+  // Aperçu EN DIRECT du glisser d'une poignée de réordonnancement (PER-436) : feedback visuel
+  // (espace ouvert + barre lumineuse sur la carte survolée) demandé par le propriétaire — sans lui,
+  // rien ne distinguait un glisser en cours de l'état au repos. Purement transitoire, jamais persisté.
+  const [dragPreview, setDragPreview] = useState<ReorderDragPreview | null>(null);
   const onDragStart = (event: DragStartEvent) => {
     const id = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
     setActiveStatus(id ?? null);
+    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
+    setDragPreview(reorderKey ? { activeKey: reorderKey, overKey: null } : null);
+  };
+  const onDragOver = (event: DragOverEvent) => {
+    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
+    if (!reorderKey) return;
+    const overKey = event.over?.id;
+    setDragPreview({
+      activeKey: reorderKey,
+      overKey: typeof overKey === 'string' && overKey !== reorderKey ? overKey : null,
+    });
   };
   const onDragEnd = (event: DragEndEvent) => {
     setActiveStatus(null);
+    setDragPreview(null);
     const statusId = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
-    const combatantKey = event.over?.id;
-    if (!statusId || typeof combatantKey !== 'string') return;
-    // Un buff visant le CAMP (PER-104, élargi PER-359) ne se pose pas sur la seule carte visée : sa
-    // règle vise « ses alliés et lui », ou « un allié » qui n'est pas forcément celui-là. Le PORTEUR
-    // (camp + palier pré-rempli) est le personnage dont la capacité confère ce buff (PER-361) — pas
-    // forcément la carte visée par le dépôt, que `openGroupBuff` n'utilise qu'en repli.
-    if (isCampScopedStatus(statusId)) openGroupBuff(combatantKey, statusId as BeneficialEffectId);
-    else applyStatus(combatantKey, statusId);
+    if (statusId) {
+      const combatantKey = event.over?.id;
+      if (typeof combatantKey !== 'string') return;
+      // Un buff visant le CAMP (PER-104, élargi PER-359) ne se pose pas sur la seule carte visée : sa
+      // règle vise « ses alliés et lui », ou « un allié » qui n'est pas forcément celui-là. Le PORTEUR
+      // (camp + palier pré-rempli) est le personnage dont la capacité confère ce buff (PER-361) — pas
+      // forcément la carte visée par le dépôt, que `openGroupBuff` n'utilise qu'en repli.
+      if (isCampScopedStatus(statusId)) openGroupBuff(combatantKey, statusId as BeneficialEffectId);
+      else applyStatus(combatantKey, statusId);
+      return;
+    }
+    // Réordonnancement libre (PER-436) : la poignée d'une carte glissée sur une AUTRE carte — déjà
+    // zone de drop pour les puces d'état, réutilisée telle quelle — pose la carte visée comme
+    // ANCRE (le combattant glissé est réinséré juste avant elle, cf. `applyManualOrder`).
+    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
+    const beforeKey = event.over?.id;
+    if (reorderKey && typeof beforeKey === 'string' && beforeKey !== reorderKey) {
+      setManualPosition(reorderKey, beforeKey);
+    }
   };
 
   // Camp du porteur : un personnage réclamé est toujours du côté des joueurs ; une créature suit son
@@ -839,15 +1003,19 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                 label="Joueurs"
                 storageKey={storageKeys.campaign.gmScreenPlayersOpen}
                 count={claimed.length}
-                dataTour="gm-screen-players"
               >
-                {claimed.map((character) => (
+                {claimed.map((character, index) => (
                   <GmScreenCard
                     key={character.id}
                     character={character}
                     player={character.playerId ? playerById.get(character.playerId) ?? null : null}
                     href={hrefFromIndex('/character', characterSlugIndex, character.id)}
                     panelHref={`${campaignPath}/gm-screen?sheet=${character.id}`}
+                    // Cible du tour guidé (PER-425), posée sur la PREMIÈRE carte (jamais sur
+                    // l'en-tête replié ni sur toute la grille) : le contenu de l'étape parle de
+                    // « cliquer sur la carte d'un joueur », donc la mise en lumière doit tomber sur
+                    // une vraie carte, pas sur le libellé de section au-dessus.
+                    dataTour={index === 0 ? 'gm-screen-players' : undefined}
                   />
                 ))}
               </CollapsibleSection>
@@ -945,11 +1113,16 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           // l'écran, et la bande se parcourt à l'horizontale (chevrons, barre de défilement).
           autoScroll={{ enabled: false }}
           onDragStart={onDragStart}
+          onDragOver={onDragOver}
           onDragEnd={onDragEnd}
-          onDragCancel={() => setActiveStatus(null)}
+          onDragCancel={() => {
+            setActiveStatus(null);
+            setDragPreview(null);
+          }}
         >
           <InitiativeTracker
             dataTour="gm-screen-tracker"
+            forceExpandedForTour={trackerForcedOpenForTour}
             rows={initiativeRows}
             currentTurnKey={currentTurnKey}
             onCurrentTurnKeyChange={setCurrentTurnKey}
@@ -984,6 +1157,15 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               onAdjust: adjustStatus,
               onAdjustDuration: adjustStatusDuration,
             }}
+            orderControls={{
+              actedKeys,
+              onSetActed: setCombatantActed,
+              manualOrder,
+              pinnedKeys: pinnedOrderKeys,
+              onTogglePin: toggleCombatantPin,
+              onResetOrder: resetCombatantOrder,
+            }}
+            dragPreview={dragPreview}
             statusPalette={
               <CombatStatusPalette
                 situationalIds={situationalEffectIds}
@@ -1109,8 +1291,9 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       {/* Tour guidé de navigation (PER-425) : tiroirs principaux + tracker d'initiative. */}
       <GuidedTour
         run={tour.run}
-        steps={buildGmScreenTourSteps({ showPlayersStep: claimed.length > 0 })}
-        onTourEnd={tour.onTourEnd}
+        steps={buildGmScreenTourSteps({ showPlayersStep: claimed.length > 0, openFirstToolsTab })}
+        onTourEnd={handleTourEnd}
+        onStepBefore={handleTourStepBefore}
       />
     </>
   );

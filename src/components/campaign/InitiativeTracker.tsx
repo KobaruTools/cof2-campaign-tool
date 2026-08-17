@@ -123,6 +123,7 @@ import DensityMediumIcon from '@mui/icons-material/DensityMedium';
 import DensitySmallIcon from '@mui/icons-material/DensitySmall';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
@@ -139,7 +140,8 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha, type Theme } from '@mui/material/styles';
-import { useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { ClassIcon } from '@/components/ClassIcon';
 import type { BeneficialEffectId, SituationalEffectId } from '@/data/schema';
 import type { Depletion, PortraitVariant } from '@/lib/character/types';
@@ -172,7 +174,7 @@ import {
   type ScrollMetrics,
 } from '@/lib/ui/horizontalScroll';
 import { stepTurn, turnDirectionFromKey, type TurnDirection } from '@/lib/ui/turnOrder';
-import { isDefeatedCreature, relegateSidelined } from '@/lib/session/initiativeOrder';
+import { applyManualOrder, isDefeatedCreature, relegateSidelined } from '@/lib/session/initiativeOrder';
 import type { CreatureSide } from '@/lib/ui/creature';
 import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -364,6 +366,47 @@ export interface CombatStatusControls {
    * à 1 tour ; descendre sous 1 le retire (durée redevenue indéterminée) sans retirer l'état.
    */
   onAdjustDuration: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
+}
+
+/**
+ * Câblage du BADGE « a déjà joué » + du RÉORDONNANCEMENT LIBRE (PER-436), fourni par l'écran de
+ * MJ (auteur unique). Sa PRÉSENCE fait apparaître, au survol du bord gauche d'une carte, une
+ * poignée de glisser-déposer et les boutons « Épingler »/« Réinitialiser » ; son absence laisse
+ * le tracker inchangé (projection, ou tout autre consommateur qui ne la fournit pas). Le dépôt du
+ * glisser lui-même est capté par le `DndContext` PARTAGÉ de l'appelant (même context que les
+ * puces d'état) : cette interface ne porte donc PAS de callback de dépôt, seulement l'état à
+ * afficher et les deux actions de bouton.
+ */
+export interface CombatOrderControls {
+  /** Clés des combattants ayant déjà joué dans la manche en cours. */
+  actedKeys: readonly string[];
+  /** Bascule le badge « a déjà joué » d'un combattant (clic dessus, ou avance/recul du tour). */
+  onSetActed: (combatantKey: string, acted: boolean) => void;
+  /** Position manuelle courante : clé de combattant → clé D'ANCRAGE (`null` = fin de bande). */
+  manualOrder: Readonly<Record<string, string | null>>;
+  /** Sous-ensemble de `manualOrder` qui survit au changement de manche. */
+  pinnedKeys: readonly string[];
+  /**
+   * Bascule l'épinglage de la position manuelle d'un combattant. `currentBeforeKey` (voisin
+   * suivant dans l'ordre AFFICHÉ, ou `null` si dernier) fige la position courante au premier
+   * épinglage d'un combattant jamais déplacé à la main.
+   */
+  onTogglePin: (combatantKey: string, currentBeforeKey: string | null) => void;
+  /** Retire la position manuelle d'un combattant et son épinglage (retour à l'ordre calculé). */
+  onResetOrder: (combatantKey: string) => void;
+}
+
+/**
+ * Aperçu EN DIRECT d'un glisser-déposer de réordonnancement en cours (PER-436) — feedback visuel
+ * PUREMENT transitoire pendant le geste, ne touche à aucun état persisté. Fourni par l'appelant
+ * (propriétaire du `DndContext`, seul à voir `onDragOver`) : `null`/absent hors glisser de
+ * réordonnancement (un glisser de puce d'état n'en pose pas).
+ */
+export interface ReorderDragPreview {
+  /** Clé du combattant en train d'être glissé. */
+  activeKey: string;
+  /** Clé du combattant actuellement survolé (cible d'insertion), `null` hors zone de drop. */
+  overKey: string | null;
 }
 
 /** Côté du portrait (px) : le bandeau d'initiative collé dessous fait la MÊME largeur. */
@@ -2199,6 +2242,42 @@ interface ColumnStatusRender {
 }
 
 /**
+ * Badge « a déjà joué » + réordonnancement libre d'une colonne (PER-436, écran de MJ
+ * uniquement — jamais en projection).
+ */
+interface ColumnOrderRender {
+  /** Le combattant a déjà joué dans la manche en cours. */
+  acted: boolean;
+  /** Bascule manuelle du badge (clic dessus). */
+  onToggleActed: () => void;
+  /**
+   * Poignée de glisser-déposer (`useDraggable`), appelé INCONDITIONNELLEMENT par l'appelant
+   * (règle des Hooks) : posée sur le bord gauche de la carte, visible au survol seulement.
+   */
+  dragHandle: Pick<
+    ReturnType<typeof useDraggable>,
+    'setNodeRef' | 'setActivatorNodeRef' | 'attributes' | 'listeners' | 'transform' | 'isDragging'
+  >;
+  /** Position manuelle épinglée : survit au changement de manche. */
+  pinned: boolean;
+  onTogglePin: () => void;
+  /** Une position manuelle est active — seul cas où « Réinitialiser » a un effet. */
+  hasManualPosition: boolean;
+  onResetOrder: () => void;
+}
+
+/** Classe du bloc « poignée + Épingler + Réinitialiser », révélé au survol de la carte (PER-436). */
+const ORDER_CONTROLS_CLASS = 'per436-order-controls';
+
+/**
+ * Écart (px) OUVERT devant la carte survolée pendant un glisser de réordonnancement (PER-436), en
+ * plus de la gouttière normale (`gap: 2` du conteneur, 16 px) — feedback demandé par le
+ * propriétaire : sans lui, rien ne distinguait « je survole cette carte » de l'état au repos, la
+ * seule ancre `isOver` du `useDroppable` étant trop discrète pour un geste aussi rare.
+ */
+const REORDER_DROP_GAP = 28;
+
+/**
  * Colonne d'un combattant (présentation). `interactive` (optionnel, écran de MJ) transforme la
  * colonne en zone de drop et rend son en-tête cliquable (ouverture du menu d'états).
  */
@@ -2209,6 +2288,7 @@ function CombatantColumn({
   compact = false,
   interactive,
   status,
+  order,
   roundNumber,
   onGiveTurn,
 }: {
@@ -2230,6 +2310,8 @@ function CombatantColumn({
   compact?: boolean;
   interactive?: ColumnStatusInteractive;
   status?: ColumnStatusRender;
+  /** Badge « a déjà joué » + réordonnancement libre (PER-436) — écran de MJ uniquement. */
+  order?: ColumnOrderRender;
   /**
    * Donne le tour à ce combattant (PER-299) — écran de MJ uniquement, la projection ne pilote
    * jamais le combat. Porté par le SEUL bandeau d'initiative, pour ne pas disputer l'en-tête au
@@ -2239,6 +2321,14 @@ function CombatantColumn({
 }) {
   const identityClickable = !!interactive;
   const isOver = interactive?.isOver ?? false;
+  // Glisser-déposer de réordonnancement (PER-436) : la carte ENTIÈRE — pas la seule poignée — suit
+  // le curseur pendant le glisser, pour un geste moins « clunky » qu'un simple détachement de la
+  // petite icône. `setNodeRef` (nœud MESURÉ/déplacé par `@dnd-kit`) va donc sur la racine de la
+  // carte ; seule l'ACTIVATION du geste reste sur la poignée (`setActivatorNodeRef`, posé plus bas).
+  // Aucune transition PENDANT le glisser (doit suivre le curseur au pixel) ; une courte transition
+  // au RELÂCHER, quand `transform` retombe à zéro (`isDragging` repasse `false`), pour un atterrissage
+  // net plutôt qu'un saut instantané.
+  const dragging = order?.dragHandle.isDragging ?? false;
   // Résolution du portrait personnalisé (PER-391) : appelé INCONDITIONNELLEMENT (règle des
   // hooks — jamais dans un `if`), même pour une créature ou un compagnon. Sans effet dans ce cas
   // (variant absent → repli statique immédiat, aucun téléchargement) ; le résultat n'est routé
@@ -2277,11 +2367,23 @@ function CombatantColumn({
   const incapacity = projection && defeatedCreature ? hpHealthState(row.maxHp, row.depletion) : null;
   return (
     <Box
-      ref={interactive?.dropRef}
+      // Deux réfs `@dnd-kit` sur le même nœud (PER-436) : `dropRef` (zone de drop des puces d'état
+      // ET cible de réordonnancement) et `dragHandle.setNodeRef` (nœud que le glisser TRANSLATE) —
+      // deux refs-callbacks composées, aucune des deux n'étant un `RefObject`.
+      ref={(el: HTMLElement | null) => {
+        interactive?.dropRef(el);
+        order?.dragHandle.setNodeRef(el);
+      }}
       // Repère du combattant ACTIF pour le recentrage automatique de la bande (PER-297) : la réf
       // `@dnd-kit` occupant déjà `ref` sur l'écran de MJ, on marque la carte d'un attribut que le
       // conteneur va chercher (`querySelector`) plutôt que d'entrelacer deux réfs.
       {...(isActive && { [ACTIVE_COMBATANT_ATTR]: 'true' })}
+      style={
+        order && {
+          transform: CSS.Translate.toString(order.dragHandle.transform),
+          transition: dragging ? 'none' : 'transform 200ms ease',
+        }
+      }
       sx={(t) => ({
         // Trois cas, deux largeurs (cf. `COLUMN_WIDTH_*`) : la PROJECTION et le mode COMPACT de
         // l'écran de MJ (PER-300) partagent les 176 px, le mode DÉTAILLÉ garde son plancher de
@@ -2320,14 +2422,144 @@ function CombatantColumn({
                 ? alpha(row.accentColor, 0.5)
                 : 'rgba(255, 255, 255, 0.08)'
         }`,
-        boxShadow: isOver
-          ? `0 0 12px 1px ${alpha(t.palette.primary.main, 0.55)}`
-          : isActive
-            ? '0 0 14px 2px rgba(255, 255, 255, 0.35)'
-            : 'none',
+        boxShadow: dragging
+          ? '0 10px 28px 4px rgba(0, 0, 0, 0.55)'
+          : isOver
+            ? `0 0 12px 1px ${alpha(t.palette.primary.main, 0.55)}`
+            : isActive
+              ? '0 0 14px 2px rgba(255, 255, 255, 0.35)'
+              : 'none',
+        // Au-dessus de ses voisines pendant le glisser (PER-436) : la carte, translatée par
+        // `style.transform` ci-dessus, chevaucherait sinon celle qu'elle survole.
+        ...(dragging && { zIndex: 20 }),
         transition: 'border-color 0.15s, box-shadow 0.15s',
+        // Poignée de réordonnancement + « Épingler »/« Réinitialiser » (PER-436) : masqués par
+        // défaut, révélés au survol/focus de la carte — aucune place n'est réservée, la mise en
+        // page ne bouge jamais.
+        ...(order && {
+          [`&:hover .${ORDER_CONTROLS_CLASS}, &:focus-within .${ORDER_CONTROLS_CLASS}`]: {
+            opacity: 1,
+          },
+        }),
       })}
     >
+      {/* Badge « a déjà joué » (PER-436) : posé en permanence (pas au survol seulement) — c'est
+          l'information que la carte doit porter en toute circonstance. Cliquable, c'est la
+          bascule manuelle demandée par le ticket (corrige une pose/retrait erronés). */}
+      {order?.acted && (
+        <AppTooltip title={`${row.name} a déjà joué ce tour — cliquer pour corriger`}>
+          <Box
+            component="button"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              order.onToggleActed();
+            }}
+            aria-label={`${row.name} a déjà joué ce tour — cliquer pour corriger`}
+            sx={(t) => ({
+              position: 'absolute',
+              // Léger débordement HORS du bloc (coin haut-droit, comme les pastilles de compteur
+              // d'états) plutôt que posé DANS le padding : à `top/right: 4`, le badge recouvrait
+              // le coin de l'en-tête (nom/joueur/profil, bascule œil des créatures).
+              top: -6,
+              right: -6,
+              zIndex: 3,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 20,
+              height: 20,
+              p: 0,
+              borderRadius: '50%',
+              border: `1px solid ${alpha(t.palette.common.black, 0.5)}`,
+              cursor: 'pointer',
+              // Blanc plein sur vert plein (et non « success.light » sur `alpha(success.main)`,
+              // vert clair sur vert — contraste insuffisant, retour propriétaire) : coche BIEN
+              // lisible quel que soit le fond de l'écran de MJ derrière la carte.
+              color: t.palette.common.white,
+              bgcolor: t.palette.success.main,
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.6)',
+            })}
+          >
+            <CheckIcon sx={{ fontSize: 15 }} />
+          </Box>
+        </AppTooltip>
+      )}
+      {/* Poignée de glisser-déposer + « Épingler »/« Réinitialiser » (PER-436), révélées au
+          survol du bord gauche de la carte (cf. la règle `&:hover`/`&:focus-within` ci-dessus). Le
+          dépôt de la poignée est capté par le `DndContext` PARTAGÉ de l'écran de MJ (même contexte
+          que les puces d'état) : cette carte, déjà zone de drop (`interactive.dropRef`), sert
+          aussi de CIBLE pour une AUTRE carte glissée par sa poignée. */}
+      {order && (
+        <Box
+          className={ORDER_CONTROLS_CLASS}
+          sx={{
+            position: 'absolute',
+            top: 4,
+            left: 4,
+            zIndex: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.5,
+            opacity: 0,
+            transition: 'opacity 0.15s',
+          }}
+        >
+          <AppTooltip title="Glisser pour réordonner librement">
+            <IconButton
+              ref={order.dragHandle.setActivatorNodeRef}
+              {...order.dragHandle.attributes}
+              {...order.dragHandle.listeners}
+              size="small"
+              aria-label={`Réordonner ${row.name}`}
+              sx={{
+                color: 'text.secondary',
+                bgcolor: 'rgba(0, 0, 0, 0.45)',
+                cursor: 'grab',
+                touchAction: 'none',
+                '&:active': { cursor: 'grabbing' },
+              }}
+            >
+              <DragIndicatorIcon fontSize="small" />
+            </IconButton>
+          </AppTooltip>
+          <AppTooltip title={order.pinned ? 'Épinglé — cliquer pour désépingler' : 'Épingler cette position'}>
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                order.onTogglePin();
+              }}
+              aria-label={
+                order.pinned
+                  ? `Désépingler la position de ${row.name}`
+                  : `Épingler la position de ${row.name}`
+              }
+              sx={{
+                color: order.pinned ? 'primary.light' : 'text.secondary',
+                bgcolor: 'rgba(0, 0, 0, 0.45)',
+              }}
+            >
+              {order.pinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+            </IconButton>
+          </AppTooltip>
+          {order.hasManualPosition && (
+            <AppTooltip title="Réinitialiser la position calculée par initiative">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  order.onResetOrder();
+                }}
+                aria-label={`Réinitialiser la position de ${row.name}`}
+                sx={{ color: 'text.secondary', bgcolor: 'rgba(0, 0, 0, 0.45)' }}
+              >
+                <RestartAltIcon fontSize="small" />
+              </IconButton>
+            </AppTooltip>
+          )}
+        </Box>
+      )}
       {/* Projection : bandeau de jauges PV + mana plaqué contre le bord supérieur, hors
           du flux (la réserve `pt` du bloc lui garde la place) et écrêté par l'arrondi du bloc. */}
       {showProjectionGauges && (
@@ -2516,6 +2748,9 @@ function StatusDroppableColumn({
   controls,
   roundNumber,
   onGiveTurn,
+  orderControls,
+  nextRowKey,
+  dragPreview,
 }: {
   row: InitiativeRow;
   isActive: boolean;
@@ -2526,8 +2761,28 @@ function StatusDroppableColumn({
   roundNumber: number;
   /** Donne le tour à ce combattant (PER-299), simplement relayé à la colonne. */
   onGiveTurn: () => void;
+  /** Badge « a déjà joué » + réordonnancement libre (PER-436). Absent ⇒ ni l'un ni l'autre. */
+  orderControls?: CombatOrderControls;
+  /**
+   * Clé du voisin suivant dans l'ordre AFFICHÉ (PER-436) : sert à figer la position courante au
+   * premier épinglage d'un combattant jamais déplacé à la main. `null` si dernier de la bande.
+   */
+  nextRowKey: string | null;
+  /**
+   * Glisser de réordonnancement EN COURS (PER-436), quel qu'en soit la cible : suppression du
+   * halo bleu `isOver` (pensé pour le dépôt d'une PUCE D'ÉTAT — « appliquer cet état ICI »), qui
+   * induisait en erreur sur la carte survolée pendant un réordonnancement (« tu vas remplacer ce
+   * combattant », alors que le geste l'insère juste AVANT). L'écart + la barre lumineuse de
+   * `applyManualOrder`/le rendu de la bande restent le SEUL indicateur pendant ce glisser-là.
+   */
+  dragPreview?: ReorderDragPreview | null;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: row.key });
+  const { setNodeRef, isOver: isOverRaw } = useDroppable({ id: row.key });
+  const isOver = isOverRaw && !dragPreview;
+  // Poignée de glisser-déposer du réordonnancement libre (PER-436) : appelé
+  // INCONDITIONNELLEMENT (règle des Hooks), même quand `orderControls` est absent — la poignée
+  // n'est alors simplement jamais rendue (cf. `order` plus bas), `useDraggable` reste inerte.
+  const reorderDraggable = useDraggable({ id: `reorder:${row.key}`, data: { reorderKey: row.key } });
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   // Les COCHES du menu suivent les seuls états POSÉS (ce que le MJ a effectivement appliqué) : un
   // état déduit des PV n'est pas de son fait, le décocher n'aurait rien à retirer.
@@ -2554,6 +2809,19 @@ function StatusDroppableColumn({
     // Le menu reste ouvert : le MJ peut cocher/décocher plusieurs états d'affilée.
   };
 
+  const order: ColumnOrderRender | undefined = orderControls
+    ? {
+        acted: orderControls.actedKeys.includes(row.key),
+        onToggleActed: () =>
+          orderControls.onSetActed(row.key, !orderControls.actedKeys.includes(row.key)),
+        dragHandle: reorderDraggable,
+        pinned: orderControls.pinnedKeys.includes(row.key),
+        onTogglePin: () => orderControls.onTogglePin(row.key, nextRowKey),
+        hasManualPosition: row.key in orderControls.manualOrder,
+        onResetOrder: () => orderControls.onResetOrder(row.key),
+      }
+    : undefined;
+
   return (
     <>
       <CombatantColumn
@@ -2574,6 +2842,7 @@ function StatusDroppableColumn({
           onAdjust: (id, delta) => controls.onAdjust(row.key, id, delta),
           onAdjustDuration: (id, delta) => controls.onAdjustDuration(row.key, id, delta),
         }}
+        order={order}
       />
       <Menu
         anchorEl={anchorEl}
@@ -2679,6 +2948,20 @@ export interface InitiativeTrackerProps {
    */
   statusPalette?: ReactNode;
   /**
+   * Câblage du badge « a déjà joué » + du réordonnancement libre (PER-436), fourni par l'écran
+   * de MJ UNIQUEMENT. Présent ⇒ chaque colonne porte le badge et, au survol de son bord gauche,
+   * la poignée de glisser-déposer + « Épingler »/« Réinitialiser ». Ignoré en projection (jamais
+   * auteur, jamais de glisser-déposer côté joueur).
+   */
+  orderControls?: CombatOrderControls;
+  /**
+   * Aperçu EN DIRECT du glisser-déposer de réordonnancement en cours (PER-436), pour le feedback
+   * visuel (espace qui s'ouvre + barre lumineuse à l'emplacement d'insertion) — l'appelant le
+   * pilote depuis `onDragStart`/`onDragOver`/`onDragEnd` de son `DndContext` PARTAGÉ, seul à voir
+   * ces événements. `null`/absent hors glisser de réordonnancement.
+   */
+  dragPreview?: ReorderDragPreview | null;
+  /**
    * Autorise le COLLAGE de la bande en bas de l'écran (PER-301) — écran de MJ uniquement. Effectif
    * seulement en mode COMPACT et à partir de `md` : c'est le tracker qui en décide, l'appelant ne fait
    * que déclarer que sa page s'y prête (elle défile et la bande en occupe la fin).
@@ -2694,6 +2977,14 @@ export interface InitiativeTrackerProps {
    * 2026-08-17 : `position:sticky` correct au computed style, mouvement nul au scroll réel).
    */
   dataTour?: string;
+  /**
+   * Force le DÉPLI pendant l'étape du tour guidé qui cible le tracker (PER-425ter) : si le MJ
+   * l'a réduit (`collapsedPref`), l'étape « Ordre d'initiative » ne montrerait sinon que le
+   * bandeau condensé, pas les colonnes que son texte décrit. Purement visuel — ne touche PAS
+   * `collapsedPref` : redevenu `false` à la fin de l'étape, le tracker retrouve exactement l'état
+   * que le MJ avait choisi avant le tour.
+   */
+  forceExpandedForTour?: boolean;
 }
 
 export function InitiativeTracker({
@@ -2708,17 +2999,23 @@ export function InitiativeTracker({
   resetCombatAction,
   statusControls,
   statusPalette,
+  orderControls,
+  dragPreview,
   stickyBottom = false,
   dataTour,
+  forceExpandedForTour = false,
 }: InitiativeTrackerProps) {
   // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) : ils restent
   // visibles côté MJ mais absents de l'écran projeté, et l'ordre y est rendu NU — la relégation
   // déplacerait la carte d'une créature à l'instant même où sa croix annonce sa mort à la table.
   // Sur l'ÉCRAN DE MJ, à l'inverse, les combattants hors du chemin sont repoussés en fin de bande
   // (PER-302 : masqués puis vaincus), le combattant actif étant toujours épargné.
+  // Ordre manuel du MJ (PER-436) : DERNIÈRE couche avant rendu, appliquée par-dessus la
+  // relégation — commodité d'AFFICHAGE, elle ne change ni l'initiative ni la relégation, mais
+  // replace les combattants explicitement glissés par le MJ. Jamais en projection.
   const displayedRows = projection
     ? rows.filter((r) => !r.hidden)
-    : relegateSidelined(rows, currentTurnKey);
+    : applyManualOrder(relegateSidelined(rows, currentTurnKey), orderControls?.manualOrder ?? {});
   /**
    * Avance (+1) ou recule (−1) d'un cran dans l'ordre d'initiative (PER-299). Toute l'arithmétique
    * — bouclage aux deux bouts, incrément/décrément de manche, saut des créatures vaincues, cas
@@ -2727,19 +3024,36 @@ export function InitiativeTracker({
    * d'un tour de table.
    */
   const step = (direction: TurnDirection) => {
+    const defeatedKeys = displayedRows.filter(isDefeatedCreature).map((r) => r.key);
+    // Un combattant « a déjà joué » (PER-436) est sauté comme une créature vaincue — c'est tout
+    // l'objet du badge — mais SEULEMENT en AVANÇANT : reculer est un geste de CORRECTION qui doit
+    // pouvoir retraverser les combattants tout juste marqués (sans quoi il ne pourrait jamais
+    // atteindre le précédent, déjà « déjà joué » puisqu'on vient de le quitter). Sur le DERNIER
+    // combattant d'une manche, celui qu'on quitte n'est PAS ENCORE marqué au moment de ce calcul
+    // (le marquage a lieu juste après, plus bas) : on l'ajoute donc ICI à la volée pour l'avance,
+    // sans quoi la recherche le retrouverait LUI-MÊME en bouclant sur toute la bande — régression
+    // constatée en recette (le curseur restait bloqué sur le dernier combattant, la manche
+    // s'incrémentant pourtant, et les badges de tout le monde se purgeant sous ses yeux).
+    const actedForStep =
+      direction === 1 && currentTurnKey !== null
+        ? [...(orderControls?.actedKeys ?? []), currentTurnKey]
+        : [];
     const next = stepTurn(
       {
         // L'ordre parcouru est celui AFFICHÉ : le tour suit la bande que le MJ a sous les yeux.
         keys: displayedRows.map((r) => r.key),
         currentKey: currentTurnKey,
         roundNumber,
-        // Les créatures vaincues n'ont plus de tour ; `isDefeatedCreature` laisse délibérément
-        // passer les personnages à 0 PV (à terre / mourant, p. 220 — leur tour existe toujours).
-        skipKeys: displayedRows.filter(isDefeatedCreature).map((r) => r.key),
+        skipKeys: [...defeatedKeys, ...actedForStep],
       },
       direction,
     );
     if (!next) return;
+    // Pose le badge de celui qu'on quitte, SEULEMENT en avançant (cf. ci-dessus). Le retrait du
+    // badge du nouveau combattant courant — qu'on avance ou qu'on recule — est déjà garanti par le
+    // réducteur `setCurrentTurnKey` (invariant : celui qui joue n'est jamais marqué « déjà joué »),
+    // pas besoin de le refaire ici.
+    if (direction === 1 && currentTurnKey !== null) orderControls?.onSetActed(currentTurnKey, true);
     onCurrentTurnKeyChange(next.key);
     if (next.roundNumber !== roundNumber) onRoundNumberChange?.(next.roundNumber);
   };
@@ -2791,7 +3105,7 @@ export function InitiativeTracker({
   // `!projection`, la fenêtre projetée hériterait du repli fait côté écran de MJ (même clé
   // `localStorage`, cf. `GM_COLLAPSED_STORAGE_KEY`) et disparaîtrait sous les yeux des joueurs.
   const [collapsedPref, setCollapsedPref] = usePersistedBoolean(GM_COLLAPSED_STORAGE_KEY, false);
-  const collapsed = !projection && collapsedPref;
+  const collapsed = !projection && collapsedPref && !forceExpandedForTour;
   const collapseLabel = collapsed ? "Déplier l'ordre d'initiative" : "Réduire l'ordre d'initiative";
   // Condensé affiché UNIQUEMENT repli + combat COMMENCÉ (`currentTurnKey !== null`), comme sur la
   // fiche : avant le premier tour, l'ordre n'a encore rien de « courant » à mettre en évidence.
@@ -2977,30 +3291,37 @@ export function InitiativeTracker({
                 gap: 2,
                 overflowX: 'auto',
                 pb: projection ? 5.5 : compact ? 0 : 1,
+                // Réserve HAUTE (PER-436) : le badge « a déjà joué » déborde de 6 px AU-DESSUS du
+                // bloc (coin haut-droit, cf. `CombatantColumn`) — sans cette marge, `overflowX: auto`
+                // force `overflow-y` à `auto` (règle CSS : un axe `auto`/`scroll` rend l'autre `auto`
+                // s'il valait `visible`) et le haut du badge se retrouve rogné. Écran de MJ seulement,
+                // le badge n'existant pas en projection.
+                pt: projection ? 0 : 1,
                 alignItems: 'stretch',
                 ...SCROLLBAR_SX,
               }}
             >
-              {displayedRows.map((row) => {
+              {displayedRows.map((row, i) => {
                 const isActive = row.key === currentTurnKey;
                 // Donner le tour à un combattant en cliquant SON bandeau d'initiative (PER-299) : une
                 // correction de position, donc le compteur de manche n'est PAS touché — contrairement
                 // à « Tour suivant », qui progresse dans l'ordre. Écran de MJ seul (la projection ne
                 // pilote rien).
                 const onGiveTurn = projection ? undefined : () => onCurrentTurnKeyChange(row.key);
-                return interactive ? (
+                const card = interactive ? (
                   <StatusDroppableColumn
-                    key={row.key}
                     row={row}
                     isActive={isActive}
                     compact={compact}
                     controls={statusControls}
                     roundNumber={roundNumber}
                     onGiveTurn={() => onCurrentTurnKeyChange(row.key)}
+                    orderControls={orderControls}
+                    nextRowKey={displayedRows[i + 1]?.key ?? null}
+                    dragPreview={dragPreview}
                   />
                 ) : (
                   <CombatantColumn
-                    key={row.key}
                     row={row}
                     isActive={isActive}
                     projection={projection}
@@ -3008,6 +3329,45 @@ export function InitiativeTracker({
                     roundNumber={roundNumber}
                     onGiveTurn={onGiveTurn}
                   />
+                );
+                // Feedback visuel du glisser-déposer de réordonnancement (PER-436) : la carte
+                // SURVOLÉE s'écarte de sa voisine de gauche pour montrer où le combattant glissé
+                // atterrira (juste avant elle, cf. `applyManualOrder`), une barre lumineuse comble
+                // l'espace ouvert. `isDropTarget` exclut le survol de sa PROPRE carte (se glisser
+                // sur soi-même ne fait rien). La carte GLISSÉE, elle, se soulève et suit le curseur
+                // (transform posé directement sur `CombatantColumn`) — rien à faire ici pour elle,
+                // sa case d'origine garde sa taille réservée le temps du geste.
+                const isDropTarget =
+                  !!dragPreview && dragPreview.overKey === row.key && dragPreview.activeKey !== row.key;
+                return (
+                  <Box
+                    key={row.key}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'stretch',
+                      flexShrink: 0,
+                      position: 'relative',
+                      ml: isDropTarget ? `${REORDER_DROP_GAP}px` : 0,
+                      transition: 'margin-left 0.15s ease',
+                    }}
+                  >
+                    {isDropTarget && (
+                      <Box
+                        aria-hidden
+                        sx={(t) => ({
+                          position: 'absolute',
+                          left: -(REORDER_DROP_GAP / 2 + 8),
+                          top: 4,
+                          bottom: 4,
+                          width: 3,
+                          borderRadius: 2,
+                          bgcolor: t.palette.primary.main,
+                          boxShadow: `0 0 10px 2px ${alpha(t.palette.primary.main, 0.7)}`,
+                        })}
+                      />
+                    )}
+                    {card}
+                  </Box>
                 );
               })}
             </Box>

@@ -47,8 +47,9 @@ const TOOLS_WIDTH = 560;
 /** Identifiants d'onglet du tiroir — servent aussi de valeur au paramètre d'URL `?tools=`. */
 export type GmToolId = 'rumors' | 'loot' | 'npc' | 'notes';
 
-/** Onglets déclarés, dans l'ordre d'affichage. Étendre ici pour ajouter un outil. */
-const TOOLS: { id: GmToolId; label: string; icon: React.ReactElement }[] = [
+/** Onglets déclarés, dans l'ordre d'affichage. Étendre ici pour ajouter un outil. Exporté pour le
+ * tour guidé de l'écran de MJ (PER-425ter), qui déroule une étape par onglet. */
+export const TOOLS: { id: GmToolId; label: string; icon: React.ReactElement }[] = [
   { id: 'rumors', label: 'Rumeurs de taverne', icon: <LocalBarIcon fontSize="small" /> },
   { id: 'loot', label: 'Butin', icon: <DiamondIcon fontSize="small" /> },
   { id: 'npc', label: 'PNJ', icon: <GroupsIcon fontSize="small" /> },
@@ -61,6 +62,13 @@ export const DEFAULT_GM_TOOL: GmToolId = TOOLS[0].id;
 /** Garde de type : la valeur brute du paramètre d'URL est-elle un onglet connu ? */
 export function isGmToolId(value: string | null): value is GmToolId {
   return value !== null && TOOLS.some((t) => t.id === value);
+}
+
+/** Cible du tour guidé (PER-425ter) pour l'onglet `id` — posée sur son `Tab`, source unique
+ * partagée avec `buildGmScreenTourSteps` (`gm-screen/page.tsx`), pour éviter toute divergence
+ * entre le sélecteur construit ici et celui attendu là-bas. */
+export function gmScreenToolsTabTourTarget(id: GmToolId): string {
+  return `[data-tour="gm-screen-tools-tab-${id}"]`;
 }
 
 /**
@@ -256,6 +264,7 @@ export function GmToolsDrawer({
             {TOOLS.map((t) => (
               <Tab
                 key={t.id}
+                data-tour={`gm-screen-tools-tab-${t.id}`}
                 value={t.id}
                 icon={t.icon}
                 iconPosition="start"
