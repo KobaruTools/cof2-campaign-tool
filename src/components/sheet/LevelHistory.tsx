@@ -61,6 +61,35 @@ function ManualChangeBadge() {
 }
 
 /**
+ * Badge custom (≠ Chip MUI, cf. `RankBadge`) : signale un point de capacité orphelin converti
+ * en bonus permanent (p. 40) — même teinte warning que `ManualChangeBadge`, sans icône (rien
+ * d'équivalent au geste manuel qu'il marquerait).
+ */
+function OrphanPointBadge() {
+  return (
+    <Box
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        height: 22,
+        px: 0.9,
+        borderRadius: 1,
+        flexShrink: 0,
+        lineHeight: 1,
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+        color: theme.palette.warning.main,
+        bgcolor: alpha(theme.palette.warning.main, 0.12),
+        border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+      })}
+    >
+      Point orphelin
+    </Box>
+  );
+}
+
+/**
  * Une capacité de l'historique : badge de rang + icône de profil (couleur/dégradé) + nom de voie
  * (même teinte) + nom de capacité, marqueurs `*`/(A)/(L)/(M)/(G) en hexagones (PER-74, même recette
  * que `FeaturesByPath` : couleur de profil, dégradé métal du prestige selon sa famille, indigo
@@ -232,7 +261,7 @@ export function LevelHistory({ character }: LevelHistoryProps) {
                   pour que le bonus permanent soit explicite (et l'undo, transparent). */}
               {entry.orphanRewards?.map((reward, i) => (
                 <Stack key={`orphan-${i}`} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Chip label="Point orphelin" size="small" color="warning" variant="outlined" />
+                  <OrphanPointBadge />
                   <Typography variant="body2" color="text.secondary">
                     {ORPHAN_REWARD_LABEL[reward]} <SourceRef page={40} />
                   </Typography>

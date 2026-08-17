@@ -79,6 +79,7 @@ import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { storageKeys } from '@/lib/storage/keys';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PathCard } from '@/components/PathCard';
+import { RankBadge } from '@/components/RankBadge';
 import { SourceRef } from '@/components/SourceRef';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
 import { LevelUpPathsGrid } from '@/components/sheet/LevelUpPathsGrid';
@@ -305,6 +306,11 @@ function AvailablePathGroup({
         >
           {group.path?.name ?? group.pathId}
         </Typography>
+        {Array.from(new Set(group.features.map((f) => f.rank)))
+          .sort((a, b) => a - b)
+          .map((rank) => (
+            <RankBadge key={rank} rank={rank} color={titleColor ?? undefined} />
+          ))}
         {group.path && (
           <AppTooltip
             title={
@@ -1264,8 +1270,8 @@ export function LevelUpDialog({
   // Budget de points de capacité du niveau (2 par niveau, p. 39). Un rang 1-2
   // coûte 1 point, un rang 3+ en coûte 2. On bloque tout dépassement.
   const budget = FEATURE_POINTS_PER_LEVEL;
-  const spent = totalFeatureCost(picked, rulesContext);
-  const remaining = budget - spent;
+  const featureSpent = totalFeatureCost(picked, rulesContext);
+  const remaining = budget - featureSpent;
 
   // Point RÉELLEMENT orphelin (cas de base, p. 40) : il reste au moins un point mais
   // aucune capacité acquérable ne coûte assez peu pour être achetée (il ne reste que
@@ -1390,14 +1396,16 @@ export function LevelUpDialog({
   // Bloquant : toute capacité choisie portant un choix doit l'avoir résolu — capacités
   // achetées comme capacités reprises par changement d'orientation.
   const choicesPending = [...picked, ...replacementIds].some((id) => hasUnmadeChoice(working, id));
-  // Bloquant : tous les points de capacité doivent être dépensés. Exception unique — un
-  // point RÉELLEMENT indépensable (`forcedOrphan`, p. 40) : plus aucune capacité abordable,
-  // il se convertit alors en bonus permanent et ne bloque pas la validation.
-  const pointsUnspent = remaining > 0 && !forcedOrphan;
 
   // Point orphelin effectivement converti (p. 40) : seulement s'il reste au moins un
   // point non dépensé et qu'une récompense a été choisie.
   const orphanRewardsToApply: OrphanReward[] = remaining > 0 && orphanReward ? [orphanReward] : [];
+  // Total dépensé = capacités + point orphelin converti (compte comme 1 point, p. 40).
+  const spent = featureSpent + orphanRewardsToApply.length;
+  // Bloquant : tous les points de capacité doivent être dépensés. Exception unique — un
+  // point RÉELLEMENT indépensable (`forcedOrphan`, p. 40) : plus aucune capacité abordable,
+  // il se convertit alors en bonus permanent et ne bloque pas la validation.
+  const pointsUnspent = budget - spent > 0 && !forcedOrphan;
 
   const resetState = () => {
     setPicked([]);
@@ -1648,7 +1656,7 @@ export function LevelUpDialog({
               />
             )}
 
-            {pickedGroups.length > 0 && (
+            {(pickedGroups.length > 0 || orphanRewardsToApply.length > 0) && (
               // Cadre mis en avant : bordure PLEINE dont la couleur (dégradé blanc/gris)
               // tourne lentement, sans jamais être coupée. Le dégradé conique remplit
               // toujours toute la bordure (technique padding-box/border-box) ; seule
@@ -1731,6 +1739,11 @@ export function LevelUpDialog({
                             >
                               {pathName}
                             </Typography>
+                            {Array.from(new Set(group.features.map((f) => f.rank)))
+                              .sort((a, b) => a - b)
+                              .map((rank) => (
+                                <RankBadge key={rank} rank={rank} color={titleColor ?? undefined} />
+                              ))}
                           </Stack>
                           <Stack spacing="4px">
                             {group.features.map((feature) => {
@@ -1826,6 +1839,59 @@ export function LevelUpDialog({
                         </Box>
                       );
                     })}
+                    {orphanRewardsToApply.length > 0 && (
+                      <Box>
+                        <Stack direction="row" spacing="4px" sx={{ alignItems: 'stretch' }}>
+                          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                            <PathCard
+                              name="Point de capacité orphelin"
+                              color="#ed6c02"
+                              checked
+                              selectable={false}
+                              detail={
+                                <>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {ORPHAN_REWARD_LABEL[orphanRewardsToApply[0]]}
+                                  </Typography>
+                                  <Box sx={{ mt: 1 }}>
+                                    <SourceRef page={40} />
+                                  </Box>
+                                </>
+                              }
+                            />
+                          </Box>
+                          <Stack spacing="4px" sx={{ alignItems: 'stretch', flexShrink: 0 }}>
+                            <MetaPill>1 pt</MetaPill>
+                            <AppTooltip title="Retirer ce choix">
+                              <Box
+                                component="button"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOrphanReward('');
+                                }}
+                                sx={(theme) => ({
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  px: 1,
+                                  py: 0.25,
+                                  borderRadius: 1,
+                                  border: `1px solid ${alpha(theme.palette.error.main, 0.5)}`,
+                                  bgcolor: alpha(theme.palette.error.main, 0.08),
+                                  color: 'error.main',
+                                  cursor: 'pointer',
+                                  '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.16) },
+                                })}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </Box>
+                            </AppTooltip>
+                          </Stack>
+                        </Stack>
+                      </Box>
+                    )}
                   </Stack>
               </Box>
             )}
@@ -1859,14 +1925,6 @@ export function LevelUpDialog({
                         size="small"
                         color="warning"
                         label="Point indépensable — à convertir"
-                      />
-                    )}
-                    {orphanReward && (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        variant="outlined"
-                        label={ORPHAN_REWARD_LABEL[orphanReward]}
                       />
                     )}
                   </Stack>
