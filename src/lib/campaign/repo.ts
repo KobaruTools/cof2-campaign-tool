@@ -19,6 +19,7 @@ import {
   type GmInventory,
   type LootItem,
   type Npc,
+  type NpcCategory,
   type TavernRumor,
 } from './types';
 
@@ -134,6 +135,26 @@ export function parseGmInventory(raw: Json): GmInventory {
   return { categories, items };
 }
 
+/**
+ * Parse défensif de la colonne `npc_categories` (jsonb) vers `NpcCategory[]` (PER-430).
+ * Même esprit que `parseGmInventory.categories` : on n'accepte QUE les éléments bien
+ * formés (`id`/`name` chaînes), on ignore les autres, on ne lève jamais. Une valeur
+ * non-tableau (ancien format, `null`) → réserve vide.
+ */
+export function parseNpcCategories(raw: Json): NpcCategory[] {
+  if (!Array.isArray(raw)) return [];
+  const out: NpcCategory[] = [];
+  for (const item of raw) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const { id, name, collapsed } = item as Record<string, unknown>;
+      if (typeof id === 'string' && typeof name === 'string') {
+        out.push({ id, name, collapsed: collapsed === true });
+      }
+    }
+  }
+  return out;
+}
+
 /** Mappe une ligne SQL `campaigns` vers l'entité `Campaign` de l'application. */
 export function rowToCampaign(row: CampaignRow): Campaign {
   return {
@@ -144,6 +165,7 @@ export function rowToCampaign(row: CampaignRow): Campaign {
     rumors: parseRumors(row.rumors),
     loot: parseLoot(row.loot),
     gmInventory: parseGmInventory(row.gm_inventory),
+    npcCategories: parseNpcCategories(row.npc_categories),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -212,15 +234,17 @@ export async function updateCampaign(
     rumors?: TavernRumor[];
     loot?: LootItem[];
     gmInventory?: GmInventory;
+    npcCategories?: NpcCategory[];
   },
 ): Promise<Campaign> {
   const supabase = createBrowserSupabaseClient();
-  const { rules, rumors, loot, gmInventory, ...rest } = patch;
+  const { rules, rumors, loot, gmInventory, npcCategories, ...rest } = patch;
   const row: Database['public']['Tables']['campaigns']['Update'] = { ...rest };
   if (rules) row.rules = rules as unknown as Json;
   if (rumors) row.rumors = rumors as unknown as Json;
   if (loot) row.loot = loot as unknown as Json;
   if (gmInventory) row.gm_inventory = gmInventory as unknown as Json;
+  if (npcCategories) row.npc_categories = npcCategories as unknown as Json;
   const { data, error } = await supabase
     .from('campaigns')
     .update(row)
@@ -252,6 +276,8 @@ export function rowToNpc(row: NpcRow): Npc {
     role: row.role,
     ancestryId: row.ancestry_id,
     sex: row.sex as Npc['sex'],
+    categoryId: row.category_id,
+    challengeRating: row.challenge_rating,
     location: row.location,
     disposition: row.disposition as Npc['disposition'],
     status: row.status as Npc['status'],
@@ -269,6 +295,8 @@ export interface NpcInput {
   role?: string | null;
   ancestryId?: string | null;
   sex?: Npc['sex'];
+  categoryId?: string | null;
+  challengeRating?: number | null;
   location?: string | null;
   disposition?: Npc['disposition'];
   status?: Npc['status'];
@@ -287,6 +315,8 @@ function npcInputToRow(input: Partial<NpcInput>): NpcRowUpdate {
   if (input.role !== undefined) row.role = input.role;
   if (input.ancestryId !== undefined) row.ancestry_id = input.ancestryId;
   if (input.sex !== undefined) row.sex = input.sex;
+  if (input.categoryId !== undefined) row.category_id = input.categoryId;
+  if (input.challengeRating !== undefined) row.challenge_rating = input.challengeRating;
   if (input.location !== undefined) row.location = input.location;
   if (input.disposition !== undefined) row.disposition = input.disposition;
   if (input.status !== undefined) row.status = input.status;

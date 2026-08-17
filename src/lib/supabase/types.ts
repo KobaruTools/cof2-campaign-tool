@@ -44,6 +44,8 @@ export type Database = {
         Row: {
           ancestry_id: string | null
           campaign_id: string
+          category_id: string | null
+          challenge_rating: number | null
           created_at: string
           description: string | null
           description_visible_to_players: boolean
@@ -60,6 +62,8 @@ export type Database = {
         Insert: {
           ancestry_id?: string | null
           campaign_id: string
+          category_id?: string | null
+          challenge_rating?: number | null
           created_at?: string
           description?: string | null
           description_visible_to_players?: boolean
@@ -76,6 +80,8 @@ export type Database = {
         Update: {
           ancestry_id?: string | null
           campaign_id?: string
+          category_id?: string | null
+          challenge_rating?: number | null
           created_at?: string
           description?: string | null
           description_visible_to_players?: boolean

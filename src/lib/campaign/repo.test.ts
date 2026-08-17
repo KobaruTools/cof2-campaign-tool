@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Database, Json } from '@/lib/supabase/types';
-import { parseGmInventory, parseLoot, parseRules, parseRumors, rowToCampaign, rowToNpc } from './repo';
+import {
+  parseGmInventory,
+  parseLoot,
+  parseNpcCategories,
+  parseRules,
+  parseRumors,
+  rowToCampaign,
+  rowToNpc,
+} from './repo';
 import type { CampaignRules } from './types';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
@@ -66,6 +74,7 @@ describe('rowToCampaign', () => {
       rumors: [],
       loot: [],
       gmInventory: { categories: [], items: [] },
+      npcCategories: [],
       createdAt: '2026-07-01T10:00:00Z',
       updatedAt: '2026-07-02T11:00:00Z',
     });
@@ -199,6 +208,8 @@ describe('rowToNpc', () => {
       role: 'Aubergiste',
       ancestry_id: 'demi-orque',
       sex: 'male',
+      category_id: 'cat1',
+      challenge_rating: 2,
       location: 'Taverne du Sanglier',
       disposition: 'ally',
       status: 'encountered',
@@ -215,6 +226,8 @@ describe('rowToNpc', () => {
       role: 'Aubergiste',
       ancestryId: 'demi-orque',
       sex: 'male',
+      categoryId: 'cat1',
+      challengeRating: 2,
       location: 'Taverne du Sanglier',
       disposition: 'ally',
       status: 'encountered',
@@ -224,6 +237,32 @@ describe('rowToNpc', () => {
       linkedCharacterIds: ['pj1', 'pj2'],
       createdAt: '2026-08-15T10:00:00Z',
     });
+  });
+});
+
+describe('parseNpcCategories', () => {
+  it('lit les catégories bien formées', () => {
+    const raw = [
+      { id: 'c1', name: 'Alliés', collapsed: false },
+      { id: 'c2', name: 'Ennemis', collapsed: true },
+    ];
+    expect(parseNpcCategories(raw as unknown as Json)).toEqual(raw);
+  });
+
+  it('retombe sur une réserve vide pour une valeur non-tableau (null, ancien format)', () => {
+    expect(parseNpcCategories(null)).toEqual([]);
+    expect(parseNpcCategories({ id: 'x' } as unknown as Json)).toEqual([]);
+  });
+
+  it('ignore les catégories mal formées', () => {
+    const raw = [
+      { id: 'c1', name: 'Alliés', collapsed: false },
+      { id: 42, name: 'id non-chaîne' },
+      { name: 'sans id' },
+    ];
+    expect(parseNpcCategories(raw as unknown as Json)).toEqual([
+      { id: 'c1', name: 'Alliés', collapsed: false },
+    ]);
   });
 });
 

@@ -171,6 +171,22 @@ export const NPC_STATUS_LABELS: Record<NpcStatus, string> = {
 };
 
 /**
+ * Catégorie de PNJ (PER-430) — regroupement libre, renommable et repliable, MÊME
+ * FORME que `GmInventoryCategory` mais persistée séparément (`campaigns.npc_categories`,
+ * jsonb, posée par la migration 0029) : les PNJ vivent dans leur table dédiée
+ * `campaign_npcs` (voir `Npc`), donc leur rattachement à une catégorie passe par
+ * `Npc.categoryId`, PAS par un tableau `items` comme `GmInventory`.
+ */
+export interface NpcCategory {
+  /** Clé stable (UUID). */
+  id: string;
+  /** Nom affiché, librement édité par le MJ. */
+  name: string;
+  /** La catégorie est-elle repliée dans le tiroir ? Persistant, propre au MJ. */
+  collapsed: boolean;
+}
+
+/**
  * PNJ du MJ (PER-428 socle + PER-429 fiche complète). Persisté dans une table
  * DÉDIÉE `campaign_npcs` — PAS un jsonb sur `Campaign` comme les entités
  * ci-dessus (rumeurs/butin/inventaire) — car `gmNotes` (privées) et les futures
@@ -203,6 +219,15 @@ export interface Npc {
    * `null` = non renseigné.
    */
   sex: Sex | null;
+  /** Catégorie d'appartenance (PER-430), ou `null` = « Sans catégorie ». Référence un id de
+   * `Campaign.npcCategories` SANS FK en base — même motif que `ancestryId`. */
+  categoryId: string | null;
+  /**
+   * Niveau de Challenge (PER-431, stub posé par PER-430 pour que le tri « par NC »
+   * fonctionne dès maintenant) — `null` = non renseigné, retombe en fin de liste au tri.
+   * Aucune UI d'édition avant PER-431.
+   */
+  challengeRating: number | null;
   /** Lieu libre, SÉPARÉ de la description — pont volontaire vers un futur système de Lieux. */
   location: string | null;
   /** Disposition envers les PJ — badge coloré sur la carte. */
@@ -254,6 +279,12 @@ export interface Campaign {
    * via `parseGmInventory`.
    */
   gmInventory: GmInventory;
+  /**
+   * Catégories de PNJ (PER-430) — vide par défaut (`[]`), jamais `null` (colonne
+   * `not null default '[]'`, posée par la migration 0029). Lecture défensive via
+   * `parseNpcCategories`.
+   */
+  npcCategories: NpcCategory[];
   /** Horodatages ISO recopiés de la base (tri, affichage). */
   createdAt: string;
   updatedAt: string;

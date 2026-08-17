@@ -271,7 +271,7 @@ export function GmToolsDrawer({
           {activeTab === 'loot' && (
             <LootTreasurePanel campaign={campaign} pending={pendingTarget?.pool === 'random'} />
           )}
-          {activeTab === 'npc' && <NpcPanel campaignId={campaign.id} />}
+          {activeTab === 'npc' && <NpcPanel campaign={campaign} />}
           {activeTab === 'notes' && <SessionLiveNotesPanel campaignId={campaign.id} />}
         </Box>
       </Box>
