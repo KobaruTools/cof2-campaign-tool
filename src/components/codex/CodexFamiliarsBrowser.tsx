@@ -130,10 +130,12 @@ function SlotLabel({ children }: { children: string }) {
   );
 }
 
-/** Bloc « Pouvoir mineur/supérieur » — `PathCard` figée, capacité conférée ou pouvoir propre. */
+/** Bloc « Pouvoir mineur/supérieur » — `PathCard` figée, capacité conférée ou pouvoir propre. Pas
+ * d'étiquette de rang ici (portée par le `SlotLabel` du parent — groupée avec `FamiliarBonusBlock`
+ * pour le rang 7, retour propriétaire : un seul « Rang 7 » pour les deux blocs qui en relèvent). */
 function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; slot: PowerSlot }) {
   const power = slot === 'minor' ? familiar.minorPower : familiar.superiorPower;
-  const label = slot === 'minor' ? 'Pouvoir mineur (rang 4)' : 'Pouvoir supérieur (rang 7)';
+  const fallbackName = slot === 'minor' ? 'Pouvoir mineur' : 'Pouvoir supérieur';
   const referenced = powerFeature(familiar, slot);
   const path = referenced ? pathById.get(referenced.pathId) : undefined;
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
@@ -142,52 +144,47 @@ function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; s
   const grants = power.grants;
 
   return (
-    <>
-      <SlotLabel>{label}</SlotLabel>
-      <PathCard
-        name={referenced?.name ?? label}
-        color={color}
-        classId={classId}
-        iconPosition="start"
-        checked
-        selectable={false}
-        repeatFeatureName={false}
-        rankLabel={
-          grants
-            ? `Conféré par ${grants.pathName} (${className ?? grants.profile})${grants.usage ? ` — ${grants.usage}` : ''}`
-            : referenced
-              ? 'Pouvoir propre au familier'
-              : ''
-        }
-        feature={referenced}
-        detail={referenced ? undefined : power.text}
-        sourcePage={referenced?.sourcePage}
-        sx={{ height: 'auto', mt: 0.5 }}
-      />
-    </>
+    <PathCard
+      name={referenced?.name ?? fallbackName}
+      color={color}
+      classId={classId}
+      iconPosition="start"
+      checked
+      selectable={false}
+      repeatFeatureName={false}
+      rankLabel={
+        grants
+          ? `Conféré par ${grants.pathName} (${className ?? grants.profile})${grants.usage ? ` — ${grants.usage}` : ''}`
+          : referenced
+            ? 'Pouvoir propre au familier'
+            : ''
+      }
+      feature={referenced}
+      detail={referenced ? undefined : power.text}
+      sourcePage={referenced?.sourcePage}
+      sx={{ height: 'auto', mt: 0.5 }}
+    />
   );
 }
 
-/** Bloc « Bonus permanent » (rang 7) — même cadre `PathCard`, sans chevron (rien à déplier). Le
- * bonus lui-même reprend la puce de caractéristique (`AbilityChipBox`, PER-224 : teinte propre +
- * bord tireté), même traitement que les carac dans le texte enrichi des voies — le signe/valeur
- * (« +1 ») reste dans la puce (retour propriétaire). */
+/** Bloc « Bonus permanent » (rang 7, groupé sous le même `SlotLabel` que le pouvoir supérieur) —
+ * même cadre `PathCard`, sans chevron (rien à déplier) : le nom de la carte porte directement
+ * « Bonus permanent », plus besoin d'une ligne d'en-tête séparée. Le bonus lui-même reprend la
+ * puce de caractéristique (`AbilityChipBox`, PER-224 : teinte propre + bord tireté) — le signe/
+ * valeur (« +1 ») reste dans la puce (retour propriétaire). */
 function FamiliarBonusBlock({ abilityBonus }: { abilityBonus: AbilityId }) {
   return (
-    <>
-      <SlotLabel>Bonus permanent (rang 7)</SlotLabel>
-      <PathCard
-        name="Caractéristique bonifiée"
-        checked
-        selectable={false}
-        endAdornment={
-          <AbilityChipBox ability={abilityBonus} title={`${ABILITY_NAMES[abilityBonus]} (${abilityBonus}) : +1`}>
-            +1 {abilityBonus}
-          </AbilityChipBox>
-        }
-        sx={{ height: 'auto', mt: 0.5 }}
-      />
-    </>
+    <PathCard
+      name="Bonus permanent"
+      checked
+      selectable={false}
+      endAdornment={
+        <AbilityChipBox ability={abilityBonus} title={`${ABILITY_NAMES[abilityBonus]} (${abilityBonus}) : +1`}>
+          +1 {abilityBonus}
+        </AbilityChipBox>
+      }
+      sx={{ height: 'auto', mt: 1 }}
+    />
   );
 }
 
@@ -216,9 +213,10 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
         </Typography>
       )}
 
+      <SlotLabel>Rang 4 (pouvoir mineur)</SlotLabel>
       <FamiliarPowerBlock familiar={familiar} slot="minor" />
 
-      <SlotLabel>Résistance (rang 5)</SlotLabel>
+      <SlotLabel>Rang 5 (résistance)</SlotLabel>
       <PathCard
         name="Sort appris"
         color={spellProfileClassId(familiar.spellProfile) ? classColor(spellProfileClassId(familiar.spellProfile)!) : undefined}
@@ -234,6 +232,9 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
         sx={{ height: 'auto', mt: 0.5 }}
       />
 
+      {/* Rang 7 GROUPÉ (retour propriétaire) : pouvoir supérieur + bonus permanent partagent la
+          même étiquette de rang, pas de doublon « Rang 7 » répété deux fois. */}
+      <SlotLabel>Rang 7 (pouvoir supérieur)</SlotLabel>
       <FamiliarPowerBlock familiar={familiar} slot="superior" />
       <FamiliarBonusBlock abilityBonus={familiar.superiorPower.abilityBonus} />
     </Box>
