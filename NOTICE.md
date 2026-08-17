@@ -82,6 +82,43 @@ est conservée dans `DERIVED_STAT_ICON_SOURCES` (même fichier) et dans
 | Attaque distance | `lorc/pocket-bow.svg` | Lorc |
 | Attaque magique | `delapouite/falling-star.svg` | Delapouite |
 
+## Icônes de domaine des dieux (Codex)
+
+Les icônes de domaine des dieux du panthéon d'Osgild (sous-page « Dieux » du Codex, PER-420)
+proviennent également de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/). Couverture PARTIELLE
+volontaire (19 dieux sur 32) : les dieux absents de ce tableau retombent sur l'icône de la
+voie d'origine de leur capacité divine plutôt que sur une icône de domaine dédiée.
+
+Auteurs : **Lorc** et **Delapouite** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/godDomainIcons.ts`. La correspondance dieu → fichier source est conservée dans
+`GOD_DOMAIN_ICON_SOURCES` (même fichier) et dans `scripts/game-icons/god-domains/map.tsv`.
+L'affichage passe par le composant `src/components/GodDomainIcon.tsx`.
+
+| Dieu | Domaine | Fichier game-icons.net | Auteur |
+| --- | --- | --- | --- |
+| Arshran | feu et forgerons | `lorc/anvil.svg` | Lorc |
+| Dénora | compassion et guérison | `delapouite/heart-wings.svg` | Delapouite |
+| Axénder | devoir et honneur | `lorc/laurel-crown.svg` | Lorc |
+| Irrion | ordre et noblesse | `lorc/crown.svg` | Lorc |
+| Vorona | justice et loi | `lorc/scales.svg` | Lorc |
+| Trenner | temps et ancêtres | `lorc/hourglass.svg` | Lorc |
+| Tulsadün | jungle et reptiles | `lorc/snake.svg` | Lorc |
+| Sélenne | lune et liberté | `lorc/moon.svg` | Lorc |
+| Mirandia | sommeil et rêves | `delapouite/night-sleep.svg` | Delapouite |
+| Solar | lumière et savoir | `lorc/sun.svg` | Lorc |
+| Suëlle | beauté et amour | `lorc/shining-heart.svg` | Lorc |
+| Forthur | courage et exploits | `lorc/punch.svg` | Lorc |
+| Gorom | pierre et architectes | `lorc/stone-block.svg` | Lorc |
+| Mélenna | forêts et animaux | `lorc/paw.svg` | Lorc |
+| Méphistre | ombre et secrets | `lorc/drama-masks.svg` | Lorc |
+| Cérès | agriculture et travail | `delapouite/grain-bundle.svg` | Delapouite |
+| Oumaros | air et cieux | `lorc/feather.svg` | Lorc |
+| Ellona | perception et vérité | `lorc/octogonal-eye.svg` | Lorc |
+| Tyriolth | chaos et feu purificateur | `lorc/fireball.svg` | Lorc |
+
 ## Icône « Points de violence »
 
 L'icône de la barre « Points de violence » (demi-ogre, PER-325) provient également de

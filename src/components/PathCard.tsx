@@ -12,6 +12,7 @@ import Radio from '@mui/material/Radio';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha, lighten } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
 import type { Feature } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { AncestryIcon } from '@/components/AncestryIcon';
@@ -91,6 +92,14 @@ export interface PathCardProps {
   prestigeTint?: string;
   /** Épaisseur de la bordure (non-prestige) en px. Défaut 2. */
   borderWidth?: number;
+  /**
+   * Style additionnel fusionné PAR-DESSUS le style par défaut de la racine (dont `height:
+   * '100%'`, pensé pour les grilles de sélection à hauteur de ligne stretchée). À utiliser
+   * pour neutraliser ce `height` quand la carte est nichée dans un conteneur flex/grid dont
+   * la hauteur définie remonte par percentage jusqu'ici (déborde sinon — Codex des dieux,
+   * PER-420 retours).
+   */
+  sx?: SxProps<Theme>;
 }
 
 /**
@@ -125,6 +134,7 @@ export function PathCard({
   prestige = false,
   prestigeTint,
   borderWidth = 2,
+  sx,
 }: PathCardProps) {
   const ControlComp = control === 'radio' ? Radio : Checkbox;
   const GhostIcon = control === 'radio' ? FiberManualRecordIcon : CheckIcon;
@@ -144,7 +154,7 @@ export function PathCard({
         if (hasDetail) setExpanded((v) => !v);
         else if (selectable) onToggle?.();
       }}
-      sx={{
+      sx={[{
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -174,7 +184,7 @@ export function PathCard({
                   }),
               ...(!hasDetail ? ghostHoverSx : undefined),
             },
-      }}
+      }, ...(Array.isArray(sx) ? sx : [sx])]}
     >
       {/* En-tête : indicateur + nom (coloré quand sélectionné) + renvoi de page + icône de
           profil/peuple + chevron (si un détail existe). */}
