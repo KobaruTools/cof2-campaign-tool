@@ -13,11 +13,9 @@
  * `PurseField.tsx` (fiche personnage), en version statique (pas d'info-bulle/animation, catalogue
  * hors personnage). Montant en gras teinté de la couleur de la monnaie, à côté du jeton.
  *
- * Statistiques des bardes (retour propriétaire) : PARSÉES en encadrés signés (`+2 DEF`, `−2 Init.`)
- * plutôt qu'une phrase verbatim, sur une ligne séparée du nom/prix pour la lisibilité — MÊME style
- * que l'« encadré signé » d'un modificateur constant en texte enrichi de capacité (`FormulaTotal`
- * de `FeatureRichText.tsx`, patron Voies & Capacités), en version plate (pas d'icône de stat,
- * la valeur est déjà fixe et connue — pas de résolution de formule à faire hors personnage).
+ * Statistiques des bardes (retour propriétaire) : PARSÉES en encadrés signés (`StatModifierTag`,
+ * `+2 DEF` / `−2 Init.`) plutôt qu'une phrase verbatim, sur une ligne séparée du nom/prix pour la
+ * lisibilité — partagé avec `CodexFamiliarsBrowser` (bonus permanent de caractéristique).
  *
  * Pas de gating payant à prévoir : `mounts`/`bardes` sont des tableaux statiques du livre de base.
  */
@@ -29,13 +27,14 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha, darken, lighten } from '@mui/material/styles';
+import { darken, lighten } from '@mui/material/styles';
 import { bardes, mounts } from '@/data';
 import type { BardeCatalogEntry, MountCatalogEntry } from '@/data/mounts';
 import type { Price } from '@/data/schema';
 import { CURRENCY_ABBREV, CURRENCY_COLOR, type CoinCurrency } from '@/lib/character/coinPouch';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { SourceRef } from '@/components/SourceRef';
+import { StatModifierTag } from '@/components/StatModifierTag';
 
 const rowSx = {
   borderRadius: 2,
@@ -75,34 +74,6 @@ function CoinBadge({ code, color }: { code: string; color: string }) {
       }}
     >
       {code}
-    </Box>
-  );
-}
-
-/** Modificateur constant signé (« +2 DEF », « −2 Init. ») — même style d'encadré que `FormulaTotal`
- * (`FeatureRichText.tsx`, patron Voies & Capacités), sans icône de stat : valeur déjà fixe et
- * connue, pas de formule à résoudre hors personnage. */
-function StatModifierTag({ value, label }: { value: number; label: string }) {
-  return (
-    <Box
-      component="span"
-      sx={(theme) => ({
-        display: 'inline-flex',
-        alignItems: 'center',
-        minHeight: '22px',
-        px: 0.6,
-        lineHeight: 1,
-        borderRadius: 1,
-        fontWeight: 600,
-        fontVariantNumeric: 'tabular-nums',
-        whiteSpace: 'nowrap',
-        bgcolor: alpha(theme.palette.primary.main, 0.1),
-        border: 1,
-        borderColor: alpha(theme.palette.primary.main, 0.35),
-      })}
-    >
-      {value >= 0 ? '+' : '−'}
-      {Math.abs(value)} {label}
     </Box>
   );
 }

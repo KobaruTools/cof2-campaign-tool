@@ -7,12 +7,26 @@
  * sélecteur maître-détail, tout affiché d'un coup.
  *
  * Contenu retenu (cadrage propriétaire) : description + les 3 éléments référencés par la voie
- * (R4 Pouvoir mineur, R5 Résistance/profil de sorts, R7 Pouvoir supérieur). Les pouvoirs conférés
- * (capacité de profil réelle OU pouvoir propre au familier) sont rendus via `PathCard`, MÊME
- * mécanique que la carte « Capacité divine » de `CodexGodsBrowser` — capacité figée, non
- * sélectionnable, détail repliable. Pas de compteur d'usage ni de résolution par caractéristiques
- * (pas de personnage ici) : voir `FamiliarGrantedPowerNote.tsx` pour l'équivalent EN CONTEXTE
- * personnage (compteurs, texte enrichi résolu).
+ * (R4 Pouvoir mineur, R5 Résistance/profil de sorts, R7 Pouvoir supérieur). Cartes à hauteur FIXE
+ * (retour propriétaire : « toutes la même taille ») avec défilement interne si le contenu déborde
+ * — la longueur du texte varie beaucoup d'un familier à l'autre (Toile/Poison très détaillés vs.
+ * une phrase courte), un simple `alignItems: 'stretch'` ne suffit qu'à égaliser une même LIGNE de
+ * grille, pas la grille entière.
+ *
+ * Les pouvoirs conférés (capacité de profil réelle OU pouvoir propre au familier) sont rendus par
+ * `ReferencedPowerCard`, une réplique STATIQUE du corps repliable de `PathCard` (même bordure/
+ * teinte, mêmes hexagones de marqueurs d'action, même `FeatureText`) mais SANS chevron/repli
+ * (retour propriétaire : pas besoin d'ouverture ici, juste la même forme) — et surtout avec
+ * l'icône de la voie/du profil placée AVANT le nom de la capacité, alors que `PathCard` la place
+ * après le renvoi de page en fin d'en-tête (correct pour une carte de SÉLECTION où l'œil lit le nom
+ * en premier, mais moins lisible ici où la carte n'affiche qu'UNE capacité déjà connue). Le bonus
+ * permanent de caractéristique (R7) est rendu par `StatModifierTag`, partagé avec
+ * `CodexMountsBrowser` (bardes) — même encadré signé que `FormulaTotal` (Voies & Capacités), à la
+ * place d'un simple `caption` visuellement écrasé face au reste de la carte.
+ *
+ * Pas de compteur d'usage ni de résolution par caractéristiques (pas de personnage ici) : voir
+ * `FamiliarGrantedPowerNote.tsx` pour l'équivalent EN CONTEXTE personnage (compteurs, texte
+ * enrichi résolu).
  *
  * Pas de gating payant à prévoir : `fantasticFamiliars` est un tableau statique du livre de base.
  */
@@ -20,13 +34,21 @@ import { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { classById, featureById, pathById } from '@/data';
 import { fantasticFamiliars } from '@/data/fantastic-familiars';
 import type { Feature, FantasticFamiliar } from '@/data/schema';
 import { AppAlert } from '@/components/AppAlert';
-import { PathCard } from '@/components/PathCard';
+import { ClassIcon } from '@/components/ClassIcon';
+import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
+import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
+import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { SourceRef } from '@/components/SourceRef';
+import { StatModifierTag } from '@/components/StatModifierTag';
 import { classColor } from '@/lib/ui/classColors';
+
+/** Hauteur fixe de toutes les cartes (retour propriétaire) : contenu variable → défilement interne. */
+const CARD_HEIGHT = 660;
 
 const cardSx = {
   borderRadius: 2,
@@ -35,7 +57,8 @@ const cardSx = {
   backdropFilter: 'blur(6px)',
   WebkitBackdropFilter: 'blur(6px)',
   p: 2.5,
-  height: '100%',
+  height: CARD_HEIGHT,
+  overflowY: 'auto',
   display: 'flex',
   flexDirection: 'column',
 } as const;
@@ -79,6 +102,54 @@ function powerFeature(familiar: FantasticFamiliar, slot: PowerSlot): Feature | u
   return undefined;
 }
 
+/**
+ * Carte STATIQUE d'une capacité conférée — même langage visuel que le détail repliable de
+ * `PathCard` (bordure/fond teintés par la voie source, hexagones de marqueurs d'action, texte
+ * enrichi), sans chevron/repli (toujours dépliée) et avec l'icône de la voie/du profil AVANT le
+ * nom (au lieu d'après le renvoi de page, ordre de `PathCard` — moins lisible ici où la carte ne
+ * présente qu'une seule capacité déjà connue).
+ */
+function ReferencedPowerCard({
+  referenced,
+  color,
+  classId,
+  rankLabel,
+}: {
+  referenced: Feature;
+  color?: string;
+  classId?: string;
+  rankLabel: string;
+}) {
+  return (
+    <Box
+      sx={{
+        mt: 0.5,
+        p: 1,
+        border: 1,
+        borderColor: color ?? 'divider',
+        borderRadius: 1,
+        bgcolor: color ? alpha(color, 0.06) : 'transparent',
+      }}
+    >
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}>
+        {classId && <ClassIcon classId={classId} size={18} sx={{ color, flexShrink: 0 }} />}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
+          <DeclinedFeatureName feature={referenced} />
+        </Typography>
+        <FeatureMarkerHexes feature={referenced} color={color} pathRank={referenced.rank} />
+        <Box sx={{ flexGrow: 1 }} />
+        <SourceRef page={referenced.sourcePage} term={referenced.name} />
+      </Stack>
+      {rankLabel && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+          {rankLabel}
+        </Typography>
+      )}
+      <FeatureText feature={referenced} pathRank={referenced.rank} />
+    </Box>
+  );
+}
+
 function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; slot: PowerSlot }) {
   const power = slot === 'minor' ? familiar.minorPower : familiar.superiorPower;
   const label = slot === 'minor' ? 'Pouvoir mineur (rang 4)' : 'Pouvoir supérieur (rang 7)';
@@ -99,21 +170,15 @@ function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; s
         {label}
       </Typography>
       {referenced ? (
-        <PathCard
-          name={referenced.name}
+        <ReferencedPowerCard
+          referenced={referenced}
           color={color}
           classId={classId}
-          checked
-          selectable={false}
-          repeatFeatureName={false}
           rankLabel={
             grants
               ? `Conféré par ${grants.pathName} (${className ?? grants.profile})${grants.usage ? ` — ${grants.usage}` : ''}`
               : 'Pouvoir propre au familier'
           }
-          feature={referenced}
-          sourcePage={referenced.sourcePage}
-          sx={{ height: 'auto', mt: 0.5 }}
         />
       ) : (
         <AppAlert severity="info" sx={{ mt: 0.5 }}>
@@ -121,9 +186,9 @@ function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; s
         </AppAlert>
       )}
       {abilityBonus && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          Bonus permanent : +1 {abilityBonus}.
-        </Typography>
+        <Box sx={{ mt: 0.5 }}>
+          <StatModifierTag value={1} label={abilityBonus} />
+        </Box>
       )}
     </Box>
   );
