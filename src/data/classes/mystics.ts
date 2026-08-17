@@ -379,11 +379,15 @@ export const mysticFeatures: Feature[] = [
     // l'animal et ne garde que PV/INT/VOL), ce qui n'est pas modélisable en +X ; le toggle
     // ne porte donc que l'état « transformé » (comme Armure de pierre / Déphasage). Les
     // catégories accessibles sont dérivées des choix de Langage des animaux (animaux-r1).
+    // `healOnDeactivate` (PER-375, changeforme-r5, p. 170) : rappel de soin {3d4°} PV au retour à
+    // la forme normale — ne concerne QUE le druide qui a AUSSI la voie du changeforme
+    // (`requiresFeatureId`), pas Forme animale seule.
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: 'Forme animale active', activeByDefault: false },
+        healOnDeactivate: { dice: '3d4°', requiresFeatureId: 'prestige-changeforme-r5' },
       },
     ],
     sourcePage: 114,
@@ -651,8 +655,43 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le druide peut se transformer en arbre (environ 5 m de hauteur) pendant PER minutes. Il prend les mêmes caractéristiques (à l'exception de l'INT, de la PER et de la VOL) que l'arbre animé (voir plus loin), y compris les PV. Sous cette forme, il ne peut pas parler, mais peut utiliser les sorts des voies du protecteur et des végétaux. À la fin du sort, ou s'il est réduit à 0 PV, il reprend forme humaine et retrouve les PV que le personnage avait au début du sort.",
+    // Même patron que Métamorphose (voie de l'ours, prestige-ours-r6) / formes élémentaires (PER-374) :
+    // `creatureProfile.transformation` + `hitPoints` chiffrés branchent AUTOMATIQUEMENT cette capacité
+    // sur la barre de PV dédiée (`activeTransformationWithHp`/`transformationDepletion`,
+    // companions.ts) — à 0 PV sous cette forme, l'interrupteur s'éteint et le druide retrouve sa
+    // propre barre de PV, jamais entamée pendant la transformation (RAW : « retrouve les PV que le
+    // personnage avait au début du sort »). AGI/CON/FOR/CHA = valeurs ABSOLUES de l'arbre animé
+    // (`abilityOverrides`/`creatureProfile.abilities`) ; INT/PER/VOL restent celles du druide (delta 0,
+    // `abilitiesFromMaster`), RAW : « à l'exception de l'INT, de la PER et de la VOL ». DEF/PV/Init/
+    // attaque repris tels quels du profil de l'arbre animé (protecteur-r6, « voir plus loin »),
+    // « rang » = rang de CETTE voie (protecteur). « ne peut pas employer d'autres capacités que celles
+    // des voies du protecteur et des végétaux » → `disablesProfileFeatures: { exceptPathIds }` (NOUVELLE
+    // primitive liste blanche, retour propriétaire 2026-08-17) : désactive toute autre voie de PROFIL
+    // possédée (fauve, animaux, hybridation…) mais GARDE protecteur (porteuse de cette capacité) et
+    // végétaux actives — contrairement au patron ours/élémentaires (`disablesProfileFeatures: true`), qui
+    // vivent sur une voie de PRESTIGE et n'ont donc aucune exception à faire. « Ne peut pas parler » reste
+    // VERBATIM (aucune primitive de mutisme, même traitement que les formes élémentaires).
     richText:
       "Le druide peut se transformer en arbre (environ 5 m de hauteur) pendant [=PER] minutes. Il prend les mêmes caractéristiques (à l'exception de l'INT, de la PER et de la VOL) que l'arbre animé (voir plus loin), y compris les PV. Sous cette forme, il ne peut pas parler, mais peut utiliser les sorts des voies du protecteur et des végétaux. À la fin du sort, ou s'il est réduit à 0 PV, il reprend forme humaine et retrouve les PV que le personnage avait au début du sort.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: "Sous forme d'arbre", activeByDefault: false },
+        abilityOverrides: { AGI: -2, CON: 3, FOR: 3, CHA: -2 },
+        disablesProfileFeatures: { exceptPathIds: ['protecteur', 'vegetaux'] },
+      },
+    ],
+    creatureProfile: {
+      name: 'Arbre',
+      transformation: true,
+      abilities: { AGI: -2, CON: 3, FOR: 3, CHA: -2 },
+      abilitiesFromMaster: { INT: 0, PER: 0, VOL: 0 },
+      defense: '[10 + rang]',
+      hitPoints: '[=niveau × 5]',
+      initiative: '8',
+      attack: { fromMaster: 'magicAttack', damage: '[1d4° + 3]' },
+    },
     sourcePage: 117,
   },
   // =======================================================================

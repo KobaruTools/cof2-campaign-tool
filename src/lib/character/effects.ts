@@ -1732,23 +1732,26 @@ export function profileFeaturesDisabledByTransformation(
   character: Character,
 ): Map<string, { byFeatureId: string; byFeatureName: string }> {
   const disabled = new Map<string, { byFeatureId: string; byFeatureName: string }>();
-  let active = false;
-  const sources: { byFeatureId: string; byFeatureName: string }[] = [];
+  const sources: { byFeatureId: string; byFeatureName: string; exceptPathIds: Set<string> }[] = [];
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
     feature?.effects?.forEach((effect, index) => {
       if (effect.kind !== 'conditional-stat-bonus' || !effect.disablesProfileFeatures) return;
       if (!isEffectActive(character, id, index)) return;
-      active = true;
-      sources.push({ byFeatureId: id, byFeatureName: feature?.name ?? id });
+      const spec = effect.disablesProfileFeatures;
+      const exceptPathIds = new Set(spec === true ? [] : spec.exceptPathIds);
+      sources.push({ byFeatureId: id, byFeatureName: feature?.name ?? id, exceptPathIds });
     });
   }
-  if (!active) return disabled;
+  if (!sources.length) return disabled;
   for (const targetId of character.featureIds) {
     const targetFeature = featureById.get(targetId);
     if (!targetFeature) continue;
     if (pathById.get(targetFeature.pathId)?.type !== 'class') continue;
-    disabled.set(targetId, sources[0]);
+    // Une source dont la liste d'exceptions COUVRE la voie de la cible (Forme d'arbre : protecteur/
+    // végétaux) ne la désactive pas — on cherche la première source qui ne l'excepte PAS.
+    const source = sources.find((s) => !s.exceptPathIds.has(targetFeature.pathId));
+    if (source) disabled.set(targetId, { byFeatureId: source.byFeatureId, byFeatureName: source.byFeatureName });
   }
   return disabled;
 }

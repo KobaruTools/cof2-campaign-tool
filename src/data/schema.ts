@@ -1023,17 +1023,34 @@ export interface ConditionalStatBonusEffect {
    */
   defenseOverride?: number;
   /**
+   * RAPPEL DE SOIN au moment où cet interrupteur passe d'ACTIF à INACTIF (PER-375, changeforme r5,
+   * p. 170 : « à la fin de la transformation, il récupère 3d4° PV »). Le moteur ne simule JAMAIS de
+   * jet de dé (PRD #13, saisie libre uniquement) : ce champ ne calcule rien, il déclenche un simple
+   * toast rappelant la formule au joueur (`toggleEffect`/`useCharacterGameState`) — le montant
+   * réellement lancé s'applique via le contrôle de PV existant, comme n'importe quel soin manuel.
+   * `dice` reprend la formule verbatim balisée (ex. `'3d4°'`). Le rappel n'est déclenché QUE si la
+   * capacité PORTEUSE de cet effet est NATIVEMENT possédée (`character.featureIds`, qui n'inclut
+   * jamais une capacité octroyée par `grantedFeatures`) — un changeforme qui obtient Forme animale
+   * par le seul octroi de `prestige-changeforme-r5` n'a jamais « déjà » la capacité, RAW muette pour
+   * lui. `requiresFeatureId`, si posé, ajoute une seconde condition (AUSSI nativement possédée) : PER-
+   * 375, changeforme r5, p. 170, où le soin ne concerne que le druide qui a EN PLUS pris cette voie de
+   * prestige. Absent = aucun rappel.
+   */
+  healOnDeactivate?: { dice: string; requiresFeatureId?: string };
+  /**
    * Quand CET interrupteur est ACTIF, désactive TOUTES les capacités ACQUISES d'une voie de PROFIL
    * (`Path.type === 'class'`) du personnage — patron d'une TRANSFORMATION qui prive de l'accès aux
    * capacités de classe (PER-74, Métamorphose de la voie de l'ours, p. 152 : « ne peut plus utiliser
    * ses capacités de profil »). À DISTINGUER de `disablesFeatures` (liste EXPLICITE et fixe) : ici la
    * cible est TOUTE voie de type 'class' possédée, quel que soit le profil du personnage — le moteur
    * la découvre dynamiquement, sans lister d'id. Les voies d'ASCENDANCE et de PRESTIGE restent
-   * utilisables (le verbatim ne les mentionne pas). Résolu par `profileFeaturesDisabledByTransformation`
-   * (effects.ts), qui grise ces capacités ET les exclut des mods actifs. Absent = aucune capacité de
-   * profil désactivée.
+   * utilisables (le verbatim ne les mentionne pas). `{ exceptPathIds }` (druide, Forme d'arbre, p. 117 :
+   * « ne peut pas parler, mais peut utiliser les sorts des voies du protecteur et des végétaux ») garde
+   * en plus les voies de PROFIL listées actives — une transformation qui n'interdit pas TOUT, seulement
+   * les voies de classe hors liste. Résolu par `profileFeaturesDisabledByTransformation` (effects.ts),
+   * qui grise ces capacités ET les exclut des mods actifs. Absent = aucune capacité de profil désactivée.
    */
-  disablesProfileFeatures?: boolean;
+  disablesProfileFeatures?: boolean | { exceptPathIds: string[] };
 }
 
 /**
