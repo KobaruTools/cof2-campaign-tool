@@ -383,13 +383,23 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
         ) : (
           <Stack spacing={2}>
             {/* Tri mobile partagé par les deux sections (le desktop trie via les
-                en-têtes de chaque tableau). */}
-            <SortControl
-              sort={sort}
-              keys={CAMPAIGN_SORT_KEYS}
-              onPickSort={pickSort}
-              onToggleDir={toggleDir}
-            />
+                en-têtes de chaque tableau) + décompte des personnages de la campagne,
+                aligné à droite au-dessus du tableau. */}
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}
+            >
+              <SortControl
+                sort={sort}
+                keys={CAMPAIGN_SORT_KEYS}
+                onPickSort={pickSort}
+                onToggleDir={toggleDir}
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                {rows.length} personnage{rows.length > 1 ? 's' : ''}
+              </Typography>
+            </Stack>
 
             {/* Vivants (`status = active`) : simple liste, sans titre (comme l'accueil).
                 Un léger message si tous les personnages sont archivés. */}
