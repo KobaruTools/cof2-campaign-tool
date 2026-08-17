@@ -124,7 +124,7 @@ function HistoryFeature({ featureId }: { featureId: string }) {
   const nameGradient = isPrestigePath ? prestigeMetalGradient(color) : undefined;
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
-      <RankBadge rank={feature.rank} color={color} />
+      <RankBadge rank={feature.rank} color={color} prestige={isPrestigePath} />
       {classId && <ClassIcon classId={classId} size={16} sx={{ color }} />}
       {iconAncestryId && (
         <AncestryIcon

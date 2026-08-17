@@ -309,7 +309,7 @@ function AvailablePathGroup({
         {Array.from(new Set(group.features.map((f) => f.rank)))
           .sort((a, b) => a - b)
           .map((rank) => (
-            <RankBadge key={rank} rank={rank} color={titleColor ?? undefined} />
+            <RankBadge key={rank} rank={rank} color={titleColor ?? undefined} prestige={isPrestigePath} />
           ))}
         {group.path && (
           <AppTooltip
@@ -1742,7 +1742,7 @@ export function LevelUpDialog({
                             {Array.from(new Set(group.features.map((f) => f.rank)))
                               .sort((a, b) => a - b)
                               .map((rank) => (
-                                <RankBadge key={rank} rank={rank} color={titleColor ?? undefined} />
+                                <RankBadge key={rank} rank={rank} color={titleColor ?? undefined} prestige={isPrestigePath} />
                               ))}
                           </Stack>
                           <Stack spacing="4px">

@@ -374,7 +374,7 @@ export function CodexPathBrowser() {
                   <CollapsibleFeatureBody
                     header={({ overflows, expanded, onToggle }) => (
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                        <RankBadge rank={feature.rank} color={pathColor} />
+                        <RankBadge rank={feature.rank} color={pathColor} prestige={selectedPath.type === 'prestige'} />
                         <Typography variant="h6" component="h3">
                           {feature.name}
                         </Typography>

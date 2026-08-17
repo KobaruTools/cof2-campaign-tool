@@ -7,6 +7,9 @@ import { darken, type SxProps, type Theme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import type { ActionType, Feature } from '@/data/schema';
 import { canConcentrate } from '@/lib/engine';
+import { pathById } from '@/data';
+import { prestigeCategoryColor } from '@/lib/ui/classColors';
+import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ACTION_TYPE_LABELS } from '@/components/FeatureLabel';
 
@@ -25,6 +28,7 @@ const MOBILE_HEX_SCALE = 1.3;
 /** Un hexagone coloré au contenu blanc centré (lettre de type d'action ou icône). */
 function Hex({
   fill,
+  gradient,
   size,
   label,
   page,
@@ -33,6 +37,13 @@ function Hex({
   children,
 }: {
   fill: string;
+  /**
+   * Dégradé « métal précieux » de la voie de prestige porteuse (PER-… retour propriétaire
+   * 2026-08-17), remplace `fill` (couleur PLEINE) quand posé — mêmes arrêts que le liseré/titre de
+   * la voie (`prestigeMetalGradient`), pas de teinte séparée à inventer. `undefined` = capacité de
+   * profil/peuple, remplissage plein comme avant.
+   */
+  gradient?: string;
   size: number;
   label: string;
   /** Page source citée en chip « livre » sous le label du tooltip (cf. `SourceRef`). */
@@ -72,7 +83,7 @@ function Hex({
             position: 'absolute',
             inset: 0,
             clipPath: HEX_CLIP,
-            bgcolor: fill,
+            ...(gradient ? { background: gradient } : { bgcolor: fill }),
             filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.35))',
           }}
         />
@@ -192,6 +203,14 @@ export function FeatureMarkerHexes({
     fromRank && pathRank != null && pathRank >= fromRank.rank ? fromRank.actionTypes : [];
   if (!feature.isSpell && feature.actionTypes.length === 0 && extraActionTypes.length === 0) return null;
   const fill = color ? darken(color, 0.25) : 'info.main';
+  // Voie de PRESTIGE (retour propriétaire 2026-08-17) : les hexagones de marqueur reprennent le
+  // dégradé « métal précieux » de la voie, teinté par famille, comme le titre/le liseré de carte —
+  // dérivé directement de `feature.pathId` (source unique), aucun appelant n'a besoin de le savoir.
+  const markerPath = pathById.get(feature.pathId);
+  const isPrestigePath = markerPath?.type === 'prestige';
+  const prestigeTint =
+    isPrestigePath && markerPath.category !== 'generic' ? prestigeCategoryColor(markerPath.category) : undefined;
+  const gradient = isPrestigePath ? prestigeMetalGradient(prestigeTint, '135deg') : undefined;
   // Concentration active ET sort éligible (lancé en (A) seulement) : son hexagone
   // d'action (A) devient (L), avec halo (p. 228).
   const concentrated = concentration && canConcentrate(feature);
@@ -205,7 +224,7 @@ export function FeatureMarkerHexes({
   return (
     <Stack direction="row" spacing={0.25} sx={sx}>
       {feature.isSpell && (
-        <Hex fill={fill} size={size} label="Sort">
+        <Hex fill={fill} gradient={gradient} size={size} label="Sort">
           <EmergencyIcon sx={{ fontSize: { xs: size * MOBILE_HEX_SCALE * 0.6, sm: size * 0.6 }, color: 'inherit' }} />
         </Hex>
       )}
@@ -217,6 +236,7 @@ export function FeatureMarkerHexes({
             <Hex
               key={a}
               fill={fill}
+              gradient={gradient}
               size={size}
               glow
               label="Concentration : action limitée (L) au lieu de (A)"
@@ -230,6 +250,7 @@ export function FeatureMarkerHexes({
           <Hex
             key={a}
             fill={fill}
+            gradient={gradient}
             size={size}
             glow={promoted}
             label={
@@ -247,6 +268,7 @@ export function FeatureMarkerHexes({
         <Hex
           key={`fromRank-${a}`}
           fill={fill}
+          gradient={gradient}
           size={size}
           label={`${ACTION_TYPE_LABELS[a]} — à partir du rang ${fromRank!.rank} de la voie`}
         >

@@ -18,7 +18,10 @@ export const PRESTIGE_GRADIENT_STOPS = '#ffffff, #8c8c8c, #ffffff';
  * (`AncestryIcon`, SVG) s'appuient tous deux dessus.
  */
 export function prestigeGemStops(color?: string): [string, string] {
-  return color ? [lighten(color, 0.72), darken(color, 0.32)] : ['#fff2c2', '#968f74'];
+  // Retour propriétaire (2026-08-17) : l'arrêt clair à 0.72 ATTEIGNAIT quasiment le blanc pur, le
+  // dégradé se voyait à peine comme « teinté famille ». Rapproché de la couleur définitive (l'arrêt
+  // sombre, lui, reste tel quel — c'est déjà la teinte cible) : dégradé visible mais moins marqué.
+  return color ? [lighten(color, 0.4), darken(color, 0.32)] : ['#fff2c2', '#968f74'];
 }
 
 /**

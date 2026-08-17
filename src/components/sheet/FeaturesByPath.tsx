@@ -42,9 +42,10 @@ import Typography from '@mui/material/Typography';
 import { alpha, lighten, type Theme } from '@mui/material/styles';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
-import type { AbilityId, AbilitySubstitution, ActionType, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, ActionType, Creature, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import { FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
+import { deriveStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   featureChoiceDefs,
@@ -55,6 +56,11 @@ import {
   borrowedNoManaFeatureIds,
 } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
+import { maxAnimalFormSize, sizeWithinLimit } from '@/lib/character/animalFormPicker';
+import { useBestiaryStore } from '@/stores/bestiary';
+import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
+import { CREATURE_SIZE_LABELS } from '@/lib/ui/creature';
+import { buildCharacterDerivedView } from './characterDerivedView';
 import {
   activeCrystalIds,
   crystalOverCapWarning,
@@ -84,6 +90,7 @@ import {
   familiarPowerUsedKey,
   FAMILIAR_LEARNED_SPELL_HOST,
   isSpellcaster,
+  isEffectActive,
   demiElfeFeyBloodUsageMax,
   DEMI_ELFE_FEY_BLOOD_HOST,
   DEMI_ELFE_FEY_BLOOD_USAGE_KEY,
@@ -1682,12 +1689,14 @@ function AnimalFormsNote({ character }: { character: Character }) {
 }
 
 /**
- * Sélecteur LIBRE de l'animal pris par « Forme animale » (animaux-r5), corrélé à
- * l'interrupteur de transformation (état de jeu, `Character.effectInputs`, PER-70).
- * Contrairement aux choix de capacité (énumérés, liés à la progression), il est en
- * saisie libre : un Autocomplete `freeSolo` proposant les catégories accessibles
- * (dérivées de Langage des animaux) tout en autorisant un animal précis au clavier.
- * En lecture seule (sans `onSetInput`), affiche la valeur saisie si elle existe.
+ * Sélecteur de l'animal pris par « Forme animale » (animaux-r5, éventuellement octroyée par le
+ * changeforme PER-375/PER-435), corrélé à l'interrupteur de transformation (état de jeu,
+ * `Character.effectInputs`, PER-70). Contrairement à l'ancien sélecteur en saisie libre, les
+ * options viennent du VRAI bestiaire (`useBestiaryStore`), filtrées par la taille débloquée par
+ * le rang du personnage (`maxAnimalFormSize`) — le livre (p. 266) ne distingue pas les petits
+ * animaux par espèce, seulement par taille. Le profil complet de la créature choisie s'affiche
+ * inline (réutilise `BestiaryStatBlock`, comme le bestiaire) tant que l'interrupteur est actif.
+ * En lecture seule (sans `onSetInput`), n'affiche que le nom de la forme prise.
  */
 function AnimalFormSelector({
   character,
@@ -1696,11 +1705,143 @@ function AnimalFormSelector({
   character: Character;
   onSetInput?: (featureId: string, value: string) => void;
 }) {
+  const list = useBestiaryStore((s) => s.list);
+  const bestiaryStatus = useBestiaryStore((s) => s.status);
+  const loadBestiaryList = useBestiaryStore((s) => s.loadList);
+  const blobs = useBestiaryStore((s) => s.blobs);
+  const blobStatus = useBestiaryStore((s) => s.blobStatus);
+  const loadBlob = useBestiaryStore((s) => s.loadBlob);
+  useEffect(() => {
+    loadBestiaryList();
+  }, [loadBestiaryList]);
+
   const value = character.effectInputs?.['animaux-r5'] ?? '';
+  useEffect(() => {
+    if (value) loadBlob(value);
+  }, [value, loadBlob]);
+
+  const maxSize = maxAnimalFormSize(character);
+  const options = (list ?? [])
+    .filter((c) => c.category === 'animaux' && sizeWithinLimit(c.size, maxSize))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const selected = options.find((c) => c.id === value) ?? null;
+  const blob = value ? blobs[value] : undefined;
+
+  const effectIndex =
+    featureById.get('animaux-r5')?.effects?.findIndex(
+      (e) => e.kind === 'conditional-stat-bonus' && e.activation.kind === 'temporary',
+    ) ?? -1;
+  const active = effectIndex >= 0 && isEffectActive(character, 'animaux-r5', effectIndex);
+
+  const changeformeExtras = active && blob ? (
+    <AnimalFormChangeformeExtras character={character} creature={blob} />
+  ) : null;
+
+  if (!onSetInput) {
+    if (!value) return null;
+    return (
+      <Box sx={{ mt: 1 }}>
+        <Typography variant="caption" component="div" sx={{ fontWeight: 600 }}>
+          Forme prise : {selected?.name ?? value}
+        </Typography>
+        {active && blob && (
+          <Box sx={{ mt: 1 }}>
+            <BestiaryStatBlock creature={blob} dense hideNotes />
+            {changeformeExtras}
+          </Box>
+        )}
+      </Box>
+    );
+  }
+  return (
+    <Box sx={{ mt: 1 }}>
+      <Autocomplete
+        options={options}
+        getOptionLabel={(o) => o.name}
+        isOptionEqualToValue={(a, b) => a.id === b.id}
+        value={selected}
+        loading={bestiaryStatus === 'loading'}
+        onChange={(_, next) => onSetInput('animaux-r5', next?.id ?? '')}
+        renderInput={(params) => (
+          <TextField {...params} label="Forme prise" placeholder="choisir un animal" size="small" />
+        )}
+        sx={{ maxWidth: 320 }}
+      />
+      <Typography
+        variant="caption"
+        component="div"
+        sx={{ mt: 0.5, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
+      >
+        Taille maximale accessible : {CREATURE_SIZE_LABELS[maxSize]}.
+      </Typography>
+      {value && !blob && blobStatus[value] === 'loading' && (
+        <Typography variant="caption" component="div" sx={{ mt: 0.5 }}>
+          Chargement du profil…
+        </Typography>
+      )}
+      {active && blob && (
+        <Box sx={{ mt: 1 }}>
+          <BestiaryStatBlock creature={blob} dense hideNotes />
+          {changeformeExtras}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+/**
+ * Bonus de la voie du changeforme, une fois un profil réel chargé (PER-375) :
+ * - r6+ : « DEF effective » = max(DEF du personnage, DEF du profil) — p. 170, « peut conserver
+ *   sa propre DEF... si supérieure au profil de la forme choisie ».
+ * - r7/r8 (taille grande/énorme) : coût en PM de la transformation, `2 + NC` (`NC` en
+ *   concentration) — formule affichée, jamais déduite automatiquement du réservoir de mana
+ *   (les coûts de sorts restent informatifs partout ailleurs dans le moteur).
+ */
+function AnimalFormChangeformeExtras({ character, creature }: { character: Character; creature: Creature }) {
+  const hasR6 = character.featureIds.includes('prestige-changeforme-r6');
+  const hasBigForm = creature.size === 'grande' || creature.size === 'enorme';
+  if (!hasR6 && !hasBigForm) return null;
+  const derivedInput = buildCharacterDerivedView(character).derivedInput;
+  const ownDefense = derivedInput ? character.overrides.def ?? deriveStats(derivedInput).defense : undefined;
+  const effectiveDefense =
+    hasR6 && ownDefense != null && creature.defense != null ? Math.max(ownDefense, creature.defense) : null;
+  return (
+    <Stack spacing={0.25} sx={{ mt: 0.75 }}>
+      {effectiveDefense != null && (
+        <Typography variant="caption" component="div" sx={{ fontWeight: 600 }}>
+          DEF effective : {effectiveDefense}
+        </Typography>
+      )}
+      {hasBigForm && creature.nc != null && (
+        <Typography variant="caption" component="div">
+          Coût de la transformation : {2 + creature.nc} PM ({creature.nc} PM en concentration).
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
+const TRAVEL_FORM_OPTIONS = ['Chat', 'Chien', 'Chevreuil', 'Saumon', 'Corbeau'];
+
+/**
+ * Saisie libre des animaux fixés par « Forme de voyage » (PER-375, changeforme r4, p. 170) :
+ * un premier animal choisi à l'acquisition, PLUS une forme supplémentaire par rang atteint
+ * ensuite dans la voie — aucun des 5 (chevreuil/saumon/corbeau surtout) n'a de profil dédié
+ * dans le bestiaire, contrairement à Forme animale (`AnimalFormSelector`) : saisie libre,
+ * texte séparé par virgules, comme l'ancien sélecteur de Forme animale.
+ */
+function TravelFormSelector({
+  character,
+  onSetInput,
+}: {
+  character: Character;
+  onSetInput?: (featureId: string, value: string) => void;
+}) {
+  const value = character.effectInputs?.['prestige-changeforme-r4'] ?? '';
   if (!onSetInput) {
     return value ? (
       <Typography variant="caption" component="div" sx={{ mt: 1, fontWeight: 600 }}>
-        Forme prise : {value}
+        Formes de voyage : {value}
       </Typography>
     ) : null;
   }
@@ -1708,14 +1849,14 @@ function AnimalFormSelector({
     <Box sx={{ mt: 1 }}>
       <Autocomplete
         freeSolo
-        options={animalFormCategories(character) ?? []}
+        options={TRAVEL_FORM_OPTIONS}
         value={value}
-        onInputChange={(_, next) => onSetInput('animaux-r5', next)}
+        onInputChange={(_, next) => onSetInput('prestige-changeforme-r4', next)}
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Forme prise"
-            placeholder="catégorie ou animal précis (ex. loup)"
+            label="Formes de voyage"
+            placeholder="ex. Chat, Corbeau"
             size="small"
           />
         )}
@@ -1726,8 +1867,7 @@ function AnimalFormSelector({
         component="div"
         sx={{ mt: 0.5, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
       >
-        Caractéristiques de l’animal arbitrées par le MJ ; ajustez-les via les surcharges
-        manuelles si besoin.
+        Une forme supplémentaire par rang atteint dans la voie, séparées par des virgules.
       </Typography>
     </Box>
   );
@@ -4078,7 +4218,11 @@ function PathBlock({
                       fallbackIsPrestigePath={isPrestigePath}
                       fallbackPrestigeTint={prestigeTint}
                     />
-                    <RankBadge rank={openFeature.rank} color={rankColor ?? undefined} />
+                    <RankBadge
+                      rank={openFeature.rank}
+                      color={rankColor ?? undefined}
+                      prestige={isPrestigePath && !isDivineReplacement}
+                    />
                   </Stack>
                   <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                     <Box component="span" sx={{ fontWeight: 600 }}>
@@ -4234,6 +4378,9 @@ function PathBlock({
                 )}
                 {openFeature.id === 'animaux-r5' && character && (
                   <AnimalFormsNote character={character} />
+                )}
+                {openFeature.id === 'prestige-changeforme-r4' && character && (
+                  <TravelFormSelector character={character} onSetInput={onSetEffectInput} />
                 )}
                 {/* PER-74 : pouvoir conféré par le familier CHOISI (rangs 4/5/7 ; null sinon / sans familier). */}
                 {openFeature.pathId === 'prestige-familier-fantastique' && character && (
@@ -4836,6 +4983,9 @@ function PathBlock({
                 </>
               )}
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
+              {feature.id === 'prestige-changeforme-r4' && character && (
+                <TravelFormSelector character={character} onSetInput={onSetEffectInput} />
+              )}
               {/* PER-74 : pouvoir conféré par le familier CHOISI (rangs 4/5/7 ; null sinon / sans familier). */}
               {feature.pathId === 'prestige-familier-fantastique' && character && (
                 <FamiliarGrantedPowerNote
