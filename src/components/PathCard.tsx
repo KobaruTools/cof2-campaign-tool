@@ -100,6 +100,13 @@ export interface PathCardProps {
    * PER-420 retours).
    */
   sx?: SxProps<Theme>;
+  /**
+   * Position de l'icône de profil/peuple (`classId`/`ancestryId`) dans l'en-tête. `'end'`
+   * (défaut, inchangé) : après le renvoi de page, en fin d'en-tête — adapté à une carte de
+   * SÉLECTION où l'œil lit d'abord le nom. `'start'` : avant le nom — plus lisible pour une
+   * carte figée qui ne présente qu'UNE capacité déjà connue (ex. Codex des familiers, PER-421).
+   */
+  iconPosition?: 'start' | 'end';
 }
 
 /**
@@ -135,6 +142,7 @@ export function PathCard({
   prestigeTint,
   borderWidth = 2,
   sx,
+  iconPosition = 'end',
 }: PathCardProps) {
   const ControlComp = control === 'radio' ? Radio : Checkbox;
   const GhostIcon = control === 'radio' ? FiberManualRecordIcon : CheckIcon;
@@ -189,6 +197,14 @@ export function PathCard({
       {/* En-tête : indicateur + nom (coloré quand sélectionné) + renvoi de page + icône de
           profil/peuple + chevron (si un détail existe). */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', p: 1 }}>
+        {iconPosition === 'start' &&
+          (classId ? (
+            <ClassIcon classId={classId} size={20} sx={{ color, flexShrink: 0 }} />
+          ) : (
+            ancestryId && (
+              <AncestryIcon ancestryId={ancestryId} size={20} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+            )
+          ))}
         {selectable ? (
           // Case + nom regroupés dans une même zone de clic : c'est elle qui (dé)sélectionne,
           // que la carte ait un détail repliable ou non (le clic ne remonte jamais au bloc
@@ -270,9 +286,10 @@ export function PathCard({
         {sourcePage != null && (
           <SourceRef page={sourcePage} term={term ?? (typeof name === 'string' ? name : undefined)} />
         )}
-        {classId ? (
+        {iconPosition !== 'start' && classId ? (
           <ClassIcon classId={classId} size={20} sx={{ color, flexShrink: 0 }} />
         ) : (
+          iconPosition !== 'start' &&
           ancestryId && (
             <AncestryIcon ancestryId={ancestryId} size={20} sx={{ color: 'text.secondary', flexShrink: 0 }} />
           )
