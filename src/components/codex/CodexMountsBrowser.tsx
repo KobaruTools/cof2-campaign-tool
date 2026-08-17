@@ -9,6 +9,15 @@
  * duplication de rendu — dans un accordéon replié par défaut (cadrage propriétaire) pour ne pas
  * alourdir la liste.
  *
+ * Prix : jeton de monnaie (retour propriétaire) — MÊME langage visuel que le jeton « PA » de
+ * `PurseField.tsx` (fiche personnage), en version statique (pas d'info-bulle/animation, catalogue
+ * hors personnage). Montant en gras teinté de la couleur de la monnaie, à côté du jeton.
+ *
+ * Statistiques des bardes (retour propriétaire) : PARSÉES en pastilles signées (`ItemBonusBadge`,
+ * MÊME composant que les bonus d'objets magiques du Codex Objets magiques) plutôt qu'une phrase
+ * verbatim — DEF (bonus, teinte secondaire) et Initiative (malus, teinte warning) sur une ligne
+ * séparée du nom/prix pour la lisibilité.
+ *
  * Pas de gating payant à prévoir : `mounts`/`bardes` sont des tableaux statiques du livre de base.
  */
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -19,10 +28,14 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { darken, lighten } from '@mui/material/styles';
 import { bardes, mounts } from '@/data';
 import type { BardeCatalogEntry, MountCatalogEntry } from '@/data/mounts';
 import type { Price } from '@/data/schema';
+import { CURRENCY_ABBREV, CURRENCY_COLOR, type CoinCurrency } from '@/lib/character/coinPouch';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
+import { DerivedStatIcon } from '@/components/DerivedStatIcon';
+import { ItemBonusBadge } from '@/components/sheet/MagicItemBadges';
 import { SourceRef } from '@/components/SourceRef';
 
 const rowSx = {
@@ -33,9 +46,53 @@ const rowSx = {
   WebkitBackdropFilter: 'blur(6px)',
 } as const;
 
-/** Prix formaté « 300 pa » (chaîne vide si absent). */
-function formatPrice(price: Price): string {
-  return price ? `${price.amount} ${price.unit}` : '';
+/** Retrouve la monnaie (`CoinCurrency`) à partir de son abréviation (« pa » → `'silver'`). */
+const CURRENCY_KEY_BY_ABBREV: Record<string, CoinCurrency> = Object.fromEntries(
+  (Object.entries(CURRENCY_ABBREV) as [CoinCurrency, string][]).map(([key, abbrev]) => [abbrev, key]),
+);
+
+/** Jeton de monnaie statique (pastille + code), MÊME rendu visuel que `PurseField.CoinToken`. */
+function CoinBadge({ code, color }: { code: string; color: string }) {
+  return (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 20,
+        height: 20,
+        borderRadius: '50%',
+        flexShrink: 0,
+        fontSize: '0.68rem',
+        fontWeight: 700,
+        lineHeight: 1,
+        letterSpacing: '-0.02em',
+        textTransform: 'uppercase',
+        color: 'rgba(0, 0, 0, 0.2)',
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+        border: `1.5px solid ${darken(color, 0.3)}`,
+        background: `linear-gradient(135deg, ${color} 0%, ${lighten(color, 0.28)} 100%)`,
+      }}
+    >
+      {code}
+    </Box>
+  );
+}
+
+/** Prix affiché en jeton + montant gras teinté de la couleur de la monnaie. `null` si absent. */
+function PriceTag({ price }: { price: Price }) {
+  if (!price) return null;
+  const currencyKey = CURRENCY_KEY_BY_ABBREV[price.unit] ?? 'silver';
+  const color = CURRENCY_COLOR[currencyKey];
+  return (
+    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
+      <CoinBadge code={price.unit} color={color} />
+      <Typography component="span" sx={{ fontWeight: 700, color }}>
+        {price.amount}
+      </Typography>
+    </Stack>
+  );
 }
 
 function MountRow({ entry }: { entry: MountCatalogEntry }) {
@@ -47,8 +104,9 @@ function MountRow({ entry }: { entry: MountCatalogEntry }) {
           {entry.name}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {kindLabel} · {formatPrice(entry.price)}
+          {kindLabel}
         </Typography>
+        <PriceTag price={entry.price} />
         {entry.canWearBarde && (
           <Typography variant="caption" color="text.secondary">
             Peut porter une barde
@@ -80,16 +138,34 @@ function MountRow({ entry }: { entry: MountCatalogEntry }) {
 
 function BardeRow({ barde }: { barde: BardeCatalogEntry }) {
   return (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', p: 1.5, ...rowSx }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-        {barde.name}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {formatPrice(barde.price)} · +{barde.defBonus} DEF (et −{barde.defBonus} Init. à la monture ET au cavalier)
-      </Typography>
-      <Box sx={{ flexGrow: 1 }} />
-      <SourceRef page={barde.sourcePage} term={barde.name} />
-    </Stack>
+    <Box sx={{ p: 1.5, ...rowSx }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          {barde.name}
+        </Typography>
+        <PriceTag price={barde.price} />
+        <Box sx={{ flexGrow: 1 }} />
+        <SourceRef page={barde.sourcePage} term={barde.name} />
+      </Stack>
+      {/* Statistiques PARSÉES (pas de phrase verbatim) sur leur propre ligne (retour propriétaire) :
+          DEF en bonus (teinte secondaire), Initiative en malus (teinte warning) — même mécanique
+          d'un objet enchanté (`ItemBonusBadge`), sur la monture ET le cavalier (rappel affiché
+          hors badge, pas mécanisé pour le cavalier ici — voir `OwnedMountsPanel`). */}
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
+        <ItemBonusBadge
+          value={barde.defBonus}
+          label="DEF"
+          icon={<DerivedStatIcon statId="defense" size={13} color="currentColor" />}
+          tooltip={`Bonus de DEF (+${barde.defBonus}) apporté par la barde à la monture.`}
+        />
+        <ItemBonusBadge
+          value={-barde.defBonus}
+          label="Init. (monture et cavalier)"
+          icon={<DerivedStatIcon statId="initiative" size={13} color="currentColor" />}
+          tooltip={`Malus d'Initiative (−${barde.defBonus}) infligé par le poids de la barde, à la monture ET au cavalier.`}
+        />
+      </Stack>
+    </Box>
   );
 }
 
