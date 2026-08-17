@@ -19,11 +19,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import Diversity3Icon from '@mui/icons-material/Diversity3';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import SearchIcon from '@mui/icons-material/Search';
+import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -69,6 +72,14 @@ import { useCharactersStore } from '@/stores/characters';
 import { NpcFormDialog } from './NpcFormDialog';
 
 type SortMode = 'name' | 'disposition' | 'challenge';
+
+/** Modes de tri, dans l'ordre d'affichage, avec leur icône et leur libellé (tooltip) — même
+ * motif que `SORT_MODES` de `BestiaryBrowser.tsx` (icône seule + `Tooltip`, pas de texte). */
+const SORT_MODES: { value: SortMode; label: string; icon: React.ReactElement }[] = [
+  { value: 'name', label: 'Nom (alphabétique)', icon: <SortByAlphaIcon fontSize="small" /> },
+  { value: 'disposition', label: 'Disposition (allié, neutre, ennemi)', icon: <Diversity3Icon fontSize="small" /> },
+  { value: 'challenge', label: 'Niveau de Challenge croissant', icon: <TrendingUpIcon fontSize="small" /> },
+];
 
 /** Applique le tri actif (PER-430) — même ordre pour les groupes de catégories et le mode recherche. */
 function sortNpcs(npcs: Npc[], sortMode: SortMode): Npc[] {
@@ -469,9 +480,11 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
             if (value) setSortMode(value);
           }}
         >
-          <ToggleButton value="name">Nom</ToggleButton>
-          <ToggleButton value="disposition">Disposition</ToggleButton>
-          <ToggleButton value="challenge">NC</ToggleButton>
+          {SORT_MODES.map((m) => (
+            <ToggleButton key={m.value} value={m.value} aria-label={m.label}>
+              <Tooltip title={m.label}>{m.icon}</Tooltip>
+            </ToggleButton>
+          ))}
         </ToggleButtonGroup>
       </Stack>
 
