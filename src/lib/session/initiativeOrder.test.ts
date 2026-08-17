@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyManualOrder,
   compareInitiative,
   isDefeatedCreature,
   randomTieBreakSeed,
@@ -183,6 +184,43 @@ describe('relegateSidelined', () => {
   it('laisse intacte une bande sans vaincu ni masqué', () => {
     const rows = [row('a'), row('b'), row('c')];
     expect(keys(relegateSidelined(rows))).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('applyManualOrder (PER-436)', () => {
+  const rows = [{ key: 'a' }, { key: 'b' }, { key: 'c' }, { key: 'd' }];
+
+  it('laisse l’ordre intact sans override', () => {
+    expect(keys(applyManualOrder(rows, {}))).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('réinsère un combattant juste avant son ancre', () => {
+    // 'd' passe juste avant 'b'.
+    expect(keys(applyManualOrder(rows, { d: 'b' }))).toEqual(['a', 'd', 'b', 'c']);
+  });
+
+  it('épingle en toute fin de bande avec une ancre null', () => {
+    expect(keys(applyManualOrder(rows, { a: null }))).toEqual(['b', 'c', 'd', 'a']);
+  });
+
+  it('retombe en fin de bande quand l’ancre est introuvable (créature retirée)', () => {
+    expect(keys(applyManualOrder(rows, { d: 'disparu' }))).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('traite les ancres CROISÉES sans boucler (déterministe, part de l’ordre naturel)', () => {
+    // 'a' avant 'b' ET 'b' avant 'a' : l'ordre de traitement suit l'entrée naturelle (a puis b).
+    const result = applyManualOrder(rows, { a: 'b', b: 'a' });
+    expect(result).toHaveLength(4);
+    expect(new Set(keys(result))).toEqual(new Set(['a', 'b', 'c', 'd']));
+  });
+
+  it('déplace plusieurs combattants à la fois', () => {
+    expect(keys(applyManualOrder(rows, { c: 'a', d: 'a' }))).toEqual(['c', 'd', 'a', 'b']);
+  });
+
+  it('ne mute pas l’entrée', () => {
+    applyManualOrder(rows, { d: 'a' });
+    expect(keys(rows)).toEqual(['a', 'b', 'c', 'd']);
   });
 });
 

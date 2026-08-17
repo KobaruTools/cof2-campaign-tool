@@ -174,3 +174,48 @@ export function relegateSidelined<T extends SidelinableCombatant>(
 export function randomTieBreakSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);
 }
+
+/**
+ * Combattant réordonnable : le strict minimum dont `applyManualOrder` a besoin.
+ */
+export interface OrderableCombatant {
+  /** Clé stable du combattant. */
+  key: string;
+}
+
+/**
+ * Applique l'ordre MANUEL du MJ (PER-436, glisser-déposer, écran de MJ uniquement) par-dessus
+ * l'entrée DÉJÀ classée (typiquement `sortByInitiative` puis `relegateSidelined`) : c'est la
+ * DERNIÈRE couche avant rendu, purement une commodité d'affichage — elle ne change ni les
+ * valeurs d'initiative ni la relégation, seulement l'ordre visuel des combattants explicitement
+ * déplacés à la main.
+ *
+ * `manualOrder[clé] = clé D'ANCRAGE` : le combattant `clé` est réinséré juste AVANT l'ancre ;
+ * `null` = épinglé en toute fin de bande. Une ancre introuvable dans `rows` (créature retirée
+ * du combat depuis le dépôt, ou depuis relégable ailleurs) fait retomber le combattant en fin
+ * de bande plutôt que de le faire disparaître.
+ *
+ * Itère sur `rows` (ordre déjà calculé) pour un traitement DÉTERMINISTE même en cas d'ancres
+ * croisées (A juste avant B ET B juste avant A) : chaque insertion part de l'état courant du
+ * résultat, donc pas de boucle infinie ni d'ordre de traitement ambigu.
+ */
+export function applyManualOrder<T extends OrderableCombatant>(
+  rows: readonly T[],
+  manualOrder: Readonly<Record<string, string | null>>,
+): T[] {
+  const overridden = new Set(Object.keys(manualOrder));
+  if (overridden.size === 0) return [...rows];
+  const result = rows.filter((r) => !overridden.has(r.key));
+  const pinnedToEnd: T[] = [];
+  for (const row of rows) {
+    if (!overridden.has(row.key)) continue;
+    const beforeKey = manualOrder[row.key];
+    if (beforeKey === null) {
+      pinnedToEnd.push(row);
+      continue;
+    }
+    const idx = result.findIndex((r) => r.key === beforeKey);
+    result.splice(idx === -1 ? result.length : idx, 0, row);
+  }
+  return [...result, ...pinnedToEnd];
+}

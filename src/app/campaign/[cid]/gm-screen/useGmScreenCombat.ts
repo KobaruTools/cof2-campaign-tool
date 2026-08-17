@@ -322,6 +322,20 @@ export interface GmScreenCombat {
    * NI aux états NI aux PV.
    */
   restartRounds: () => void;
+  /** Clés des combattants ayant déjà joué dans la manche en cours (PER-436). */
+  actedKeys: string[];
+  /** Bascule manuelle du badge « a déjà joué » (PER-436). */
+  setCombatantActed: (key: string, acted: boolean) => void;
+  /** Position manuelle de l'ordre d'initiative (PER-436, écran de MJ) : clé → clé d'ancrage. */
+  manualOrder: Record<string, string | null>;
+  /** Sous-ensemble de `manualOrder` qui survit au changement de manche (PER-436). */
+  pinnedOrderKeys: string[];
+  /** Pose la position manuelle de `key` (PER-436, dépôt du glisser-déposer). */
+  setManualPosition: (key: string, beforeKey: string) => void;
+  /** Bascule l'épinglage de la position manuelle de `key` (PER-436). */
+  toggleCombatantPin: (key: string, currentBeforeKey: string | null) => void;
+  /** Retire la position manuelle de `key` et son épinglage (PER-436). */
+  resetCombatantOrder: (key: string) => void;
 }
 
 export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmScreenCombat {
@@ -352,6 +366,13 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     setCreatureInfo,
     resetCombat,
     restartRounds: restartRoundsBase,
+    actedKeys,
+    setCombatantActed,
+    manualOrder,
+    pinnedOrderKeys,
+    setManualPosition,
+    toggleCombatantPin,
+    resetCombatantOrder,
   } = useGmCombatState(cid, role);
 
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
@@ -858,5 +879,12 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     adjustStatusDuration,
     resetCombat,
     restartRounds,
+    actedKeys,
+    setCombatantActed,
+    manualOrder,
+    pinnedOrderKeys,
+    setManualPosition,
+    toggleCombatantPin,
+    resetCombatantOrder,
   };
 }

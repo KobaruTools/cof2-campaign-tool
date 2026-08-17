@@ -15,16 +15,23 @@ import {
   clearAllStatuses,
   clearStatusesOf,
   creatureInfoEquals,
+  dropCombatantOrderTraces,
   duplicateCreature,
   labelCreatureInstances,
   normalizeCreatureName,
+  purgeUnpinnedOrder,
   removeStatusFrom,
   removeStatusFromKeys,
   removeStatusesFromAll,
   resetCombat,
+  resetCombatantOrder,
   restartRounds,
   rollTieBreakSeed,
+  setCombatantActed,
+  setCurrentTurnKey,
+  setManualPosition,
   setRoundNumber,
+  toggleCombatantPin,
   reviveState,
   reviveStateObject,
   storageKey,
@@ -58,6 +65,9 @@ describe('reviveStateObject', () => {
       statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
       tieBreakSeed: 123456,
       creatureInfo: { gobelin: { name: 'Gobelin', initiative: 12, agility: 2 } },
+      actedKeys: ['c-1'],
+      manualOrder: { 'c-2': 'c-1', 'char-9': null },
+      pinnedOrderKeys: ['c-2'],
     };
     expect(reviveStateObject(state)).toEqual(state);
   });
@@ -152,6 +162,31 @@ describe('reviveStateObject', () => {
       { id: 'slowed' },
       { id: 'prone', untilRound: 2 },
     ]);
+  });
+
+  it('défaute actedKeys/manualOrder/pinnedOrderKeys pour un combat antérieur à PER-436', () => {
+    const revived = reviveStateObject({ creatures: [{ id: 'c-1', slug: 'rat' }] });
+    expect(revived.actedKeys).toEqual([]);
+    expect(revived.manualOrder).toEqual({});
+    expect(revived.pinnedOrderKeys).toEqual([]);
+  });
+
+  it('assainit actedKeys/pinnedOrderKeys : écarte les entrées non-chaînes et déduplique (PER-436)', () => {
+    const revived = reviveStateObject({
+      creatures: [],
+      actedKeys: ['c-1', 42, 'c-1', null],
+      pinnedOrderKeys: ['c-2', 'c-2', 7],
+    });
+    expect(revived.actedKeys).toEqual(['c-1']);
+    expect(revived.pinnedOrderKeys).toEqual(['c-2']);
+  });
+
+  it('assainit manualOrder : accepte une ancre chaîne ou null, écarte le reste (PER-436)', () => {
+    const revived = reviveStateObject({
+      creatures: [],
+      manualOrder: { 'c-1': 'c-2', 'c-3': null, 'c-4': 42, 'c-5': undefined },
+    });
+    expect(revived.manualOrder).toEqual({ 'c-1': 'c-2', 'c-3': null });
   });
 });
 
@@ -591,6 +626,9 @@ describe('resetCombat', () => {
     statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
     tieBreakSeed: 42,
     creatureInfo: {},
+    actedKeys: ['c-1'],
+    manualOrder: { 'c-1': 'c-2' },
+    pinnedOrderKeys: ['c-1'],
   };
 
   it('vide les états, restaure les PV des créatures, recommence à la manche 1 et met le tour courant à null', () => {
@@ -599,6 +637,13 @@ describe('resetCombat', () => {
     expect(reset.currentTurnKey).toBeNull();
     expect(reset.roundNumber).toBe(1);
     expect(reset.depletions).toEqual({});
+  });
+
+  it('vide TOUT le pilotage du tour/de l’ordre (PER-436), y compris les clés épinglées', () => {
+    const reset = resetCombat(inCombat);
+    expect(reset.actedKeys).toEqual([]);
+    expect(reset.manualOrder).toEqual({});
+    expect(reset.pinnedOrderKeys).toEqual([]);
   });
 
   it('conserve le roster de créatures (creatures + nextInstanceId)', () => {
@@ -629,7 +674,18 @@ describe('restartRounds', () => {
     statuses: { 'c-1': [{ id: 'blinded' }] },
     tieBreakSeed: 0,
     creatureInfo: {},
+    actedKeys: ['c-1'],
+    manualOrder: { 'c-1': 'char-7', 'char-8': null },
+    pinnedOrderKeys: ['c-1'],
   };
+
+  it('purge le badge « a déjà joué » et l’ordre manuel NON épinglé (PER-436)', () => {
+    const restarted = restartRounds(inCombat, 'char-7');
+    expect(restarted.actedKeys).toEqual([]);
+    expect(restarted.manualOrder).toEqual({ 'c-1': 'char-7' });
+    // L'épinglage lui-même n'est pas retiré : `pinnedOrderKeys` survit tel quel.
+    expect(restarted.pinnedOrderKeys).toEqual(['c-1']);
+  });
 
   it('recommence à la manche 1 et repositionne le tour courant sur le premier fourni', () => {
     const restarted = restartRounds(inCombat, 'char-7');
@@ -700,6 +756,179 @@ describe('setRoundNumber', () => {
     const state: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 1 };
     setRoundNumber(state, 9);
     expect(state.roundNumber).toBe(1);
+  });
+
+  it('purge le badge « a déjà joué » et l’ordre manuel non épinglé quand la manche change (PER-436)', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      roundNumber: 2,
+      actedKeys: ['c-1', 'c-2'],
+      manualOrder: { 'c-1': 'c-3', 'c-2': null },
+      pinnedOrderKeys: ['c-2'],
+    };
+    const next = setRoundNumber(state, 3);
+    expect(next.actedKeys).toEqual([]);
+    expect(next.manualOrder).toEqual({ 'c-2': null });
+    expect(next.pinnedOrderKeys).toEqual(['c-2']);
+  });
+
+  it('ne purge PAS quand la manche ne change pas réellement (no-op)', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      roundNumber: 3,
+      actedKeys: ['c-1'],
+      manualOrder: { 'c-1': 'c-2' },
+    };
+    expect(setRoundNumber(state, 3)).toBe(state);
+  });
+});
+
+describe('purgeUnpinnedOrder (PER-436)', () => {
+  it('vide actedKeys et ne garde que les clés épinglées de manualOrder', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      actedKeys: ['c-1', 'c-2'],
+      manualOrder: { 'c-1': 'c-3', 'c-2': null, 'c-4': 'c-5' },
+      pinnedOrderKeys: ['c-1', 'c-4'],
+    };
+    const next = purgeUnpinnedOrder(state);
+    expect(next.actedKeys).toEqual([]);
+    expect(next.manualOrder).toEqual({ 'c-1': 'c-3', 'c-4': 'c-5' });
+    expect(next.pinnedOrderKeys).toEqual(['c-1', 'c-4']);
+  });
+});
+
+describe('setCurrentTurnKey (PER-436)', () => {
+  it('fixe le tour courant', () => {
+    expect(setCurrentTurnKey(EMPTY_COMBAT_STATE, 'c-1').currentTurnKey).toBe('c-1');
+  });
+
+  it('retire la clé de actedKeys — le combattant en train de jouer n’est jamais « déjà joué »', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, actedKeys: ['c-1', 'c-2'] };
+    expect(setCurrentTurnKey(state, 'c-1').actedKeys).toEqual(['c-2']);
+  });
+
+  it('accepte null (combat pas encore démarré) sans toucher à actedKeys', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, currentTurnKey: 'c-1', actedKeys: ['c-2'] };
+    const next = setCurrentTurnKey(state, null);
+    expect(next.currentTurnKey).toBeNull();
+    expect(next.actedKeys).toEqual(['c-2']);
+  });
+
+  it('renvoie la même référence si rien ne change (no-op)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, currentTurnKey: 'c-1', actedKeys: ['c-2'] };
+    expect(setCurrentTurnKey(state, 'c-1')).toBe(state);
+  });
+});
+
+describe('setCombatantActed (PER-436)', () => {
+  it('pose le badge', () => {
+    expect(setCombatantActed(EMPTY_COMBAT_STATE, 'c-1', true).actedKeys).toEqual(['c-1']);
+  });
+
+  it('retire le badge', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, actedKeys: ['c-1', 'c-2'] };
+    expect(setCombatantActed(state, 'c-1', false).actedKeys).toEqual(['c-2']);
+  });
+
+  it('est idempotent (no-op, même référence)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, actedKeys: ['c-1'] };
+    expect(setCombatantActed(state, 'c-1', true)).toBe(state);
+    expect(setCombatantActed(EMPTY_COMBAT_STATE, 'c-9', false)).toBe(EMPTY_COMBAT_STATE);
+  });
+});
+
+describe('setManualPosition (PER-436)', () => {
+  it('pose la position manuelle (ancre)', () => {
+    expect(setManualPosition(EMPTY_COMBAT_STATE, 'c-1', 'c-2').manualOrder).toEqual({ 'c-1': 'c-2' });
+  });
+
+  it('refuse de s’ancrer sur soi-même (no-op)', () => {
+    expect(setManualPosition(EMPTY_COMBAT_STATE, 'c-1', 'c-1')).toBe(EMPTY_COMBAT_STATE);
+  });
+
+  it('no-op si la position est déjà celle-là', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, manualOrder: { 'c-1': 'c-2' } };
+    expect(setManualPosition(state, 'c-1', 'c-2')).toBe(state);
+  });
+
+  it('remplace une ancre déjà posée', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, manualOrder: { 'c-1': 'c-2' } };
+    expect(setManualPosition(state, 'c-1', 'c-3').manualOrder).toEqual({ 'c-1': 'c-3' });
+  });
+});
+
+describe('toggleCombatantPin (PER-436)', () => {
+  it('épingle une position déjà posée sans y toucher', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, manualOrder: { 'c-1': 'c-2' } };
+    const next = toggleCombatantPin(state, 'c-1', 'c-9');
+    expect(next.pinnedOrderKeys).toEqual(['c-1']);
+    expect(next.manualOrder).toEqual({ 'c-1': 'c-2' });
+  });
+
+  it('épingler une position jamais déplacée la FIGE à currentBeforeKey', () => {
+    const next = toggleCombatantPin(EMPTY_COMBAT_STATE, 'c-1', 'c-2');
+    expect(next.pinnedOrderKeys).toEqual(['c-1']);
+    expect(next.manualOrder).toEqual({ 'c-1': 'c-2' });
+  });
+
+  it('épingler en fin de bande fige `null`', () => {
+    expect(toggleCombatantPin(EMPTY_COMBAT_STATE, 'c-1', null).manualOrder).toEqual({ 'c-1': null });
+  });
+
+  it('dépingler retire l’épingle SANS restaurer immédiatement la position manuelle', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      manualOrder: { 'c-1': 'c-2' },
+      pinnedOrderKeys: ['c-1'],
+    };
+    const next = toggleCombatantPin(state, 'c-1', 'c-9');
+    expect(next.pinnedOrderKeys).toEqual([]);
+    expect(next.manualOrder).toEqual({ 'c-1': 'c-2' });
+  });
+});
+
+describe('resetCombatantOrder (PER-436)', () => {
+  it('retire la position manuelle et l’épinglage', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      manualOrder: { 'c-1': 'c-2', 'c-3': 'c-4' },
+      pinnedOrderKeys: ['c-1'],
+    };
+    const next = resetCombatantOrder(state, 'c-1');
+    expect(next.manualOrder).toEqual({ 'c-3': 'c-4' });
+    expect(next.pinnedOrderKeys).toEqual([]);
+  });
+
+  it('no-op si rien n’était déplacé ni épinglé (même référence)', () => {
+    expect(resetCombatantOrder(EMPTY_COMBAT_STATE, 'c-1')).toBe(EMPTY_COMBAT_STATE);
+  });
+});
+
+describe('dropCombatantOrderTraces (PER-436)', () => {
+  it('retire la clé de actedKeys et pinnedOrderKeys', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      actedKeys: ['c-1', 'c-2'],
+      pinnedOrderKeys: ['c-1'],
+    };
+    const next = dropCombatantOrderTraces(state, 'c-1');
+    expect(next.actedKeys).toEqual(['c-2']);
+    expect(next.pinnedOrderKeys).toEqual([]);
+  });
+
+  it('retire sa propre position manuelle ET toute ancre d’un autre combattant pointant vers elle', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      manualOrder: { 'c-1': 'c-2', 'c-3': 'c-1', 'c-4': 'c-5' },
+    };
+    const next = dropCombatantOrderTraces(state, 'c-1');
+    expect(next.manualOrder).toEqual({ 'c-4': 'c-5' });
+  });
+
+  it('no-op si la clé n’apparaît nulle part (même référence)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, actedKeys: ['c-2'] };
+    expect(dropCombatantOrderTraces(state, 'c-404')).toBe(state);
   });
 });
 

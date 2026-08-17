@@ -39,10 +39,16 @@ import {
   adjustStatusIntensity,
   adjustStatusDuration as adjustStatusDurationState,
   clearStatusesOf,
+  dropCombatantOrderTraces,
   resetCombat as resetCombatState,
+  resetCombatantOrder as resetCombatantOrderState,
   restartRounds as restartRoundsState,
   rollTieBreakSeed,
+  setCombatantActed,
+  setCurrentTurnKey as setCurrentTurnKeyState,
+  setManualPosition,
   setRoundNumber as setRoundNumberState,
+  toggleCombatantPin,
   type AddCreatureOptions,
   type ApplyStatusToKeysOptions,
   type CreatureDisplayInfo,
@@ -148,6 +154,27 @@ export interface GmCombatStateApi extends GmCombatState {
    * aux états NI aux PV — ce n'est pas une réinitialisation du combat.
    */
   restartRounds: (firstTurnKey?: string | null) => void;
+  /**
+   * Bascule manuelle du badge « a déjà joué » (PER-436). L'invariant « le combattant en train de
+   * jouer n'est jamais marqué » est déjà garanti par `setCurrentTurnKey`, pas ici.
+   */
+  setCombatantActed: (key: string, acted: boolean) => void;
+  /**
+   * Pose la position manuelle de `key` dans l'ordre d'initiative (PER-436, dépôt du
+   * glisser-déposer) : réinséré juste avant `beforeKey` au rendu.
+   */
+  setManualPosition: (key: string, beforeKey: string) => void;
+  /**
+   * Bascule l'épinglage de la position manuelle de `key` (PER-436) : épingler la conserve d'une
+   * manche à l'autre. `currentBeforeKey` (voisin courant dans l'ordre affiché, ou `null` si
+   * dernier) sert à figer la position si elle n'a jamais été déplacée à la main.
+   */
+  toggleCombatantPin: (key: string, currentBeforeKey: string | null) => void;
+  /**
+   * Retire la position manuelle de `key` et son épinglage (PER-436, bouton « Réinitialiser ») :
+   * retour immédiat à la position calculée par initiative.
+   */
+  resetCombatantOrder: (key: string) => void;
 }
 
 export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCombatStateApi {
@@ -193,10 +220,11 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
       applyLocalCombat(cid, (prev) => {
         const depletions = { ...prev.depletions };
         delete depletions[instanceId];
-        // Retire aussi les états posés sur l'instance (sinon ils orphelineraient la carte).
-        const withoutStatuses = clearStatusesOf(prev, instanceId);
+        // Retire aussi les états posés sur l'instance (sinon ils orphelineraient la carte),
+        // et toute trace de pilotage du tour/de l'ordre (PER-436, sinon une ancre morte).
+        const cleaned = dropCombatantOrderTraces(clearStatusesOf(prev, instanceId), instanceId);
         return {
-          ...withoutStatuses,
+          ...cleaned,
           creatures: prev.creatures.filter((c) => c.id !== instanceId),
           depletions,
         };
@@ -223,7 +251,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
   );
 
   const setCurrentTurnKey = useCallback(
-    (key: string | null) => applyLocalCombat(cid, (prev) => ({ ...prev, currentTurnKey: key })),
+    (key: string | null) => applyLocalCombat(cid, (prev) => setCurrentTurnKeyState(prev, key)),
     [applyLocalCombat, cid],
   );
 
@@ -306,6 +334,29 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const setCombatantActedCb = useCallback(
+    (key: string, acted: boolean) =>
+      applyLocalCombat(cid, (prev) => setCombatantActed(prev, key, acted)),
+    [applyLocalCombat, cid],
+  );
+
+  const setManualPositionCb = useCallback(
+    (key: string, beforeKey: string) =>
+      applyLocalCombat(cid, (prev) => setManualPosition(prev, key, beforeKey)),
+    [applyLocalCombat, cid],
+  );
+
+  const toggleCombatantPinCb = useCallback(
+    (key: string, currentBeforeKey: string | null) =>
+      applyLocalCombat(cid, (prev) => toggleCombatantPin(prev, key, currentBeforeKey)),
+    [applyLocalCombat, cid],
+  );
+
+  const resetCombatantOrderCb = useCallback(
+    (key: string) => applyLocalCombat(cid, (prev) => resetCombatantOrderState(prev, key)),
+    [applyLocalCombat, cid],
+  );
+
   return {
     ...state,
     addCreature,
@@ -327,5 +378,9 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     setCreatureInfo,
     resetCombat,
     restartRounds,
+    setCombatantActed: setCombatantActedCb,
+    setManualPosition: setManualPositionCb,
+    toggleCombatantPin: toggleCombatantPinCb,
+    resetCombatantOrder: resetCombatantOrderCb,
   };
 }

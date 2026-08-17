@@ -147,6 +147,29 @@ export interface GmCombatState {
    * les créatures du bestiaire de base s'affichaient côté joueur).
    */
   creatureInfo: Record<string, CreatureDisplayInfo>;
+  /**
+   * Clés des combattants ayant déjà joué dans la manche en cours (PER-436, badge « a déjà
+   * joué »). Posée automatiquement quand le tour avance au-delà d'un combattant, avec une
+   * bascule manuelle en plus (`setCombatantActed`) ; vidée à chaque nouvelle manche
+   * (`purgeUnpinnedOrder`). MJ seul auteur ; vide par défaut (migration douce).
+   */
+  actedKeys: string[];
+  /**
+   * Position manuelle d'un combattant dans l'ordre d'initiative (PER-436, glisser-déposer,
+   * écran de MJ uniquement) : `manualOrder[clé] = clé D'ANCRAGE` — le combattant est réinséré
+   * juste AVANT cette clé au rendu (cf. `applyManualOrder`) ; `null` = épinglé en toute fin de
+   * bande. Une entrée dont l'ancre a disparu (créature retirée entre-temps) retombe sur sa
+   * position calculée. Oubliée à chaque nouvelle manche pour les clés NON épinglées (cf.
+   * `pinnedOrderKeys`/`purgeUnpinnedOrder`). MJ seul auteur ; vide par défaut (migration douce).
+   */
+  manualOrder: Record<string, string | null>;
+  /**
+   * Sous-ensemble des clés de `manualOrder` qui SURVIT au changement de manche (bouton
+   * « Épingler », PER-436) — sans épinglage, la position manuelle d'un combattant est oubliée
+   * au début de chaque nouvelle manche et il retrouve sa position calculée par initiative. MJ
+   * seul auteur ; vide par défaut (migration douce).
+   */
+  pinnedOrderKeys: string[];
 }
 
 /**
@@ -173,6 +196,9 @@ export const EMPTY_COMBAT_STATE: GmCombatState = {
   statuses: {},
   tieBreakSeed: 0,
   creatureInfo: {},
+  actedKeys: [],
+  manualOrder: {},
+  pinnedOrderKeys: [],
 };
 
 /** Clé `localStorage` dédiée au combat en cours d'une campagne. */
@@ -205,6 +231,9 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       statuses: reviveStatuses(current.statuses),
       tieBreakSeed: reviveTieBreakSeed(current.tieBreakSeed),
       creatureInfo: reviveCreatureInfo(current.creatureInfo),
+      actedKeys: reviveActedKeys(current.actedKeys),
+      manualOrder: reviveManualOrder(current.manualOrder),
+      pinnedOrderKeys: revivePinnedOrderKeys(current.pinnedOrderKeys),
     };
   }
 
@@ -232,6 +261,9 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       statuses: {},
       tieBreakSeed: 0,
       creatureInfo: {},
+      actedKeys: [],
+      manualOrder: {},
+      pinnedOrderKeys: [],
     };
   }
 
@@ -278,6 +310,38 @@ function reviveRoundNumber(raw: unknown): number {
  */
 function reviveTieBreakSeed(raw: unknown): number {
   return typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : 0;
+}
+
+/**
+ * Reconstruit défensivement les clés « a déjà joué » (`state.actedKeys`, PER-436) : tolère
+ * l'absence (migration douce) et écarte les entrées non-chaînes, dédupliquées.
+ */
+function reviveActedKeys(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.filter((k): k is string => typeof k === 'string'))];
+}
+
+/**
+ * Reconstruit défensivement l'ordre manuel (`state.manualOrder`, PER-436) : `clé → clé
+ * d'ancrage` (le combattant est réinséré juste avant elle), ou `null` (épinglé en fin de
+ * bande). Écarte les entrées dont l'ancre n'est ni une chaîne ni `null`.
+ */
+function reviveManualOrder(raw: unknown): Record<string, string | null> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, string | null> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (value === null || typeof value === 'string') out[key] = value;
+  }
+  return out;
+}
+
+/**
+ * Reconstruit défensivement les clés épinglées (`state.pinnedOrderKeys`, PER-436) : tolère
+ * l'absence (migration douce) et écarte les entrées non-chaînes, dédupliquées.
+ */
+function revivePinnedOrderKeys(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.filter((k): k is string => typeof k === 'string'))];
 }
 
 /**
@@ -892,7 +956,18 @@ export function clearAllStatuses(state: GmCombatState): GmCombatState {
  * (broadcast automatique).
  */
 export function resetCombat(state: GmCombatState): GmCombatState {
-  return { ...state, statuses: {}, currentTurnKey: null, roundNumber: 1, depletions: {} };
+  return {
+    ...state,
+    statuses: {},
+    currentTurnKey: null,
+    roundNumber: 1,
+    depletions: {},
+    // Nouveau combat, aucune mémoire de pilotage du tour ne doit survivre (PER-436) —
+    // contrairement à `purgeUnpinnedOrder`, qui épargne les clés épinglées à chaque manche.
+    actedKeys: [],
+    manualOrder: {},
+    pinnedOrderKeys: [],
+  };
 }
 
 /**
@@ -922,7 +997,9 @@ export function restartRounds(
   firstTurnKey: string | null = null,
 ): GmCombatState {
   return {
-    ...state,
+    // Recommencer le décompte des manches EST une nouvelle manche 1 (PER-436) : purge le
+    // badge « a déjà joué » et l'ordre manuel non épinglé, comme `setRoundNumber`.
+    ...purgeUnpinnedOrder(state),
     roundNumber: 1,
     currentTurnKey: firstTurnKey,
     statuses: rebaseStatusDurations(state.statuses, state.roundNumber, 1),
@@ -937,5 +1014,134 @@ export function restartRounds(
 export function setRoundNumber(state: GmCombatState, roundNumber: number): GmCombatState {
   const next = Math.max(1, Math.trunc(roundNumber));
   if (next === state.roundNumber) return state;
-  return { ...state, roundNumber: next };
+  // Toute manche différente de la précédente EST une nouvelle manche (PER-436), qu'elle
+  // vienne du bouclage automatique de l'ordre ou d'un réglage manuel : purge le badge
+  // « a déjà joué » et l'ordre manuel non épinglé (cf. `purgeUnpinnedOrder`).
+  return { ...purgeUnpinnedOrder(state), roundNumber: next };
+}
+
+/**
+ * Purge de DÉBUT DE MANCHE (PER-436) : vide le badge « a déjà joué » de tout le monde et
+ * oublie la position manuelle des combattants NON épinglés — ceux épinglés (`pinnedOrderKeys`)
+ * la conservent. Appelée par `setRoundNumber`/`restartRounds` dès que le numéro de manche
+ * change réellement : c'est le point unique « une nouvelle manche démarre ».
+ */
+export function purgeUnpinnedOrder(state: GmCombatState): GmCombatState {
+  const pinned = new Set(state.pinnedOrderKeys);
+  const manualOrder: Record<string, string | null> = {};
+  for (const [key, beforeKey] of Object.entries(state.manualOrder)) {
+    if (pinned.has(key)) manualOrder[key] = beforeKey;
+  }
+  return { ...state, actedKeys: [], manualOrder };
+}
+
+/**
+ * Fixe le combattant dont c'est le tour et retire cette clé de `actedKeys` (PER-436) :
+ * invariant du tracker — le combattant EN TRAIN de jouer n'est jamais marqué « a déjà joué »,
+ * que le tour lui soit donné par l'avance normale (`stepTurn`) ou par un clic direct sur son
+ * bandeau d'initiative (PER-299, qui ne touche pas au numéro de manche).
+ */
+export function setCurrentTurnKey(state: GmCombatState, key: string | null): GmCombatState {
+  const actedKeys =
+    key === null || !state.actedKeys.includes(key)
+      ? state.actedKeys
+      : state.actedKeys.filter((k) => k !== key);
+  if (state.currentTurnKey === key && actedKeys === state.actedKeys) return state;
+  return { ...state, currentTurnKey: key, actedKeys };
+}
+
+/**
+ * Bascule manuelle du badge « a déjà joué » (PER-436, clic sur le badge) : ajoute ou retire
+ * `key` de `actedKeys`. Idempotent — poser un badge déjà posé (ou retirer un badge absent) ne
+ * change rien.
+ */
+export function setCombatantActed(state: GmCombatState, key: string, acted: boolean): GmCombatState {
+  const has = state.actedKeys.includes(key);
+  if (has === acted) return state;
+  const actedKeys = acted ? [...state.actedKeys, key] : state.actedKeys.filter((k) => k !== key);
+  return { ...state, actedKeys };
+}
+
+/**
+ * Pose la position manuelle de `key` dans l'ordre d'initiative (PER-436, dépôt du
+ * glisser-déposer) : réinséré juste avant `beforeKey` au rendu (cf. `applyManualOrder`).
+ * Refuse de s'ancrer sur soi-même (no-op).
+ */
+export function setManualPosition(
+  state: GmCombatState,
+  key: string,
+  beforeKey: string,
+): GmCombatState {
+  if (key === beforeKey || state.manualOrder[key] === beforeKey) return state;
+  return { ...state, manualOrder: { ...state.manualOrder, [key]: beforeKey } };
+}
+
+/**
+ * Bascule l'épinglage de la position manuelle de `key` (PER-436) : épingler la CONSERVE d'une
+ * manche à l'autre (cf. `purgeUnpinnedOrder`) ; dépingler ne la restaure pas immédiatement —
+ * elle sera simplement oubliée au prochain changement de manche (« Réinitialiser », lui, fait
+ * un retour immédiat, cf. `resetCombatantOrder`). Épingler une position jamais déplacée à la
+ * main la FIGE d'abord à `currentBeforeKey` (le voisin courant dans l'ordre affiché, fourni
+ * par l'appelant qui seul le connaît).
+ */
+export function toggleCombatantPin(
+  state: GmCombatState,
+  key: string,
+  currentBeforeKey: string | null,
+): GmCombatState {
+  const pinned = state.pinnedOrderKeys.includes(key);
+  const pinnedOrderKeys = pinned
+    ? state.pinnedOrderKeys.filter((k) => k !== key)
+    : [...state.pinnedOrderKeys, key];
+  const manualOrder =
+    !pinned && !(key in state.manualOrder)
+      ? { ...state.manualOrder, [key]: currentBeforeKey }
+      : state.manualOrder;
+  return { ...state, pinnedOrderKeys, manualOrder };
+}
+
+/**
+ * Retire la position manuelle de `key` et son épinglage (PER-436, bouton « Réinitialiser ») :
+ * retour IMMÉDIAT à la position calculée par initiative, et dépin. No-op si rien n'était
+ * déplacé/épinglé.
+ */
+export function resetCombatantOrder(state: GmCombatState, key: string): GmCombatState {
+  if (!(key in state.manualOrder) && !state.pinnedOrderKeys.includes(key)) return state;
+  const manualOrder = { ...state.manualOrder };
+  delete manualOrder[key];
+  return {
+    ...state,
+    manualOrder,
+    pinnedOrderKeys: state.pinnedOrderKeys.filter((k) => k !== key),
+  };
+}
+
+/**
+ * Nettoie toute trace de `key` dans le pilotage des tours/de l'ordre (PER-436), au retrait
+ * d'un combattant — même esprit que `clearStatusesOf` : retire `key` de `actedKeys` et
+ * `pinnedOrderKeys`, sa position manuelle éventuelle, et toute ancre d'un AUTRE combattant qui
+ * pointait vers lui (cet autre combattant retombe alors sur sa position calculée, plutôt que de
+ * traîner indéfiniment une ancre morte). No-op si `key` n'apparaît nulle part dans ces trois
+ * champs.
+ */
+export function dropCombatantOrderTraces(state: GmCombatState, key: string): GmCombatState {
+  const actedKeys = state.actedKeys.filter((k) => k !== key);
+  const pinnedOrderKeys = state.pinnedOrderKeys.filter((k) => k !== key);
+  let manualOrderChanged = false;
+  const manualOrder: Record<string, string | null> = {};
+  for (const [k, beforeKey] of Object.entries(state.manualOrder)) {
+    if (k === key || beforeKey === key) {
+      manualOrderChanged = true;
+      continue;
+    }
+    manualOrder[k] = beforeKey;
+  }
+  if (
+    actedKeys.length === state.actedKeys.length &&
+    pinnedOrderKeys.length === state.pinnedOrderKeys.length &&
+    !manualOrderChanged
+  ) {
+    return state;
+  }
+  return { ...state, actedKeys, pinnedOrderKeys, manualOrder };
 }
