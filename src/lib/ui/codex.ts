@@ -13,12 +13,13 @@ export function codexPathHref(pathId: string): string {
  * Sous-pages FONCTIONNELLES du Codex (PER-419), pour le sous-menu de l'en-tête
  * (`CodexSplitButton`/`CodexDrawerItems`) — liste statique, contenu du livre de base
  * uniquement, aucun gating payant à prévoir ici (contrairement au chevron « Livre des
- * règles », qui liste des livres payants débloqués). Les entrées « à venir » de
- * `src/app/codex/page.tsx` (Familiers/montures, Équipement) n'y figurent pas tant
- * qu'elles n'ont pas de route propre.
+ * règles », qui liste des livres payants débloqués). L'entrée « à venir » de
+ * `src/app/codex/page.tsx` (Équipement, PER-422) n'y figure pas tant qu'elle n'a pas
+ * de route propre.
  */
 export const CODEX_SUBPAGES: readonly { label: string; href: string }[] = [
   { label: 'Voies', href: '/codex/voies' },
   { label: 'Objets magiques', href: '/codex/objets-magiques' },
   { label: 'Dieux', href: '/codex/dieux' },
+  { label: 'Familiers & montures', href: '/codex/familiers-montures' },
 ];
