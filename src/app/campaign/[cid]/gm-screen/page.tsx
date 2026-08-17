@@ -948,8 +948,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           onDragEnd={onDragEnd}
           onDragCancel={() => setActiveStatus(null)}
         >
-          <Box data-tour="gm-screen-tracker">
           <InitiativeTracker
+            dataTour="gm-screen-tracker"
             rows={initiativeRows}
             currentTurnKey={currentTurnKey}
             onCurrentTurnKeyChange={setCurrentTurnKey}
@@ -996,7 +996,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             }
             stickyBottom
           />
-          </Box>
           {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}
           <DragOverlay>
             {activeStatus ? <StatusChipVisual id={activeStatus} withTooltip={false} dragging /> : null}

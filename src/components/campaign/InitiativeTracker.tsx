@@ -121,6 +121,8 @@ import AddIcon from '@mui/icons-material/Add';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import DensityMediumIcon from '@mui/icons-material/DensityMedium';
 import DensitySmallIcon from '@mui/icons-material/DensitySmall';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
@@ -1783,6 +1785,13 @@ const COMPACT_BY_DEFAULT = true;
  */
 const GM_COLLAPSED_STORAGE_KEY = storageKeys.initiative.gmCollapsed;
 
+/**
+ * Épinglage de la bande collée en bas de l'écran (nouvelle demande) : préférence LOCALE, COMPACT
+ * uniquement. Défaut à `true` pour ne rien changer au comportement existant tant que le MJ n'a pas
+ * touché au bouton — seul le décollage devient un geste explicite.
+ */
+const STICKY_PINNED_STORAGE_KEY = storageKeys.initiative.stickyPinned;
+
 /** Côté (px) d'une puce du condensé replié, normale puis mise en évidence pour le combattant actif. */
 const CONDENSED_DOT_SIZE = 20;
 const CONDENSED_ACTIVE_DOT_SIZE = 28;
@@ -1964,6 +1973,39 @@ function TrackerDensityToggle({
         </AppTooltip>
       </ToggleButton>
     </ToggleButtonGroup>
+  );
+}
+
+/**
+ * Bouton « épingler » de la bande collée en bas de l'écran, à droite du bascule densité — COMPACT
+ * uniquement (le détaillé ne colle jamais). Épingler = maintenir `position: sticky` peu importe le
+ * défilement ; désépingler laisse la bande dans le flux normal de la page.
+ */
+function StickyPinToggle({
+  pinned,
+  onChange,
+}: {
+  pinned: boolean;
+  onChange: (pinned: boolean) => void;
+}) {
+  return (
+    <AppTooltip
+      title={
+        pinned
+          ? 'Bande épinglée — collée en bas de l\'écran'
+          : "Épingler la bande d'initiative en bas de l'écran"
+      }
+    >
+      <ToggleButton
+        value="sticky-pinned"
+        selected={pinned}
+        size="small"
+        aria-label="Épingler la bande d'initiative"
+        onChange={() => onChange(!pinned)}
+      >
+        {pinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+      </ToggleButton>
+    </AppTooltip>
   );
 }
 
@@ -2642,6 +2684,16 @@ export interface InitiativeTrackerProps {
    * que déclarer que sa page s'y prête (elle défile et la bande en occupe la fin).
    */
   stickyBottom?: boolean;
+  /**
+   * Cible du tour guidé (PER-425), posée directement sur la racine du tracker — JAMAIS via un
+   * `<Box>` englobant côté appelant : un tel wrapper ne contient QUE le tracker, sans autre
+   * contenu, donc sa boîte de contenant se cale exactement sur sa hauteur ; or `position: sticky`
+   * ne peut se déplacer qu'à l'intérieur du "containing block" de l'élément (pas seulement de son
+   * ancêtre défilant) — un wrapper sans marge = zéro course possible = bande figée comme en
+   * `static` malgré une page qui défile (régression du 2026-08-15, `3ca5c19`, détectée le
+   * 2026-08-17 : `position:sticky` correct au computed style, mouvement nul au scroll réel).
+   */
+  dataTour?: string;
 }
 
 export function InitiativeTracker({
@@ -2657,6 +2709,7 @@ export function InitiativeTracker({
   statusControls,
   statusPalette,
   stickyBottom = false,
+  dataTour,
 }: InitiativeTrackerProps) {
   // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) : ils restent
   // visibles côté MJ mais absents de l'écran projeté, et l'ordre y est rendu NU — la relégation
@@ -2726,10 +2779,13 @@ export function InitiativeTracker({
   // La palette n'a de sens que là où les états sont modifiables (écran de MJ) : la projection n'est
   // jamais auteur, et les autres consommateurs du tracker ne la fournissent pas.
   const hasPalette = !projection && !!statusPalette;
+  // Épinglage de la barre collée (nouvelle demande) : bouton à droite du bascule densité, COMPACT
+  // uniquement. Préférence LOCALE, lue inconditionnellement (règle des hooks).
+  const [stickyPinned, setStickyPinned] = usePersistedBoolean(STICKY_PINNED_STORAGE_KEY, true);
   // Barre collée en bas : réservée au COMPACT (le détaillé, deux fois plus haut, mangerait la moitié
-  // de l'écran) et à l'écran de MJ (la projection n'a pas de page à défiler). Le repli mobile est
-  // porté par le point d'arrêt de `STICKY_BAR_SX`.
-  const sticky = stickyBottom && compact && !projection;
+  // de l'écran), à l'écran de MJ (la projection n'a pas de page à défiler) et à l'épinglage explicite
+  // ci-dessus. Le repli mobile est porté par le point d'arrêt de `STICKY_BAR_SX`.
+  const sticky = stickyBottom && compact && !projection && stickyPinned;
   // Repli ULTRA CONDENSÉ (nouvelle demande), même système que `SheetInitiativeBar` : préférence
   // LOCALE lue inconditionnellement (règle des hooks) mais forcée à `false` en PROJECTION — sans ce
   // `!projection`, la fenêtre projetée hériterait du repli fait côté écran de MJ (même clé
@@ -2742,7 +2798,7 @@ export function InitiativeTracker({
   const showCondensedOrder = collapsed && currentTurnKey !== null;
 
   return (
-    <Stack spacing={2} ref={rootRef} sx={sticky ? STICKY_BAR_SX : undefined}>
+    <Stack spacing={2} ref={rootRef} data-tour={dataTour} sx={sticky ? STICKY_BAR_SX : undefined}>
       {/* En-tête (titre + actions + « Tour suivant ») : tout se pilote depuis l'écran de
           MJ, donc rien de tout ça en mode projection. */}
       {!projection && (
@@ -2750,6 +2806,11 @@ export function InitiativeTracker({
           {/* Densité des cartes (PER-300), tout à gauche de la barre — réglage d'AFFICHAGE, distinct
               des actions de jeu qui suivent. Masquée en repli (cf. condensé plus loin). */}
           {!collapsed && <TrackerDensityToggle compact={compactPref} onChange={setCompactPref} />}
+          {/* Épingle de la bande collée (nouvelle demande), à droite du bascule densité — COMPACT
+              uniquement (le détaillé ne colle jamais, cf. calcul de `sticky` plus haut). */}
+          {!collapsed && compact && (
+            <StickyPinToggle pinned={stickyPinned} onChange={setStickyPinned} />
+          )}
           {/* Condensé replié (nouvelle demande) : mêmes puces que le bandeau replié de la fiche
               (`CondensedOrderDots`), pour lire d'un coup d'œil qui joue sans rien redéplier. */}
           <Fade in={showCondensedOrder} unmountOnExit timeout={200}>

@@ -86,6 +86,7 @@ const RULES: readonly Rule[] = [
   { match: 'initiative-tracker-palette-detailed', describe: 'Palette d’initiative détaillée — ancienne clé' },
   { match: storageKeys.initiative.paletteCompact, describe: 'Palette d’initiative compacte' },
   { match: 'initiative-tracker-palette-compact', describe: 'Palette d’initiative compacte — ancienne clé' },
+  { match: storageKeys.initiative.stickyPinned, describe: 'Traqueur d’initiative : bande collée en bas épinglée' },
 
   { match: storageKeys.home.sort, describe: 'Accueil : tri des personnages' },
   { match: 'home-sort', describe: 'Accueil : tri des personnages — ancienne clé' },

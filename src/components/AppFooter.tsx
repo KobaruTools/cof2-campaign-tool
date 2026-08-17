@@ -9,6 +9,7 @@ import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
+import { isProjectionRoute } from '@/lib/routing/projectionRoutes';
 
 // Année du copyright, calculée côté client (composant client).
 const YEAR = new Date().getFullYear();
@@ -32,23 +33,9 @@ const YEAR = new Date().getFullYear();
  * règles proviennent du DRS (Document de Référence du Système) de Chroniques
  * Oubliées, mis en accès libre et gratuit par Black Book Éditions.
  */
-/**
- * Routes de PROJECTION du tracker d'initiative, volontairement DÉPOUILLÉES (pas de footer,
- * ni titre, ni fond) : le pied de page global s'y masque.
- *  - `/campaign/<cid>/gm-screen/tracker` : fenêtre projetée owner (second écran, PER-248) ;
- *  - `/project` : lien de projection partageable cross-machine (PER-271), même rendu ;
- *  - `/play/initiative` : vue joueur de l'ordre d'initiative (PER-293), aligné sur le même
- *    rendu dépouillé (PER-271) — un joueur y atterrit depuis le lien de projection.
- */
-const PROJECTION_ROUTES = [
-  /^\/campaign\/[^/]+\/gm-screen\/tracker\/?$/,
-  /^\/project\/?$/,
-  /^\/play\/initiative\/?$/,
-];
-
 export function AppFooter() {
   const pathname = usePathname();
-  if (pathname && PROJECTION_ROUTES.some((route) => route.test(pathname))) return null;
+  if (isProjectionRoute(pathname)) return null;
 
   return (
     <Box
