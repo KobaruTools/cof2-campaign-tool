@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import Diversity3Icon from '@mui/icons-material/Diversity3';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LockIcon from '@mui/icons-material/Lock';
@@ -52,6 +53,19 @@ import { ancestries, ancestryById } from '@/data';
 import type { Character, Sex } from '@/lib/character/types';
 import { pickName } from '@/lib/character/names';
 import { deriveChallengeRatingFromStats } from '@/lib/campaign/npc';
+import { NpcPortraitMenu } from './NpcPortraitMenu';
+import {
+  useNpcPortraitCropRect,
+  useNpcPortraitSrc,
+  invalidateNpcPortraitCache,
+} from '@/lib/storage/useNpcPortraitSrc';
+import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
+import {
+  uploadNpcPortrait,
+  removeNpcPortrait,
+  NpcPortraitValidationError,
+} from '@/lib/storage/npcPortrait';
+import type { PortraitCropRect } from '@/lib/storage/characterPortrait';
 import {
   NPC_DISPOSITION_LABELS,
   NPC_STATUS_LABELS,
@@ -162,6 +176,46 @@ export function NpcFormDialog({
     npc?.linkedCharacterIds ?? [],
   );
   const [saving, setSaving] = useState(false);
+
+  // Illustration du PNJ (PER-437) — pas d'upload possible tant que le PNJ n'a pas
+  // encore d'`id` (création) : le chemin de stockage est `{npcId}/portrait`. Comme
+  // pour le portrait de personnage dans le wizard, le MJ importe l'image après le
+  // premier enregistrement plutôt que de différer l'envoi.
+  const portraitSrc = useNpcPortraitSrc(npc?.id);
+  const portraitCropRect = useNpcPortraitCropRect(npc?.id);
+  const croppedPortraitSrc = useCroppedImageSrc(portraitSrc ?? undefined, portraitCropRect);
+  const [portraitBusy, setPortraitBusy] = useState(false);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
+
+  const handleSelectPortraitFile = async (file: File, cropRect: PortraitCropRect) => {
+    if (!npc) return;
+    setPortraitError(null);
+    setPortraitBusy(true);
+    try {
+      await uploadNpcPortrait(npc.id, file, cropRect);
+      invalidateNpcPortraitCache(npc.id);
+    } catch (e) {
+      setPortraitError(
+        e instanceof NpcPortraitValidationError ? e.message : "Échec de l'envoi de l'image.",
+      );
+    } finally {
+      setPortraitBusy(false);
+    }
+  };
+
+  const handleRemovePortrait = async () => {
+    if (!npc) return;
+    setPortraitError(null);
+    setPortraitBusy(true);
+    try {
+      await removeNpcPortrait(npc.id);
+      invalidateNpcPortraitCache(npc.id);
+    } catch {
+      setPortraitError("Échec du retrait de l'image.");
+    } finally {
+      setPortraitBusy(false);
+    }
+  };
 
   // Statistiques de combat (PER-431) — section repliée par défaut, quel que soit l'état
   // du PNJ édité (le MJ l'ouvre volontairement quand il en a besoin).
@@ -318,6 +372,48 @@ export function NpcFormDialog({
       <DialogTitle>{npc ? `Modifier « ${npc.name} »` : 'Nouveau PNJ'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Box
+              sx={{
+                width: 56,
+                height: 56,
+                borderRadius: 2,
+                overflow: 'hidden',
+                flexShrink: 0,
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                bgcolor: 'rgba(255, 255, 255, 0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {croppedPortraitSrc ?? portraitSrc ? (
+                <Box
+                  component="img"
+                  src={croppedPortraitSrc ?? portraitSrc ?? undefined}
+                  alt=""
+                  aria-hidden
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+                />
+              ) : (
+                <Diversity3Icon fontSize="small" sx={{ color: 'text.disabled' }} />
+              )}
+            </Box>
+            <NpcPortraitMenu
+              hasPortrait={portraitSrc !== null}
+              onSelectFile={(file, cropRect) => void handleSelectPortraitFile(file, cropRect)}
+              onRemove={() => void handleRemovePortrait()}
+              disabled={!npc}
+              disabledReason="Enregistrez d'abord le PNJ pour lui ajouter une illustration."
+              busy={portraitBusy}
+              onValidationError={setPortraitError}
+            />
+          </Stack>
+          {portraitError && (
+            <AppAlert severity="error" onClose={() => setPortraitError(null)}>
+              {portraitError}
+            </AppAlert>
+          )}
           <TextField
             label="Nom"
             value={name}
