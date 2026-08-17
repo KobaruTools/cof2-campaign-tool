@@ -13,10 +13,11 @@
  * `PurseField.tsx` (fiche personnage), en version statique (pas d'info-bulle/animation, catalogue
  * hors personnage). Montant en gras teinté de la couleur de la monnaie, à côté du jeton.
  *
- * Statistiques des bardes (retour propriétaire) : PARSÉES en pastilles signées (`ItemBonusBadge`,
- * MÊME composant que les bonus d'objets magiques du Codex Objets magiques) plutôt qu'une phrase
- * verbatim — DEF (bonus, teinte secondaire) et Initiative (malus, teinte warning) sur une ligne
- * séparée du nom/prix pour la lisibilité.
+ * Statistiques des bardes (retour propriétaire) : PARSÉES en encadrés signés (`+2 DEF`, `−2 Init.`)
+ * plutôt qu'une phrase verbatim, sur une ligne séparée du nom/prix pour la lisibilité — MÊME style
+ * que l'« encadré signé » d'un modificateur constant en texte enrichi de capacité (`FormulaTotal`
+ * de `FeatureRichText.tsx`, patron Voies & Capacités), en version plate (pas d'icône de stat,
+ * la valeur est déjà fixe et connue — pas de résolution de formule à faire hors personnage).
  *
  * Pas de gating payant à prévoir : `mounts`/`bardes` sont des tableaux statiques du livre de base.
  */
@@ -28,14 +29,12 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { darken, lighten } from '@mui/material/styles';
+import { alpha, darken, lighten } from '@mui/material/styles';
 import { bardes, mounts } from '@/data';
 import type { BardeCatalogEntry, MountCatalogEntry } from '@/data/mounts';
 import type { Price } from '@/data/schema';
 import { CURRENCY_ABBREV, CURRENCY_COLOR, type CoinCurrency } from '@/lib/character/coinPouch';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
-import { DerivedStatIcon } from '@/components/DerivedStatIcon';
-import { ItemBonusBadge } from '@/components/sheet/MagicItemBadges';
 import { SourceRef } from '@/components/SourceRef';
 
 const rowSx = {
@@ -76,6 +75,34 @@ function CoinBadge({ code, color }: { code: string; color: string }) {
       }}
     >
       {code}
+    </Box>
+  );
+}
+
+/** Modificateur constant signé (« +2 DEF », « −2 Init. ») — même style d'encadré que `FormulaTotal`
+ * (`FeatureRichText.tsx`, patron Voies & Capacités), sans icône de stat : valeur déjà fixe et
+ * connue, pas de formule à résoudre hors personnage. */
+function StatModifierTag({ value, label }: { value: number; label: string }) {
+  return (
+    <Box
+      component="span"
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        minHeight: '22px',
+        px: 0.6,
+        lineHeight: 1,
+        borderRadius: 1,
+        fontWeight: 600,
+        fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap',
+        bgcolor: alpha(theme.palette.primary.main, 0.1),
+        border: 1,
+        borderColor: alpha(theme.palette.primary.main, 0.35),
+      })}
+    >
+      {value >= 0 ? '+' : '−'}
+      {Math.abs(value)} {label}
     </Box>
   );
 }
@@ -148,22 +175,10 @@ function BardeRow({ barde }: { barde: BardeCatalogEntry }) {
         <SourceRef page={barde.sourcePage} term={barde.name} />
       </Stack>
       {/* Statistiques PARSÉES (pas de phrase verbatim) sur leur propre ligne (retour propriétaire) :
-          DEF en bonus (teinte secondaire), Initiative en malus (teinte warning) — même mécanique
-          d'un objet enchanté (`ItemBonusBadge`), sur la monture ET le cavalier (rappel affiché
-          hors badge, pas mécanisé pour le cavalier ici — voir `OwnedMountsPanel`). */}
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
-        <ItemBonusBadge
-          value={barde.defBonus}
-          label="DEF"
-          icon={<DerivedStatIcon statId="defense" size={13} color="currentColor" />}
-          tooltip={`Bonus de DEF (+${barde.defBonus}) apporté par la barde à la monture.`}
-        />
-        <ItemBonusBadge
-          value={-barde.defBonus}
-          label="Init. (monture et cavalier)"
-          icon={<DerivedStatIcon statId="initiative" size={13} color="currentColor" />}
-          tooltip={`Malus d'Initiative (−${barde.defBonus}) infligé par le poids de la barde, à la monture ET au cavalier.`}
-        />
+          DEF sur la monture, Initiative en malus à la monture ET au cavalier (p. 191). */}
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
+        <StatModifierTag value={barde.defBonus} label="DEF" />
+        <StatModifierTag value={-barde.defBonus} label="Init. (monture et cavalier)" />
       </Stack>
     </Box>
   );
