@@ -37,42 +37,32 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { classById, featureById, pathById } from '@/data';
-import { fantasticFamiliars } from '@/data/fantastic-familiars';
-import { ABILITY_IDS, type AbilityId, type Feature, type FantasticFamiliar } from '@/data/schema';
-import { AppTooltip } from '@/components/AppTooltip';
+import { fantasticFamiliars, FAMILIAR_ENTITY_BY_OPTION } from '@/data/fantastic-familiars';
+import type { AbilityId, CreatureProfile, Feature, FantasticFamiliar, OptionFeatureChoice } from '@/data/schema';
 import { ClassIcon } from '@/components/ClassIcon';
 import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
-import { AbilityChipBox, AbilityValueChip, GlossaryRichText } from '@/components/sheet/FeatureRichText';
+import { AbilityChipBox, GlossaryRichText } from '@/components/sheet/FeatureRichText';
+import { CreatureAbilitiesGrid } from '@/components/sheet/CreatureStatBlock';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { classColor } from '@/lib/ui/classColors';
 
 /**
- * Stat-block GÉNÉRIQUE du familier (TAILLE MINUSCULE, rang 3 de la voie, p. 132) — commun aux 12
- * familiers, avant l'écart propre à chacun (`abilityOverrides`). AGI porte un dé bonus (astérisque
- * du livre, « l'un des dés lancés doit être ≥ 4 »). Défense/PV/Initiative dépendent du RANG dans la
- * voie / du NIVEAU / de l'Initiative du personnage — non résolvables hors personnage, affichées en
- * formule symbolique (retour propriétaire : « ces familiers n'ont aucune statistique prévue ? »).
+ * Mini-fiche de créature du familier (rang 3 de la voie, p. 132) — RÉUTILISE la donnée
+ * `CreatureProfile` déjà authored pour le choix du rang 3 (`prestige-familier-fantastique-r3`,
+ * `part1.ts`), plutôt que de ré-écrire une seconde copie des caractéristiques/attaque/capacités
+ * (source unique). Fée/lutin et pantin/poupée partagent une entité `FantasticFamiliar` mais sont
+ * DEUX options distinctes dans la voie (mêmes stats) — on prend la PREMIÈRE (fée, pantin) comme
+ * représentante. `undefined` seulement si la voie ou l'option venait à disparaître (jamais en
+ * pratique, cf. `scripts/validate-data.ts`).
  */
-const FAMILIAR_BASE_ABILITIES: Record<AbilityId, number> = {
-  AGI: 3,
-  CON: 2,
-  FOR: -4,
-  PER: 2,
-  CHA: -2,
-  INT: 1,
-  VOL: 2,
-};
-const FAMILIAR_BONUS_DIE_ABILITY: AbilityId = 'AGI';
-
-/** Caractéristiques NETTES du familier (base + écart propre) — `undefined` si l'écart n'est pas
- * réductible à des valeurs fixes (`abilityNote`, ex. minimoï : formule dérivée du personnage). */
-function familiarNetAbilities(familiar: FantasticFamiliar): Record<AbilityId, number> | undefined {
-  if (familiar.abilityNote) return undefined;
-  const overrides = familiar.abilityOverrides ?? {};
-  const result = {} as Record<AbilityId, number>;
-  for (const ability of ABILITY_IDS) result[ability] = FAMILIAR_BASE_ABILITIES[ability] + (overrides[ability] ?? 0);
-  return result;
+function familiarCreatureProfile(familiar: FantasticFamiliar): CreatureProfile | undefined {
+  const r3 = featureById.get('prestige-familier-fantastique-r3');
+  const optionChoice = r3?.choices?.find((c): c is OptionFeatureChoice => c.kind === 'option');
+  const option = optionChoice?.options.find(
+    (o) => (FAMILIAR_ENTITY_BY_OPTION[o.id] ?? o.id) === familiar.id,
+  );
+  return option?.creatureProfile;
 }
 
 const cardSx = {
@@ -213,46 +203,65 @@ function FamiliarBonusBlock({ abilityBonus }: { abilityBonus: AbilityId }) {
   );
 }
 
-/** Bloc « Familier (rang 3) » — stat-block générique + écart du familier, même cadre `PathCard`
- * que les autres lignes. Défense/PV/Initiative en formule symbolique (pas de personnage ici). */
+/**
+ * Bloc « Familier (rang 3) » — mini-fiche de créature STATIQUE (retour propriétaire : pas un
+ * bloc dépliable ici, même format que les mini-fiches de compagnon de la fiche de personnage/de
+ * l'écran de MJ : `CreatureAbilitiesGrid` pour la grille de caractéristiques — SANS `masterAbilities`
+ * (convention déjà établie par l'aperçu du wizard : « maître supposé à 0 », `resolveCreatureAbilities`).
+ * Défense/PV/Attaque restent des FORMULES SYMBOLIQUES (`GlossaryRichText`, pas de total calculé) :
+ * elles dépendent du rang de voie/niveau/caractéristiques du PERSONNAGE, qu'on n'a pas hors fiche —
+ * les afficher comme un nombre concret serait FAUX (contrairement aux dés, dont la face de base est
+ * une vraie convention établie ailleurs, `evolvingDieBase`).
+ */
 function FamiliarStatsBlock({ familiar }: { familiar: FantasticFamiliar }) {
-  const abilities = familiarNetAbilities(familiar);
+  const profile = familiarCreatureProfile(familiar);
+  if (!profile) return null;
   return (
-    <PathCard
-      name="Familier (taille minuscule)"
-      checked
-      selectable={false}
-      detail={
-        <Stack spacing={1}>
-          {abilities ? (
-            <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap' }}>
-              {ABILITY_IDS.map((ability) => (
-                <Box key={ability} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.15 }}>
-                  <AbilityValueChip ability={ability} value={abilities[ability]} />
-                  {ability === FAMILIAR_BONUS_DIE_ABILITY && (
-                    <AppTooltip title="Dé bonus : l'un des deux dés lancés doit afficher 4 ou plus.">
-                      <Box component="span" sx={{ fontSize: '0.75em', color: 'text.secondary', cursor: 'help' }}>
-                        *
-                      </Box>
-                    </AppTooltip>
-                  )}
-                </Box>
-              ))}
-            </Stack>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              {familiar.abilityNote}
-            </Typography>
-          )}
-          <Typography variant="caption" color="text.secondary">
-            Défense = 14 + rang dans la voie · Points de vigueur = niveau du personnage × 2 · Initiative =
-            Initiative du personnage
+    <Box sx={{ mt: 0.5, p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.75 }}>
+        Familier (taille {profile.size ?? 'minuscule'})
+      </Typography>
+      <CreatureAbilitiesGrid profile={profile} variant="large" />
+      <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', alignItems: 'baseline', mt: 1 }}>
+        {profile.defense && (
+          <Typography variant="body2" color="text.secondary">
+            <strong>Défense</strong> = <GlossaryRichText>{profile.defense}</GlossaryRichText>
           </Typography>
-        </Stack>
-      }
-      sourcePage={132}
-      sx={{ height: 'auto', mt: 0.5 }}
-    />
+        )}
+        {profile.hitPoints && (
+          <Typography variant="body2" color="text.secondary">
+            <strong>PV</strong> = <GlossaryRichText>{profile.hitPoints}</GlossaryRichText>
+          </Typography>
+        )}
+        <Typography variant="body2" color="text.secondary">
+          <strong>Initiative</strong> = Initiative du personnage
+        </Typography>
+        {profile.attack && (
+          <Typography variant="body2" color="text.secondary">
+            <strong>{profile.attack.label ?? 'Attaque'}</strong> = attaque magique du personnage
+            {profile.attack.damage && (
+              <>
+                {' · '}
+                <GlossaryRichText>{profile.attack.damage}</GlossaryRichText>
+              </>
+            )}
+          </Typography>
+        )}
+      </Stack>
+      {profile.specialAbilities?.map((ability, i) => (
+        <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, lineHeight: 1.5 }}>
+          <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
+            {ability.name}.
+          </Box>{' '}
+          <GlossaryRichText>{ability.richText ?? ability.text}</GlossaryRichText>
+        </Typography>
+      ))}
+      {profile.note && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
+          {profile.note}
+        </Typography>
+      )}
+    </Box>
   );
 }
 
@@ -265,6 +274,14 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
         </Typography>
         <SourceRef page={familiar.sourcePage} term={familiar.name} />
       </Stack>
+      <Typography variant="body2" component="div" sx={{ mt: 1 }}>
+        {familiar.descriptionRichText ? (
+          <GlossaryRichText>{familiar.descriptionRichText}</GlossaryRichText>
+        ) : (
+          familiar.description
+        )}
+      </Typography>
+
       <SlotLabel>Rang 3 (familier)</SlotLabel>
       <FamiliarStatsBlock familiar={familiar} />
 
@@ -292,16 +309,6 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
       <SlotLabel>Rang 7 (pouvoir supérieur)</SlotLabel>
       <FamiliarPowerBlock familiar={familiar} slot="superior" />
       <FamiliarBonusBlock abilityBonus={familiar.superiorPower.abilityBonus} />
-
-      {/* Description APRÈS les blocs de capacité (retour propriétaire) : la mécanique d'abord,
-          l'ambiance ensuite — plus cohérent qu'une description en tête coupée des blocs. */}
-      <Typography variant="body2" component="div" sx={{ mt: 2 }}>
-        {familiar.descriptionRichText ? (
-          <GlossaryRichText>{familiar.descriptionRichText}</GlossaryRichText>
-        ) : (
-          familiar.description
-        )}
-      </Typography>
     </Box>
   );
 }
@@ -317,7 +324,13 @@ export function CodexFamiliarsBrowser() {
       sx={{
         display: 'grid',
         gap: 2,
-        gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' },
+        // Colonnes DYNAMIQUES selon la largeur disponible (`auto-fit`/`minmax`, retour propriétaire),
+        // plutôt que des paliers fixes MUI (`md`/`xl`) qui restaient bloqués à 2 colonnes sur une
+        // large plage de largeurs. `maxWidth` plafonne à 3 colonnes (largeur ≈ 3 cartes + 2 gouttières)
+        // même sur un très grand écran, au lieu de laisser `auto-fit` en ajouter une 4e.
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        maxWidth: 1400,
+        mx: 'auto',
         alignItems: 'stretch',
       }}
     >
