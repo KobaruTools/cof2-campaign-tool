@@ -9,6 +9,7 @@ const npc = (id: string, name: string, over: Partial<Npc> = {}): Npc => ({
   name,
   role: null,
   ancestryId: null,
+  sex: null,
   location: null,
   disposition: 'neutral',
   status: 'not-encountered',

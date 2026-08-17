@@ -13,7 +13,7 @@
  * dans le cloud (PER-192/193), ils restent en localStorage et référencent l'UUID
  * cloud de la campagne : la vue campagne les filtre par cette FK.
  */
-import type { EquipmentLine } from '../character/types';
+import type { EquipmentLine, Sex } from '../character/types';
 import { SIDE_ACCENT } from '../ui/creature';
 
 /**
@@ -196,6 +196,13 @@ export interface Npc {
    * payant non chargé côté client (traité comme absent par l'UI).
    */
   ancestryId: string | null;
+  /**
+   * Genre (PER-433) — purement narratif, même type `Sex` que le personnage-joueur
+   * (`Identity.sex`). Sert au générateur de nom (`pickName`, tri par
+   * `Ancestry.names.male`/`female`) : sans genre renseigné, pas de génération.
+   * `null` = non renseigné.
+   */
+  sex: Sex | null;
   /** Lieu libre, SÉPARÉ de la description — pont volontaire vers un futur système de Lieux. */
   location: string | null;
   /** Disposition envers les PJ — badge coloré sur la carte. */

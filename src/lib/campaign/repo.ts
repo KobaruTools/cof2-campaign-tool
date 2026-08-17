@@ -251,6 +251,7 @@ export function rowToNpc(row: NpcRow): Npc {
     name: row.name,
     role: row.role,
     ancestryId: row.ancestry_id,
+    sex: row.sex as Npc['sex'],
     location: row.location,
     disposition: row.disposition as Npc['disposition'],
     status: row.status as Npc['status'],
@@ -267,6 +268,7 @@ export interface NpcInput {
   name: string;
   role?: string | null;
   ancestryId?: string | null;
+  sex?: Npc['sex'];
   location?: string | null;
   disposition?: Npc['disposition'];
   status?: Npc['status'];
@@ -284,6 +286,7 @@ function npcInputToRow(input: Partial<NpcInput>): NpcRowUpdate {
   if (input.name !== undefined) row.name = input.name;
   if (input.role !== undefined) row.role = input.role;
   if (input.ancestryId !== undefined) row.ancestry_id = input.ancestryId;
+  if (input.sex !== undefined) row.sex = input.sex;
   if (input.location !== undefined) row.location = input.location;
   if (input.disposition !== undefined) row.disposition = input.disposition;
   if (input.status !== undefined) row.status = input.status;

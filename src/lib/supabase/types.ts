@@ -54,6 +54,7 @@ export type Database = {
           location: string | null
           name: string
           role: string | null
+          sex: string | null
           status: string
         }
         Insert: {
@@ -69,6 +70,7 @@ export type Database = {
           location?: string | null
           name: string
           role?: string | null
+          sex?: string | null
           status?: string
         }
         Update: {
@@ -84,6 +86,7 @@ export type Database = {
           location?: string | null
           name?: string
           role?: string | null
+          sex?: string | null
           status?: string
         }
         Relationships: [

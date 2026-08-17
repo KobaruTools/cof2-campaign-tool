@@ -16,6 +16,7 @@
  * que `campaignCharacters` dans `LootTreasurePanel`.
  */
 import { useState } from 'react';
+import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import LockIcon from '@mui/icons-material/Lock';
 import PublicIcon from '@mui/icons-material/Public';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -26,15 +27,18 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { RichTextEditor } from '@/components/sheet/RichTextEditor';
-import { ancestries } from '@/data';
-import type { Character } from '@/lib/character/types';
+import { ancestries, ancestryById } from '@/data';
+import type { Character, Sex } from '@/lib/character/types';
+import { pickName } from '@/lib/character/names';
 import {
   NPC_DISPOSITION_LABELS,
   NPC_STATUS_LABELS,
@@ -51,6 +55,13 @@ export interface NpcFormDialogProps {
   npc?: Npc;
   /** Personnages RATTACHÉS à la campagne — univers de la sélection multi-PJ. */
   campaignCharacters: Character[];
+  /**
+   * Noms déjà pris dans la campagne (autres PNJ + PJ), le nom actuel du PNJ
+   * édité EXCLU — évités par « Générer un nom » (PER-433), sans jamais bloquer :
+   * si la liste du peuple/genre choisi est épuisée par l'exclusion, on retombe
+   * sur un nom déjà pris plutôt que de ne rien proposer.
+   */
+  existingNames: string[];
   onSubmit: (input: NpcInput) => Promise<void>;
 }
 
@@ -62,11 +73,13 @@ export function NpcFormDialog({
   onClose,
   npc,
   campaignCharacters,
+  existingNames,
   onSubmit,
 }: NpcFormDialogProps) {
   const [name, setName] = useState(npc?.name ?? '');
   const [role, setRole] = useState(npc?.role ?? '');
   const [ancestryId, setAncestryId] = useState(npc?.ancestryId ?? '');
+  const [sex, setSex] = useState<Sex | ''>(npc?.sex ?? '');
   const [location, setLocation] = useState(npc?.location ?? '');
   const [disposition, setDisposition] = useState<NpcDisposition>(npc?.disposition ?? 'neutral');
   const [status, setStatus] = useState<NpcStatus>(npc?.status ?? 'not-encountered');
@@ -82,6 +95,24 @@ export function NpcFormDialog({
 
   const linkedCharacters = campaignCharacters.filter((c) => linkedCharacterIds.includes(c.id));
 
+  const ancestry = ancestryId ? ancestryById.get(ancestryId) : undefined;
+  const canGenerateName = Boolean(ancestry) && sex !== '';
+
+  const handleGenerateName = () => {
+    if (!ancestry || sex === '') return;
+    const taken = new Set(existingNames.map((n) => n.trim().toLowerCase()));
+    // Jusqu'à 30 tirages pour éviter un nom déjà pris — au-delà, on retombe sans
+    // bloquer sur le dernier tiré (réutilisation acceptée, cf. conception PER-433).
+    let candidate: string | null = null;
+    for (let i = 0; i < 30; i++) {
+      const attempt = pickName(ancestry, sex);
+      if (!attempt) break;
+      candidate = attempt;
+      if (!taken.has(attempt.trim().toLowerCase())) break;
+    }
+    if (candidate) setName(candidate);
+  };
+
   const handleSubmit = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
@@ -91,6 +122,7 @@ export function NpcFormDialog({
         name: trimmedName,
         role: role.trim() || null,
         ancestryId: ancestryId || null,
+        sex: sex || null,
         location: location.trim() || null,
         disposition,
         status,
@@ -120,6 +152,26 @@ export function NpcFormDialog({
             required
             autoFocus
             fullWidth
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <Tooltip
+                    title={canGenerateName ? 'Générer un nom' : 'Choisissez d’abord le peuple et le genre'}
+                  >
+                    <span>
+                      <IconButton
+                        size="small"
+                        aria-label="Générer un nom"
+                        disabled={!canGenerateName}
+                        onClick={handleGenerateName}
+                      >
+                        <CasinoOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                ),
+              },
+            }}
           />
 
           <Stack direction="row" spacing={2}>
@@ -139,22 +191,37 @@ export function NpcFormDialog({
             />
           </Stack>
 
-          <TextField
-            select
-            label="Peuple"
-            value={ancestryId}
-            onChange={(e) => setAncestryId(e.target.value)}
-            fullWidth
-          >
-            <MenuItem value="">
-              <em>Non renseigné</em>
-            </MenuItem>
-            {ancestries.map((a) => (
-              <MenuItem key={a.id} value={a.id}>
-                {a.name}
+          <Stack direction="row" spacing={2}>
+            <TextField
+              select
+              label="Peuple"
+              value={ancestryId}
+              onChange={(e) => setAncestryId(e.target.value)}
+              fullWidth
+            >
+              <MenuItem value="">
+                <em>Non renseigné</em>
               </MenuItem>
-            ))}
-          </TextField>
+              {ancestries.map((a) => (
+                <MenuItem key={a.id} value={a.id}>
+                  {a.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Genre"
+              value={sex}
+              onChange={(e) => setSex(e.target.value as Sex | '')}
+              fullWidth
+            >
+              <MenuItem value="">
+                <em>Non renseigné</em>
+              </MenuItem>
+              <MenuItem value="male">Homme</MenuItem>
+              <MenuItem value="female">Femme</MenuItem>
+            </TextField>
+          </Stack>
 
           <Stack direction="row" spacing={2}>
             <TextField

@@ -181,6 +181,10 @@ export function NpcPanel({ campaignId }: { campaignId: string }) {
           onClose={() => setDialogTarget(null)}
           npc={dialogTarget === 'create' ? undefined : dialogTarget}
           campaignCharacters={campaignCharacters}
+          existingNames={[
+            ...npcs.filter((n) => n.id !== (dialogTarget === 'create' ? '' : dialogTarget.id)).map((n) => n.name),
+            ...campaignCharacters.map((c) => c.name),
+          ]}
           onSubmit={async (input) => {
             try {
               if (dialogTarget === 'create') {
