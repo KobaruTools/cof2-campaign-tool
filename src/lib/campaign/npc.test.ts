@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { CustomCreature } from '../session/customCreature';
 import type { Npc, NpcCategory } from './types';
 import {
   addNpc,
   addNpcCategory,
+  deriveChallengeRatingFromStats,
   filterNpcsByQuery,
   reassignNpcsCategory,
   removeNpc,
@@ -25,6 +27,7 @@ const npc = (id: string, name: string, over: Partial<Npc> = {}): Npc => ({
   sex: null,
   categoryId: null,
   challengeRating: null,
+  stats: null,
   location: null,
   disposition: 'neutral',
   status: 'not-encountered',
@@ -110,6 +113,30 @@ describe('sortNpcsByDisposition', () => {
       npc('n4', 'Bea', { disposition: 'ally' }),
     ];
     expect(sortNpcsByDisposition(npcs).map((n) => n.name)).toEqual(['Anna', 'Bea', 'Milo', 'Zorg']);
+  });
+});
+
+const stats = (over: Partial<CustomCreature> = {}): CustomCreature => ({
+  initiative: 5,
+  hitPoints: 20,
+  defense: 12,
+  ...over,
+});
+
+describe('deriveChallengeRatingFromStats', () => {
+  it('extrait le nombre en tête du NC verbatim', () => {
+    expect(deriveChallengeRatingFromStats(stats({ nc: '3' }))).toBe(3);
+    expect(deriveChallengeRatingFromStats(stats({ nc: '2 (3)' }))).toBe(2);
+  });
+
+  it('convertit le symbole ½ en 0,5', () => {
+    expect(deriveChallengeRatingFromStats(stats({ nc: '½' }))).toBe(0.5);
+  });
+
+  it('renvoie null sans bloc de stats, sans NC, ou pour un NC non numérique', () => {
+    expect(deriveChallengeRatingFromStats(null)).toBeNull();
+    expect(deriveChallengeRatingFromStats(stats())).toBeNull();
+    expect(deriveChallengeRatingFromStats(stats({ nc: '+1 Niveau' }))).toBeNull();
   });
 });
 

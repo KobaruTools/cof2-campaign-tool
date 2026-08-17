@@ -14,6 +14,7 @@
  * cloud de la campagne : la vue campagne les filtre par cette FK.
  */
 import type { EquipmentLine, Sex } from '../character/types';
+import type { CustomCreature } from '../session/customCreature';
 import { SIDE_ACCENT } from '../ui/creature';
 
 /**
@@ -223,11 +224,22 @@ export interface Npc {
    * `Campaign.npcCategories` SANS FK en base — même motif que `ancestryId`. */
   categoryId: string | null;
   /**
-   * Niveau de Challenge (PER-431, stub posé par PER-430 pour que le tri « par NC »
-   * fonctionne dès maintenant) — `null` = non renseigné, retombe en fin de liste au tri.
-   * Aucune UI d'édition avant PER-431.
+   * Niveau de Challenge (stub posé par PER-430 pour que le tri « par NC » fonctionne
+   * dès maintenant) — DÉRIVÉ de `stats.nc` par `deriveChallengeRatingFromStats` (`npc.ts`)
+   * à chaque enregistrement du formulaire (PER-431), jamais saisi séparément. `null` =
+   * pas de bloc de stats, ou NC non renseigné/non numérique dans le bloc — retombe en
+   * fin de liste au tri.
    */
   challengeRating: number | null;
+  /**
+   * Statistiques de combat (PER-431), section repliée par défaut du formulaire. COPIE
+   * FIGÉE au format `CustomCreature` (même forme qu'une créature créée à la main sur le
+   * tracker) — que le MJ l'ait saisie lui-même ou copiée depuis une entrée du bestiaire
+   * au moment de la sélection (`customCreatureFromBestiary`) : une fois copiée, elle
+   * n'a plus aucun lien avec l'entrée d'origine, éditable librement. `null` = aucune
+   * statistique renseignée.
+   */
+  stats: CustomCreature | null;
   /** Lieu libre, SÉPARÉ de la description — pont volontaire vers un futur système de Lieux. */
   location: string | null;
   /** Disposition envers les PJ — badge coloré sur la carte. */

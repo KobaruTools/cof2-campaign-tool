@@ -57,6 +57,7 @@ export type Database = {
           name: string
           role: string | null
           sex: string | null
+          stats: Json | null
           status: string
         }
         Insert: {
@@ -75,6 +76,7 @@ export type Database = {
           name: string
           role?: string | null
           sex?: string | null
+          stats?: Json | null
           status?: string
         }
         Update: {
@@ -93,6 +95,7 @@ export type Database = {
           name?: string
           role?: string | null
           sex?: string | null
+          stats?: Json | null
           status?: string
         }
         Relationships: [

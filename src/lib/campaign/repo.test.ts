@@ -4,6 +4,7 @@ import {
   parseGmInventory,
   parseLoot,
   parseNpcCategories,
+  parseNpcStats,
   parseRules,
   parseRumors,
   rowToCampaign,
@@ -210,6 +211,7 @@ describe('rowToNpc', () => {
       sex: 'male',
       category_id: 'cat1',
       challenge_rating: 2,
+      stats: null,
       location: 'Taverne du Sanglier',
       disposition: 'ally',
       status: 'encountered',
@@ -228,6 +230,7 @@ describe('rowToNpc', () => {
       sex: 'male',
       categoryId: 'cat1',
       challengeRating: 2,
+      stats: null,
       location: 'Taverne du Sanglier',
       disposition: 'ally',
       status: 'encountered',
@@ -237,6 +240,18 @@ describe('rowToNpc', () => {
       linkedCharacterIds: ['pj1', 'pj2'],
       createdAt: '2026-08-15T10:00:00Z',
     });
+  });
+});
+
+describe('parseNpcStats', () => {
+  it('lit un bloc bien formé (socle initiative/PV/défense complet)', () => {
+    const raw = { initiative: 5, hitPoints: 20, defense: 12, nc: '2' };
+    expect(parseNpcStats(raw as unknown as Json)).toEqual(raw);
+  });
+
+  it('retombe sur null quand le socle obligatoire manque ou pour une valeur non-objet', () => {
+    expect(parseNpcStats(null)).toBeNull();
+    expect(parseNpcStats({ initiative: 5 } as unknown as Json)).toBeNull();
   });
 });
 

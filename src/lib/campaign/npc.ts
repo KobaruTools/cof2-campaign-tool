@@ -13,6 +13,7 @@
  * ids de PNJ à recatégoriser en `null` côté appelant (qui doit persister CHAQUE
  * PNJ affecté via `updateNpc`, en plus de la liste de catégories via `updateCampaign`).
  */
+import type { CustomCreature } from '../session/customCreature';
 import { normalizeSearchText } from '../ui/searchText';
 import type { Npc, NpcCategory } from './types';
 
@@ -49,6 +50,24 @@ export function sortNpcsByDisposition(npcs: Npc[]): Npc[] {
     const byDisposition = DISPOSITION_ORDER[a.disposition] - DISPOSITION_ORDER[b.disposition];
     return byDisposition !== 0 ? byDisposition : a.name.localeCompare(b.name, 'fr');
   });
+}
+
+/**
+ * Dérive le `Npc.challengeRating` du NC verbatim du bloc de stats (PER-431) — le champ
+ * `nc` de `CustomCreature` est un texte libre (« 3 », « ½ », « 2 (3) », « 8+ ») : on n'en
+ * extrait que le nombre EN TÊTE de la chaîne (le « ½ » du livre valant 0,5), le reste
+ * (parenthèse, « + ») étant narratif et ignoré pour le tri. Renvoie `null` dès que le
+ * bloc est absent, sans NC, ou dont le NC ne commence par aucun nombre reconnaissable —
+ * jamais une exception : un PNJ sans NC dérivable retombe simplement en fin de tri
+ * (`sortNpcsByChallenge`).
+ */
+export function deriveChallengeRatingFromStats(stats: CustomCreature | null): number | null {
+  const nc = stats?.nc?.trim();
+  if (!nc) return null;
+  const match = nc.replace('½', '0.5').match(/^-?\d+(\.\d+)?/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  return Number.isFinite(value) ? value : null;
 }
 
 /**

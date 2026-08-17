@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Creature } from '@/data/schema';
 import {
   CUSTOM_CREATURE_FALLBACK_NAME,
   CUSTOM_CREATURE_SLUG,
   CUSTOM_LIST_MAX_LENGTH,
   CUSTOM_TEXT_MAX_LENGTH,
   customCreatureBlob,
+  customCreatureFromBestiary,
   normalizeCustomCreature,
 } from './customCreature';
 
@@ -95,5 +97,40 @@ describe('customCreatureBlob', () => {
   it('retombe sur un nom générique quand l’instance n’est pas nommée', () => {
     expect(customCreatureBlob(BASE).name).toBe(CUSTOM_CREATURE_FALLBACK_NAME);
     expect(customCreatureBlob(BASE, '').name).toBe(CUSTOM_CREATURE_FALLBACK_NAME);
+  });
+});
+
+describe('customCreatureFromBestiary', () => {
+  const CREATURE: Creature = {
+    id: 'loup',
+    name: 'Loup',
+    category: 'animaux',
+    nc: 0.5,
+    abilities: { AGI: 3, CON: 1, FOR: 1, PER: 1, CHA: -1, INT: -4, VOL: 0 },
+    defense: 13,
+    hitPoints: 15,
+    initiative: 8,
+    description: 'Un loup famélique.',
+    attacks: [{ name: 'Morsure', bonus: '+3', damage: '1d6+1', rider: '+ renversement' }],
+    specialAbilities: [{ name: 'Odorat', text: 'Détecte au flair.' }],
+    sourcePage: 274,
+  };
+
+  it('copie le socle et les champs facultatifs, sans lien vers la créature d’origine', () => {
+    const custom = customCreatureFromBestiary(CREATURE);
+    expect(custom).toEqual({
+      initiative: 8,
+      hitPoints: 15,
+      defense: 13,
+      agility: 3,
+      nc: '½',
+      description: 'Un loup famélique.',
+      attacks: [{ name: 'Morsure', bonus: '+3', damage: '1d6+1' }],
+      specialAbilities: [{ name: 'Odorat', text: 'Détecte au flair.' }],
+    });
+  });
+
+  it('renvoie undefined pour une entrée gabarit sans socle chiffré', () => {
+    expect(customCreatureFromBestiary({ ...CREATURE, initiative: undefined })).toBeUndefined();
   });
 });

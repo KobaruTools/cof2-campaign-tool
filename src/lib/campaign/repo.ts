@@ -10,6 +10,7 @@
  * `rowToCampaign` (fonction pure, testée).
  */
 import type { EquipmentLine } from '@/lib/character/types';
+import { normalizeCustomCreature, type CustomCreature } from '@/lib/session/customCreature';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { Database, Json } from '@/lib/supabase/types';
 import {
@@ -267,6 +268,16 @@ export async function deleteCampaign(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Parse défensif de la colonne `stats` (jsonb) vers `CustomCreature | null` (PER-431).
+ * Réutilise `normalizeCustomCreature` (même garde-fous qu'une créature manuelle du
+ * tracker) : un blob corrompu ou dont le socle obligatoire manque retombe sur `null`
+ * plutôt que de lever.
+ */
+export function parseNpcStats(raw: Json): CustomCreature | null {
+  return normalizeCustomCreature(raw) ?? null;
+}
+
 /** Mappe une ligne SQL `campaign_npcs` vers l'entité `Npc` de l'application. */
 export function rowToNpc(row: NpcRow): Npc {
   return {
@@ -278,6 +289,7 @@ export function rowToNpc(row: NpcRow): Npc {
     sex: row.sex as Npc['sex'],
     categoryId: row.category_id,
     challengeRating: row.challenge_rating,
+    stats: parseNpcStats(row.stats),
     location: row.location,
     disposition: row.disposition as Npc['disposition'],
     status: row.status as Npc['status'],
@@ -297,6 +309,7 @@ export interface NpcInput {
   sex?: Npc['sex'];
   categoryId?: string | null;
   challengeRating?: number | null;
+  stats?: CustomCreature | null;
   location?: string | null;
   disposition?: Npc['disposition'];
   status?: Npc['status'];
@@ -317,6 +330,7 @@ function npcInputToRow(input: Partial<NpcInput>): NpcRowUpdate {
   if (input.sex !== undefined) row.sex = input.sex;
   if (input.categoryId !== undefined) row.category_id = input.categoryId;
   if (input.challengeRating !== undefined) row.challenge_rating = input.challengeRating;
+  if (input.stats !== undefined) row.stats = input.stats as unknown as Json;
   if (input.location !== undefined) row.location = input.location;
   if (input.disposition !== undefined) row.disposition = input.disposition;
   if (input.status !== undefined) row.status = input.status;

@@ -15,30 +15,43 @@
  * personnages RATTACHÉS à la campagne (`Character.campaignId`), même source
  * que `campaignCharacters` dans `LootTreasurePanel`.
  */
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import AddIcon from '@mui/icons-material/Add';
 import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LockIcon from '@mui/icons-material/Lock';
 import PublicIcon from '@mui/icons-material/Public';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import { AppAlert } from '@/components/AppAlert';
+import { AppTooltip } from '@/components/AppTooltip';
+import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { RichTextEditor } from '@/components/sheet/RichTextEditor';
 import { ancestries, ancestryById } from '@/data';
 import type { Character, Sex } from '@/lib/character/types';
 import { pickName } from '@/lib/character/names';
+import { deriveChallengeRatingFromStats } from '@/lib/campaign/npc';
 import {
   NPC_DISPOSITION_LABELS,
   NPC_STATUS_LABELS,
@@ -47,6 +60,63 @@ import {
   type NpcStatus,
 } from '@/lib/campaign/types';
 import type { NpcInput } from '@/lib/campaign/repo';
+import {
+  customCreatureBlob,
+  customCreatureFromBestiary,
+  normalizeCustomCreature,
+  CUSTOM_FIELD_MAX_LENGTH,
+  CUSTOM_LIST_MAX_LENGTH,
+  CUSTOM_TEXT_MAX_LENGTH,
+  type CustomCreature,
+} from '@/lib/session/customCreature';
+import { useBestiaryStore } from '@/stores/bestiary';
+import { CreatureCatalogAutocomplete } from './CreatureCatalogAutocomplete';
+
+/** Source du bloc de stats du PNJ : catalogue du bestiaire (copie figée), ou saisie manuelle. */
+type StatsSource = 'bestiary' | 'manual';
+
+/** Ligne d'attaque en cours de saisie (champs libres, tous verbatim) — cf. `AddCreatureDialog`. */
+interface AttackDraft {
+  name: string;
+  bonus: string;
+  damage: string;
+  range: string;
+}
+
+/** Ligne de capacité spéciale en cours de saisie. */
+interface AbilityDraft {
+  name: string;
+  text: string;
+}
+
+const EMPTY_ATTACK: AttackDraft = { name: '', bonus: '', damage: '', range: '' };
+const EMPTY_ABILITY: AbilityDraft = { name: '', text: '' };
+
+/**
+ * Entier saisi dans un champ numérique, ou `undefined` si le champ est vide/invalide.
+ * Les champs numériques sont tenus en TEXTE : ils doivent pouvoir être temporairement
+ * vides pendant la frappe (même motif que `AddCreatureDialog`).
+ */
+function parseIntegerField(raw: string): number | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const value = Number(trimmed);
+  return Number.isFinite(value) ? Math.trunc(value) : undefined;
+}
+
+/** Valeur initiale d'un champ numérique tenu en texte. Miroir de `parseIntegerField`. */
+function numberField(value: number | undefined): string {
+  return value === undefined ? '' : String(value);
+}
+
+/** Intitulé d'une sous-section du bloc de stats. */
+function StatsFieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+      {children}
+    </Typography>
+  );
+}
 
 export interface NpcFormDialogProps {
   open: boolean;
@@ -93,6 +163,106 @@ export function NpcFormDialog({
   );
   const [saving, setSaving] = useState(false);
 
+  // Statistiques de combat (PER-431) — section repliée par défaut, quel que soit l'état
+  // du PNJ édité (le MJ l'ouvre volontairement quand il en a besoin).
+  const [statsExpanded, setStatsExpanded] = useState(false);
+  // Un PNJ déjà doté de stats est forcément une copie déjà FIGÉE (l'origine bestiaire
+  // n'est jamais conservée) : on rouvre directement en saisie manuelle sur ses valeurs.
+  const [statsSource, setStatsSource] = useState<StatsSource>(npc?.stats ? 'manual' : 'bestiary');
+  const [selectedCreatureSlug, setSelectedCreatureSlug] = useState<string | null>(null);
+  const [statsInitiative, setStatsInitiative] = useState(numberField(npc?.stats?.initiative));
+  const [statsHitPoints, setStatsHitPoints] = useState(numberField(npc?.stats?.hitPoints));
+  const [statsDefense, setStatsDefense] = useState(numberField(npc?.stats?.defense));
+  const [statsAgility, setStatsAgility] = useState(numberField(npc?.stats?.agility));
+  const [statsNc, setStatsNc] = useState(npc?.stats?.nc ?? '');
+  const [statsDescription, setStatsDescription] = useState(npc?.stats?.description ?? '');
+  const [statsAttacks, setStatsAttacks] = useState<AttackDraft[]>(() =>
+    (npc?.stats?.attacks ?? []).map((a) => ({
+      name: a.name,
+      bonus: a.bonus ?? '',
+      damage: a.damage ?? '',
+      range: a.range ?? '',
+    })),
+  );
+  const [statsAbilities, setStatsAbilities] = useState<AbilityDraft[]>(() =>
+    (npc?.stats?.specialAbilities ?? []).map((a) => ({ name: a.name, text: a.text })),
+  );
+
+  const bestiaryList = useBestiaryStore((s) => s.list);
+  const bestiaryStatus = useBestiaryStore((s) => s.status);
+  const loadBestiaryList = useBestiaryStore((s) => s.loadList);
+  useEffect(() => {
+    void loadBestiaryList();
+  }, [loadBestiaryList]);
+  const bestiaryLoading = !bestiaryList || bestiaryStatus === 'idle' || bestiaryStatus === 'loading';
+
+  // Le catalogue (`list`) ne porte qu'un résumé léger (PER-244) : la copie figée a
+  // besoin du BLOB complet (attaques, capacités, description…), chargé à la demande —
+  // même mécanisme que `CreatureBlobView` (disque puis réseau, mémoïsé par slug).
+  const selectedBlob = useBestiaryStore((s) => (selectedCreatureSlug ? s.blobs[selectedCreatureSlug] : undefined));
+  const selectedBlobStatus = useBestiaryStore((s) =>
+    selectedCreatureSlug ? s.blobStatus[selectedCreatureSlug] : undefined,
+  );
+  const loadCreatureBlob = useBestiaryStore((s) => s.loadBlob);
+  useEffect(() => {
+    if (selectedCreatureSlug) void loadCreatureBlob(selectedCreatureSlug);
+  }, [selectedCreatureSlug, loadCreatureBlob]);
+  const selectedBlobLoading = Boolean(selectedCreatureSlug) && !selectedBlob && selectedBlobStatus !== 'error';
+
+  const bestiaryDraft = useMemo(
+    () => (selectedBlob ? customCreatureFromBestiary(selectedBlob) : undefined),
+    [selectedBlob],
+  );
+
+  const manualDraft = useMemo<CustomCreature | undefined>(
+    () =>
+      normalizeCustomCreature({
+        initiative: parseIntegerField(statsInitiative),
+        hitPoints: parseIntegerField(statsHitPoints),
+        defense: parseIntegerField(statsDefense),
+        agility: parseIntegerField(statsAgility),
+        nc: statsNc,
+        description: statsDescription,
+        attacks: statsAttacks,
+        specialAbilities: statsAbilities,
+      }),
+    [statsInitiative, statsHitPoints, statsDefense, statsAgility, statsNc, statsDescription, statsAttacks, statsAbilities],
+  );
+
+  const effectiveStatsDraft = statsSource === 'bestiary' ? bestiaryDraft : manualDraft;
+  const statsPreview = useMemo(
+    () => (effectiveStatsDraft ? customCreatureBlob(effectiveStatsDraft, name.trim()) : undefined),
+    [effectiveStatsDraft, name],
+  );
+
+  /**
+   * Bascule de source : quitter « Depuis le bestiaire » copie le dernier bloc
+   * sélectionné dans les champs manuels (COPIE FIGÉE, plus aucun lien avec la
+   * créature d'origine) avant de basculer, pour que l'édition libre parte de ces
+   * valeurs plutôt que de champs vides.
+   */
+  const handleStatsSourceChange = (next: StatsSource | null) => {
+    if (!next || next === statsSource) return;
+    if (next === 'manual' && bestiaryDraft) {
+      setStatsInitiative(numberField(bestiaryDraft.initiative));
+      setStatsHitPoints(numberField(bestiaryDraft.hitPoints));
+      setStatsDefense(numberField(bestiaryDraft.defense));
+      setStatsAgility(numberField(bestiaryDraft.agility));
+      setStatsNc(bestiaryDraft.nc ?? '');
+      setStatsDescription(bestiaryDraft.description ?? '');
+      setStatsAttacks(
+        (bestiaryDraft.attacks ?? []).map((a) => ({
+          name: a.name,
+          bonus: a.bonus ?? '',
+          damage: a.damage ?? '',
+          range: a.range ?? '',
+        })),
+      );
+      setStatsAbilities((bestiaryDraft.specialAbilities ?? []).map((a) => ({ name: a.name, text: a.text })));
+    }
+    setStatsSource(next);
+  };
+
   const linkedCharacters = campaignCharacters.filter((c) => linkedCharacterIds.includes(c.id));
 
   const ancestry = ancestryId ? ancestryById.get(ancestryId) : undefined;
@@ -116,6 +286,7 @@ export function NpcFormDialog({
   const handleSubmit = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
+    const stats = effectiveStatsDraft ?? null;
     setSaving(true);
     try {
       await onSubmit({
@@ -130,6 +301,8 @@ export function NpcFormDialog({
         descriptionVisibleToPlayers,
         gmNotes: gmNotes.trim() || null,
         linkedCharacterIds,
+        stats,
+        challengeRating: deriveChallengeRatingFromStats(stats),
       });
       onClose();
     } catch {
@@ -326,6 +499,311 @@ export function NpcFormDialog({
               onChange={setGmNotes}
               placeholder="ex. « En réalité un espion. »"
             />
+          </Box>
+
+          {/* Statistiques de combat (PER-431) — repliées par défaut : facultatives, ne
+              concernent que les PNJ amenés à combattre. */}
+          <Box>
+            <Stack
+              direction="row"
+              spacing={0.5}
+              sx={{ alignItems: 'center', cursor: 'pointer' }}
+              onClick={() => setStatsExpanded((v) => !v)}
+            >
+              <IconButton size="small" onClick={(e) => { e.stopPropagation(); setStatsExpanded((v) => !v); }}>
+                {statsExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+              </IconButton>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Statistiques de combat
+              </Typography>
+              {!statsExpanded && npc?.stats ? (
+                <Typography variant="caption" color="text.secondary">
+                  (renseignées)
+                </Typography>
+              ) : null}
+            </Stack>
+            <Collapse in={statsExpanded}>
+              <Stack spacing={2} sx={{ pt: 1.5, pl: { sm: 4.5 } }}>
+                <ToggleButtonGroup
+                  value={statsSource}
+                  exclusive
+                  size="small"
+                  onChange={(_e, next: StatsSource | null) => handleStatsSourceChange(next)}
+                  aria-label="Source des statistiques"
+                >
+                  <ToggleButton value="bestiary" sx={{ textTransform: 'none' }}>
+                    Depuis le bestiaire
+                  </ToggleButton>
+                  <ToggleButton value="manual" sx={{ textTransform: 'none' }}>
+                    Saisie manuelle
+                  </ToggleButton>
+                </ToggleButtonGroup>
+
+                {statsSource === 'bestiary' &&
+                  (bestiaryStatus === 'error' ? (
+                    <AppAlert
+                      severity="error"
+                      title="Chargement du bestiaire impossible"
+                      action={
+                        <Button color="inherit" size="small" onClick={() => loadBestiaryList({ force: true })}>
+                          Réessayer
+                        </Button>
+                      }
+                    >
+                      Une erreur est survenue en chargeant les créatures.
+                    </AppAlert>
+                  ) : bestiaryStatus === 'unconfigured' ? (
+                    <AppAlert severity="info" title="Bestiaire indisponible">
+                      Le bestiaire est servi depuis la base de données, qui n&apos;est pas configurée
+                      dans cet environnement.
+                    </AppAlert>
+                  ) : bestiaryLoading ? (
+                    <Skeleton variant="rounded" height={40} />
+                  ) : (
+                    <CreatureCatalogAutocomplete
+                      options={bestiaryList}
+                      value={selectedCreatureSlug}
+                      onSelect={setSelectedCreatureSlug}
+                    />
+                  ))}
+
+                {statsSource === 'manual' && (
+                  <>
+                    <Stack spacing={0.75}>
+                      <StatsFieldLabel>Socle (requis dès qu&apos;un des trois est renseigné)</StatsFieldLabel>
+                      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                        <TextField
+                          type="number"
+                          size="small"
+                          label="Initiative"
+                          value={statsInitiative}
+                          onChange={(e) => setStatsInitiative(e.target.value)}
+                          sx={{ flex: '1 1 120px', minWidth: 110 }}
+                        />
+                        <TextField
+                          type="number"
+                          size="small"
+                          label="Points de vie"
+                          value={statsHitPoints}
+                          onChange={(e) => setStatsHitPoints(e.target.value)}
+                          sx={{ flex: '1 1 120px', minWidth: 110 }}
+                          slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                        />
+                        <TextField
+                          type="number"
+                          size="small"
+                          label="Défense"
+                          value={statsDefense}
+                          onChange={(e) => setStatsDefense(e.target.value)}
+                          sx={{ flex: '1 1 120px', minWidth: 110 }}
+                        />
+                        <TextField
+                          type="number"
+                          size="small"
+                          label="Agilité"
+                          value={statsAgility}
+                          onChange={(e) => setStatsAgility(e.target.value)}
+                          helperText="Départage les égalités"
+                          sx={{ flex: '1 1 120px', minWidth: 110 }}
+                        />
+                        <TextField
+                          size="small"
+                          label="NC"
+                          value={statsNc}
+                          onChange={(e) => setStatsNc(e.target.value)}
+                          helperText="Facultatif"
+                          sx={{ flex: '0 1 100px', minWidth: 90 }}
+                          slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                        />
+                      </Stack>
+                    </Stack>
+
+                    <TextField
+                      size="small"
+                      label="Description"
+                      placeholder="Notes de combat libres (facultatif)"
+                      value={statsDescription}
+                      onChange={(e) => setStatsDescription(e.target.value)}
+                      multiline
+                      minRows={2}
+                      slotProps={{ htmlInput: { maxLength: CUSTOM_TEXT_MAX_LENGTH } }}
+                    />
+
+                    <Stack spacing={1}>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <StatsFieldLabel>Attaques</StatsFieldLabel>
+                        <Box sx={{ flexGrow: 1 }} />
+                        <Button
+                          size="small"
+                          startIcon={<AddIcon />}
+                          disabled={statsAttacks.length >= CUSTOM_LIST_MAX_LENGTH}
+                          onClick={() => setStatsAttacks((prev) => [...prev, { ...EMPTY_ATTACK }])}
+                        >
+                          Ajouter une attaque
+                        </Button>
+                      </Stack>
+                      {statsAttacks.map((attack, index) => (
+                        <Stack
+                          key={index}
+                          direction="row"
+                          spacing={1}
+                          sx={{ alignItems: 'flex-start', flexWrap: 'wrap', rowGap: 1 }}
+                        >
+                          <TextField
+                            size="small"
+                            label="Mode"
+                            placeholder="Ex. Épée longue"
+                            value={attack.name}
+                            onChange={(e) =>
+                              setStatsAttacks((prev) =>
+                                prev.map((a, i) => (i === index ? { ...a, name: e.target.value } : a)),
+                              )
+                            }
+                            sx={{ flex: '2 1 180px', minWidth: 150 }}
+                            slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                          />
+                          <TextField
+                            size="small"
+                            label="Bonus"
+                            placeholder="+7"
+                            value={attack.bonus}
+                            onChange={(e) =>
+                              setStatsAttacks((prev) =>
+                                prev.map((a, i) => (i === index ? { ...a, bonus: e.target.value } : a)),
+                              )
+                            }
+                            sx={{ flex: '0 1 100px', minWidth: 90 }}
+                            slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                          />
+                          <TextField
+                            size="small"
+                            label="DM"
+                            placeholder="1d8+3"
+                            value={attack.damage}
+                            onChange={(e) =>
+                              setStatsAttacks((prev) =>
+                                prev.map((a, i) => (i === index ? { ...a, damage: e.target.value } : a)),
+                              )
+                            }
+                            sx={{ flex: '1 1 120px', minWidth: 100 }}
+                            slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                          />
+                          <TextField
+                            size="small"
+                            label="Portée"
+                            placeholder="20 m"
+                            value={attack.range}
+                            onChange={(e) =>
+                              setStatsAttacks((prev) =>
+                                prev.map((a, i) => (i === index ? { ...a, range: e.target.value } : a)),
+                              )
+                            }
+                            sx={{ flex: '1 1 110px', minWidth: 90 }}
+                            slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                          />
+                          <AppTooltip title="Retirer cette attaque">
+                            <IconButton
+                              size="small"
+                              aria-label="Retirer cette attaque"
+                              onClick={() => setStatsAttacks((prev) => prev.filter((_a, i) => i !== index))}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </AppTooltip>
+                        </Stack>
+                      ))}
+                    </Stack>
+
+                    <Stack spacing={1}>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <StatsFieldLabel>Capacités spéciales</StatsFieldLabel>
+                        <Box sx={{ flexGrow: 1 }} />
+                        <Button
+                          size="small"
+                          startIcon={<AddIcon />}
+                          disabled={statsAbilities.length >= CUSTOM_LIST_MAX_LENGTH}
+                          onClick={() => setStatsAbilities((prev) => [...prev, { ...EMPTY_ABILITY }])}
+                        >
+                          Ajouter une capacité
+                        </Button>
+                      </Stack>
+                      {statsAbilities.map((ability, index) => (
+                        <Stack
+                          key={index}
+                          direction="row"
+                          spacing={1}
+                          sx={{ alignItems: 'flex-start', flexWrap: 'wrap', rowGap: 1 }}
+                        >
+                          <TextField
+                            size="small"
+                            label="Nom"
+                            placeholder="Ex. Souffle (L)"
+                            value={ability.name}
+                            onChange={(e) =>
+                              setStatsAbilities((prev) =>
+                                prev.map((a, i) => (i === index ? { ...a, name: e.target.value } : a)),
+                              )
+                            }
+                            sx={{ flex: '1 1 160px', minWidth: 140 }}
+                            slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                          />
+                          <TextField
+                            size="small"
+                            label="Texte"
+                            value={ability.text}
+                            onChange={(e) =>
+                              setStatsAbilities((prev) =>
+                                prev.map((a, i) => (i === index ? { ...a, text: e.target.value } : a)),
+                              )
+                            }
+                            multiline
+                            sx={{ flex: '3 1 260px', minWidth: 200 }}
+                            slotProps={{ htmlInput: { maxLength: CUSTOM_TEXT_MAX_LENGTH } }}
+                          />
+                          <AppTooltip title="Retirer cette capacité">
+                            <IconButton
+                              size="small"
+                              aria-label="Retirer cette capacité"
+                              onClick={() => setStatsAbilities((prev) => prev.filter((_a, i) => i !== index))}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </AppTooltip>
+                        </Stack>
+                      ))}
+                    </Stack>
+                  </>
+                )}
+
+                <Divider />
+
+                {statsSource === 'bestiary' && selectedBlobLoading ? (
+                  <Skeleton variant="rounded" height={120} />
+                ) : statsSource === 'bestiary' && selectedBlobStatus === 'error' ? (
+                  <AppAlert severity="error" title="Chargement du bloc de stats impossible">
+                    Une erreur est survenue en chargeant cette créature.
+                  </AppAlert>
+                ) : statsPreview ? (
+                  <BestiaryStatBlock creature={statsPreview} />
+                ) : (
+                  <Box
+                    sx={{
+                      p: 3,
+                      textAlign: 'center',
+                      borderRadius: 1,
+                      border: '1px dashed',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography color="text.secondary">
+                      {statsSource === 'bestiary'
+                        ? 'Sélectionnez une créature pour copier son bloc de stats.'
+                        : "Renseignez l'initiative, les points de vie et la défense pour afficher le bloc de stats."}
+                    </Typography>
+                  </Box>
+                )}
+              </Stack>
+            </Collapse>
           </Box>
         </Stack>
       </DialogContent>

@@ -15,6 +15,7 @@
  * `BestiaryStatBlock` et toute la dérivation des lignes d'initiative.
  */
 import type { Creature } from '@/data/schema';
+import { creatureNcLabel } from '@/lib/ui/creature';
 
 /** Slug porté par une instance de créature créée à la main (aucune entrée de bestiaire derrière). */
 export const CUSTOM_CREATURE_SLUG = 'custom';
@@ -183,4 +184,33 @@ export function customCreatureBlob(
     ...(custom.specialAbilities ? { specialAbilities: custom.specialAbilities } : {}),
     sourcePage: 0,
   };
+}
+
+/**
+ * Convertit une créature du bestiaire en bloc `CustomCreature` — la COPIE FIGÉE
+ * consommée par la fiche PNJ (PER-431) quand le MJ choisit « Depuis le bestiaire » :
+ * une fois produite, cette copie n'a plus aucun lien avec `creature` (aucune référence
+ * conservée), exactement comme une saisie manuelle, et s'édite librement ensuite.
+ *
+ * Renvoie `undefined` si le socle obligatoire (initiative/PV/défense) manque en
+ * bestiaire — arrive pour une entrée GABARIT imprimée sans bloc chiffré (ex. « Zombie »,
+ * p. 301) : un tel bloc ne serait de toute façon pas jouable au tracker.
+ *
+ * Simplifications assumées (perte de fidélité acceptée par le choix de réutiliser
+ * `CustomCreature` plutôt qu'un second type de bloc) : `attackCount`/`rider` des
+ * attaques et `richText` des capacités ne sont pas repris (`CustomCreatureAttack`/
+ * `CustomCreatureAbility` ne les portent pas) ; les badges de réduction de dégâts
+ * (`damageReduction`) et la grille de caractéristiques ne sont pas copiés non plus.
+ */
+export function customCreatureFromBestiary(creature: Creature): CustomCreature | undefined {
+  return normalizeCustomCreature({
+    initiative: creature.initiative,
+    hitPoints: creature.hitPoints,
+    defense: creature.defense,
+    agility: creature.abilities?.AGI,
+    nc: creatureNcLabel(creature) ?? undefined,
+    description: creature.description,
+    attacks: creature.attacks,
+    specialAbilities: creature.specialAbilities,
+  });
 }
