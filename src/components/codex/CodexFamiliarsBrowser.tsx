@@ -38,13 +38,42 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { classById, featureById, pathById } from '@/data';
 import { fantasticFamiliars } from '@/data/fantastic-familiars';
-import type { AbilityId, Feature, FantasticFamiliar } from '@/data/schema';
+import { ABILITY_IDS, type AbilityId, type Feature, type FantasticFamiliar } from '@/data/schema';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
-import { AbilityChipBox, GlossaryRichText } from '@/components/sheet/FeatureRichText';
+import { AbilityChipBox, AbilityValueChip, GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { classColor } from '@/lib/ui/classColors';
+
+/**
+ * Stat-block GÉNÉRIQUE du familier (TAILLE MINUSCULE, rang 3 de la voie, p. 132) — commun aux 12
+ * familiers, avant l'écart propre à chacun (`abilityOverrides`). AGI porte un dé bonus (astérisque
+ * du livre, « l'un des dés lancés doit être ≥ 4 »). Défense/PV/Initiative dépendent du RANG dans la
+ * voie / du NIVEAU / de l'Initiative du personnage — non résolvables hors personnage, affichées en
+ * formule symbolique (retour propriétaire : « ces familiers n'ont aucune statistique prévue ? »).
+ */
+const FAMILIAR_BASE_ABILITIES: Record<AbilityId, number> = {
+  AGI: 3,
+  CON: 2,
+  FOR: -4,
+  PER: 2,
+  CHA: -2,
+  INT: 1,
+  VOL: 2,
+};
+const FAMILIAR_BONUS_DIE_ABILITY: AbilityId = 'AGI';
+
+/** Caractéristiques NETTES du familier (base + écart propre) — `undefined` si l'écart n'est pas
+ * réductible à des valeurs fixes (`abilityNote`, ex. minimoï : formule dérivée du personnage). */
+function familiarNetAbilities(familiar: FantasticFamiliar): Record<AbilityId, number> | undefined {
+  if (familiar.abilityNote) return undefined;
+  const overrides = familiar.abilityOverrides ?? {};
+  const result = {} as Record<AbilityId, number>;
+  for (const ability of ABILITY_IDS) result[ability] = FAMILIAR_BASE_ABILITIES[ability] + (overrides[ability] ?? 0);
+  return result;
+}
 
 const cardSx = {
   borderRadius: 2,
@@ -184,6 +213,49 @@ function FamiliarBonusBlock({ abilityBonus }: { abilityBonus: AbilityId }) {
   );
 }
 
+/** Bloc « Familier (rang 3) » — stat-block générique + écart du familier, même cadre `PathCard`
+ * que les autres lignes. Défense/PV/Initiative en formule symbolique (pas de personnage ici). */
+function FamiliarStatsBlock({ familiar }: { familiar: FantasticFamiliar }) {
+  const abilities = familiarNetAbilities(familiar);
+  return (
+    <PathCard
+      name="Familier (taille minuscule)"
+      checked
+      selectable={false}
+      detail={
+        <Stack spacing={1}>
+          {abilities ? (
+            <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap' }}>
+              {ABILITY_IDS.map((ability) => (
+                <Box key={ability} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.15 }}>
+                  <AbilityValueChip ability={ability} value={abilities[ability]} />
+                  {ability === FAMILIAR_BONUS_DIE_ABILITY && (
+                    <AppTooltip title="Dé bonus : l'un des deux dés lancés doit afficher 4 ou plus.">
+                      <Box component="span" sx={{ fontSize: '0.75em', color: 'text.secondary', cursor: 'help' }}>
+                        *
+                      </Box>
+                    </AppTooltip>
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              {familiar.abilityNote}
+            </Typography>
+          )}
+          <Typography variant="caption" color="text.secondary">
+            Défense = 14 + rang dans la voie · Points de vigueur = niveau du personnage × 2 · Initiative =
+            Initiative du personnage
+          </Typography>
+        </Stack>
+      }
+      sourcePage={132}
+      sx={{ height: 'auto', mt: 0.5 }}
+    />
+  );
+}
+
 function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
   return (
     <Box sx={cardSx}>
@@ -193,6 +265,9 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
         </Typography>
         <SourceRef page={familiar.sourcePage} term={familiar.name} />
       </Stack>
+      <SlotLabel>Rang 3 (familier)</SlotLabel>
+      <FamiliarStatsBlock familiar={familiar} />
+
       <SlotLabel>Rang 4 (pouvoir mineur)</SlotLabel>
       <FamiliarPowerBlock familiar={familiar} slot="minor" />
 
@@ -227,14 +302,6 @@ function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
           familiar.description
         )}
       </Typography>
-      {(familiar.abilityOverrides || familiar.abilityNote) && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
-          {familiar.abilityNote ??
-            Object.entries(familiar.abilityOverrides!)
-              .map(([ability, value]) => `${ability} ${value > 0 ? '+' : ''}${value}`)
-              .join(', ')}
-        </Typography>
-      )}
     </Box>
   );
 }
