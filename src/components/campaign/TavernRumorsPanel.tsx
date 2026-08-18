@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Contenu de l'onglet « Rumeurs de taverne » du tiroir d'outils du MJ (PER-199).
+ * Contenu du tiroir « Rumeurs de taverne » de l'écran de MJ (PER-199).
  *
  * Le MJ pré-écrit une réserve de rumeurs (accroches libres) PROPRE à la campagne,
  * puis en PIOCHE UNE AU HASARD en jeu (typiquement à l'entrée d'une taverne). Le
@@ -13,8 +13,8 @@
  * logique de tirage/épuisement vit dans le module PUR `@/lib/campaign/rumors` ;
  * ce composant n'en est que l'habillage (état de saisie + rumeur tirée éphémère).
  *
- * Ce composant est le CORPS d'un onglet : il ne porte plus son propre conteneur
- * ni son repli — le tiroir (`GmToolsDrawer`) fournit l'ossature et la navigation.
+ * Ce composant est le CORPS du tiroir : il ne porte pas son propre conteneur ni
+ * sa fermeture — `GmRumorsDrawer` fournit l'ossature (en-tête, croix).
  */
 import { useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';

@@ -3,8 +3,8 @@
 /**
  * Tiroir « Aide-mémoire » de l'écran de MJ — panneau latéral droit qui intègre le référentiel de
  * règles CO2 (`/reference`) DIRECTEMENT dans l'écran de MJ, sans quitter la table. Même ossature que
- * le tiroir « Outils du MJ » (`GmToolsDrawer`) : variante `temporary` (voile, Échap, piège de focus),
- * ancré à droite, plein écran sous `sm`.
+ * les autres tiroirs de l'écran de MJ : variante `temporary` (voile, Échap, piège de focus), ancré
+ * à droite, plein écran sous `sm`.
  *
  * Il ne fait que poser l'en-tête collé (titre + fermeture) et déléguer TOUT le contenu — recherche,
  * onglets de section, sommaire, panneaux — au composant partagé `ReferenceBrowser`, en variante

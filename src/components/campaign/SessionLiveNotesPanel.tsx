@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Contenu de l'onglet « Notes de session » du tiroir d'outils du MJ (PER-427).
+ * Contenu du tiroir « Notes de session » de l'écran de MJ (PER-427).
  *
  * Texte libre écrit par le MJ PENDANT que la partie se joue — distinct du recap
  * après-coup (`SessionRecapBlock`, PER-407, publiable aux joueurs) : ici la note
@@ -12,8 +12,8 @@
  * session active de toute façon — la note affichée est celle de la dernière
  * session close tant qu'aucune nouvelle partie n'a démarré).
  *
- * Ce composant est le CORPS d'un onglet : il ne porte pas son propre conteneur
- * ni son repli — le tiroir (`GmToolsDrawer`) fournit l'ossature et la navigation.
+ * Ce composant est le CORPS du tiroir : il ne porte pas son propre conteneur ni
+ * sa fermeture — `GmNotesDrawer` fournit l'ossature (en-tête, croix).
  */
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';

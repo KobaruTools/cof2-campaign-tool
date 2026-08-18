@@ -1,22 +1,22 @@
 'use client';
 
 /**
- * Câblage URL du tiroir « Outils du MJ » (PER-199). Séparé du tiroir lui-même pour
- * cantonner la lecture de `?tools=` — qui exige une frontière `Suspense`, comme le
- * `?sheet=` du tiroir de fiche (`GmSheetDrawerHost`).
+ * Câblage URL du tiroir « Butin ». Séparé du tiroir lui-même pour cantonner la lecture
+ * de `?loot=` — qui exige une frontière `Suspense`, comme les autres tiroirs de l'écran
+ * de MJ.
  *
  * L'ouverture passe par l'URL, en VRAIE ancre (`navigation-real-anchors`) : le bouton
- * Retour du navigateur ferme le tiroir, un lien direct l'ouvre sur le bon onglet, et
- * Ctrl/⌘+Clic sur le bouton d'ouverture ouvre l'écran de MJ déjà déplié dans un onglet.
+ * Retour du navigateur ferme le tiroir, un lien direct l'ouvre, et Ctrl/⌘+Clic sur le
+ * bouton d'ouverture ouvre l'écran de MJ déjà déplié dans un nouvel onglet.
  *
  * Héberge aussi le `DndContext` LOCAL qui orchestre le glisser-déposer ENTRE les deux
- * réserves d'objets de l'onglet Butin (réserve aléatoire de `LootTreasurePanel` ↔
- * inventaire permanent de `GmInventoryPanel`, extension visuelle du MÊME tiroir — cf.
- * `GmToolsDrawer`). Ce `DndContext` est distinct de celui de `gm-screen/page.tsx`
- * (états de combat) : ce tiroir est monté hors de sa portée. Motif repris tel quel
- * (capteurs, collision, `DragOverlay`) de `CombatStatusPalette`/`InitiativeTracker`.
+ * réserves d'objets (réserve aléatoire de `LootTreasurePanel` ↔ inventaire permanent de
+ * `GmInventoryPanel`, extension visuelle du MÊME tiroir — cf. `GmLootDrawer`). Ce
+ * `DndContext` est distinct de celui de `gm-screen/page.tsx` (états de combat) : ce
+ * tiroir est monté hors de sa portée. Motif repris tel quel (capteurs, collision,
+ * `DragOverlay`) de `CombatStatusPalette`/`InitiativeTracker`.
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   DndContext,
@@ -34,13 +34,7 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { categoryDropId } from './GmInventoryPanel';
-import {
-  DEFAULT_GM_TOOL,
-  GmToolsDrawer,
-  isGmToolId,
-  type GmToolId,
-  type PendingDropTarget,
-} from './GmToolsDrawer';
+import { GmLootDrawer, type PendingDropTarget } from './GmLootDrawer';
 import { RANDOM_POOL_DROP_ID } from './LootTreasurePanel';
 import type { Campaign } from '@/lib/campaign/types';
 import {
@@ -53,8 +47,8 @@ import type { EquipmentLine } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { useCampaignsStore } from '@/stores/campaigns';
 
-/** Nom du paramètre d'URL portant l'onglet d'outil affiché dans le tiroir. */
-export const TOOLS_PARAM = 'tools';
+/** Nom du paramètre d'URL qui ouvre le tiroir de butin (booléen : `?loot=1`). */
+export const LOOT_PARAM = 'loot';
 
 /** Payload `@dnd-kit` posé par `LootRow`/`InventoryItemRow` sur l'objet glissé. */
 interface LootDragData {
@@ -95,29 +89,13 @@ function DragGhost({ line }: { line: EquipmentLine }) {
   );
 }
 
-export function GmToolsDrawerHost({
-  campaign,
-  onActiveTabChange,
-}: {
-  campaign: Campaign;
-  /**
-   * Dernier onglet valide affiché (retour propriétaire, PER-199/200) : remonté au parent
-   * pour qu'il persiste ce choix (`usePersistedState`, `gm-screen/page.tsx`) et cible le
-   * bon onglet la prochaine fois que le MJ clique sur « Outils du MJ » — sans ce callback,
-   * ce bouton visait toujours `DEFAULT_GM_TOOL`, même juste après avoir fermé le tiroir sur
-   * un autre onglet (repro : ouvrir Butin, fermer, rouvrir → retombait sur Rumeurs).
-   */
-  onActiveTabChange?: (tab: GmToolId) => void;
-}) {
+export function GmLootDrawerHost({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const update = useCampaignsStore((s) => s.update);
 
-  const raw = searchParams.get(TOOLS_PARAM);
-  const valid = isGmToolId(raw);
-  // Paramètre présent mais inconnu (onglet renommé/supprimé) : on nettoie sans bruit.
-  const invalid = raw !== null && !valid;
+  const open = searchParams.get(LOOT_PARAM) === '1';
 
   const close = () => {
     // `scroll: false` : fermer le tiroir ne doit pas ramener le MJ en haut de l'écran (le
@@ -126,22 +104,7 @@ export function GmToolsDrawerHost({
     router.replace(pathname, { scroll: false });
   };
 
-  useEffect(() => {
-    if (invalid) router.replace(pathname, { scroll: false });
-  }, [invalid, router, pathname]);
-
-  // Dernier onglet montré, conservé le temps de l'animation de fermeture : sans lui, le contenu
-  // se viderait pendant que le tiroir glisse (le paramètre disparaît AVANT la fin de la transition).
-  const [lastTab, setLastTab] = useState<GmToolId>(DEFAULT_GM_TOOL);
-  useEffect(() => {
-    // Synchronisation ponctuelle (pas une boucle) : on ne mémorise que des onglets valides.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (valid) setLastTab(raw);
-    if (valid) onActiveTabChange?.(raw);
-  }, [valid, raw, onActiveTabChange]);
-  const activeTab = valid ? raw : lastTab;
-
-  // Glisser-déposer entre les deux réserves d'objets de l'onglet Butin (extension PER-200).
+  // Glisser-déposer entre les deux réserves d'objets.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
@@ -211,17 +174,8 @@ export function GmToolsDrawerHost({
       onDragEnd={onDragEnd}
       onDragCancel={() => setActiveDrag(null)}
     >
-      <GmToolsDrawer
-        campaign={campaign}
-        open={valid}
-        activeTab={activeTab}
-        onTabChange={(tab) =>
-          router.replace(`${pathname}?${TOOLS_PARAM}=${tab}`, { scroll: false })
-        }
-        onClose={close}
-        pendingTarget={pendingTarget}
-      />
-      {/* `zIndex` explicite : le tiroir « Outils du MJ » est une MUI `Drawer` (portalée, z-index
+      <GmLootDrawer campaign={campaign} open={open} onClose={close} pendingTarget={pendingTarget} />
+      {/* `zIndex` explicite : le tiroir « Butin » est une MUI `Drawer` (portalée, z-index
           `theme.zIndex.drawer` = 1200) ; sans lui, le fantôme (z-index 999 par défaut de
           `DragOverlay`) restait peint EN DESSOUS, donc invisible pendant le glisser. */}
       <DragOverlay zIndex={1400}>{activeDrag ? <DragGhost line={activeDrag.line} /> : null}</DragOverlay>

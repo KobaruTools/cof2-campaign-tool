@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Contenu de l'onglet « Butin » du tiroir d'outils du MJ (PER-200).
+ * Contenu du tiroir « Butin » de l'écran de MJ (PER-200).
  *
  * Le MJ pré-écrit une réserve d'objets de butin PROPRE à la campagne, puis en PIOCHE
  * UN AU HASARD en jeu (trésor de coffre, récompense, butin sur un adversaire). Le
@@ -15,14 +15,13 @@
  *
  * Données PERSISTÉES sur la campagne (`Campaign.loot`, colonne jsonb, RLS
  * propriétaire) : chaque mutation passe par `useCampaignsStore().update`. La logique
- * de tirage/épuisement vit dans le module PUR `@/lib/campaign/loot`. Frère de
- * `TavernRumorsPanel` (même ossature d'onglet).
+ * de tirage/épuisement vit dans le module PUR `@/lib/campaign/loot`.
  *
  * Glisser-déposer (extension PER-200, inventaire permanent) : chaque ligne est
  * draggable et la liste entière est une zone de dépôt (`RANDOM_POOL_DROP_ID`) —
  * elle accepte un objet venant de l'inventaire permanent (`GmInventoryPanel`, extension
- * du tiroir « Outils du MJ »). Le `DndContext` qui orchestre ce glisser-déposer vit
- * dans `GmToolsDrawerHost`, PAS ici : ce panneau ne fait que poser les hooks `@dnd-kit`.
+ * du tiroir « Butin »). Le `DndContext` qui orchestre ce glisser-déposer vit dans
+ * `GmLootDrawerHost`, PAS ici : ce panneau ne fait que poser les hooks `@dnd-kit`.
  */
 import { useMemo, useState, type ReactNode } from 'react';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -142,7 +141,7 @@ function LootRow({
   onAssign: (character: Character) => void;
   onDuplicate: () => void;
   /** Relocalise vers l'inventaire permanent (mobile — pas de glisser-déposer possible, les
-   * deux réserves n'étant jamais visibles en même temps sous `md`, cf. `GmToolsDrawer`). */
+   * deux réserves n'étant jamais visibles en même temps sous `md`, cf. `GmLootDrawer`). */
   onTransferToInventory: () => void;
   busy: boolean;
 }) {
@@ -236,7 +235,7 @@ function LootRow({
           ))}
         </Menu>
         {/* Mobile seulement : sous `md`, un seul des deux panneaux est visible à la fois
-            (`GmToolsDrawer.mobileView`), donc le glisser-déposer entre réserves y est
+            (`GmLootDrawer.mobileView`), donc le glisser-déposer entre réserves y est
             impossible — ce bouton en est l'équivalent au clic. */}
         <AppTooltip title="Envoyer vers l'inventaire du MJ">
           <IconButton

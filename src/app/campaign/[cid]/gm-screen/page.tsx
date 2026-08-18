@@ -17,9 +17,8 @@
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
-import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, Suspense, use, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
 import {
   DndContext,
   DragOverlay,
@@ -35,10 +34,14 @@ import {
 import { type Step } from 'react-joyride';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DiamondIcon from '@mui/icons-material/Diamond';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import GroupsIcon from '@mui/icons-material/Groups';
 import HandymanIcon from '@mui/icons-material/Handyman';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import HistoryIcon from '@mui/icons-material/History';
+import LocalBarIcon from '@mui/icons-material/LocalBar';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -53,6 +56,10 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
@@ -75,14 +82,10 @@ import { BuffRequestsControl } from '@/components/campaign/BuffRequestsControl';
 import { GroupRestControl } from '@/components/campaign/GroupRestControl';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
-import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
-import {
-  DEFAULT_GM_TOOL,
-  TOOLS as GM_TOOLS_LIST,
-  gmScreenToolsTabTourTarget,
-  isGmToolId,
-  type GmToolId,
-} from '@/components/campaign/GmToolsDrawer';
+import { GmRumorsDrawerHost, RUMORS_PARAM } from '@/components/campaign/GmRumorsDrawerHost';
+import { GmLootDrawerHost, LOOT_PARAM } from '@/components/campaign/GmLootDrawerHost';
+import { GmNpcDrawerHost, NPC_PARAM } from '@/components/campaign/GmNpcDrawerHost';
+import { GmNotesDrawerHost, NOTES_PARAM } from '@/components/campaign/GmNotesDrawerHost';
 import { GmReferenceDrawerHost, REFERENCE_PARAM } from '@/components/campaign/GmReferenceDrawerHost';
 import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBestiaryDrawerHost';
 import { GmHistoryDrawerHost, HISTORY_PARAM } from '@/components/campaign/GmHistoryDrawerHost';
@@ -92,7 +95,6 @@ import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { storageKeys } from '@/lib/storage/keys';
-import { usePersistedState } from '@/lib/ui/usePersistedState';
 import { customCreatureBlob } from '@/lib/session/customCreature';
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import {
@@ -252,55 +254,23 @@ const GM_SCREEN_PLAYERS_STEP_TARGET = '[data-tour="gm-screen-players"]';
  * l'étape décrit les colonnes, invisibles en repli condensé. */
 const GM_SCREEN_TRACKER_STEP_TARGET = '[data-tour="gm-screen-tracker"]';
 
-/** Description de chaque onglet du tiroir « Outils du MJ », pour son étape dédiée du tour
- * (PER-425ter) — une étape par onglet, cf. `buildGmScreenTourSteps`. */
-const GM_TOOL_TOUR_CONTENT: Record<GmToolId, string> = {
-  rumors:
-    'Une réserve de rumeurs propre à la campagne : piochez-en une au hasard pour improviser une scène, sans jamais retomber sur la même.',
-  loot:
-    'Une réserve de butin propre à la campagne : piochez un objet au hasard et attribuez-le d’un clic à l’inventaire d’un personnage.',
-  npc:
-    'Vos PNJ de campagne, regroupés en catégories repliables, triables et cherchables.',
-  notes:
-    'Des notes libres écrites pendant la partie en cours — toujours privées, MJ seul.',
-};
+/** Entrées du menu « Outils du MJ » (retour propriétaire), dans l'ordre d'affichage — chacune une
+ * VRAIE ancre vers son propre tiroir (cf. `GmRumorsDrawerHost` et consorts), pas un onglet d'un
+ * tiroir conteneur. `param` porte à la fois le nom du paramètre d'URL et la clé React. Groupées par
+ * nature (retour propriétaire) : contenu de table généré/tiré (Butin, PNJ, Rumeurs), puis suivi de
+ * partie (Notes, Historique), puis consultation pure (Aide-mémoire, Bestiaire) — `separatorAfter`
+ * pose un `Divider` entre ces trois groupes. */
+const GM_TOOLS_MENU: { param: string; label: string; icon: ReactElement; dataTour: string; separatorAfter?: boolean }[] = [
+  { param: LOOT_PARAM, label: 'Butin', icon: <DiamondIcon fontSize="small" />, dataTour: 'gm-screen-loot' },
+  { param: NPC_PARAM, label: 'PNJ', icon: <GroupsIcon fontSize="small" />, dataTour: 'gm-screen-npc' },
+  { param: RUMORS_PARAM, label: 'Rumeurs de taverne', icon: <LocalBarIcon fontSize="small" />, dataTour: 'gm-screen-rumors', separatorAfter: true },
+  { param: NOTES_PARAM, label: 'Notes de session', icon: <EditNoteIcon fontSize="small" />, dataTour: 'gm-screen-notes' },
+  { param: HISTORY_PARAM, label: 'Historique des parties', icon: <HistoryIcon fontSize="small" />, dataTour: 'gm-screen-history', separatorAfter: true },
+  { param: REFERENCE_PARAM, label: 'Aide-mémoire', icon: <MenuBookOutlinedIcon fontSize="small" />, dataTour: 'gm-screen-reference' },
+  { param: BESTIARY_PARAM, label: 'Bestiaire', icon: <PetsOutlinedIcon fontSize="small" />, dataTour: 'gm-screen-bestiary' },
+];
 
-/** Attend qu'un sélecteur apparaisse dans le DOM (poll par frame), pour le `before` de la
- * première étape d'onglet — cf. son commentaire : le tiroir vient de s'ouvrir (via `router`, donc
- * pas immédiat) et son premier `Tab` n'existe pas encore au moment de l'appel. */
-function waitForElement(selector: string, timeoutMs = 4000): Promise<void> {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    const tick = () => {
-      if (document.querySelector(selector) || Date.now() - start > timeoutMs) {
-        resolve();
-        return;
-      }
-      window.requestAnimationFrame(tick);
-    };
-    tick();
-  });
-}
-
-function buildGmScreenTourSteps({
-  showPlayersStep,
-  openFirstToolsTab,
-}: {
-  showPlayersStep: boolean;
-  /**
-   * Ouvre le tiroir « Outils du MJ » sur son PREMIER onglet et attend que le `Tab` correspondant
-   * existe réellement dans le DOM (PER-425ter) : posé en `before` (promesse NATIVEMENT attendue
-   * par react-joyride, cf. le commentaire de `GuidedTour.onStepBefore`), pas en `onStepBefore` —
-   * le tiroir est démonté quand fermé (`Drawer` sans `keepMounted`), donc son contenu n'existe
-   * PAS encore quand cette étape se présente ; `onStepBefore` ne se déclenche qu'une fois la
-   * cible déjà trouvée, ce qui ne serait jamais arrivé (constaté en recette : la résolution de
-   * cible de react-joyride échoue avant même d'appeler `onStepBefore`, et la séquence tout
-   * entière avortait). Les onglets SUIVANTS n'ont pas ce problème : une fois le tiroir ouvert,
-   * ses 4 `Tab` existent tous en permanence (seul le PANNEAU actif change) — leur bascule reste
-   * donc sur `handleTourStepBefore` (fire-and-forget), comme la fermeture en quittant la séquence.
-   */
-  openFirstToolsTab: () => Promise<void>;
-}): Step[] {
+function buildGmScreenTourSteps({ showPlayersStep }: { showPlayersStep: boolean }): Step[] {
   const steps: Step[] = [
     {
       target: '[data-tour="gm-screen-add-creature"]',
@@ -317,42 +287,12 @@ function buildGmScreenTourSteps({
       placement: 'auto',
     },
     {
-      target: '[data-tour="gm-screen-bestiary"]',
-      title: 'Bestiaire',
-      content:
-        'Ouvre le bestiaire dans un tiroir latéral, sans quitter l’écran de MJ : pratique pour consulter une créature en cours de combat.',
-      placement: 'auto',
-    },
-    {
-      target: '[data-tour="gm-screen-reference"]',
-      title: 'Aide-mémoire',
-      content:
-        'Ouvre le référentiel de règles dans un tiroir latéral, pour vérifier une règle sans quitter l’écran.',
-      placement: 'auto',
-    },
-    {
-      target: '[data-tour="gm-screen-history"]',
-      title: 'Historique des parties',
-      content:
-        'Ouvre l’historique des sessions closes de cette campagne dans un tiroir latéral — utile pour retrouver ce qui s’est passé lors d’une précédente séance.',
-      placement: 'auto',
-    },
-    {
       target: '[data-tour="gm-screen-tools"]',
       title: 'Outils du MJ',
-      content: 'Ouvre un tiroir à onglets rassemblant vos outils de session : rumeurs, butin, PNJ, notes de session.',
+      content:
+        'Ouvre un menu réunissant vos outils de session, chacun dans son propre tiroir latéral : rumeurs de taverne, butin, PNJ, notes de session, bestiaire, aide-mémoire et historique des parties.',
       placement: 'auto',
     },
-    // Une étape par onglet (PER-425ter) : `handleTourStepBefore` ouvre le tiroir sur celui de la
-    // PREMIÈRE de ces étapes et bascule d'onglet à chacune des suivantes — jamais ici, ce fichier ne
-    // décrit QUE la séquence, pas l'ouverture (cf. le commentaire de `handleTourStepBefore`).
-    ...GM_TOOLS_LIST.map((tool, index) => ({
-      target: gmScreenToolsTabTourTarget(tool.id),
-      title: tool.label,
-      content: GM_TOOL_TOUR_CONTENT[tool.id],
-      placement: 'auto' as const,
-      ...(index === 0 ? { before: openFirstToolsTab } : {}),
-    })),
   ];
   if (showPlayersStep) {
     steps.push({
@@ -416,16 +356,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     };
   }, [appHeaderHeight]);
 
-  // Dernier onglet du tiroir « Outils du MJ » affiché — persisté (survit au rechargement)
-  // ET remonté en direct par `GmToolsDrawerHost` à chaque changement d'onglet (survit aussi
-  // à une simple fermeture/réouverture SANS rechargement, cf. `onActiveTabChange`). Sans ce
-  // second point, ce bouton visait toujours `DEFAULT_GM_TOOL` après une fermeture.
-  const [lastToolTab, setLastToolTab] = usePersistedState<GmToolId>(
-    `gm-tools-last-tab:${cid}`,
-    DEFAULT_GM_TOOL,
-    (raw) => (isGmToolId(raw as string) ? (raw as GmToolId) : undefined),
-  );
-
   // Combat en cours — logique partagée avec la fenêtre « présentation » (PER-248) :
   // état persisté par campagne (roster de créatures + PV + tour courant) et dérivation
   // des lignes du tracker. Le bouton « + Ajouter une créature » est laissé sur TOUTES
@@ -477,63 +407,27 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
   // Tour guidé (PER-425) : les cibles (tiroirs + tracker) n'existent que sur l'écran final —
   // mêmes conditions que les deux `return` anticipés plus bas (chargement / campagne
   // introuvable). Désactivé sous mobile/tactile (`!smUp`), comme le tour pilote (PER-423).
-  const router = useRouter();
-  const pathname = usePathname();
   const tourReady = charactersHydrated && !campaignsLoading && !!campaign;
   const tour = useGuidedTour('gmScreen', { ready: tourReady, enabled: smUp });
 
-  // Ouverture RÉELLE du tiroir « Outils du MJ » pendant SES étapes de tour (PER-425bis, étendu
-  // PER-425ter à une étape par onglet) : react-joyride bloque par défaut le clic sur la cible
-  // spotlightée (`spotlightClicks: false`), donc rien ne s'ouvrait jamais sans ça. La toute
-  // PREMIÈRE étape d'onglet ouvre le tiroir sur cet onglet ; chacune des suivantes bascule
-  // simplement l'onglet affiché (même mécanisme, `?tools=<id>`) ; la première étape qui n'est PAS
-  // un onglet (fiches de personnage, ou directement le tracker si la campagne est clairsemée)
-  // referme le tiroir. Le ref retient qu'on a ouvert NOUS-MÊMES (pas le MJ à la main avant de
-  // lancer le tour), pour ne fermer que ce qu'on a ouvert en quittant la séquence d'onglets.
-  const tourOpenedToolsRef = useRef(false);
-  // `before` de la toute première étape d'onglet (cf. le commentaire de `buildGmScreenTourSteps`
-  // sur `openFirstToolsTab`) : ouvre le tiroir puis ATTEND que son `Tab` existe, react-joyride
-  // n'avançant vers l'étape qu'une fois cette promesse résolue.
-  const openFirstToolsTab = useCallback(async () => {
-    tourOpenedToolsRef.current = true;
-    const firstTab = GM_TOOLS_LIST[0].id;
-    router.replace(`${pathname}?${TOOLS_PARAM}=${firstTab}`, { scroll: false });
-    await waitForElement(gmScreenToolsTabTourTarget(firstTab));
-  }, [router, pathname]);
   // Dépli FORCÉ du tracker pendant son étape (PER-425ter), s'il était réduit — cf. le commentaire
   // de `InitiativeTracker.forceExpandedForTour`. Retombe à `false` dès qu'on quitte cette étape
   // (toute autre valeur de cible), donc y compris via « Précédent » ou la fin du tour.
   const [trackerForcedOpenForTour, setTrackerForcedOpenForTour] = useState(false);
-  const handleTourStepBefore = useCallback(
-    (step: Step) => {
-      const target = typeof step.target === 'string' ? step.target : '';
-      const isToolsTabStep = GM_TOOLS_LIST.some((tool) => gmScreenToolsTabTourTarget(tool.id) === target);
-      if (isToolsTabStep) {
-        const tab = GM_TOOLS_LIST.find((tool) => gmScreenToolsTabTourTarget(tool.id) === target)!.id;
-        tourOpenedToolsRef.current = true;
-        router.replace(`${pathname}?${TOOLS_PARAM}=${tab}`, { scroll: false });
-      } else if (tourOpenedToolsRef.current) {
-        tourOpenedToolsRef.current = false;
-        router.replace(pathname, { scroll: false });
-      }
-      // Fiches de personnage (PER-425quater) : remonte tout en haut de l'écran — la première carte
-      // suit immédiatement la barre d'actions collée, `scrollToFirstStep` seul ne recentrait pas
-      // assez et la laissait coincée sous cette barre.
-      if (target === GM_SCREEN_PLAYERS_STEP_TARGET) {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      }
-      setTrackerForcedOpenForTour(target === GM_SCREEN_TRACKER_STEP_TARGET);
-    },
-    [router, pathname],
-  );
-  const handleTourEnd = useCallback(() => {
-    if (tourOpenedToolsRef.current) {
-      tourOpenedToolsRef.current = false;
-      router.replace(pathname, { scroll: false });
+  const handleTourStepBefore = useCallback((step: Step) => {
+    const target = typeof step.target === 'string' ? step.target : '';
+    // Fiches de personnage (PER-425quater) : remonte tout en haut de l'écran — la première carte
+    // suit immédiatement la barre d'actions collée, `scrollToFirstStep` seul ne recentrait pas
+    // assez et la laissait coincée sous cette barre.
+    if (target === GM_SCREEN_PLAYERS_STEP_TARGET) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
     }
+    setTrackerForcedOpenForTour(target === GM_SCREEN_TRACKER_STEP_TARGET);
+  }, []);
+  const handleTourEnd = useCallback(() => {
     setTrackerForcedOpenForTour(false);
     tour.onTourEnd();
-  }, [router, pathname, tour]);
+  }, [tour]);
 
   // Tant que le nom de campagne n'est pas résolu, ou introuvable : pas de fil d'Ariane ni
   // de voyant de session (le sous-header reste masqué) — seul le chrome statique persiste.
@@ -569,6 +463,11 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           ),
         },
   );
+
+  // Menu « Outils du MJ » (retour propriétaire) : préférence d'affichage purement LOCALE (pas
+  // dans l'URL, contrairement aux tiroirs qu'il ouvre) — ancre du bouton qui l'a ouvert, `null`
+  // fermé.
+  const [toolsMenuAnchor, setToolsMenuAnchor] = useState<HTMLElement | null>(null);
 
   // Modale de créature, partagée entre l'ajout et l'édition : `creatureDialogOpen` pilote son
   // ouverture, `editingId` dit LAQUELLE on modifie (`null` = ajout d'une nouvelle créature).
@@ -823,11 +722,13 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           pied de page (voir `FLUSH_FOOTER_ROUTES` dans `AppFooter`, qui annule sa marge sur
           cette route en retour). */}
       <Box sx={{ px: { xs: 2, sm: 4 }, pt: { xs: 2, sm: 4 }, pb: 0 }}>
-        {/* Barre d'actions (PER-236, PER-247), laissée sur toutes les campagnes : ajout de
-            créature, réinitialisation du combat et accès aux Outils du MJ, toutes sur une
-            même ligne. Style verre teinté : bleu pour les actions principales, rouge pour
-            l'action destructive, plus lisible sur le fond illustré que le simple
-            `outlined`/`text` d'origine.
+        {/* Barre d'actions (PER-236, PER-247), laissée sur toutes les campagnes, sur UNE SEULE
+            ligne (retour propriétaire) : ajout de créature, réinitialisation du combat, puis un
+            SEUL bouton « Outils du MJ » à l'extrême droite — ses 7 destinations (rumeurs, butin,
+            PNJ, notes, bestiaire, aide-mémoire, historique) vivent dans un menu déroulant
+            (`GM_TOOLS_MENU`), chacune ouvrant son propre tiroir. Style verre teinté : bleu pour
+            les actions principales, rouge pour l'action destructive, plus lisible sur le fond
+            illustré que le simple `outlined`/`text` d'origine.
 
             COLLÉE sous l'en-tête global pendant tout le défilement (nouvelle demande) : sur un
             écran de MJ chargé (trois grilles + bande d'initiative), ces actions restaient sinon
@@ -907,71 +808,50 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             buttonSx={(theme) => glassButtonSx(theme, 'info')}
           />
           {/* Espaceur : consomme toute la largeur restante pour pousser « Outils du MJ » à
-              l'extrême droite. Un simple `ml: 'auto'` sur le bouton perd face à la marge que
-              `Stack`/`spacing` applique déjà entre ses enfants (même spécificité CSS, la règle
-              de `Stack` gagne). */}
+              l'extrême droite. */}
           <Box sx={{ flexGrow: 1 }} />
-          {/* Bestiaire : ouvre le tiroir latéral intégrant le navigateur du bestiaire (`/bestiary`)
-              sans quitter l'écran de MJ. Vraie ancre (`?bestiary=1`) → Ctrl/⌘+Clic ouvre dans un
-              nouvel onglet, le bouton Retour ferme le tiroir. Même patron que le tiroir « Aide-mémoire ». */}
-          <Button
-            data-tour="gm-screen-bestiary"
-            variant="outlined"
-            size="small"
-            startIcon={<PetsOutlinedIcon />}
-            component={Link}
-            href={`${campaignPath}/gm-screen?${BESTIARY_PARAM}=1`}
-            scroll={false}
-            sx={(theme) => glassButtonSx(theme, 'info')}
-          >
-            Bestiaire
-          </Button>
-          {/* Aide-mémoire : ouvre le tiroir latéral intégrant le référentiel de règles (`/reference`)
-              sans quitter l'écran de MJ. Vraie ancre (`?reference=1`) → Ctrl/⌘+Clic ouvre dans un
-              nouvel onglet, le bouton Retour ferme le tiroir. */}
-          <Button
-            data-tour="gm-screen-reference"
-            variant="outlined"
-            size="small"
-            startIcon={<MenuBookOutlinedIcon />}
-            component={Link}
-            href={`${campaignPath}/gm-screen?${REFERENCE_PARAM}=1`}
-            scroll={false}
-            sx={(theme) => glassButtonSx(theme, 'info')}
-          >
-            Aide-mémoire
-          </Button>
-          {/* Historique des parties : ouvre le tiroir latéral intégrant l'historique des sessions
-              closes (`SessionHistoryList`, PER-270/407) sans quitter l'écran de MJ. Vraie ancre
-              (`?history=1`) → Ctrl/⌘+Clic ouvre dans un nouvel onglet, le bouton Retour ferme le
-              tiroir. Même patron que les tiroirs Bestiaire/Aide-mémoire. */}
-          <Button
-            data-tour="gm-screen-history"
-            variant="outlined"
-            size="small"
-            startIcon={<HistoryIcon />}
-            component={Link}
-            href={`${campaignPath}/gm-screen?${HISTORY_PARAM}=1`}
-            scroll={false}
-            sx={(theme) => glassButtonSx(theme, 'info')}
-          >
-            Historique
-          </Button>
-          {/* Outils du MJ (PER-199, PER-200) : ouvre le tiroir latéral à onglets (rumeurs de
-              taverne, butin, et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic
-              ouvre dans un nouvel onglet, le bouton Retour ferme le tiroir. */}
+          {/* Outils du MJ (retour propriétaire) : UN SEUL bouton, tout tient sur une ligne — les 7
+              destinations (rumeurs, butin, PNJ, notes, bestiaire, aide-mémoire, historique) vivent
+              dans un menu déroulant. Chaque entrée reste une VRAIE ancre (`?xxx=1`, cf. `GM_TOOLS_MENU`)
+              → Ctrl/⌘+Clic ouvre l'écran de MJ déjà déplié dans un nouvel onglet ; le menu lui-même
+              n'est qu'une préférence d'affichage LOCALE (pas dans l'URL), il se referme au clic. */}
           <Button
             data-tour="gm-screen-tools"
             variant="outlined"
             size="small"
             startIcon={<HandymanIcon />}
-            component={Link}
-            href={`${campaignPath}/gm-screen?${TOOLS_PARAM}=${lastToolTab}`}
-            scroll={false}
+            onClick={(e) => setToolsMenuAnchor(e.currentTarget)}
             sx={(theme) => glassButtonSx(theme, 'info')}
           >
             Outils du MJ
           </Button>
+          <Menu
+            anchorEl={toolsMenuAnchor}
+            open={Boolean(toolsMenuAnchor)}
+            onClose={() => setToolsMenuAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            {GM_TOOLS_MENU.map((item) => (
+              // `Fragment` (pas un `Box`/`div`) : `Menu` de MUI n'accepte comme enfants DIRECTS que
+              // `MenuItem`/`Divider` (navigation clavier, gestion du focus) — un wrapper quelconque
+              // casserait les flèches haut/bas. `Fragment` est explicitement le mécanisme supporté
+              // pour grouper plusieurs enfants directs sans en ajouter un.
+              <Fragment key={item.param}>
+                <MenuItem
+                  data-tour={item.dataTour}
+                  component={Link}
+                  href={`${campaignPath}/gm-screen?${item.param}=1`}
+                  scroll={false}
+                  onClick={() => setToolsMenuAnchor(null)}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText>{item.label}</ListItemText>
+                </MenuItem>
+                {item.separatorAfter && <Divider />}
+              </Fragment>
+            ))}
+          </Menu>
         </Stack>
         </Box>
         {claimed.length === 0 && labeledCreatures.length === 0 ? (
@@ -1264,10 +1144,28 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         />
       </Suspense>
 
-      {/* Tiroir « Outils du MJ » (PER-199), piloté par `?tools=`. Frontière `Suspense`
+      {/* Tiroir « Rumeurs de taverne » (PER-199), piloté par `?rumors=1`. Frontière `Suspense`
           imposée par la lecture des paramètres d'URL, comme le tiroir de fiche. */}
       <Suspense>
-        <GmToolsDrawerHost campaign={campaign} onActiveTabChange={setLastToolTab} />
+        <GmRumorsDrawerHost campaign={campaign} />
+      </Suspense>
+
+      {/* Tiroir « Butin » (PER-199/200), piloté par `?loot=1`. Même contrainte de frontière
+          `Suspense` (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
+      <Suspense>
+        <GmLootDrawerHost campaign={campaign} />
+      </Suspense>
+
+      {/* Tiroir « PNJ » (PER-428), piloté par `?npc=1`. Même contrainte de frontière `Suspense`
+          (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
+      <Suspense>
+        <GmNpcDrawerHost campaign={campaign} />
+      </Suspense>
+
+      {/* Tiroir « Notes de session » (PER-427), piloté par `?notes=1`. Même contrainte de frontière
+          `Suspense` (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
+      <Suspense>
+        <GmNotesDrawerHost campaignId={cid} />
       </Suspense>
 
       {/* Tiroir « Aide-mémoire », piloté par `?reference=1`. Même contrainte de frontière `Suspense`
@@ -1291,7 +1189,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       {/* Tour guidé de navigation (PER-425) : tiroirs principaux + tracker d'initiative. */}
       <GuidedTour
         run={tour.run}
-        steps={buildGmScreenTourSteps({ showPlayersStep: claimed.length > 0, openFirstToolsTab })}
+        steps={buildGmScreenTourSteps({ showPlayersStep: claimed.length > 0 })}
         onTourEnd={handleTourEnd}
         onStepBefore={handleTourStepBefore}
       />

@@ -2,8 +2,8 @@
 
 /**
  * Câblage URL du tiroir « Aide-mémoire » de l'écran de MJ. Séparé du tiroir lui-même pour cantonner
- * la lecture de `?reference=` — qui exige une frontière `Suspense`, comme le `?tools=` du tiroir
- * d'outils (`GmToolsDrawerHost`) et le `?sheet=` du tiroir de fiche.
+ * la lecture de `?reference=` — qui exige une frontière `Suspense`, comme les autres tiroirs de
+ * l'écran de MJ et le `?sheet=` du tiroir de fiche.
  *
  * L'ouverture passe par l'URL, en VRAIE ancre (`navigation-real-anchors`) : le bouton Retour du
  * navigateur ferme le tiroir, un lien direct l'ouvre, et Ctrl/⌘+Clic sur le bouton d'ouverture ouvre

@@ -1,0 +1,34 @@
+'use client';
+
+/**
+ * Câblage URL du tiroir « Rumeurs de taverne » de l'écran de MJ. Séparé du tiroir
+ * lui-même pour cantonner la lecture de `?rumors=` — qui exige une frontière
+ * `Suspense`, comme les autres tiroirs de l'écran de MJ (`?bestiary=`, `?reference=`…).
+ *
+ * L'ouverture passe par l'URL, en VRAIE ancre (`navigation-real-anchors`) : le bouton
+ * Retour du navigateur ferme le tiroir, un lien direct l'ouvre, et Ctrl/⌘+Clic sur le
+ * bouton d'ouverture ouvre l'écran de MJ déjà déplié dans un nouvel onglet.
+ */
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { GmRumorsDrawer } from './GmRumorsDrawer';
+import type { Campaign } from '@/lib/campaign/types';
+
+/** Nom du paramètre d'URL qui ouvre le tiroir de rumeurs (booléen : `?rumors=1`). */
+export const RUMORS_PARAM = 'rumors';
+
+export function GmRumorsDrawerHost({ campaign }: { campaign: Campaign }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const open = searchParams.get(RUMORS_PARAM) === '1';
+
+  const close = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete(RUMORS_PARAM);
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
+  return <GmRumorsDrawer campaign={campaign} open={open} onClose={close} />;
+}
