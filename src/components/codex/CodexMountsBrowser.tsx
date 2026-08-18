@@ -47,12 +47,14 @@ const rowSx = {
   height: '100%',
 } as const;
 
-/** Colonnes DYNAMIQUES selon la largeur (comme `CodexFamiliarsBrowser`), plafonnées à 3. */
+/** Colonnes DYNAMIQUES selon la largeur (comme `CodexFamiliarsBrowser`), plafonnées à 3 : `maxWidth`
+ * = EXACTEMENT 3 cartes de 280px + 2 gouttières de 16px (872px), le plus grand conteneur qui ne
+ * permet PAS à `auto-fit` d'en caser une 4e (4×280 + 3×16 = 1168 > 872). */
 const gridSx = {
   display: 'grid',
   gap: 2,
   gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  maxWidth: 1400,
+  maxWidth: 872,
   mx: 'auto',
   alignItems: 'stretch',
 } as const;

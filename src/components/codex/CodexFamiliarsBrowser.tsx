@@ -326,10 +326,12 @@ export function CodexFamiliarsBrowser() {
         gap: 2,
         // Colonnes DYNAMIQUES selon la largeur disponible (`auto-fit`/`minmax`, retour propriétaire),
         // plutôt que des paliers fixes MUI (`md`/`xl`) qui restaient bloqués à 2 colonnes sur une
-        // large plage de largeurs. `maxWidth` plafonne à 3 colonnes (largeur ≈ 3 cartes + 2 gouttières)
-        // même sur un très grand écran, au lieu de laisser `auto-fit` en ajouter une 4e.
+        // large plage de largeurs. `maxWidth` = EXACTEMENT 3 cartes de 320px + 2 gouttières de 16px
+        // (992px) : `auto-fit` calcule son nombre de colonnes sur la largeur du CONTENEUR, donc un
+        // plafond trop large (ex. 1400px) laisse encore de la place pour une 4e colonne — 992px est
+        // le plus grand conteneur qui ne permet PAS d'en caser une 4e (4×320 + 3×16 = 1328 > 992).
         gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        maxWidth: 1400,
+        maxWidth: 992,
         mx: 'auto',
         alignItems: 'stretch',
       }}
