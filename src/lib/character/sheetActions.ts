@@ -25,6 +25,7 @@
 import { featureById } from '@/data';
 import { parseCoinPouchName, type CoinPouchInfo } from './coinPouch';
 import type {
+  AbilityId,
   DamageDie,
   PoisonKind,
   StartingEquipmentChoiceOption,
@@ -140,6 +141,15 @@ export function toggleEffect(
     const voieMount = listCompanions(character).find((e) => companionMountEnSelle(character, e) !== null);
     return setMountedTarget(character, active ? voieMount?.key ?? null : null);
   }
+  // PER-375/PER-435 : interrupteur DÉRIVÉ d'une saisie choisie (Forme animale) — `effectToggles` n'est
+  // jamais écrit ici (cf. doc du champ, `EffectActivation.activeWhenInputSet`, schema.ts). Couper
+  // EFFACE la saisie (et le snapshot de caracs qui va avec, `setEffectInput`) ; activer manuellement
+  // est un NO-OP, il n'y a rien à activer sans passer par le sélecteur de forme.
+  const derivedEffect = featureById.get(featureId)?.effects?.[index];
+  if (derivedEffect?.kind === 'conditional-stat-bonus' && derivedEffect.activation.activeWhenInputSet) {
+    if (active) return {};
+    return setEffectInput(character, derivedEffect.activation.activeWhenInputSet, '');
+  }
   const nextToggles = setEffectToggle(character, featureId, index, active);
   const patch: Partial<Character> = { effectToggles: nextToggles };
   // PER-130 : ACTIVER un état TEMPORAIRE doté d'un compteur d'usages le CONSOMME (ex. Rage / Furie
@@ -202,17 +212,35 @@ export function toggleEffect(
 
 /**
  * Saisie libre d'état de jeu corrélée à une capacité (PER-70, ex. animal de Forme animale).
- * Une chaîne vide supprime la clé (pas de note fantôme).
+ * Une chaîne vide supprime la clé (pas de note fantôme) — et purge au passage
+ * `Character.transformationAbilities[featureId]` s'il y en avait un (PER-375/PER-435 : pas de
+ * snapshot de caracs fantôme pour une forme qu'on vient de quitter).
+ *
+ * `abilitiesSnapshot`, quand fourni avec une valeur non vide, dénormalise les caractéristiques de la
+ * forme CHOISIE (`AnimalFormSelector`, une fois le blob du bestiaire chargé) dans
+ * `transformationAbilities[featureId]` — c'est de là que `activeAbilityOverrideSources` (`effects.ts`)
+ * les relit, le moteur restant une fonction pure de `Character` seul (jamais d'accès au store
+ * bestiaire asynchrone). Absent = capacité ordinaire, `transformationAbilities` inchangé.
  */
 export function setEffectInput(
   character: Character,
   featureId: string,
   value: string,
+  abilitiesSnapshot?: Partial<Record<AbilityId, number>>,
 ): Partial<Character> {
   const next = { ...character.effectInputs };
-  if (value.trim() === '') delete next[featureId];
+  const trimmed = value.trim();
+  if (trimmed === '') delete next[featureId];
   else next[featureId] = value;
-  return { effectInputs: next };
+  const patch: Partial<Character> = { effectInputs: next };
+  if (trimmed === '' && character.transformationAbilities?.[featureId]) {
+    const nextAbilities = { ...character.transformationAbilities };
+    delete nextAbilities[featureId];
+    patch.transformationAbilities = nextAbilities;
+  } else if (trimmed !== '' && abilitiesSnapshot) {
+    patch.transformationAbilities = { ...character.transformationAbilities, [featureId]: abilitiesSnapshot };
+  }
+  return patch;
 }
 
 /**

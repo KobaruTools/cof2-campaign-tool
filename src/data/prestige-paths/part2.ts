@@ -4354,7 +4354,7 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Le personnage peut prendre la forme d'un animal de son choix parmi chat, chien, chevreuil, saumon ou corbeau. Il doit choisir cet animal à l'acquisition de ce sort et ce sera toujours le même. La transformation dure PER minutes ou PER heures si le personnage connaît le sort de druide Forme animale de la voie des animaux. Il peut faire l'acquisition d'une forme de voyage supplémentaire par rang atteint dans la voie. Voir le sort de druide Forme animale pour les effets.",
     richText:
-      "Le personnage peut prendre la forme d'un animal de son choix parmi chat, chien, chevreuil, saumon ou corbeau. Il doit choisir cet animal à l'acquisition de ce sort et ce sera toujours le même. La transformation dure [=PER] minutes ou [=PER] heures si le personnage connaît le sort de druide Forme animale de la voie des animaux. Il peut faire l'acquisition d'une forme de voyage supplémentaire par rang atteint dans la voie. Voir le sort de druide Forme animale pour les effets.",
+      "Le personnage peut prendre la forme d'un animal de son choix parmi chat, chien, chevreuil, saumon ou corbeau. Il doit choisir cet animal à l'acquisition de ce sort et ce sera toujours le même. La transformation dure [=PER] minutes ou [=PER] heures si le personnage connaît le sort de druide [&animaux-r5] de la voie des animaux. Il peut faire l'acquisition d'une forme de voyage supplémentaire par rang atteint dans la voie. Voir le sort de druide [&animaux-r5] pour les effets.",
     sourcePage: 170,
   },
   {
@@ -4367,7 +4367,7 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Le personnage fait l'acquisition de la capacité de druide Forme animale, mais il ne connaît qu'une seule catégorie d'animaux (parmi mammifère, poissons, arthropodes, reptiles ou oiseaux). Si le personnage connaît déjà la capacité de druide du même nom, il peut désormais rester sous forme animale pour une durée égale à sa PER en heures (au lieu de minutes) et à la fin de la transformation, il récupère 3d4° PV.",
     richText:
-      "Le personnage fait l'acquisition de la capacité de druide Forme animale, mais il ne connaît qu'une seule catégorie d'animaux (parmi mammifère, poissons, arthropodes, reptiles ou oiseaux). Si le personnage connaît déjà la capacité de druide du même nom, il peut désormais rester sous forme animale pour une durée égale à sa [=PER] en heures (au lieu de minutes) et à la fin de la transformation, il récupère {3d4°} PV.",
+      "Le personnage fait l'acquisition de la capacité de druide [&animaux-r5], mais il ne connaît qu'une seule catégorie d'animaux (parmi mammifère, poissons, arthropodes, reptiles ou oiseaux). Si le personnage connaît déjà la capacité de druide du même nom, il peut désormais rester sous forme animale pour une durée égale à sa [=PER] en heures (au lieu de minutes) et à la fin de la transformation, il récupère {3d4°} PV.",
     // Octroie Forme animale (animaux-r5) — SANS doublon si le personnage l'a déjà nativement
     // (druide, `grantedFeatureIds`), même patron que le cambion (PER-323). Le choix de
     // catégorie UNIQUE (RAW : « une seule catégorie », contrairement au druide qui en cumule
@@ -4376,6 +4376,21 @@ export const prestigeFeatures2: Feature[] = [
     // portés par `animaux-r5` lui-même (`healOnDeactivate.requiresFeatureId`, mystics.ts) : un
     // seul interrupteur physique, actif que le personnage l'ait par sa voie ou par cet octroi.
     grantedFeatures: [{ featureId: 'animaux-r5' }],
+    // Second interrupteur, MÊME clé `activeWhenInputSet: 'animaux-r5'` que la capacité octroyée
+    // (retour propriétaire 2026-08-18) : « totalement lié », pas une copie indépendante — les deux
+    // cartes pilotent le MÊME choix (`isEffectActive`/`toggleEffect`, effects.ts/sheetActions.ts).
+    // MASQUÉ à l'écran (pas dupliqué) quand la capacité octroyée est EMPRUNTÉE ici (le personnage n'a
+    // pas la voie des animaux, `animaux-r5` n'a pas d'autre carte que celle-ci) — cf.
+    // `usePathFeatureState.hasEffectToggles`, seul endroit qui connaît cette redondance. Affiché
+    // quand le personnage possède `animaux-r5` NATIVEMENT ailleurs (druide) : sans ça, la voie du
+    // changeforme n'aurait AUCUN toggle visible (le vrai vit alors sous « Voie des animaux »).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Forme animale active', activeWhenInputSet: 'animaux-r5' },
+      },
+    ],
     choices: [
       {
         kind: 'option',
@@ -4417,7 +4432,7 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal de taille grande (ours, tigre, etc.). Il peut conserver sa DEF et utiliser sa valeur d'attaque magique pour attaquer s'il le souhaite. Le coût du sort est égal à 2 + NC de la créature en points de magie (ou NC PM en utilisant la concentration). Par exemple, une transformation en cheval coûte 3 PM (1 PM en concentration) tandis qu'une transformation en loup géant coûte 6 PM (4 PM en concentration).",
     richText:
-      "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal de taille grande (ours, tigre, etc.). Il peut conserver sa DEF et utiliser sa valeur d'attaque magique pour attaquer s'il le souhaite. Le coût du sort est égal à 2 + NC de la créature en points de magie (ou NC PM en utilisant la concentration). Par exemple, une transformation en cheval coûte 3 PM (1 PM en concentration) tandis qu'une transformation en loup géant coûte 6 PM (4 PM en concentration).",
+      "Lorsqu'il utilise le sort de [&animaux-r5], le personnage peut prendre la forme d'un animal de taille grande (ours, tigre, etc.). Il peut conserver sa DEF et utiliser sa valeur d'attaque magique pour attaquer s'il le souhaite. Le coût du sort est égal à 2 + NC de la créature en points de magie (ou NC PM en utilisant la concentration). Par exemple, une transformation en cheval coûte 3 PM (1 PM en concentration) tandis qu'une transformation en loup géant coûte 6 PM (4 PM en concentration).",
     // Coût affiché automatiquement une fois une créature grande/énorme choisie (le sélecteur
     // de forme connaît son NC réel) — voir r6. Élève le plafond de taille (`maxAnimalFormSize`,
     // animalFormPicker.ts).
@@ -4433,7 +4448,7 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal ou d'un animal géant de taille énorme (par exemple, un éléphant). Il suit les mêmes règles que pour la capacité précédente.",
     richText:
-      "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal ou d'un animal géant de taille énorme (par exemple, un éléphant). Il suit les mêmes règles que pour la capacité précédente.",
+      "Lorsqu'il utilise le sort de [&animaux-r5], le personnage peut prendre la forme d'un animal ou d'un animal géant de taille énorme (par exemple, un éléphant). Il suit les mêmes règles que pour la capacité précédente.",
     sourcePage: 170,
   },
 

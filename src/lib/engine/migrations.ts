@@ -489,6 +489,18 @@ function migrateV22toV23(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v23 → v24 : ajout de `transformationAbilities` (surcharge dynamique de caractéristiques d'une forme
+ * animale CHOISIE en jeu, PER-375/PER-435). Purement additif : map vide (aucune forme choisie au
+ * chargement) si le champ est absent.
+ */
+function migrateV23toV24(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.transformationAbilities) === null) next.transformationAbilities = {};
+  next.schemaVersion = 24;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -515,6 +527,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   20: migrateV20toV21,
   21: migrateV21toV22,
   22: migrateV22toV23,
+  23: migrateV23toV24,
 };
 
 export class MigrationError extends Error {}
@@ -597,6 +610,9 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
   if (typeof data.transformationDepletion !== 'object' || data.transformationDepletion === null) {
     fail('Champ « transformationDepletion » manquant ou invalide.');
+  }
+  if (typeof data.transformationAbilities !== 'object' || data.transformationAbilities === null) {
+    fail('Champ « transformationAbilities » manquant ou invalide.');
   }
   if (typeof data.companionInstances !== 'object' || data.companionInstances === null) {
     fail('Champ « companionInstances » manquant ou invalide.');

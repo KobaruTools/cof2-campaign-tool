@@ -374,11 +374,15 @@ export const mysticFeatures: Feature[] = [
       "Pendant une durée de PER minutes, le druide peut prendre la forme d'un animal de taille moyenne ou inférieure (minimum une souris) d'une catégorie dont il maîtrise la communication (voir rang 1, à l'exception des animaux fantastiques). Il conserve seulement ses PV, ses valeur d'INT et de VOL, et acquiert les caractéristiques, les attaques, la DEF et les capacités naturelles de la forme choisie (le vol pour un oiseau, la respiration aquatique pour le poisson, etc.). Le druide ne peut ni utiliser son équipement ni ses propres capacités sous cette forme. Le druide peut reprendre sa forme humaine lorsqu'il le désire par une action de mouvement (M).",
     richText:
       "Pendant une durée de [=PER] minutes, le druide peut prendre la forme d'un animal de taille moyenne ou inférieure (minimum une souris) d'une catégorie dont il maîtrise la communication (voir rang 1, à l'exception des animaux fantastiques). Il conserve seulement ses PV, ses valeur d'INT et de VOL, et acquiert les caractéristiques, les attaques, la DEF et les capacités naturelles de la forme choisie (le vol pour un oiseau, la respiration aquatique pour le poisson, etc.). Le druide ne peut ni utiliser son équipement ni ses propres capacités sous cette forme. Le druide peut reprendre sa forme humaine lorsqu'il le désire par une action de mouvement (M).",
-    // Interrupteur MARQUEUR de transformation (PER-67) : aucun bonus chiffré — la forme
-    // REMPLACE les caractéristiques (le druide acquiert AGI/CON/FOR/PER/DEF/attaques de
-    // l'animal et ne garde que PV/INT/VOL), ce qui n'est pas modélisable en +X ; le toggle
-    // ne porte donc que l'état « transformé » (comme Armure de pierre / Déphasage). Les
-    // catégories accessibles sont dérivées des choix de Langage des animaux (animaux-r1).
+    // Interrupteur DÉRIVÉ du choix d'un animal réel (PER-435, `activation.activeWhenInputSet` — voir
+    // sa doc, schema.ts) : le joueur choisit une créature du bestiaire (`AnimalFormSelector`), et ce
+    // choix SEUL vaut activation, plus d'interrupteur manuel indépendant (retour propriétaire
+    // 2026-08-18). `bonuses: []` reste vide (aucun bonus CHIFFRÉ statique) — la forme REMPLACE les
+    // caractéristiques (AGI/CON/FOR/PER/CHA, PAS INT/VOL, RAW ci-dessus) par celles de l'animal choisi,
+    // mécanisé dynamiquement via `Character.transformationAbilities` (dénormalisé au choix, lu par
+    // `activeAbilityOverrideSources`) plutôt que `abilityOverrides` (statique, réservé aux
+    // transformations à animal FIXE comme le loup du lycanthrope). Catégories accessibles dérivées des
+    // choix de Langage des animaux (animaux-r1).
     // `healOnDeactivate` (PER-375, changeforme-r5, p. 170) : rappel de soin {3d4°} PV au retour à
     // la forme normale — ne concerne QUE le druide qui a AUSSI la voie du changeforme
     // (`requiresFeatureId`), pas Forme animale seule.
@@ -386,7 +390,7 @@ export const mysticFeatures: Feature[] = [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
-        activation: { kind: 'temporary', label: 'Forme animale active', activeByDefault: false },
+        activation: { kind: 'temporary', label: 'Forme animale active', activeWhenInputSet: 'animaux-r5' },
         healOnDeactivate: { dice: '3d4°', requiresFeatureId: 'prestige-changeforme-r5' },
       },
     ],

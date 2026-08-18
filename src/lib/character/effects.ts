@@ -18,7 +18,7 @@
  * Les deux derniers exigent un contexte (`EffectContext`). Sans contexte, seul le
  * cas plat constant est sommé (suffit aux appels « catalogue seul »).
  */
-import { classById, featureById, pathById, progression, testDomains } from '@/data';
+import { classById, featureById, pathById, priestGodById, progression, testDomains } from '@/data';
 import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import type {
   AbilityId,
@@ -559,6 +559,22 @@ export function activeAbilityOverrideSources(
         out[ability] = { featureId: id, name: feature.name, value, page: feature.sourcePage };
       }
     });
+  }
+  // Surcharge DYNAMIQUE (PER-375/PER-435, Forme animale/changeforme) : l'animal est choisi en jeu, pas
+  // fixé dans les données — `Character.transformationAbilities` porte le snapshot dénormalisé au choix
+  // (voir sa doc, `types.ts`). Actif ⟺ l'interrupteur `activeWhenInputSet` correspondant l'est encore
+  // (le joueur a pu changer/retirer sa forme depuis) ; on retrouve cet interrupteur en cherchant, sur
+  // LA capacité elle-même, l'effet dont `activeWhenInputSet` vaut cette clé.
+  for (const [inputKey, abilities] of Object.entries(character.transformationAbilities ?? {})) {
+    const feature = featureById.get(inputKey);
+    if (!feature?.effects) continue;
+    const index = feature.effects.findIndex(
+      (e) => e.kind === 'conditional-stat-bonus' && e.activation.activeWhenInputSet === inputKey,
+    );
+    if (index < 0 || !isEffectActive(character, inputKey, index)) continue;
+    for (const [ability, value] of Object.entries(abilities) as [AbilityId, number][]) {
+      out[ability] = { featureId: inputKey, name: feature.name, value, page: feature.sourcePage };
+    }
   }
   return out;
 }
@@ -1485,6 +1501,11 @@ export function isEffectActive(character: Character, featureId: string, index: n
   if (ridingForcesActivation(effect, ridingMountOptionIds(character))) return true;
   // PER-328bis — second déclencheur déduit d'un AUTRE effet (« dans le noir » → « à l'abri du soleil »).
   if (linkedFeatureEffectForcesActivation(effect, (fid, i) => isEffectActive(character, fid, i))) return true;
+  // PER-375/PER-435 — interrupteur DÉRIVÉ d'une saisie choisie (Forme animale) : ni manuel ni forcé par
+  // un AUTRE effet, sa valeur EST la présence de la saisie, `effectToggles` n'entre jamais en jeu.
+  if (effect.activation.activeWhenInputSet) {
+    return Boolean(character.effectInputs?.[effect.activation.activeWhenInputSet]);
+  }
   const toggled = character.effectToggles[featureId]?.[index];
   return toggled ?? effect.activation.activeByDefault ?? false;
 }
@@ -2125,6 +2146,47 @@ export function mageAlternateAbilitySubstitutions(
   if (!to) return undefined;
   if (classById.get(character.classId)?.familyId !== 'mages') return undefined;
   return [{ from: 'CHA', to, unconditional: true }];
+}
+
+/**
+ * PER-401 — carac D'ORIGINE d'une capacité DIVINE (prêtre spécialiste, p. 122) dont la formule
+ * scale sur la caractéristique du profil DONNEUR plutôt que sur le CHA du prêtre (retour propriétaire :
+ * la capacité devient NATIVE du prêtre, elle doit suivre sa carac principale, meilleure des deux — comme
+ * le forgesort qui reproduit un sort d'ailleurs, PER-163). Exclu volontairement : `brute-r2` (« +10 sur
+ * un TEST de FOR » n'est pas une valeur qui scale sur une carac, juste un bonus à un test DE cette carac
+ * — rien à substituer) et `pagne-r2` (choix AGI/CON pour la DEF, mécanique différente, laissée telle
+ * quelle). `poing-r1` (Sélenne) a son propre `FOR\AGI` best-of câblé dans le token richText : la
+ * substitution FOR→CHA ci-dessous s'y AJOUTE (résolue par `resolveExpr`, `abilityBest`) pour couvrir le
+ * cas à trois carac (FOR/AGI/CHA).
+ */
+const DIVINE_FEATURE_ABILITY_SUBSTITUTIONS: Partial<Record<string, AbilityId>> = {
+  'archer-r1': 'PER', // Archer émérite (Arwendée) — PER aux DM à l'arc
+  'protecteur-r1': 'PER', // Baies magiques (Dénora) — nombre de fruits = PER
+  'explosifs-r2': 'INT', // Démolition (Jeweln) — DM structure 3d4°+INT
+  'demon-r2': 'INT', // Beauté de la succube (Suëlle) — DM 1d4°+INT, durée INT minutes
+  'magie-elementaire-r4': 'INT', // Respiration aquatique (Linnarré) — nb compagnons = INT
+  'metal-r1': 'INT', // Morsure de la forge (Arshran) — durée INT minutes
+  'magie-universelle-r1': 'INT', // Lumière (Solar) — durée INT heures
+  'magie-des-arcanes-r2': 'INT', // Lévitation (Oumaros) — durée INT minutes
+  'mort-r2': 'INT', // Masque mortuaire (Morn) — durée INT minutes
+  'vegetaux-r2': 'PER', // Prison végétale (Périnde) — durée PER minutes
+  'poing-r1': 'FOR', // Poings de fer (Sélenne) — s'ajoute au best-of FOR/AGI existant
+};
+
+/**
+ * PER-401 — substitutions à appliquer au rendu de la capacité DIVINE du prêtre spécialiste courant :
+ * `undefined` si `feature` n'est pas SA capacité divine actuelle (rien à faire pour les autres
+ * personnages qui possèdent la même capacité nativement — rôdeur, forgesort, moine…).
+ */
+export function priestDivineAbilitySubstitutions(
+  character: Character,
+  feature: Feature,
+): AbilitySubstitution[] | undefined {
+  if (character.priestVocation?.mode !== 'specialist') return undefined;
+  const god = priestGodById.get(character.priestVocation.godId);
+  if (!god || god.divineFeatureId !== feature.id) return undefined;
+  const from = DIVINE_FEATURE_ABILITY_SUBSTITUTIONS[feature.id];
+  return from ? [{ from, to: 'CHA' }] : undefined;
 }
 
 /**

@@ -38,6 +38,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     depletion: {},
     companionDepletion: {},
     transformationDepletion: {},
+  transformationAbilities: {},
     companionInstances: {},
     mounts: [],
     poisonedWeapons: [],

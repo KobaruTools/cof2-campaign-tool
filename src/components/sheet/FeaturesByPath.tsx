@@ -14,6 +14,8 @@ import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
+import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import ViewStreamIcon from '@mui/icons-material/ViewStream';
 import Accordion from '@mui/material/Accordion';
@@ -42,10 +44,9 @@ import Typography from '@mui/material/Typography';
 import { alpha, lighten, type Theme } from '@mui/material/styles';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
-import type { AbilityId, AbilitySubstitution, ActionType, Creature, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
-import { FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, ActionType, Creature, CreatureProfile, CreatureSize, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import { CREATURE_SIZES, FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
-import { deriveStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   featureChoiceDefs,
@@ -58,9 +59,15 @@ import {
 import { animalFormCategories } from '@/lib/character/animalForms';
 import { maxAnimalFormSize, sizeWithinLimit } from '@/lib/character/animalFormPicker';
 import { useBestiaryStore } from '@/stores/bestiary';
-import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
+import {
+  BestiaryStatBlock,
+  CreatureAbilityMarkers,
+  CreatureAbilityText,
+  interactiveBlockSx,
+  parseAbilityMarkers,
+} from '@/components/bestiary/BestiaryStatBlock';
 import { CREATURE_SIZE_LABELS } from '@/lib/ui/creature';
-import { buildCharacterDerivedView } from './characterDerivedView';
+import { codexPathHref, featureCodexHref } from '@/lib/ui/codex';
 import {
   activeCrystalIds,
   crystalOverCapWarning,
@@ -153,6 +160,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { PoisonWeaponLoadoutField } from '@/components/sheet/PoisonWeaponLoadoutField';
 import { WeaponModificationField } from '@/components/sheet/WeaponModificationField';
 import { SourceRef, PageRefText } from '@/components/SourceRef';
+import { MetaPill } from '@/components/MetaPill';
 import { RankBadge } from '@/components/RankBadge';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
@@ -1441,7 +1449,7 @@ export interface FeaturesByPathProps {
    * par « Forme animale »). État transitoire, modifiable même hors édition. Absent
    * → la saisie est affichée en lecture seule (ou masquée si vide).
    */
-  onSetEffectInput?: (featureId: string, value: string) => void;
+  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>) => void;
   /**
    * Met à jour le décompte d'une capacité à usages limités (PER-70 — ex. « Les sept
    * vies du chat »). État de jeu, modifiable hors édition. Absent → compteur en
@@ -1535,7 +1543,7 @@ export function FeatureSourcePage({ feature }: { feature: Feature }) {
   return (
     <Box sx={{ mt: 1 }}>
       {/* Le nom de la capacité sert de terme à cibler/surligner dans le visualiseur (PER-59/61). */}
-      <SourceRef page={feature.sourcePage} term={feature.name} />
+      <SourceRef page={feature.sourcePage} term={feature.name} codexHref={featureCodexHref(feature)} />
     </Box>
   );
 }
@@ -1721,7 +1729,7 @@ function AnimalFormSelector({
   onSetInput,
 }: {
   character: Character;
-  onSetInput?: (featureId: string, value: string) => void;
+  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>) => void;
 }) {
   const list = useBestiaryStore((s) => s.list);
   const bestiaryStatus = useBestiaryStore((s) => s.status);
@@ -1729,6 +1737,12 @@ function AnimalFormSelector({
   const blobs = useBestiaryStore((s) => s.blobs);
   const blobStatus = useBestiaryStore((s) => s.blobStatus);
   const loadBlob = useBestiaryStore((s) => s.loadBlob);
+  // Aucun filtre de source ici : la RLS (migrations 0006/0007) ne sert déjà QUE le contenu gratuit +
+  // les sources que CE compte a débloquées (retour propriétaire 2026-08-18 : « qu'un joueur qui a
+  // payé le Bestiaire en profite, sinon que ce soit gaté » — déjà le cas, `list` ne peut
+  // structurellement pas contenir une source payante non débloquée). `paidSourceIds` sert seulement
+  // au badge « tête de loup » ci-dessous, même convention que `BestiaryBrowser`.
+  const paidSourceIds = useBestiaryStore((s) => s.paidSourceIds);
   useEffect(() => {
     loadBestiaryList();
   }, [loadBestiaryList]);
@@ -1739,11 +1753,38 @@ function AnimalFormSelector({
   }, [value, loadBlob]);
 
   const maxSize = maxAnimalFormSize(character);
+  // Triée par TAILLE (retour propriétaire 2026-08-18, groupes contigus requis par `groupBy` de
+  // MUI) — plus parlant qu'un tri par ordre d'impression du livre pour choisir une forme selon le
+  // rang débloqué. `sortOrder` départage à l'intérieur d'une même taille.
   const options = (list ?? [])
     .filter((c) => c.category === 'animaux' && sizeWithinLimit(c.size, maxSize))
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+    .sort((a, b) => {
+      const ra = a.size ? CREATURE_SIZES.indexOf(a.size) : 99;
+      const rb = b.size ? CREATURE_SIZES.indexOf(b.size) : 99;
+      return ra - rb || a.sortOrder - b.sortOrder;
+    });
+  const sizeCounts = new Map<CreatureSize, number>();
+  for (const o of options) if (o.size) sizeCounts.set(o.size, (sizeCounts.get(o.size) ?? 0) + 1);
   const selected = options.find((c) => c.id === value) ?? null;
   const blob = value ? blobs[value] : undefined;
+
+  // Mécanisation des caracs (retour propriétaire 2026-08-18, RAW p. 114 : « conserve seulement…
+  // INT et VOL ») : dès que le blob de la créature choisie est chargé, dénormalise ses
+  // caractéristiques (sauf INT/VOL) dans `Character.transformationAbilities['animaux-r5']` —
+  // `activeAbilityOverrideSources` (effects.ts) les relit de là, le moteur restant pur (aucun
+  // accès au store bestiaire). Peut arriver APRÈS la sélection (le blob n'est pas toujours déjà
+  // en cache) : redéclenché dès qu'il devient disponible. Un `JSON.stringify` suffit à comparer
+  // (7 clés max, valeurs numériques) — évite de réécrire le patch en boucle une fois à jour.
+  useEffect(() => {
+    if (!onSetInput || !value || !blob?.abilities) return;
+    const snapshot = Object.fromEntries(
+      Object.entries(blob.abilities).filter(([ability]) => ability !== 'INT' && ability !== 'VOL'),
+    ) as Partial<Record<AbilityId, number>>;
+    const current = character.transformationAbilities?.['animaux-r5'];
+    if (current && JSON.stringify(current) === JSON.stringify(snapshot)) return;
+    onSetInput('animaux-r5', value, snapshot);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, blob, onSetInput]);
 
   const effectIndex =
     featureById.get('animaux-r5')?.effects?.findIndex(
@@ -1752,7 +1793,7 @@ function AnimalFormSelector({
   const active = effectIndex >= 0 && isEffectActive(character, 'animaux-r5', effectIndex);
 
   const changeformeExtras = active && blob ? (
-    <AnimalFormChangeformeExtras character={character} creature={blob} />
+    <AnimalFormChangeformeExtras creature={blob} />
   ) : null;
 
   if (!onSetInput) {
@@ -1776,10 +1817,69 @@ function AnimalFormSelector({
       <Autocomplete
         options={options}
         getOptionLabel={(o) => o.name}
+        getOptionKey={(o) => o.id}
         isOptionEqualToValue={(a, b) => a.id === b.id}
         value={selected}
         loading={bestiaryStatus === 'loading'}
         onChange={(_, next) => onSetInput('animaux-r5', next?.id ?? '')}
+        groupBy={(o) => o.size ?? ''}
+        renderGroup={(params) => {
+          const size = params.group as CreatureSize;
+          const count = sizeCounts.get(size);
+          return (
+            <li key={params.key}>
+              <Box
+                sx={(theme) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  px: 1.25,
+                  py: 0.5,
+                  position: 'sticky',
+                  top: -8,
+                  zIndex: 1,
+                  // Fond OPAQUE (papier du menu à forte opacité) + flou d'arrière-plan : sans ça,
+                  // l'en-tête sticky laisse voir les options qui défilent derrière (même patron que
+                  // `CreatureCatalogAutocomplete`).
+                  backgroundColor: alpha(theme.palette.background.paper, 0.92),
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  borderLeft: `3px solid ${theme.palette.divider}`,
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                  color: theme.palette.text.secondary,
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                })}
+              >
+                <StraightenOutlinedIcon sx={{ fontSize: 18 }} />
+                <span>{CREATURE_SIZE_LABELS[size] ?? size}</span>
+                {count != null && (
+                  <Box component="span" sx={{ ml: 'auto', opacity: 0.7, fontWeight: 600 }}>
+                    {count}
+                  </Box>
+                )}
+              </Box>
+              <ul style={{ padding: 0, margin: 0 }}>{params.children}</ul>
+            </li>
+          );
+        }}
+        renderOption={(props, option) => {
+          const { key, ...optionProps } = props as typeof props & { key?: string };
+          return (
+            <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Typography variant="body2" sx={{ flex: '1 1 auto' }}>
+                {option.name}
+              </Typography>
+              {paidSourceIds.has(option.sourceId) && (
+                <AppTooltip title="Supplément Bestiaire (contenu payant)">
+                  <Box component="span" aria-label="Contenu payant" sx={{ display: 'inline-flex', color: 'text.secondary' }}>
+                    <PetsOutlinedIcon sx={{ fontSize: 14 }} />
+                  </Box>
+                </AppTooltip>
+              )}
+            </Box>
+          );
+        }}
         renderInput={(params) => (
           <TextField {...params} label="Forme prise" placeholder="choisir un animal" size="small" />
         )}
@@ -1808,34 +1908,168 @@ function AnimalFormSelector({
 }
 
 /**
- * Bonus de la voie du changeforme, une fois un profil réel chargé (PER-375) :
- * - r6+ : « DEF effective » = max(DEF du personnage, DEF du profil) — p. 170, « peut conserver
- *   sa propre DEF... si supérieure au profil de la forme choisie ».
- * - r7/r8 (taille grande/énorme) : coût en PM de la transformation, `2 + NC` (`NC` en
- *   concentration) — formule affichée, jamais déduite automatiquement du réservoir de mana
- *   (les coûts de sorts restent informatifs partout ailleurs dans le moteur).
+ * Bonus de la voie du changeforme, une fois un profil réel chargé (PER-375) : à r7/r8 (taille
+ * grande/énorme), coût en PM de la transformation, `2 + NC` (`NC` en concentration) — formule
+ * VERBATIM du livre (p. 170, « Grande forme animale ») affichée, jamais déduite automatiquement
+ * du réservoir de mana (les coûts de sorts restent informatifs partout ailleurs dans le moteur).
  */
-function AnimalFormChangeformeExtras({ character, creature }: { character: Character; creature: Creature }) {
-  const hasR6 = character.featureIds.includes('prestige-changeforme-r6');
+function AnimalFormChangeformeExtras({ creature }: { creature: Creature }) {
   const hasBigForm = creature.size === 'grande' || creature.size === 'enorme';
-  if (!hasR6 && !hasBigForm) return null;
-  const derivedInput = buildCharacterDerivedView(character).derivedInput;
-  const ownDefense = derivedInput ? character.overrides.def ?? deriveStats(derivedInput).defense : undefined;
-  const effectiveDefense =
-    hasR6 && ownDefense != null && creature.defense != null ? Math.max(ownDefense, creature.defense) : null;
+  if (!hasBigForm || creature.nc == null) return null;
   return (
     <Stack spacing={0.25} sx={{ mt: 0.75 }}>
-      {effectiveDefense != null && (
-        <Typography variant="caption" component="div" sx={{ fontWeight: 600 }}>
-          DEF effective : {effectiveDefense}
-        </Typography>
-      )}
-      {hasBigForm && creature.nc != null && (
-        <Typography variant="caption" component="div">
-          Coût de la transformation : {2 + creature.nc} PM ({creature.nc} PM en concentration).
-        </Typography>
-      )}
+      <Typography variant="caption" component="div">
+        Coût de la transformation : {2 + creature.nc} PM ({creature.nc} PM en concentration).
+      </Typography>
     </Stack>
+  );
+}
+
+/**
+ * Capacités spéciales de la forme animale ACTIVE (retour propriétaire 2026-08-18) : une fois une
+ * forme choisie ET le toggle actif, ses capacités rejoignent la liste « Voies & Capacités » du
+ * joueur — cartes réutilisées TELLES QUELLES depuis la preview du bestiaire
+ * (`CreatureAbilityMarkers`/`CreatureAbilityText`, `BestiaryStatBlock.tsx`), pour une liste
+ * VRAIMENT complète de ce que le joueur peut faire sous cette forme, sans rouvrir la modale.
+ * Rendu tout en bas de la fiche (sous la grille/liste des voies), pas dans une voie précise : la
+ * forme peut venir du druide (voie des animaux) ou du changeforme, jamais des deux à la fois.
+ */
+function ActiveAnimalFormAbilities({ character, verbatim }: { character: Character; verbatim: boolean }) {
+  const value = character.effectInputs?.['animaux-r5'] ?? '';
+  const blobs = useBestiaryStore((s) => s.blobs);
+  const loadBlob = useBestiaryStore((s) => s.loadBlob);
+  useEffect(() => {
+    if (value) loadBlob(value);
+  }, [value, loadBlob]);
+  const effectIndex =
+    featureById.get('animaux-r5')?.effects?.findIndex(
+      (e) => e.kind === 'conditional-stat-bonus' && e.activation.kind === 'temporary',
+    ) ?? -1;
+  const active = effectIndex >= 0 && isEffectActive(character, 'animaux-r5', effectIndex);
+  const blob = value ? blobs[value] : undefined;
+  const abilities = blob?.specialAbilities ?? [];
+  if (!active || !blob || abilities.length === 0) return null;
+  return (
+    <Box>
+      <Divider sx={{ mb: 1.5 }} />
+      {/* Identité de la forme (nom + page source + taille) + illustration en filigrane, comme
+          l'en-tête de `BestiaryStatBlock` (retour propriétaire 2026-08-18) : la liste de capacités
+          ci-dessous ne flotte plus sans dire de QUELLE forme elle vient. */}
+      <Box
+        sx={{
+          position: 'relative',
+          overflow: 'hidden',
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 1,
+          p: { xs: 1.25, sm: 1.75 },
+          bgcolor: 'rgba(0, 0, 0, 0.45)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+        }}
+      >
+        {blob.illustration && (
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              top: -14,
+              right: -8,
+              width: { xs: 200, sm: 288 },
+              height: { xs: 240, sm: 340 },
+              maxWidth: '70%',
+              zIndex: -1,
+              pointerEvents: 'none',
+              opacity: 0.35,
+              backgroundImage: `url("${blob.illustration}")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'top right',
+              backgroundSize: 'contain',
+              maskImage: 'linear-gradient(to left, #000 55%, transparent 96%)',
+              WebkitMaskImage: 'linear-gradient(to left, #000 55%, transparent 96%)',
+            }}
+          />
+        )}
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap', mb: 0.5 }}>
+          <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 700 }}>
+            {blob.name}
+          </Typography>
+          {blob.sourcePage > 0 && <SourceRef page={blob.sourcePage} term={blob.name} />}
+          {blob.size && <MetaPill>{CREATURE_SIZE_LABELS[blob.size]}</MetaPill>}
+        </Stack>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, display: 'block', mb: 1 }}
+        >
+          Capacités de la forme active
+        </Typography>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+            gap: 1,
+          }}
+        >
+          {abilities.map((ability, i) => {
+            const { baseName } = parseAbilityMarkers(ability.name);
+            return (
+              <Box key={i} sx={[interactiveBlockSx, { px: 1, py: 0.75 }]}>
+                <Stack
+                  direction="row"
+                  spacing={0.75}
+                  sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.25, mb: 0.25 }}
+                >
+                  <Typography component="span" variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+                    {baseName}
+                  </Typography>
+                  <CreatureAbilityMarkers name={ability.name} />
+                </Stack>
+                <CreatureAbilityText ability={ability} creature={blob} verbatim={verbatim} />
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+/**
+ * Modale « Transformation — Forme animale » (retour propriétaire 2026-08-18) : plus de bouton
+ * dédié dans l'en-tête de voie (retiré, jugé inutile et disgracieux une fois le toggle capable de
+ * l'ouvrir tout seul) — seul point d'entrée restant : essayer d'ACTIVER le toggle « Forme animale
+ * active » sans forme choisie (`renderEffectToggles`, `PathBlock`). Réutilise TEL QUEL le
+ * sélecteur de forme (`AnimalFormSelector`, ci-dessus) ; `toggle` est rendu par l'appelant
+ * (`PathBlock`) car il dépend de fermetures locales (`onToggleEffect`, `isDisabled`…).
+ *
+ * `open`/`onOpenChange` sont CONTRÔLÉS par `PathBlock` (état partagé) : le toggle est rendu deux
+ * fois possible (carte native + carte octroyée) et doit ouvrir la MÊME modale dans les deux cas.
+ */
+function AnimalFormDialog({
+  character,
+  onSetInput,
+  toggle,
+  open,
+  onOpenChange,
+}: {
+  character: Character;
+  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>) => void;
+  toggle: ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onClose={() => onOpenChange(false)} maxWidth="xs" fullWidth>
+      <DialogTitle>Transformation — Forme animale</DialogTitle>
+      <DialogContent>
+        {toggle}
+        <AnimalFormSelector character={character} onSetInput={onSetInput} />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => onOpenChange(false)}>Fermer</Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -3062,7 +3296,7 @@ function PathBlock({
   /** États posés par le MJ en séance : grisent l'interrupteur du buff correspondant (PER-314). */
   sessionStatusIds?: readonly string[];
   /** Saisie libre corrélée à une capacité (animal de Forme animale, PER-70). */
-  onSetEffectInput?: (featureId: string, value: string) => void;
+  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>) => void;
   /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
   /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156). État de jeu, hors édition. */
@@ -3120,6 +3354,18 @@ function PathBlock({
   testBonuses?: TestDomainBonus[];
 }) {
   const { path, features } = group;
+  // Cette voie porte-t-elle Forme animale (animaux-r5), NATIVEMENT (voie des animaux du druide) OU
+  // par OCTROI (`grantedFeatures`, changeforme-r5, PER-375) ? Générique : couvre les deux sans
+  // connaître `prestige-changeforme` par son id — sert à monter la modale (`AnimalFormDialog`),
+  // ouverte UNIQUEMENT depuis le toggle « Forme animale active » (pas de bouton dédié, retiré —
+  // retour propriétaire 2026-08-18, jugé inutile une fois le toggle capable de l'ouvrir tout seul).
+  const grantsAnimalForm = features.some(
+    (f) => f.id === 'animaux-r5' || f.grantedFeatures?.some((g) => g.featureId === 'animaux-r5'),
+  );
+  // État PARTAGÉ entre les DEUX cartes qui peuvent porter le toggle « Forme animale active »
+  // (native + octroyée) : l'ACTIVER sans forme choisie ouvre cette modale plutôt qu'un no-op
+  // silencieux (cf. `renderEffectToggles` ci-dessous) — un seul état d'ouverture pour les deux.
+  const [animalFormDialogOpen, setAnimalFormDialogOpen] = useState(false);
   // PER-363 — Chasseur ailé (r7) : son interrupteur devient MJ-only (voir `renderEffectToggles`) ;
   // `isPlayer` reflète la SESSION courante (magic link joueur), pas le personnage affiché.
   const { isPlayer } = useIsPlayerSession();
@@ -3283,12 +3529,26 @@ function PathBlock({
     // pense-bête togglable par le joueur comme n'importe quel autre effet temporaire. C'est le
     // bouton « Invoquer » dédié (MJ seulement, cf. la modale de détail) qui ajoute réellement la
     // créature au combat.
+    // Forme animale (animaux-r5, PER-375/PER-435, retour propriétaire 2026-08-18) : ACTIVER ce
+    // toggle sans forme choisie est un no-op moteur (`toggleEffect`, rien à activer) — au lieu de le
+    // laisser silencieux, on ouvre directement le sélecteur (même modale que le bouton d'en-tête).
+    // Couper reste inchangé (retire la forme normalement, via `onToggleEffect`).
+    const isAnimalFormToggle = feature.id === 'animaux-r5' || feature.id === 'prestige-changeforme-r5';
+    const handleToggle = isAnimalFormToggle
+      ? (featureId: string, index: number, active: boolean) => {
+          if (active) {
+            setAnimalFormDialogOpen(true);
+            return;
+          }
+          onToggleEffect?.(featureId, index, active);
+        }
+      : onToggleEffect;
     return (
       <FeatureEffectToggles
         character={character}
         featureId={feature.id}
         compact={opts.compact}
-        onToggle={onToggleEffect}
+        onToggle={handleToggle}
         onSpendRecoveryDie={onSpendRecoveryDie}
         disabled={isDisabled(feature)}
         sessionStatusIds={sessionStatusIds}
@@ -3309,7 +3569,7 @@ function PathBlock({
         title={
           <Box sx={{ maxWidth: 320 }}>
             {path.note && <Box sx={{ whiteSpace: 'pre-line', mb: 0.75 }}>{path.note}</Box>}
-            <SourceRef page={path.sourcePage} />
+            <SourceRef page={path.sourcePage} codexHref={codexPathHref(path.id)} />
           </Box>
         }
         // Laisse le temps d'atteindre la bulle (lien sourceRef cliquable) même si la souris frôle
@@ -3509,6 +3769,15 @@ function PathBlock({
           seule fois par voie (pas par rang), cf. `CrystalActivationPanel`. */}
       {path?.id === 'prestige-cristaux' && character && (
         <CrystalActivationPanel character={character} onToggle={onToggleCrystalActive} />
+      )}
+      {grantsAnimalForm && character && (
+        <AnimalFormDialog
+          character={character}
+          onSetInput={onSetEffectInput}
+          toggle={renderEffectToggles(featureById.get('animaux-r5')!)}
+          open={animalFormDialogOpen}
+          onOpenChange={setAnimalFormDialogOpen}
+        />
       )}
     </Box>
   );
@@ -5781,6 +6050,7 @@ export function FeaturesByPath({
           </Button>
         </DialogActions>
       </Dialog>
+      {character && <ActiveAnimalFormAbilities character={character} verbatim={verbatim} />}
     </Stack>
     </FeatureVerbatimContext.Provider>
     </FeatureDeclensionContext.Provider>

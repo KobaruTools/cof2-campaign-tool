@@ -90,8 +90,15 @@ import type { RestorableResourceKind } from './restorableResources';
  *   personnage lui-même — formes élémentaires, PER-374). Distinct de `companionDepletion`, purgé
  *   séparément (une transformation n'est pas un compagnon). La migration ajoute `{}` (aucune forme
  *   blessée au chargement).
+ * v24 : ajout de `transformationAbilities` (surcharge DYNAMIQUE de caractéristiques d'une forme
+ *   CHOISIE en jeu — Forme animale/changeforme, PER-375/PER-435, p. 114/170 : l'animal n'est pas fixé
+ *   dans les données comme les autres transformations (loup, élémentaires), le joueur le choisit dans
+ *   le bestiaire réel via `AnimalFormSelector`, qui dénormalise alors ses caractéristiques ici — le
+ *   moteur (`activeAbilityOverrideSources`) reste une fonction PURE de `Character` seul, sans accès au
+ *   store bestiaire asynchrone. Indexé par id de la capacité PORTEUSE du choix (`'animaux-r5'`),
+ *   comme `transformationDepletion`. La migration ajoute `{}` (aucune forme choisie au chargement).
  */
-export const SCHEMA_VERSION = 23;
+export const SCHEMA_VERSION = 24;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -1084,6 +1091,20 @@ export interface Character {
    * `{}` = aucune forme blessée. Voir `src/lib/character/companions.ts`.
    */
   transformationDepletion: Record<string, Depletion>;
+
+  /**
+   * Surcharge DYNAMIQUE de caractéristiques d'une forme CHOISIE en jeu (PER-375/PER-435, Forme
+   * animale/changeforme, p. 114/170) — à la différence des autres transformations (loup, élémentaires),
+   * l'animal n'est pas fixé dans les données : le joueur le choisit dans le bestiaire réel via
+   * `AnimalFormSelector`, qui dénormalise ici ses caractéristiques (toutes SAUF INT/VOL, conservées
+   * par le personnage — RAW p. 114) dès que le blob est chargé. `activeAbilityOverrideSources`
+   * (`effects.ts`) les lit ICI plutôt que dans `Feature.effects[].abilityOverrides` (statique),
+   * précisément pour rester une fonction PURE de `Character` seul (aucun accès au store bestiaire
+   * asynchrone). Clé = id de la capacité PORTEUSE du choix (`'animaux-r5'`), comme
+   * `transformationDepletion`. Purgé (clé supprimée) dès que le choix est effacé (`setEffectInput`) —
+   * jamais de snapshot fantôme d'un animal qu'on a quitté. `{}` = aucune forme choisie.
+   */
+  transformationAbilities: Record<string, Partial<Record<AbilityId, number>>>;
 
   /**
    * Compagnons MULTI-INSTANCES (PER-235) : clé = `id` de la capacité qui les octroie (ex.

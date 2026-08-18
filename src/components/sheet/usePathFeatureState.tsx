@@ -185,9 +185,23 @@ export function usePathFeatureState({
   const hasChoices = (feature: Feature) =>
     !!character && hasActionableChoice(character, feature.id);
 
-  /** Vrai si la capacité porte un effet conditionnel/temporaire (PER-67). */
-  const hasEffectToggles = (feature: Feature) =>
-    !!character && conditionalEffectsOf(feature.id).length > 0;
+  /**
+   * Vrai si la capacité porte un effet conditionnel/temporaire (PER-67).
+   *
+   * PER-375/PER-435 : `prestige-changeforme-r5` porte un second toggle « totalement lié » à
+   * `animaux-r5` (même clé `activeWhenInputSet`) — MASQUÉ ici quand `animaux-r5` est EMPRUNTÉE
+   * (le personnage n'a pas la voie des animaux), pour ne pas afficher deux fois le même toggle sur
+   * deux cartes de la même voie (celle-ci ET la capacité octroyée juste à côté). Affiché quand le
+   * personnage la possède NATIVEMENT ailleurs (druide) : sans ce cas, la voie du changeforme
+   * n'aurait plus AUCUN toggle visible (le vrai vivrait alors seul sous « Voie des animaux »).
+   */
+  const hasEffectToggles = (feature: Feature) => {
+    if (!character) return false;
+    if (feature.id === 'prestige-changeforme-r5' && !character.featureIds.includes('animaux-r5')) {
+      return false;
+    }
+    return conditionalEffectsOf(feature.id).length > 0;
+  };
 
   /** Vrai si la capacité est désactivée par exclusion mutuelle (grisage + interrupteur figé). */
   const isDisabled = (feature: Feature) => disabledIds?.has(feature.id) ?? false;
