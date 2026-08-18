@@ -19,6 +19,7 @@ import Box from '@mui/material/Box';
 import { darken, lighten, type SxProps, type Theme } from '@mui/material/styles';
 import { crystalById, crystalLabel } from '@/data/crystals';
 import { prestigeCategoryColor } from '@/lib/ui/classColors';
+import { crystalCodexHref } from '@/lib/ui/codex';
 import { PRESTIGE_GRADIENT_STOPS } from '@/lib/ui/prestigeStyle';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemIcon } from '@/components/ItemIcon';
@@ -46,7 +47,7 @@ export function CrystalChip({
         <Box component="span" sx={{ fontWeight: 700 }}>
           Voie des cristaux
         </Box>
-        <SourceRef page={CRYSTAL_PAGE} />
+        <SourceRef page={CRYSTAL_PAGE} term={crystalLabel(crystal)} codexHref={crystalCodexHref(crystal.id)} />
       </Box>
       <Box>{crystal.effectText}</Box>
       <Box sx={{ mt: 0.5, fontStyle: 'italic' }}>

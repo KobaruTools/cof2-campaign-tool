@@ -19,12 +19,14 @@
  * sombre, retour propriétaire) : sur le fond noir des cartes, une teinte assombrie perd trop de
  * contraste.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { equipmentById, featureById } from '@/data';
 import { priestGods } from '@/data/priest-gods';
@@ -155,12 +157,31 @@ function GodOriginIcon({ origin, color, size }: { origin: GodOrigin; color: stri
   return null;
 }
 
-function GodCard({ god, color, origin }: { god: PriestGod; color: string; origin: GodOrigin | undefined }) {
+function GodCard({
+  god,
+  color,
+  origin,
+  highlighted,
+}: {
+  god: PriestGod;
+  color: string;
+  origin: GodOrigin | undefined;
+  highlighted: boolean;
+}) {
   const divineFeature = featureById.get(god.divineFeatureId);
   const backgroundSymbol = godBackgroundSymbol(god.id);
 
   return (
-    <Box sx={cardSx}>
+    <Box
+      id={`codex-god-${god.id}`}
+      sx={[
+        cardSx,
+        highlighted && {
+          borderColor: (theme) => alpha(theme.palette.primary.main, 0.6),
+          boxShadow: (theme) => `0 0 0 1px ${alpha(theme.palette.primary.main, 0.6)}`,
+        },
+      ]}
+    >
       {backgroundSymbol && (
         <>
           <GodCardBackground url={backgroundSymbol.url} />
@@ -236,6 +257,18 @@ function GodCard({ god, color, origin }: { god: PriestGod; color: string; origin
 export function CodexGodsBrowser() {
   const sortedGods = useMemo(() => [...priestGods].sort((a, b) => a.name.localeCompare(b.name, 'fr')), []);
 
+  // Défilement direct sur un DIEU précis (suite bouton codex, `?id=<godId>`, cf. `godCodexHref` —
+  // branché par `PriestVocationBadge`) — même patron que `CodexPathBrowser`/`CodexMagicItemsBrowser`.
+  const requestedId = useSearchParams().get('id');
+  useEffect(() => {
+    if (!requestedId) return;
+    const el = document.getElementById(`codex-god-${requestedId}`);
+    if (!el) return;
+    const headerHeight = document.getElementById('app-header')?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, [requestedId]);
+
   return (
     <>
       <Box
@@ -252,7 +285,13 @@ export function CodexGodsBrowser() {
         }}
       >
         {sortedGods.map((god) => (
-          <GodCard key={god.id} god={god} color={godColor(god.id) ?? 'text.primary'} origin={godOrigin(god.id)} />
+          <GodCard
+            key={god.id}
+            god={god}
+            color={godColor(god.id) ?? 'text.primary'}
+            origin={godOrigin(god.id)}
+            highlighted={requestedId === god.id}
+          />
         ))}
       </Box>
 

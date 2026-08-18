@@ -26,6 +26,40 @@ export function featureCodexHref(feature: Pick<Feature, 'pathId' | 'id'>): strin
 }
 
 /**
+ * URL partageable d'une entrée précise d'une sous-page du Codex SANS sélecteur maître-détail
+ * (Objets magiques/Dieux/Familiers/Montures, `?id=<entryId>`) — même défilement automatique que
+ * `codexPathHref`, chaque navigateur pose son ancre `codex-<kind>-<id>` et lit ce paramètre.
+ */
+function codexEntryHref(subpage: string, id: string): string {
+  return `${subpage}?id=${encodeURIComponent(id)}`;
+}
+
+/** Lien Codex vers un cristal de la Voie des cristaux (`CodexMagicItemsBrowser`, `CrystalChip`). */
+export function crystalCodexHref(crystalId: string): string {
+  return codexEntryHref('/codex/objets-magiques', crystalId);
+}
+
+/** Lien Codex vers un dieu du panthéon (`CodexGodsBrowser`, `PriestVocationBadge`). */
+export function godCodexHref(godId: string): string {
+  return codexEntryHref('/codex/dieux', godId);
+}
+
+/** Lien Codex vers un familier fantastique (`CodexFamiliarsBrowser`, `FamiliarGrantedPowerNote`). */
+export function familiarCodexHref(familiarId: string): string {
+  return codexEntryHref('/codex/familiers', familiarId);
+}
+
+/** Lien Codex vers une monture/un véhicule du catalogue (`CodexMountsBrowser`, `OwnedMountsPanel`). */
+export function mountCodexHref(mountId: string): string {
+  return codexEntryHref('/codex/montures', mountId);
+}
+
+/** Lien Codex vers un objet d'équipement du catalogue (`CodexEquipmentBrowser`, `EquipmentList`). */
+export function equipmentCodexHref(equipmentId: string): string {
+  return codexEntryHref('/codex/equipement', equipmentId);
+}
+
+/**
  * Sous-pages FONCTIONNELLES du Codex (PER-419), pour le sous-menu de l'en-tête
  * (`CodexSplitButton`/`CodexDrawerItems`) — liste statique, contenu du livre de base
  * uniquement, aucun gating payant à prévoir ici (contrairement au chevron « Livre des

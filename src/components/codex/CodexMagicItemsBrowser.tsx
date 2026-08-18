@@ -12,9 +12,12 @@
  * Contenu FREE (livre de base, `src/data/crystals.ts` + `magicItem.ts`) : aucun gating payant à
  * appliquer ici, contrairement aux voies du Compagnon listées par `CodexPathBrowser`.
  */
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { CRYSTALS, crystalLabel } from '@/data/crystals';
 import {
   MAGIC_DEFENSE_PROPERTY_KINDS,
@@ -114,6 +117,20 @@ function PropertyGroup({ title, kinds }: { title: string; kinds: readonly MagicP
 }
 
 export function CodexMagicItemsBrowser() {
+  // Défilement direct sur un CRISTAL précis (suite bouton codex, `?id=<crystalId>`, cf.
+  // `crystalCodexHref`) — même patron que `CodexPathBrowser` (ancre + compensation de l'`AppBar`
+  // sticky, `#app-header`), seule sous-page du Codex à en avoir besoin pour l'instant : les
+  // propriétés d'enchantement n'ont pas d'id de catalogue propre, rien ne pointe encore dessus.
+  const requestedId = useSearchParams().get('id');
+  useEffect(() => {
+    if (!requestedId) return;
+    const el = document.getElementById(`codex-crystal-${requestedId}`);
+    if (!el) return;
+    const headerHeight = document.getElementById('app-header')?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, [requestedId]);
+
   return (
     <Stack spacing={4}>
       <Box sx={{ ...panelSx, p: { xs: 2, sm: 3 } }}>
@@ -148,7 +165,18 @@ export function CodexMagicItemsBrowser() {
           }}
         >
           {CRYSTALS.map((crystal) => (
-            <Box key={crystal.id} sx={{ ...cardSx, p: 2 }}>
+            <Box
+              key={crystal.id}
+              id={`codex-crystal-${crystal.id}`}
+              sx={{
+                ...cardSx,
+                p: 2,
+                ...(requestedId === crystal.id && {
+                  borderColor: (theme) => alpha(theme.palette.primary.main, 0.6),
+                  boxShadow: (theme) => `0 0 0 1px ${alpha(theme.palette.primary.main, 0.6)}`,
+                }),
+              }}
+            >
               <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.5 }}>
                 <ItemIcon id="gems" size={16} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>

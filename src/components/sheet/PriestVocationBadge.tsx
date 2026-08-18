@@ -5,10 +5,11 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { priestGodById } from '@/data';
 import { godColor } from '@/lib/ui/godTheme';
+import { godCodexHref } from '@/lib/ui/codex';
 import type { PriestVocation } from '@/lib/character/types';
 import { AppTooltip } from '@/components/AppTooltip';
 import { GodIcon } from '@/components/GodIcon';
-import { PageRefText } from '@/components/SourceRef';
+import { PageRefText, SourceRef } from '@/components/SourceRef';
 
 /**
  * Badge d'identité (PER-218) signalant qu'un prêtre s'est SPÉCIALISÉ (héraut d'un
@@ -27,9 +28,12 @@ export function PriestVocationBadge({ vocation }: { vocation?: PriestVocation | 
   return (
     <AppTooltip
       title={
-        <PageRefText>
-          {`Prêtre spécialiste : héraut de ${god.name} (${god.domain}). Il maîtrise l’arme sacrée de son dieu et reçoit une capacité divine (p. 122).`}
-        </PageRefText>
+        <>
+          <PageRefText>
+            {`Prêtre spécialiste : héraut de ${god.name} (${god.domain}). Il maîtrise l’arme sacrée de son dieu et reçoit une capacité divine (p. 122).`}
+          </PageRefText>{' '}
+          <SourceRef page={god.sourcePage} term={god.name} codexHref={godCodexHref(god.id)} />
+        </>
       }
     >
       <Box

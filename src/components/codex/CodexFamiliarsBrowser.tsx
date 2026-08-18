@@ -32,7 +32,8 @@
  *
  * Pas de gating payant à prévoir : `fantasticFamiliars` est un tableau statique du livre de base.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -301,9 +302,18 @@ function FamiliarAbilityBlocks({ profile }: { profile: CreatureProfile }) {
   );
 }
 
-function FamiliarCard({ familiar }: { familiar: FantasticFamiliar }) {
+function FamiliarCard({ familiar, highlighted }: { familiar: FantasticFamiliar; highlighted: boolean }) {
   return (
-    <Box sx={cardSx}>
+    <Box
+      id={`codex-familiar-${familiar.id}`}
+      sx={[
+        cardSx,
+        highlighted && {
+          borderColor: (theme) => alpha(theme.palette.primary.main, 0.6),
+          boxShadow: (theme) => `0 0 0 1px ${alpha(theme.palette.primary.main, 0.6)}`,
+        },
+      ]}
+    >
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
           {familiar.name}
@@ -355,6 +365,19 @@ export function CodexFamiliarsBrowser() {
     [],
   );
 
+  // Défilement direct sur un FAMILIER précis (suite bouton codex, `?id=<familiarId>`, cf.
+  // `familiarCodexHref` — branché par `FamiliarGrantedPowerNote`) — même patron que les autres
+  // sous-pages sans sélecteur maître-détail (`CodexGodsBrowser`, `CodexMagicItemsBrowser`).
+  const requestedId = useSearchParams().get('id');
+  useEffect(() => {
+    if (!requestedId) return;
+    const el = document.getElementById(`codex-familiar-${requestedId}`);
+    if (!el) return;
+    const headerHeight = document.getElementById('app-header')?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, [requestedId]);
+
   return (
     <Box
       sx={{
@@ -370,7 +393,7 @@ export function CodexFamiliarsBrowser() {
       }}
     >
       {sorted.map((familiar) => (
-        <FamiliarCard key={familiar.id} familiar={familiar} />
+        <FamiliarCard key={familiar.id} familiar={familiar} highlighted={requestedId === familiar.id} />
       ))}
     </Box>
   );

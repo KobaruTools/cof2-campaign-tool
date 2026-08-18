@@ -18,7 +18,8 @@
  * `Weapon.damageType` dans `schema.ts`) et catégorie de prise (`weaponCategory`). Recherche texte
  * par nom sur les 4 onglets, via `normalizeSearchText` (piège accents/ligatures FR déjà rencontré).
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
@@ -40,7 +41,8 @@ import TableRow from '@mui/material/TableRow';
 import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { equipment } from '@/data';
+import { alpha, type Theme } from '@mui/material/styles';
+import { equipment, equipmentById } from '@/data';
 import type { Armor, DamageType, EquipmentItem, Gear, Shield, Weapon, WeaponCategory } from '@/data/schema';
 import { progression } from '@/data/progression';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
@@ -149,6 +151,14 @@ const panelSx = {
  * d'un tableau dense — overlay noir additionnel au-dessus du fond déjà translucide du tableau. */
 const zebraSx = (index: number) => (index % 2 === 1 ? { bgcolor: 'rgba(0, 0, 0, 0.18)' } : undefined);
 
+/** Ligne ciblée par le bouton codex d'un objet (`?id=<equipmentId>`, cf. `equipmentCodexHref`) —
+ * même liseré que le surlignage des autres sous-pages du Codex (`CodexGodsBrowser`…), en `outline`
+ * plutôt qu'en bordure : ne décale pas les colonnes voisines dans une grille de tableau dense. */
+const highlightRowSx = (theme: Theme) => ({
+  outline: `2px solid ${alpha(theme.palette.primary.main, 0.6)}`,
+  outlineOffset: -2,
+});
+
 const ALL = '__all__';
 
 /** Nom de l'objet précédé de SON icône d'inventaire (MÊME vocabulaire que la fiche personnage,
@@ -198,7 +208,7 @@ function GearDescriptionText({ value }: { value: string }) {
 
 type WeaponSortKey = 'name' | 'damage' | 'price';
 
-function WeaponsTab() {
+function WeaponsTab({ highlightId }: { highlightId?: string }) {
   const [search, setSearch] = useState('');
   const [damageTypeFilter, setDamageTypeFilter] = useState<string>(ALL);
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL);
@@ -280,7 +290,12 @@ function WeaponsTab() {
           </TableHead>
           <TableBody>
             {rows.map((w, i) => (
-              <TableRow key={w.id} hover sx={zebraSx(i)}>
+              <TableRow
+                key={w.id}
+                id={`codex-equip-${w.id}`}
+                hover
+                sx={(theme) => ({ ...zebraSx(i), ...(w.id === highlightId ? highlightRowSx(theme) : null) })}
+              >
                 <NameCell item={w} />
                 <TableCell>{WEAPON_CATEGORY_LABELS[w.weaponCategory]}</TableCell>
                 <TableCell>
@@ -325,7 +340,7 @@ function maxWeaponDamageValue(w: Weapon): number {
 
 type ArmorSortKey = 'name' | 'def' | 'maxAgi' | 'price';
 
-function ArmorsTab() {
+function ArmorsTab({ highlightId }: { highlightId?: string }) {
   const [search, setSearch] = useState('');
   const { sort, pick } = useSort<ArmorSortKey>('def');
 
@@ -365,7 +380,12 @@ function ArmorsTab() {
           </TableHead>
           <TableBody>
             {rows.map((a, i) => (
-              <TableRow key={a.id} hover sx={zebraSx(i)}>
+              <TableRow
+                key={a.id}
+                id={`codex-equip-${a.id}`}
+                hover
+                sx={(theme) => ({ ...zebraSx(i), ...(a.id === highlightId ? highlightRowSx(theme) : null) })}
+              >
                 <NameCell item={a} />
                 <TableCell align="right">+{a.def}</TableCell>
                 <TableCell align="right">{a.maxAgi ?? '—'}</TableCell>
@@ -392,7 +412,7 @@ function ArmorsTab() {
 
 type ShieldSortKey = 'name' | 'def' | 'price';
 
-function ShieldsTab() {
+function ShieldsTab({ highlightId }: { highlightId?: string }) {
   const { sort, pick } = useSort<ShieldSortKey>('def');
 
   const rows = useMemo(() => {
@@ -418,7 +438,12 @@ function ShieldsTab() {
         </TableHead>
         <TableBody>
           {rows.map((s, i) => (
-            <TableRow key={s.id} hover sx={zebraSx(i)}>
+            <TableRow
+              key={s.id}
+              id={`codex-equip-${s.id}`}
+              hover
+              sx={(theme) => ({ ...zebraSx(i), ...(s.id === highlightId ? highlightRowSx(theme) : null) })}
+            >
               <NameCell item={s} />
               <TableCell align="right">+{s.def}</TableCell>
               <TableCell align="right">
@@ -443,7 +468,7 @@ function ShieldsTab() {
 
 type GearSortKey = 'name' | 'price';
 
-function GearTab() {
+function GearTab({ highlightId }: { highlightId?: string }) {
   const [search, setSearch] = useState('');
   const { sort, pick } = useSort<GearSortKey>('name');
 
@@ -478,7 +503,12 @@ function GearTab() {
           </TableHead>
           <TableBody>
             {rows.map((g, i) => (
-              <TableRow key={g.id} hover sx={zebraSx(i)}>
+              <TableRow
+                key={g.id}
+                id={`codex-equip-${g.id}`}
+                hover
+                sx={(theme) => ({ ...zebraSx(i), ...(g.id === highlightId ? highlightRowSx(theme) : null) })}
+              >
                 <NameCell item={g} sx={{ whiteSpace: 'nowrap' }} />
                 <TableCell sx={{ color: 'text.secondary', maxWidth: 480 }}>
                   {g.description ? <GearDescriptionText value={g.description} /> : '—'}
@@ -511,8 +541,42 @@ const TAB_LABELS: Record<TabKey, string> = {
   gear: 'Matériel',
 };
 
+/** Onglet portant la catégorie d'un objet — pour ouvrir automatiquement le bon onglet quand
+ * `?id=<equipmentId>` cible un objet précis (bouton codex, cf. `equipmentCodexHref`). */
+const TAB_OF_CATEGORY: Record<EquipmentItem['category'], TabKey> = {
+  weapon: 'weapons',
+  armor: 'armors',
+  shield: 'shields',
+  gear: 'gear',
+};
+
 export function CodexEquipmentBrowser() {
-  const [tab, setTab] = useState<TabKey>('weapons');
+  // Ciblage direct d'un OBJET précis (suite bouton codex, `?id=<equipmentId>`, cf.
+  // `equipmentCodexHref` — branché par `EquipmentList`/`ItemDialog`) : ouvre l'onglet de sa
+  // catégorie, surligne sa ligne (`highlightRowSx`) et y défile — même compensation de l'`AppBar`
+  // sticky que les autres sous-pages du Codex (`CodexPathBrowser`…).
+  const requestedId = useSearchParams().get('id');
+  const requestedItem = requestedId ? equipmentById.get(requestedId) : undefined;
+
+  const [tab, setTab] = useState<TabKey>(() => (requestedItem ? TAB_OF_CATEGORY[requestedItem.category] : 'weapons'));
+  // Resynchronisé seulement quand `requestedId` CHANGE (nouveau clic sur un bouton codex), pas à
+  // chaque rendu — sinon cliquer un autre onglet à la main y ramènerait aussitôt (patron
+  // `CodexPathBrowser`, « adjusting state when a prop changes »).
+  const [lastRequestedId, setLastRequestedId] = useState(requestedId);
+  if (requestedId !== lastRequestedId) {
+    setLastRequestedId(requestedId);
+    if (requestedItem) setTab(TAB_OF_CATEGORY[requestedItem.category]);
+  }
+
+  useEffect(() => {
+    if (!requestedId) return;
+    const el = document.getElementById(`codex-equip-${requestedId}`);
+    if (!el) return;
+    const headerHeight = document.getElementById('app-header')?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, [requestedId, tab]);
+
   return (
     <Box sx={panelSx}>
       <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
@@ -526,10 +590,10 @@ export function CodexEquipmentBrowser() {
           <Tab key={t} value={t} label={TAB_LABELS[t]} />
         ))}
       </Tabs>
-      {tab === 'weapons' && <WeaponsTab />}
-      {tab === 'armors' && <ArmorsTab />}
-      {tab === 'shields' && <ShieldsTab />}
-      {tab === 'gear' && <GearTab />}
+      {tab === 'weapons' && <WeaponsTab highlightId={requestedId ?? undefined} />}
+      {tab === 'armors' && <ArmorsTab highlightId={requestedId ?? undefined} />}
+      {tab === 'shields' && <ShieldsTab highlightId={requestedId ?? undefined} />}
+      {tab === 'gear' && <GearTab highlightId={requestedId ?? undefined} />}
     </Box>
   );
 }

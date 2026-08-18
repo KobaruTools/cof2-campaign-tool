@@ -30,9 +30,11 @@ import ToggleButton from '@mui/material/ToggleButton';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SourceRef } from '@/components/SourceRef';
 import { bardes, mounts as mountCatalog } from '@/data';
 import type { Price } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
+import { mountCodexHref } from '@/lib/ui/codex';
 import { resolveCreatureAbilities } from '@/lib/ui/creature';
 import type { ResolvedMount } from '@/lib/character/mounts';
 import type { Depletion } from '@/lib/character/types';
@@ -170,6 +172,7 @@ function MountCard({
             {kindLabel}
             {entry?.price ? ` · ${formatPrice(entry.price)}` : ''}
           </Typography>
+          {entry && <SourceRef page={entry.sourcePage} term={entry.name} codexHref={mountCodexHref(entry.id)} />}
         </Stack>
         {!readOnly && (
           <AppTooltip title={`Retirer ${displayName.toLowerCase()}`}>

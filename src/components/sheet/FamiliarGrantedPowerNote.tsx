@@ -13,6 +13,7 @@ import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
+import { SourceRef } from '@/components/SourceRef';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { classById, featureById, pathById } from '@/data';
 import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
@@ -21,6 +22,7 @@ import { familiarPowerUsedKey, resolveFamiliarGrantedPower, type ResolvedFamilia
 import type { Character } from '@/lib/character/types';
 import type { Abilities } from '@/lib/engine';
 import { classColor } from '@/lib/ui/classColors';
+import { familiarCodexHref } from '@/lib/ui/codex';
 
 /** Familier fantastique retenu au R3 (choix `option` index 0), ou undefined. Même jointure que le moteur. */
 function selectedFamiliar(character: Character): FantasticFamiliar | undefined {
@@ -77,7 +79,7 @@ function originalPowerFeature(host: Feature, power: ResolvedFamiliarPower): Feat
 function FamiliarPowerCard({
   host,
   slotLabel,
-  familiarName,
+  familiar,
   referenced,
   usage,
   character,
@@ -88,7 +90,7 @@ function FamiliarPowerCard({
 }: {
   host: Feature;
   slotLabel: string;
-  familiarName: string;
+  familiar: FantasticFamiliar;
   referenced: Feature;
   usage?: { max: number; reset: UsageResetTrigger };
   character: Character;
@@ -125,7 +127,8 @@ function FamiliarPowerCard({
     >
       <Typography variant="caption" sx={{ color: color ?? 'text.secondary', fontWeight: 700, display: 'block', mb: 0.25 }}>
         <Box component="span" sx={{ mr: 0.5 }}>✦</Box>
-        {slotLabel} — {familiarName}
+        {slotLabel} — {familiar.name}{' '}
+        <SourceRef page={familiar.sourcePage} term={familiar.name} codexHref={familiarCodexHref(familiar.id)} />
         {origin === 'own' ? (
           <Box component="span" sx={{ whiteSpace: 'nowrap' }}>{' · propre au familier'}</Box>
         ) : className && classId ? (
@@ -339,7 +342,16 @@ export function FamiliarGrantedPowerNote({
   // Rang 5 : profil de sorts appris (descriptif ; la RD est un effet moteur affiché ailleurs).
   if (feature.id === 'prestige-familier-fantastique-r5') {
     return (
-      <AppAlert severity="info" title={`Sorts appris — ${familiar.name}`} sx={{ mt: 1.5 }}>
+      <AppAlert
+        severity="info"
+        title={
+          <>
+            {`Sorts appris — ${familiar.name}`}{' '}
+            <SourceRef page={familiar.sourcePage} term={familiar.name} codexHref={familiarCodexHref(familiar.id)} />
+          </>
+        }
+        sx={{ mt: 1.5 }}
+      >
         {`Un ou deux sorts (rang 1 ou 2) du profil : ${spellProfileLabel(familiar.spellProfile)}.`}
       </AppAlert>
     );
@@ -357,7 +369,7 @@ export function FamiliarGrantedPowerNote({
       <FamiliarPowerCard
         host={feature}
         slotLabel={slotLabel}
-        familiarName={familiar.name}
+        familiar={familiar}
         referenced={referenced}
         usage={power.usage}
         character={character}
@@ -369,7 +381,16 @@ export function FamiliarGrantedPowerNote({
     );
   }
   return (
-    <AppAlert severity="info" title={`${slotLabel} — ${familiar.name}`} sx={{ mt: 1.5 }}>
+    <AppAlert
+      severity="info"
+      title={
+        <>
+          {`${slotLabel} — ${familiar.name}`}{' '}
+          <SourceRef page={familiar.sourcePage} term={familiar.name} codexHref={familiarCodexHref(familiar.id)} />
+        </>
+      }
+      sx={{ mt: 1.5 }}
+    >
       {power.text}
     </AppAlert>
   );

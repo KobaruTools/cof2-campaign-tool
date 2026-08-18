@@ -103,6 +103,7 @@ import type { WeaponLineCriticalRange } from '@/components/sheet/weaponCriticalR
 import { EquipmentCatalogAutocomplete } from '@/components/sheet/EquipmentCatalogAutocomplete';
 import { WeldedBarPinButton, WELDED_BUTTON_HEIGHT } from '@/components/sheet/WeldedBarPinButton';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
+import { equipmentCodexHref } from '@/lib/ui/codex';
 import { DamageValue } from '@/components/DamageValue';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { CapabilityChip, GlossaryRichText, GlossaryText } from '@/components/sheet/FeatureRichText';
@@ -1210,6 +1211,9 @@ export function EquipmentList({
             {equipmentLabel(line, characterClass)}
           </Typography>
         )}
+        {/* Bouton codex (suite bouton codex, PER-72) : absent sur un objet CUSTOM (`item` null),
+            sans entrée catalogue vers laquelle pointer. */}
+        {item && <SourceRef page={item.sourcePage} term={item.name} codexHref={equipmentCodexHref(item.id)} />}
         {structuredDetail && (
           <Typography variant="caption" color="text.secondary" component="span">
             {structuredDetail}

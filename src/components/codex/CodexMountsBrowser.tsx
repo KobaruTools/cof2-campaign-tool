@@ -20,6 +20,8 @@
  *
  * Pas de gating payant à prévoir : `mounts`/`bardes` sont des tableaux statiques du livre de base.
  */
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -28,6 +30,7 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { bardes, mounts } from '@/data';
 import type { BardeCatalogEntry, MountCatalogEntry } from '@/data/mounts';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
@@ -55,10 +58,19 @@ const gridSx = {
   alignItems: 'stretch',
 } as const;
 
-function MountRow({ entry }: { entry: MountCatalogEntry }) {
+function MountRow({ entry, highlighted }: { entry: MountCatalogEntry; highlighted: boolean }) {
   const kindLabel = entry.kind === 'vehicle' ? 'Véhicule' : 'Monture';
   return (
-    <Box sx={{ ...rowSx, display: 'flex', flexDirection: 'column' }}>
+    <Box
+      id={`codex-mount-${entry.id}`}
+      sx={[
+        { ...rowSx, display: 'flex', flexDirection: 'column' },
+        highlighted && {
+          borderColor: (theme) => alpha(theme.palette.primary.main, 0.6),
+          boxShadow: (theme) => `0 0 0 1px ${alpha(theme.palette.primary.main, 0.6)}`,
+        },
+      ]}
+    >
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', p: 2 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
           {entry.name}
@@ -134,13 +146,27 @@ function SectionHeading({ children }: { children: string }) {
 export function CodexMountsBrowser() {
   const ridingMounts = mounts.filter((m) => m.kind === 'mount');
   const vehicles = mounts.filter((m) => m.kind === 'vehicle');
+
+  // Défilement direct sur une MONTURE précise (suite bouton codex, `?id=<mountId>`, cf.
+  // `mountCodexHref` — branché par `OwnedMountsPanel`) — même patron que les autres sous-pages
+  // sans sélecteur maître-détail (`CodexGodsBrowser`, `CodexFamiliarsBrowser`).
+  const requestedId = useSearchParams().get('id');
+  useEffect(() => {
+    if (!requestedId) return;
+    const el = document.getElementById(`codex-mount-${requestedId}`);
+    if (!el) return;
+    const headerHeight = document.getElementById('app-header')?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, [requestedId]);
+
   return (
     <Stack spacing={3}>
       <Box>
         <SectionHeading>Montures</SectionHeading>
         <Box sx={gridSx}>
           {ridingMounts.map((entry) => (
-            <MountRow key={entry.id} entry={entry} />
+            <MountRow key={entry.id} entry={entry} highlighted={requestedId === entry.id} />
           ))}
         </Box>
       </Box>
@@ -148,7 +174,7 @@ export function CodexMountsBrowser() {
         <SectionHeading>Véhicules</SectionHeading>
         <Box sx={gridSx}>
           {vehicles.map((entry) => (
-            <MountRow key={entry.id} entry={entry} />
+            <MountRow key={entry.id} entry={entry} highlighted={requestedId === entry.id} />
           ))}
         </Box>
       </Box>
