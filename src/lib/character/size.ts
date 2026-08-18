@@ -1,6 +1,7 @@
 /**
  * Catégorie de taille du personnage — réutilise l'échelle du Bestiaire (`CreatureSize`, table
- * p. 260) : « moyenne » pour tous les peuples jouables, sauf le halfelin (« petite »). Arbitrage
+ * p. 260) : « moyenne » pour tous les peuples jouables, sauf le halfelin, le frouïn et le gobelin
+ * (« petite » ; frouïn et gobelin = contenu payant du Compagnon, PER-330/PER-331). Arbitrage
  * propriétaire (2026-08-06) : le livre ne donne la taille d'un peuple qu'en prose libre dans sa
  * description (`Ancestry` n'a pas de champ `size` structuré), cette règle fixe la référence unique
  * pour la fiche. Stature de géant (`prestige-colosse-r4`, p. 149 : « considéré comme faisant une
@@ -9,7 +10,7 @@
 import { CREATURE_SIZES } from '@/data/schema';
 import type { CreatureSize } from '@/data/schema';
 
-const SMALL_ANCESTRY_IDS = new Set(['halfelin']);
+const SMALL_ANCESTRY_IDS = new Set(['halfelin', 'frouin', 'gobelin']);
 
 /**
  * Peuples de taille « grande » d'office (PER-325, demi-ogre : « considéré comme de taille grande » —

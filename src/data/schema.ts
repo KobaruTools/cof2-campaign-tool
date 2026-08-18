@@ -4408,6 +4408,14 @@ export interface Feature {
    */
   usageCounter?: UsageCounter;
   /**
+   * PER-329 — bouton « Dépenser 1 DR » sur la carte d'une TRANSFORMATION : dépense un dé de
+   * récupération ET active l'interrupteur de forme désigné (`effectIndex`, l'effet
+   * `conditional-stat-bonus` temporaire). Modélise « la 1re transformation du jour est gratuite, chaque
+   * suivante coûte 1 DR » de façon MANUELLE et permissive (fiche libre) : l'interrupteur reste GRATUIT
+   * (bascule d'état sans rien consommer), le joueur presse ce bouton quand la règle lui fait payer.
+   * La dépense est clampée au pool (jamais sous 0). Absent = aucun bouton. */
+  transformationRecoveryDieButton?: { effectIndex: number };
+  /**
    * Curseur de durée choisie par le joueur à l'incantation, qui fixe la difficulté du test (cf.
    * `ChosenDurationDifficulty`). Absent = aucune difficulté de ce type sur cette capacité.
    */

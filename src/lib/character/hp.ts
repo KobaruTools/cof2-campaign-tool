@@ -18,9 +18,10 @@
  */
 import type { FamilyId, Family } from '@/data/schema';
 import type { HpLevelGain, RulesContext } from '@/lib/engine';
-import { classPathFamily } from '@/lib/engine';
+import { classPathFamily, maxHp as computeMaxHp, recoveryDiceCount as computeRecoveryDiceCount } from '@/lib/engine';
 import type { Character } from './types';
 import { priestDivineFeatureId } from './choices';
+import { activeFeatureIdsForMods, effectContext, effectiveAbilities, modsFromFeatures } from './effects';
 
 /** Capacités acquises au niveau 1 (entrée d'historique de création). */
 function level1FeatureIds(character: Character): string[] {
@@ -195,4 +196,45 @@ export function level1FamilyHp(character: Character, ctx: RulesContext): number 
 export function level1HybridFamilies(character: Character, ctx: RulesContext): FamilyId[] {
   const families = level1ClassPathFamilies(character, ctx);
   return new Set(families).size >= 2 ? families : [];
+}
+
+/**
+ * PV MAXIMUM du personnage — même valeur que la grille dérivée de la fiche, mais calculable dans la
+ * couche `character` (sans le `DerivedInput` de la vue, qui vit côté composant). Sert à résoudre les PV
+ * d'une TRANSFORMATION dont le profil déclare `hitPoints: { fromMaster: 'maxHp' }` (« Points de vigueur
+ * du PJ » de la forme panthère du félis, PER-329) : la barre de transformation et la reprise de forme à
+ * 0 PV s'appuient dessus (`activeTransformationWithHp`). Reprend EXACTEMENT les mêmes entrées que
+ * `characterDerivedView` (famille du profil, CON effective, gains de PV par niveau, PV de base niveau 1,
+ * `maxHp` des mods de capacités). Seuls les bonus de PV d'OBJETS/points orphelins (rares) ne sont pas
+ * refondus ici — la barre principale reste la source de vérité en jeu. `null` si la famille est
+ * introuvable (profil incomplet). */
+export function characterMaxHp(character: Character, ctx: RulesContext): number | null {
+  const family = mainFamilyOf(character, ctx);
+  if (!family) return null;
+  const con = effectiveAbilities(character).CON;
+  const mods = modsFromFeatures(activeFeatureIdsForMods(character), effectContext(character));
+  // `familyHpGains` + `level1FamilyHp` fournis → l'objet `family` n'est utilisé par `computeMaxHp` que
+  // comme repli (jamais atteint ici), la valeur colle donc à la grille dérivée.
+  return computeMaxHp(
+    character.level,
+    family,
+    con,
+    { maxHp: mods.maxHp },
+    familyHpGains(character, ctx),
+    level1FamilyHp(character, ctx),
+  );
+}
+
+/**
+ * Nombre MAXIMUM de dés de récupération du personnage (p. 30) — même valeur que la grille dérivée, mais
+ * calculable dans la couche `character` (sans `DerivedInput`). Sert au bouton « Dépenser 1 DR » de la
+ * transformation panthère (PER-329) pour clamper la dépense au pool. Reprend les mêmes entrées que
+ * `characterDerivedView` (CON effective, famille, `recoveryDiceCount` des mods). `null` si la famille
+ * est introuvable (profil incomplet). */
+export function characterRecoveryDiceMax(character: Character, ctx: RulesContext): number | null {
+  const family = mainFamilyOf(character, ctx);
+  if (!family) return null;
+  const con = effectiveAbilities(character).CON;
+  const mods = modsFromFeatures(activeFeatureIdsForMods(character), effectContext(character));
+  return computeRecoveryDiceCount(con, family, { recoveryDiceCount: mods.recoveryDiceCount });
 }

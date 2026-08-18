@@ -723,6 +723,7 @@ function GmSheetDrawerContent({
               // revanche pas de `onChange` ni de `onChoiceChange` : les choix figés et la
               // composition des voies relèvent de la construction, pas du jeu.
               onToggleEffect={game.setEffectToggleValue}
+              onSpendRecoveryDie={game.spendTransformationRecoveryDie}
               onSetEffectInput={game.setEffectInputValue}
               onSetUsageCounter={game.setUsageCounterValue}
               onLiftShortRestLock={game.liftShortRestLock}

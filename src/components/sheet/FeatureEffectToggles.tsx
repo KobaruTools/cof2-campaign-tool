@@ -15,6 +15,8 @@
  *    rage berserk » (valeur résolue + déclencheur) ;
  *  - compact (vue colonne) : l'interrupteur seul, le libellé complet en infobulle.
  */
+import Button from '@mui/material/Button';
+import Casino from '@mui/icons-material/Casino';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
@@ -23,6 +25,9 @@ import { AppTooltip } from '@/components/AppTooltip';
 import type { ConditionalStatBonusEffect } from '@/data/schema';
 import { featureById, testDomainById } from '@/data';
 import { declineForFeature } from '@/lib/character/dragonElement';
+import { characterRecoveryDiceMax } from '@/lib/character/hp';
+import { currentRecoveryDice } from '@/lib/character/gauges';
+import { rulesContext } from '@/lib/character/rulesContext';
 import type { Character } from '@/lib/character/types';
 import {
   conditionalEffectsOf,
@@ -31,6 +36,7 @@ import {
   conditionalOptionGateMet,
   isEffectActive,
   isTemporaryActivationShortRestLocked,
+  usageCounterMaximum,
 } from '@/lib/character/effects';
 import { isBuffToggleSuperseded } from '@/lib/character/groupBuffs';
 // Libellés courts des stats dérivées (« +1 DEF ») — source unique partagée avec les badges
@@ -86,6 +92,11 @@ export interface FeatureEffectTogglesProps {
   /** Bascule le i-ème effet de la capacité ; absent → interrupteurs désactivés. */
   onToggle?: (featureId: string, index: number, active: boolean) => void;
   /**
+   * PER-329 — dépense 1 dé de récupération et active la forme (bouton « Dépenser 1 DR » d'une
+   * transformation qui déclare `transformationRecoveryDieButton`). Absent → bouton non rendu.
+   */
+  onSpendRecoveryDie?: (featureId: string) => void;
+  /**
    * Capacité actuellement désactivée par exclusion mutuelle (un autre interrupteur
    * actif la grise) : les interrupteurs sont rendus NON-INTERACTIFS. Indépendant de
    * `onToggle` (le détail de la capacité reste, lui, consultable).
@@ -109,6 +120,7 @@ export function FeatureEffectToggles({
   featureId,
   compact = false,
   onToggle,
+  onSpendRecoveryDie,
   disabled = false,
   sessionStatusIds = [],
 }: FeatureEffectTogglesProps) {
@@ -144,6 +156,54 @@ export function FeatureEffectToggles({
     const base = effectLabel(character, featureId, index, effect);
     return supersededBySession(index) ? `${base} — appliqué par la séance` : base;
   };
+
+  // PER-329 — bouton « Dépenser 1 DR » d'une transformation (panthère du félis) : débite un dé de
+  // récupération et réactive la forme. Affiché SEULEMENT une fois l'usage gratuit du jour épuisé ET la
+  // forme redevenue humaine (toggle OFF) — la 1re transformation/jour passe par l'interrupteur (gratuite).
+  // Grisé à 0 DR (informe qu'aucune retransformation n'est possible). Rendu dans la MODALE seulement, pas
+  // dans la carte de la vue colonne (`compact`).
+  const drFeature = featureById.get(featureId);
+  const drButton = drFeature?.transformationRecoveryDieButton;
+  const drRemaining = drButton
+    ? currentRecoveryDice(characterRecoveryDiceMax(character, rulesContext) ?? 0, character.depletion)
+    : 0;
+  const drFreeUseExhausted = (() => {
+    if (!drButton) return false;
+    const counter = drFeature?.usageCounter;
+    if (!counter) return true; // pas de suivi d'usage gratuit → toujours payant
+    const key = counter.sharedKey ?? featureId;
+    const max = usageCounterMaximum(counter, character, drFeature);
+    return Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max)) <= 0;
+  })();
+  const showDrButton =
+    !!drButton &&
+    !!onSpendRecoveryDie &&
+    drFreeUseExhausted &&
+    !isEffectActive(character, featureId, drButton.effectIndex);
+  const recoveryDieButton =
+    showDrButton && onSpendRecoveryDie ? (
+      <AppTooltip
+        title={
+          drRemaining > 0
+            ? `Se transformer en dépensant 1 dé de récupération (${drRemaining} restant${drRemaining > 1 ? 's' : ''}). La 1re transformation du jour est gratuite via l'interrupteur ci-dessus.`
+            : 'Aucun dé de récupération disponible.'
+        }
+      >
+        <span>
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            startIcon={<Casino sx={{ fontSize: 16 }} />}
+            disabled={drRemaining <= 0}
+            onClick={() => onSpendRecoveryDie(featureId)}
+            sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
+          >
+            Dépenser 1 DR ({drRemaining})
+          </Button>
+        </span>
+      </AppTooltip>
+    ) : null;
 
   if (compact) {
     // Vue colonne : interrupteur seul. `stopPropagation` pour ne pas ouvrir la
@@ -195,6 +255,7 @@ export function FeatureEffectToggles({
           label={<Typography variant="body2">{label(index, effect)}</Typography>}
         />
       ))}
+      {recoveryDieButton}
     </Stack>
   );
 }

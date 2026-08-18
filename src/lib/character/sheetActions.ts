@@ -65,7 +65,10 @@ import {
   setRecoveryDiceMissing,
   spendLuck,
   spendMana,
+  spendRecoveryDice,
 } from './gauges';
+import { characterRecoveryDiceMax } from './hp';
+import { rulesContext } from './rulesContext';
 import { RAGE_RESOURCE_KEY, type RestorableResourceKind } from './restorableResources';
 import { longRest, shortRest } from './rest';
 import { oneHandableWeaponFamiliesForCharacter, setWornAt } from './equipment';
@@ -993,6 +996,22 @@ export function healTransformation(character: Character, key: string, amount: nu
 
 export function resetTransformationHp(character: Character, key: string): Partial<Character> {
   return setTransformationDepletion(character, key, resetHp(character.transformationDepletion[key] ?? {}));
+}
+
+/**
+ * PER-329 — bouton « Dépenser 1 DR » d'une transformation (panthère du félis) : débite UN dé de
+ * récupération (clampé au pool, jamais sous 0) ET active l'interrupteur de forme désigné. Modélise « la
+ * 2e transformation du jour et les suivantes coûtent 1 DR » de façon manuelle (l'interrupteur seul reste
+ * gratuit). NO-OP si la capacité ne déclare pas de bouton (`transformationRecoveryDieButton`).
+ */
+export function spendTransformationRecoveryDie(character: Character, featureId: string): Partial<Character> {
+  const spec = featureById.get(featureId)?.transformationRecoveryDieButton;
+  if (!spec) return {};
+  const max = characterRecoveryDiceMax(character, rulesContext) ?? 0;
+  return {
+    depletion: spendRecoveryDice(character.depletion, 1, max),
+    effectToggles: setEffectToggle(character, featureId, spec.effectIndex, true),
+  };
 }
 
 /**

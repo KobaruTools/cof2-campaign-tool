@@ -37,6 +37,8 @@ import { declineText, resolveFeatureElement } from './dragonElement';
 import { pruneDepletion } from './gauges';
 import { parseRichText, resolveExpr } from '@/lib/ui/featureRichText';
 import { buildDefenseBreakdown, type CreatureDefenseUpgrade, type StatBreakdown } from './statBreakdown';
+import { characterMaxHp } from './hp';
+import { rulesContext } from './rulesContext';
 import type { Character, Depletion } from './types';
 
 /**
@@ -640,7 +642,13 @@ export function activeTransformationWithHp(character: Character): ActiveTransfor
     if (!profile?.transformation) continue;
     if (!companionPresent(feature, character)) continue;
     const pathRank = maxRankByPath.get(feature.pathId) ?? feature.rank;
-    const maxHp = resolveCreatureMaxHp(profile, abilities, character.level, pathRank);
+    // PV « du PJ » (`hitPoints: { fromMaster: 'maxHp' }`, forme panthère du félis, PER-329) : la barre de
+    // transformation vaut les PV MAX du personnage — résolus ici, hors du résolveur compagnon qui n'a pas
+    // le maxHp du maître. Sinon (formule propre, ex. élémentaire `niveau × 5`), résolution habituelle.
+    const maxHp =
+      typeof profile.hitPoints === 'object' && profile.hitPoints.fromMaster === 'maxHp'
+        ? characterMaxHp(character, rulesContext)
+        : resolveCreatureMaxHp(profile, abilities, character.level, pathRank);
     if (maxHp == null) continue;
     return { featureId: id, featureName: feature.name, creatureName: profile.name, pathId: feature.pathId, maxHp };
   }

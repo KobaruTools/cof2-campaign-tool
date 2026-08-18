@@ -928,6 +928,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setTransformationDamage,
     setTransformationHeal,
     setTransformationReset,
+    spendTransformationRecoveryDie,
     addMount,
     removeMount,
     setMountBarde,
@@ -2259,6 +2260,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Les interrupteurs d'effets conditionnels sont des ÉTATS DE JEU
               // transitoires : activables à tout moment, y compris hors édition.
               onToggleEffect={setEffectToggleValue}
+              onSpendRecoveryDie={spendTransformationRecoveryDie}
               // Buff de groupe posé en séance (PER-314) : grise l'interrupteur du porteur, dont le
               // bonus arrive désormais par l'état du MJ — sans quoi il compterait deux fois.
               sessionStatusIds={sessionStatusIds}

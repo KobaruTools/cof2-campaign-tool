@@ -187,6 +187,8 @@ export interface CharacterGameState {
   setTransformationDamage: (key: string, amount: number, kind: 'lethal' | 'temp') => void;
   setTransformationHeal: (key: string, amount: number) => void;
   setTransformationReset: (key: string) => void;
+  /** PER-329 — bouton « Dépenser 1 DR » : débite un dé de récupération et active la forme désignée. */
+  spendTransformationRecoveryDie: (featureId: string) => void;
 
   // --- Montures & véhicules possédés (PER-216) ---------------------------------------------
   addMount: (catalogId: string) => void;
@@ -457,6 +459,7 @@ export function useCharacterGameState(
     setTransformationDamage: bind(actions.damageTransformation),
     setTransformationHeal: bind(actions.healTransformation),
     setTransformationReset: bind(actions.resetTransformationHp),
+    spendTransformationRecoveryDie: bind(actions.spendTransformationRecoveryDie),
 
     addMount: (catalogId) => update(actions.addMount(target, catalogId)),
     removeMount: bind(actions.removeMount),
