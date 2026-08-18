@@ -30,8 +30,6 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -138,7 +136,9 @@ import { SheetSection } from '@/components/sheet/SheetSection';
 import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { CharacterSessionHistoryDrawer } from '@/components/sheet/CharacterSessionHistoryDrawer';
+import { CharacterNpcTab } from '@/components/sheet/CharacterNpcTab';
 import { CharacterSessionNotesEditor } from '@/components/sheet/CharacterSessionNotesEditor';
+import { usePlayerNpcs } from '@/lib/campaign/usePlayerNpcs';
 import { PinSectionButton } from '@/components/sheet/PinSectionButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel, type RestBarItemId } from '@/components/sheet/PlayerStatusPanel';
@@ -394,7 +394,15 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   // Bloc « Notes » à onglets pendant une partie en cours (PER-415) : onglet actif + drawer
   // d'historique, ouvrable qu'il y ait ou non une session active (le bouton reste visible).
-  const [notesTab, setNotesTab] = useState<'notes' | 'session'>('notes');
+  const [notesTab, setNotesTab] = useState<'notes' | 'session' | 'npc'>('notes');
+  // Onglet « PNJ » (PER-439) : chargé UNE fois ici (pas dans `CharacterNpcTab`) pour savoir,
+  // avant même de rendre les onglets, s'il y a un PNJ à montrer — l'onglet n'est proposé QUE
+  // si la liste n'est pas vide (retour propriétaire).
+  const { npcs: playerNpcs, loading: playerNpcsLoading, error: playerNpcsError } = usePlayerNpcs(characterCampaignId);
+  const hasPlayerNpcs = playerNpcs.length > 0;
+  useEffect(() => {
+    if (notesTab === 'npc' && !hasPlayerNpcs && !playerNpcsLoading) setNotesTab('notes');
+  }, [notesTab, hasPlayerNpcs, playerNpcsLoading]);
   const [notesHistoryOpen, setNotesHistoryOpen] = useState(false);
   // Défilement au-delà de l'en-tête : quand la ligne d'identité passe sous la barre
   // d'application collée, on révèle cette même ligne en sous-titre du header et le
@@ -2594,6 +2602,24 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 requestAnimationFrame(resolve);
               }
             }}
+            dataTour="character-sheet-notes"
+            // Bandeau d'onglets en ENTÊTE (même langage que « Voies & capacités »/« Manœuvres »,
+            // PER-439) — pas de campagne connue → pas d'onglets, la section retombe sur son
+            // titre simple (« Notes »). L'onglet « PNJ », lui, ne s'ajoute que s'il y a au moins
+            // un PNJ à montrer (`hasPlayerNpcs`, calculé plus haut).
+            tabs={
+              characterCampaignId
+                ? [
+                    { value: 'notes', label: 'Notes', icon: 'notes' },
+                    { value: 'session', label: 'Notes de session', shortLabel: 'Session', icon: 'notes' },
+                    ...(hasPlayerNpcs
+                      ? [{ value: 'npc', label: 'PNJ', icon: 'npc' as const }]
+                      : []),
+                  ]
+                : undefined
+            }
+            activeTab={characterCampaignId ? notesTab : undefined}
+            onTabChange={(v) => setNotesTab(v as 'notes' | 'session' | 'npc')}
             action={(collapsed) => (
               <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                 {/* Historique des parties de CE personnage (PER-415/416) : toujours proposé,
@@ -2607,7 +2633,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                     <HistoryIcon fontSize="small" />
                   </IconButton>
                 </AppTooltip>
-                {!collapsed && !readOnly && (
+                {!collapsed && !readOnly && notesTab === 'notes' && (
                   <BlockEditButton
                     editing={editingBlocks.notes}
                     onToggle={() => toggleBlock('notes')}
@@ -2617,57 +2643,37 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </Stack>
             )}
           >
-            <Box data-tour="character-sheet-notes">
-            {sessionActive && activeSession ? (
-              <>
-                <Tabs
-                  value={notesTab}
-                  onChange={(_, v) => setNotesTab(v)}
-                  sx={{ minHeight: 36, mb: 1.5 }}
-                >
-                  <Tab label="Notes" value="notes" sx={{ minHeight: 36, py: 0.5 }} />
-                  <Tab label="Notes de session" value="session" sx={{ minHeight: 36, py: 0.5 }} />
-                </Tabs>
-                {notesTab === 'notes' ? (
-                  editingBlocks.notes ? (
-                    <RichTextEditor
-                      value={character.notes}
-                      onChange={(text) => update({ notes: text })}
-                      placeholder="Notes libres du joueur…"
-                    />
-                  ) : character.notes ? (
-                    <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
-                      <GlossaryRichText>{character.notes}</GlossaryRichText>
-                    </Typography>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Aucune note.
-                    </Typography>
-                  )
-                ) : (
-                  <CharacterSessionNotesEditor
-                    characterId={character.id}
-                    sessionId={activeSession.id}
-                    readOnly={readOnly}
-                  />
-                )}
-              </>
-            ) : editingBlocks.notes ? (
-              <RichTextEditor
-                value={character.notes}
-                onChange={(text) => update({ notes: text })}
-                placeholder="Notes libres du joueur…"
-              />
-            ) : character.notes ? (
-              <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
-                <GlossaryRichText>{character.notes}</GlossaryRichText>
-              </Typography>
+            {(!characterCampaignId || notesTab === 'notes') ? (
+              editingBlocks.notes ? (
+                <RichTextEditor
+                  value={character.notes}
+                  onChange={(text) => update({ notes: text })}
+                  placeholder="Notes libres du joueur…"
+                />
+              ) : character.notes ? (
+                <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
+                  <GlossaryRichText>{character.notes}</GlossaryRichText>
+                </Typography>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Aucune note.
+                </Typography>
+              )
+            ) : notesTab === 'session' ? (
+              sessionActive && activeSession ? (
+                <CharacterSessionNotesEditor
+                  characterId={character.id}
+                  sessionId={activeSession.id}
+                  readOnly={readOnly}
+                />
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Aucune partie en cours.
+                </Typography>
+              )
             ) : (
-              <Typography variant="body2" color="text.secondary">
-                Aucune note.
-              </Typography>
+              <CharacterNpcTab npcs={playerNpcs} loading={playerNpcsLoading} error={playerNpcsError} />
             )}
-            </Box>
           </SheetSection>
 
           <SheetSection

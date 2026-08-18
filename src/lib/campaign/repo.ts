@@ -21,6 +21,7 @@ import {
   type LootItem,
   type Npc,
   type NpcCategory,
+  type PlayerNpc,
   type TavernRumor,
 } from './types';
 
@@ -362,6 +363,33 @@ export async function fetchNpcs(campaignId: string): Promise<Npc[]> {
     .order('name', { ascending: true });
   if (error) throw error;
   return (data ?? []).map(rowToNpc);
+}
+
+/**
+ * PNJ visibles par un JOUEUR de la campagne (onglet « PNJ » de la fiche perso,
+ * PER-439) — uniquement ceux marqués « rencontré »/« mort » par le MJ, sans
+ * jamais les colonnes sensibles (`stats`, `gm_notes`…). Passe par le RPC
+ * `fetch_campaign_npcs_for_player` (migration 0037), PAS par `fetchNpcs` : voir
+ * l'avertissement au-dessus de cette dernière.
+ */
+export async function fetchNpcsForPlayer(campaignId: string): Promise<PlayerNpc[]> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase.rpc('fetch_campaign_npcs_for_player', { cid: campaignId });
+  if (error) throw error;
+  return (data ?? []).map(
+    (row): PlayerNpc => ({
+      id: row.id,
+      name: row.name,
+      role: row.role,
+      ancestryId: row.ancestry_id,
+      sex: row.sex as PlayerNpc['sex'],
+      location: row.location,
+      disposition: row.disposition as PlayerNpc['disposition'],
+      status: row.status as PlayerNpc['status'],
+      description: row.description,
+      createdAt: row.created_at,
+    }),
+  );
 }
 
 /** Crée un PNJ pour une campagne possédée par l'utilisateur courant (fiche complète, PER-429). */

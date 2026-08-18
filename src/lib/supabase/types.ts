@@ -747,6 +747,21 @@ export type Database = {
           id: string
         }[]
       }
+      fetch_campaign_npcs_for_player: {
+        Args: { cid: string }
+        Returns: {
+          ancestry_id: string | null
+          created_at: string
+          description: string | null
+          disposition: string
+          id: string
+          location: string | null
+          name: string
+          role: string | null
+          sex: string | null
+          status: string
+        }[]
+      }
       give_item_to_character: {
         Args: { item: Json; receiver_id: string }
         Returns: Json

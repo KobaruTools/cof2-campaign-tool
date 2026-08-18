@@ -265,6 +265,30 @@ export interface Npc {
 }
 
 /**
+ * Vue PUBLIQUE d'un PNJ, telle que renvoyée au joueur par le RPC
+ * `fetch_campaign_npcs_for_player` (migration 0037) — onglet « PNJ » de la
+ * fiche personnage. Ne contient QUE ce qui n'est jamais sensible : ni `stats`
+ * (caractéristiques de combat), ni `gmNotes`, ni `challengeRating` (dérivé des
+ * stats), ni `categoryId`/`linkedCharacterIds` (organisation interne du MJ).
+ * `description` est déjà nettoyée côté serveur (`null` si le MJ ne l'a pas
+ * publiée via `descriptionVisibleToPlayers`) — le client n'a PAS à revérifier
+ * cette bascule. N'inclut que les PNJ dont `status !== 'not-encountered'`
+ * (déjà filtré côté RPC).
+ */
+export interface PlayerNpc {
+  id: string;
+  name: string;
+  role: string | null;
+  ancestryId: string | null;
+  sex: Sex | null;
+  location: string | null;
+  disposition: NpcDisposition;
+  status: NpcStatus;
+  description: string | null;
+  createdAt: string;
+}
+
+/**
  * Campagne : ses notes de MJ et ses règles de table. Regroupe des personnages via
  * la clé étrangère `Character.campaignId`. `id` = UUID généré par la base.
  */

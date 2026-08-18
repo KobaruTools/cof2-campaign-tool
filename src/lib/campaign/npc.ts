@@ -15,7 +15,7 @@
  */
 import type { CustomCreature } from '../session/customCreature';
 import { normalizeSearchText } from '../ui/searchText';
-import type { Npc, NpcCategory } from './types';
+import type { Npc, NpcCategory, PlayerNpc } from './types';
 
 function newId(): string {
   return crypto.randomUUID();
@@ -137,4 +137,31 @@ export function removeNpcCategory(
 export function reassignNpcsCategory(npcs: Npc[], npcIds: string[], categoryId: string | null): Npc[] {
   const ids = new Set(npcIds);
   return npcs.map((n) => (ids.has(n.id) ? { ...n, categoryId } : n));
+}
+
+/**
+ * Trie/filtre pour l'onglet « PNJ » de la fiche JOUEUR (`PlayerNpc`, PER-439) —
+ * même logique que `sortNpcsByName`/`sortNpcsByDisposition`/`filterNpcsByQuery`
+ * ci-dessus, réécrite sur le type public (pas de `challengeRating` côté
+ * joueur, donc pas d'équivalent « tri par NC »).
+ */
+export function sortPlayerNpcsByName(npcs: PlayerNpc[]): PlayerNpc[] {
+  return [...npcs].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+}
+
+export function sortPlayerNpcsByDisposition(npcs: PlayerNpc[]): PlayerNpc[] {
+  return [...npcs].sort((a, b) => {
+    const byDisposition = DISPOSITION_ORDER[a.disposition] - DISPOSITION_ORDER[b.disposition];
+    return byDisposition !== 0 ? byDisposition : a.name.localeCompare(b.name, 'fr');
+  });
+}
+
+/** Filtre les PNJ (vue joueur) dont le nom OU la description matche `query`. */
+export function filterPlayerNpcsByQuery(npcs: PlayerNpc[], query: string): PlayerNpc[] {
+  const needle = normalizeSearchText(query.trim());
+  if (!needle) return npcs;
+  return npcs.filter((n) => {
+    const haystack = normalizeSearchText(`${n.name} ${n.description ?? ''}`);
+    return haystack.includes(needle);
+  });
 }

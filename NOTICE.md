@@ -406,6 +406,7 @@ L'affichage passe par le composant commun `src/components/SectionIcon.tsx`.
 | Notes | `lorc/quill-ink.svg` | Lorc |
 | Historique des niveaux | `delapouite/upgrade.svg` | Delapouite |
 | Montures & véhicules (Codex) | `lorc/horse-head.svg` | Lorc |
+| PNJ | `lorc/cowled.svg` | Lorc |
 
 ## Icônes des types de dégât
 
