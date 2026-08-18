@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 24,
+  "id": "recette-rang5-pretre-soins",
+  "name": "Recette rang 5 — Prêtre (voie des soins)",
+  "identity": {
+    "description": "ATTENDU : prêtre niv. 7, voie des soins r1→r5 tout juste débloquée (minLevelPerRank[5]=7), rang 6 hors de portée. Second perso de recette au même palier, capacités arbitraires (sans lien avec la modale de transformation)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 7,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "soins-r1",
+    "soins-r2",
+    "soins-r3",
+    "soins-r4",
+    "soins-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "Recette rang 5 — second perso de contrôle au même palier (peuple/voie sans rapport avec la recette druide).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -56,8 +56,12 @@ import {
   hasUnmadeChoice,
   borrowedNoManaFeatureIds,
 } from '@/lib/character/choices';
-import { animalFormCategories } from '@/lib/character/animalForms';
-import { maxAnimalFormSize, sizeWithinLimit } from '@/lib/character/animalFormPicker';
+import { animalFormCategories, knownAnimalFormCategoryIds } from '@/lib/character/animalForms';
+import {
+  hasGiantOrPrehistoricAnimalFormAccess,
+  maxAnimalFormSize,
+  sizeWithinLimit,
+} from '@/lib/character/animalFormPicker';
 import { useBestiaryStore } from '@/stores/bestiary';
 import {
   BestiaryStatBlock,
@@ -1753,11 +1757,21 @@ function AnimalFormSelector({
   }, [value, loadBlob]);
 
   const maxSize = maxAnimalFormSize(character);
+  const giantAccess = hasGiantOrPrehistoricAnimalFormAccess(character);
+  const knownCategoryIds = knownAnimalFormCategoryIds(character);
   // Triée par TAILLE (retour propriétaire 2026-08-18, groupes contigus requis par `groupBy` de
   // MUI) — plus parlant qu'un tri par ordre d'impression du livre pour choisir une forme selon le
   // rang débloqué. `sortOrder` départage à l'intérieur d'une même taille.
   const options = (list ?? [])
-    .filter((c) => c.category === 'animaux' && sizeWithinLimit(c.size, maxSize))
+    // Catégorie 'animaux', PLUS les variantes géantes/préhistoriques rangées ailleurs au bestiaire
+    // (ex. Araignée géante, Rat géant : 'creatures-fantastiques') — le rang 6 les débloque quand
+    // même (p. 170), leur catégorie d'AFFICHAGE au bestiaire n'a pas à changer pour ça.
+    .filter((c) => c.category === 'animaux' || (c.category === 'creatures-fantastiques' && !!c.animalFormFlavor))
+    .filter((c) => sizeWithinLimit(c.size, maxSize))
+    .filter((c) => !c.animalFormFlavor || giantAccess)
+    .filter(
+      (c) => !c.animalFormCategory || !knownCategoryIds || knownCategoryIds.has(c.animalFormCategory),
+    )
     .sort((a, b) => {
       const ra = a.size ? CREATURE_SIZES.indexOf(a.size) : 99;
       const rb = b.size ? CREATURE_SIZES.indexOf(b.size) : 99;

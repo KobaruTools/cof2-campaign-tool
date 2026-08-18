@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type Character } from './types';
-import { animalFormCategories, communicableAnimalCategories } from './animalForms';
+import { animalFormCategories, communicableAnimalCategories, knownAnimalFormCategoryIds } from './animalForms';
 
 function makeCharacter(over: Partial<Character>): Character {
   return {
@@ -65,17 +65,58 @@ describe('animalFormCategories', () => {
     expect(animalFormCategories(makeCharacter({ featureIds: [] }))).toBeNull();
   });
 
-  it('liste les formes accessibles (mammifères + choix), animaux fantastiques EXCLUS', () => {
+  it('druide natif : liste les formes accessibles (mammifères + choix), animaux fantastiques EXCLUS', () => {
     const c = makeCharacter({
-      featureIds: ['animaux-r5'],
+      featureIds: ['animaux-r1', 'animaux-r5'],
       featureChoices: { 'animaux-r1': [['birds', 'fantastic-animals']] },
     });
     expect(animalFormCategories(c)).toEqual(['Mammifères', 'Oiseaux']);
   });
 
-  it('mammifères seuls si aucune catégorie supplémentaire choisie', () => {
-    expect(animalFormCategories(makeCharacter({ featureIds: ['animaux-r5'] }))).toEqual([
+  it('druide natif : mammifères seuls si aucune catégorie supplémentaire choisie', () => {
+    expect(animalFormCategories(makeCharacter({ featureIds: ['animaux-r1', 'animaux-r5'] }))).toEqual([
       'Mammifères',
     ]);
+  });
+
+  it('prestige SEUL (sans animaux-r1 natif) : une seule catégorie, PAS de mammifères en plus (p. 170)', () => {
+    const c = makeCharacter({
+      featureIds: ['animaux-r5'],
+      featureChoices: { 'prestige-changeforme-r5': ['fish'] },
+    });
+    expect(animalFormCategories(c)).toEqual(['Poissons (et mollusques)']);
+  });
+
+  it('druide natif + changeforme : union des catégories des deux sources', () => {
+    const c = makeCharacter({
+      featureIds: ['animaux-r1', 'animaux-r5'],
+      featureChoices: {
+        'animaux-r1': [['birds']],
+        'prestige-changeforme-r5': ['fish'],
+      },
+    });
+    expect(animalFormCategories(c)).toEqual(['Mammifères', 'Oiseaux', 'Poissons (et mollusques)']);
+  });
+});
+
+describe('knownAnimalFormCategoryIds', () => {
+  it('renvoie null si le personnage ne possède pas Forme animale', () => {
+    expect(knownAnimalFormCategoryIds(makeCharacter({ featureIds: [] }))).toBeNull();
+  });
+
+  it('prestige seul : ids = uniquement la catégorie choisie à prestige-changeforme-r5', () => {
+    const c = makeCharacter({
+      featureIds: ['animaux-r5'],
+      featureChoices: { 'prestige-changeforme-r5': ['reptiles'] },
+    });
+    expect(knownAnimalFormCategoryIds(c)).toEqual(new Set(['reptiles']));
+  });
+
+  it('druide natif : mammals toujours inclus + choix de animaux-r1', () => {
+    const c = makeCharacter({
+      featureIds: ['animaux-r1', 'animaux-r5'],
+      featureChoices: { 'animaux-r1': [['reptiles', 'fantastic-animals']] },
+    });
+    expect(knownAnimalFormCategoryIds(c)).toEqual(new Set(['mammals', 'reptiles']));
   });
 });

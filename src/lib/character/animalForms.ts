@@ -46,7 +46,9 @@ function chosenCategoryIds(character: Character): string[] {
 
 /**
  * Libellés des catégories que le druide maîtrise en COMMUNICATION (rang 1) :
- * mammifères (toujours) + catégories choisies, dans l'ordre du catalogue.
+ * mammifères (toujours) + catégories choisies, dans l'ordre du catalogue. Toujours
+ * appelée dans un contexte où `animaux-r1` est natif (sa propre carte) : les
+ * mammifères sont donc toujours acquis ici (à la différence de `animalFormCategories`).
  */
 export function communicableAnimalCategories(character: Character): string[] {
   const labels = categoryLabels();
@@ -55,20 +57,33 @@ export function communicableAnimalCategories(character: Character): string[] {
 }
 
 /**
- * Libellés des formes accessibles via « Forme animale » (animaux-r5) : comme la
- * communication, mais sans les animaux fantastiques. Renvoie `null` si le personnage
- * ne possède pas Forme animale (rien à afficher) — via `effectiveFeatureIdsForMods` pour
- * couvrir aussi l'octroi PAR le changeforme (PER-375, `grantedFeatures`), pas seulement
- * l'acquisition native.
+ * Ids des catégories connues pour « Forme animale » (animaux-r5, natif OU octroyé par
+ * le changeforme) — sans les animaux fantastiques. Les MAMMIFÈRES ne sont innés que
+ * si le personnage a `animaux-r1` NATIVEMENT (druide) : un personnage qui n'a QUE la
+ * voie de prestige (`prestige-changeforme-r5`) ne connaît QUE la catégorie unique
+ * choisie là (p. 170, « il ne connaît qu'une seule catégorie d'animaux ») — les
+ * mammifères ne s'y ajoutent pas gratuitement. `null` si le personnage n'a pas Forme
+ * animale du tout (`effectiveFeatureIdsForMods` couvre l'octroi PAR le changeforme).
+ */
+export function knownAnimalFormCategoryIds(character: Character): Set<string> | null {
+  if (!effectiveFeatureIdsForMods(character).includes(FORM_FEATURE_ID)) return null;
+  const chosen = new Set(chosenCategoryIds(character));
+  chosen.delete(NO_FORM_CATEGORY);
+  if (character.featureIds.includes(LANGUAGE_FEATURE_ID)) chosen.add('mammals');
+  return chosen;
+}
+
+/**
+ * Libellés des formes accessibles via « Forme animale » — même ensemble que
+ * `knownAnimalFormCategoryIds`, résolu en libellés affichables (mammifères en tête).
+ * `null` si le personnage n'a pas Forme animale (rien à afficher).
  */
 export function animalFormCategories(character: Character): string[] | null {
-  if (!effectiveFeatureIdsForMods(character).includes(FORM_FEATURE_ID)) return null;
+  const ids = knownAnimalFormCategoryIds(character);
+  if (!ids) return null;
   const labels = categoryLabels();
-  const chosen = new Set(chosenCategoryIds(character));
   return [
-    INNATE_LABEL,
-    ...[...labels]
-      .filter(([id]) => id !== NO_FORM_CATEGORY && chosen.has(id))
-      .map(([, label]) => label),
+    ...(ids.has('mammals') ? [INNATE_LABEL] : []),
+    ...[...labels].filter(([id]) => id !== NO_FORM_CATEGORY && ids.has(id)).map(([, label]) => label),
   ];
 }

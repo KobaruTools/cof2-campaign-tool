@@ -248,6 +248,8 @@ export type Database = {
       }
       creatures: {
         Row: {
+          animal_form_category: string | null
+          animal_form_flavor: string | null
           base_creature_id: string | null
           category: string
           created_at: string
@@ -264,6 +266,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          animal_form_category?: string | null
+          animal_form_flavor?: string | null
           base_creature_id?: string | null
           category: string
           created_at?: string
@@ -280,6 +284,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          animal_form_category?: string | null
+          animal_form_flavor?: string | null
           base_creature_id?: string | null
           category?: string
           created_at?: string

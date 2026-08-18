@@ -23,6 +23,10 @@ export interface CreatureListItem {
   ncNote?: string;
   size?: CreatureSize;
   nature: CreatureNature[];
+  /** Catégorie taxonomique pour « Forme animale » — cf. `Creature.animalFormCategory`. */
+  animalFormCategory?: 'mammals' | 'fish' | 'arthropods' | 'reptiles' | 'birds';
+  /** Variante géante/préhistorique — cf. `Creature.animalFormFlavor`. */
+  animalFormFlavor?: 'geant' | 'prehistorique';
   baseCreatureId?: string;
   /** Ordre d'impression du livre — reproduit le tri « par catégorie ». */
   sortOrder: number;

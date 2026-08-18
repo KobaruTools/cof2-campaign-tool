@@ -3651,8 +3651,13 @@ export interface CreatureProfile {
    * lance CE jet d'attaque en dé bonus (« 2d20, garde le meilleur »), rendu par un `BonusDieBadge`
    * sur la mini-fiche — analogue de `LowHpAttackDieEffect` côté personnage, mais permanent tant que
    * la créature est affichée (aucun seuil de PV). Absent/`false` = jet normal.
+   *
+   * `offset` (PER-331, worg du gobelin p. 23 : « Morsure [attaque magique du gobelin + 2] ») : bonus
+   * PLAT ajouté à la stat `fromMaster` du maître, résolu et affiché « … du maître + N » (même rendu
+   * que `MasterStatRef.offset` des PV). Réservé au cas `fromMaster` (une valeur `value` porte déjà son
+   * propre bonus). Absent = aucun offset (cas historique loup/golem/démon, dont l'offset va aux DM).
    */
-  attack?: { label?: string; fromMaster?: DerivedStatId; value?: string; damage?: string; bonusDie?: boolean };
+  attack?: { label?: string; fromMaster?: DerivedStatId; offset?: number; value?: string; damage?: string; bonusDie?: boolean };
   /**
    * Attaques SUPPLÉMENTAIRES de la créature, en plus de `attack` (PER-94) — ex. Baliste du Golem
    * supérieur (attaque à distance ajoutée par une amélioration). Le `damage` est déjà résolu (dé +
@@ -5087,6 +5092,21 @@ export interface Creature {
    * ce n'est pas un texte verbatim mais un renvoi structuré vers une vraie voie.
    */
   paths?: CreaturePathReference[];
+  /**
+   * Catégorie taxonomique pour « Forme animale » (druide `animaux-r5` / voie de prestige du
+   * changeforme, p. 114/170) — mêmes ids que les options de `animaux-r1`/`prestige-changeforme-r5`
+   * (`mammals`/`fish`/`arthropods`/`reptiles`/`birds`, « poissons » couvrant aussi les mollusques
+   * RAW). Absente pour les créatures hors-sujet (PNJ, monstres) OU les gabarits génériques du
+   * livre (« Animal petit »…) qu'aucune taxonomie précise ne couvre : dans ce cas le sélecteur ne
+   * restreint pas cette créature par catégorie (repli permissif, cf. `AnimalFormSelector`).
+   */
+  animalFormCategory?: 'mammals' | 'fish' | 'arthropods' | 'reptiles' | 'birds';
+  /**
+   * Marque une variante GÉANTE ou PRÉHISTORIQUE d'un animal (p. 170, rang 6 du changeforme :
+   * « peut prendre la forme des animaux géants ou préhistoriques ») — gate son accès en Forme
+   * animale derrière ce rang, quelle que soit sa taille (une araignée géante peut être minuscule).
+   */
+  animalFormFlavor?: 'geant' | 'prehistorique';
   /** Variante d'une créature de base : id de la créature de base (ex. 'lion' pour « Grand mâle »). */
   baseCreatureId?: string;
   /** Renvoi verbatim aux capacités de la base (« Voir ci-dessus ») quand la variante ne les réimprime pas. */

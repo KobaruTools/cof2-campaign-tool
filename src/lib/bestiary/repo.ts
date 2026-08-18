@@ -25,7 +25,7 @@ type CreatureRow = Database['public']['Tables']['creatures']['Row'];
  * source et estampille chaque créature par son `updated_at` (invalidation fine).
  */
 const LIST_COLUMNS =
-  'slug, name, category, nc, nc_note, size, nature, base_creature_id, sort_order, source_id, updated_at';
+  'slug, name, category, nc, nc_note, size, nature, animal_form_category, animal_form_flavor, base_creature_id, sort_order, source_id, updated_at';
 
 /** Mappe une ligne projetée `creatures` vers une entrée de liste légère. */
 export function rowToListItem(
@@ -38,6 +38,8 @@ export function rowToListItem(
     | 'nc_note'
     | 'size'
     | 'nature'
+    | 'animal_form_category'
+    | 'animal_form_flavor'
     | 'base_creature_id'
     | 'sort_order'
     | 'source_id'
@@ -54,6 +56,8 @@ export function rowToListItem(
     ncNote: row.nc_note ?? undefined,
     size: (row.size as CreatureListItem['size']) ?? undefined,
     nature: (row.nature ?? []) as CreatureListItem['nature'],
+    animalFormCategory: (row.animal_form_category as CreatureListItem['animalFormCategory']) ?? undefined,
+    animalFormFlavor: (row.animal_form_flavor as CreatureListItem['animalFormFlavor']) ?? undefined,
     baseCreatureId: row.base_creature_id ?? undefined,
     sortOrder: row.sort_order,
     sourceId: row.source_id,
