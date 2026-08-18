@@ -102,6 +102,25 @@ export function AppFooter() {
             d’appropriation ni usage commercial.
           </Typography>
 
+          {/* Crédit des symboles divins fan-made du Codex (filigrane, PER-421+) : contenu
+              communautaire distinct des illustrations officielles ci-dessus, repris avec mention
+              de la source plutôt qu'un auteur nommé par symbole (voir `godSymbolCredits.ts` pour
+              le détail par dieu). */}
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            Les symboles divins utilisés en filigrane dans le Codex sont des créations de joueurs
+            partagées sur le{' '}
+            <Link
+              href="https://black-book-editions.fr/forums.php?topic_id=24891"
+              target="_blank"
+              rel="noopener noreferrer"
+              color="inherit"
+              sx={{ textDecorationColor: 'rgba(255, 255, 255, 0.4)' }}
+            >
+              forum de Black Book Éditions
+            </Link>
+            .
+          </Typography>
+
           {/* Crédit + copyright + liens vers les pages d'information et légale. */}
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
             © {YEAR} — Éditeur de personnage CO2, développé par KobaruTools.{' '}
