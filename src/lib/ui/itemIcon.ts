@@ -5,9 +5,10 @@ import {
   type ItemSubcategoryIcon,
 } from '@/data/item-icons';
 import { equipmentById } from '@/data';
+import type { EquipmentItem } from '@/data/schema';
 import { isCustomItem, type EquipmentLine, type ItemType } from '@/lib/character/types';
 import { itemType } from '@/lib/character/items';
-import { weaponIconKind } from '@/lib/ui/weaponKind';
+import { weaponIconKind, weaponIconKindForWeapon } from '@/lib/ui/weaponKind';
 import { ITEM_TYPE_ICON_PATHS } from '@/lib/ui/itemTypeIcons';
 import { WEAPON_KIND_ICON_PATHS } from '@/lib/ui/weaponKindIcons';
 import { ITEM_SUBCATEGORY_ICON_PATHS } from '@/lib/ui/itemIcons';
@@ -56,6 +57,18 @@ export function defaultItemIconId(line: EquipmentLine): ItemIconId {
     if (kind) return kind;
   }
   return itemType(line);
+}
+
+/**
+ * Icône d'un objet du CATALOGUE (PER-422, Codex Équipement) — pas une ligne d'inventaire de
+ * personnage, donc pas de choix joueur (étage 1) ni de notion d'objet libre : `item.icon` (étage
+ * 2) sinon le sous-type d'arme dérivé (étage 3, armes seulement) sinon le type d'objet (étage 4).
+ * MÊME cascade que `defaultItemIconId`, juste sans `EquipmentLine`.
+ */
+export function catalogItemIconId(item: EquipmentItem): ItemIconId {
+  if (item.icon) return item.icon;
+  if (item.category === 'weapon') return weaponIconKindForWeapon(item);
+  return item.category;
 }
 
 /** Un groupe d'icônes du sélecteur : un libellé FR et ses ids, dans l'ordre d'affichage. */

@@ -66,6 +66,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd3' },
     price: null,
+    damageType: 'bludgeoning',
     properties:
       'Type de DM : contondants. Les DM sont temporaires. Dans le cas du combat à mains nues, les DM sont généralement temporaires (voir DM temporaires, p. 219, sauf pour les moines, voir les voies de moine, p. 119).',
     sourcePage: 183,
@@ -79,6 +80,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd4' },
     price: null,
+    damageType: 'bludgeoning',
     properties:
       'Type de DM : contondants. Arme à deux mains, DM temporaires possibles. Bâton et bâton ferré : les personnages qui savent manier le bâton sont les druides (ce sont de simples morceaux de bois, un bâton ferré est adapté au combat, plus lourd et généralement couvert de métal aux extrémités) (bien que les druides utilisent les bâtons de bois noueux avec le même effet).',
     sourcePage: 183,
@@ -92,6 +94,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd6' },
     price: { amount: 2, unit: 'pa' },
+    damageType: 'bludgeoning',
     properties:
       'Type de DM : contondants. Arme à deux mains. Le bâton ferré est adapté au combat, plus lourd et généralement couvert de métal aux extrémités.',
     sourcePage: 183,
@@ -109,6 +112,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd4' },
     range: '5 m',
     price: { amount: 3, unit: 'pa' },
+    damageType: 'piercing',
     properties: 'Type de DM : perforants. Arme légère. (Peut être lancée : portée 5 m, DM 1d4 — table p. 185.)',
     sourcePage: 183,
   },
@@ -122,6 +126,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 2, die: 'd6' },
     price: { amount: 10, unit: 'pa' },
+    damageType: 'slashing',
     properties: 'Type de DM : tranchants. Arme à deux mains.',
     sourcePage: 183,
   },
@@ -136,6 +141,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd8' },
     twoHandedDamage: { count: 1, die: 'd12' },
     price: { amount: 9, unit: 'pa' },
+    damageType: 'slashing',
     properties:
       'Type de DM : tranchants. Arme à une ou deux mains. Les armes à une ou deux mains : leur nom l’indique, ces armes peuvent être utilisées avec une ou deux mains, au choix du combattant. Les DM sont alors plus ou moins importants. L’avantage de ces armes est l’adaptabilité selon la situation. Le premier chiffre correspond à l’utilisation avec une main, et le second avec deux mains.',
     sourcePage: 183,
@@ -150,6 +156,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd6' },
     price: { amount: 5, unit: 'pa' },
+    damageType: 'piercing',
     properties: 'Type de DM : perforants. Arme légère.',
     sourcePage: 183,
   },
@@ -163,6 +170,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd8' },
     price: { amount: 6, unit: 'pa' },
+    damageType: 'slashing',
     properties: 'Type de DM : tranchants.',
     sourcePage: 183,
   },
@@ -179,6 +187,7 @@ export const weapons: Weapon[] = [
     twoHandedDamage: { count: 1, die: 'd10' },
     range: '10 m',
     price: { amount: 4, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Arme à une ou deux mains. Épieu : une arme d’environ 1,50 m. Elle peut être utilisée à une ou deux mains (1d6/1d10 DM) ou lancée (1d6 DM à 10 m).',
     sourcePage: 183,
@@ -193,6 +202,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd6' },
     price: { amount: 5, unit: 'pa' },
+    damageType: 'bludgeoning',
     properties:
       'Type de DM : contondants. Fléau et fléau à deux mains : un manche prolongé par une chaîne au bout de laquelle sont suspendues une ou plusieurs boules d’acier, souvent hérissées de pointes. Ce sont des armes très difficiles à parer.',
     sourcePage: 183,
@@ -207,6 +217,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd10' },
     price: { amount: 8, unit: 'pa' },
+    damageType: 'bludgeoning',
     properties:
       'Type de DM : contondants. Arme à deux mains, relance 1 attaque ratée/combat. Le fléau à deux mains permet de relancer le dé d’une attaque ratée contre un adversaire utilisant un bouclier (ou une arme par opposition aux armes naturelles des animaux et des monstres).',
     sourcePage: 183,
@@ -221,6 +232,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd4', nonLethal: true },
     price: { amount: 1, unit: 'pa' },
+    damageType: 'bludgeoning',
     properties: 'Type de DM : contondants. DM temporaires possibles.',
     sourcePage: 183,
   },
@@ -234,6 +246,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd8' },
     price: { amount: 6, unit: 'pa' },
+    damageType: 'slashing',
     properties: 'Type de DM : tranchants.',
     sourcePage: 183,
   },
@@ -247,6 +260,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 2, die: 'd6' },
     price: { amount: 10, unit: 'pa' },
+    damageType: 'slashing',
     properties: 'Type de DM : tranchants. Arme à deux mains.',
     sourcePage: 183,
   },
@@ -262,6 +276,7 @@ export const weapons: Weapon[] = [
     twoHandedDamage: { count: 1, die: 'd10' },
     range: '10 m',
     price: { amount: 4, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Arme à une ou deux mains. Lance : une arme d’environ 1,50 m. Elle peut être utilisée à une ou deux mains (1d6/1d10) ou lancée (1d6 DM à 10 m).',
     sourcePage: 183,
@@ -276,6 +291,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 2, die: 'd6' },
     price: { amount: 8, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Dé malus au contact. Lance de cavalerie : conçue pour être utilisée uniquement à cheval, la lance de cavalerie mesure environ 3 m de long. Il faut prendre de l’élan pour l’utiliser à son plein potentiel. L’attaque doit donc avoir lieu après un déplacement pour obtenir les DM indiqués. Sinon, en combat au contact classique, le cavalier subit un dé malus.',
     sourcePage: 183,
@@ -293,6 +309,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd6' },
     price: { amount: 4, unit: 'pa' },
+    damageType: 'bludgeoning',
     properties: 'Type de DM : contondants.',
     sourcePage: 183,
   },
@@ -306,6 +323,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd6' },
     price: { amount: 4, unit: 'pa' },
+    damageType: 'bludgeoning',
     properties: 'Type de DM : contondants.',
     sourcePage: 183,
   },
@@ -319,6 +337,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd10' },
     price: { amount: 5, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Arme à deux mains, spécial (voir description). Pique : une très longue lance de fantassin, destinée à recevoir les charges de cavalerie ou à attaquer depuis le second rang. La pique double ses DM contre une créature de grande taille qui vient de réaliser une charge ou une action de mouvement suivie d’une attaque au contact. Elle permet aussi d’attaquer en se tenant derrière un allié de taille normale, avec une pénalité de -5. Son utilisateur subit un dé malus en attaque dans toutes les autres conditions.',
     sourcePage: 183,
@@ -335,6 +354,7 @@ export const weapons: Weapon[] = [
     // Critique intrinsèque 19-20 (p. 183) — structuré, plus en texte libre (PER-225).
     criticalRange: { scope: 'melee', value: 1 },
     price: { amount: 6, unit: 'pa' },
+    damageType: 'piercing',
     properties: 'Type de DM : perforants. Arme légère.',
     sourcePage: 183,
   },
@@ -347,6 +367,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd3' },
     price: { amount: 4, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Arme légère ; pas de FOR aux DM, mais 1d6+AGI DM si surpris. Stylet : une arme d’assassin, dotée d’une pointe acérée sans tranchant, destinée à transpercer les organes vitaux. La FOR ne s’applique pas aux DM du stylet (DM 1d3), mais en cas d’attaque sur un adversaire surpris, il inflige (1d6+AGI) DM contre les cibles de taille moyenne ou petite. Le stylet est considéré comme une arme légère.',
     sourcePage: 183,
@@ -363,6 +384,7 @@ export const weapons: Weapon[] = [
     // Critique intrinsèque 19-20 (p. 183) — structuré, plus en texte libre (PER-225).
     criticalRange: { scope: 'melee', value: 1 },
     price: { amount: 15, unit: 'pa' },
+    damageType: 'slashing',
     properties:
       'Type de DM : tranchants. Arme à deux mains. Vivelame : cette arme n’a pas de réalité historique, il s’agit de la version occidentale (ou elfique) du katana, une arme à deux mains légère et très rapide, au tranchant aussi affûté que le fil d’un rasoir. Si le personnage obtient une capacité qui permet d’utiliser l’AGI au lieu de la FOR pour attaquer au contact, il peut aussi l’appliquer à cette arme s’il maîtrise les armes de contact à deux mains. Pour autant, la vivelame n’est pas considérée comme une arme légère pour les attaques sournoises.',
     sourcePage: 183,
@@ -382,6 +404,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd10' },
     price: null,
+    damageType: 'slashing',
     properties:
       'Type de DM : tranchants. Arme à deux mains. Arme sacrée (prêtre spécialiste) de Cérès et de Morn — table des dieux p. 127, note 2 (« arme à deux mains, d10 DM »).',
     sourcePage: 127,
@@ -395,6 +418,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd8' },
     price: null,
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Arme à deux mains. Arme sacrée (prêtre spécialiste) de Jeweln — table des dieux p. 127, note 3 (« arme à deux mains, d8 DM »).',
     sourcePage: 127,
@@ -410,6 +434,7 @@ export const weapons: Weapon[] = [
     twoHandedDamage: { count: 1, die: 'd10' },
     range: '10 m',
     price: null,
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Arme à une ou deux mains (1d6/1d10), « semblable à un épieu » (lançable, 10 m). Arme sacrée (prêtre spécialiste) de Linnarré — table des dieux p. 127, note 4.',
     sourcePage: 127,
@@ -423,6 +448,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd10' },
     price: null,
+    damageType: 'bludgeoning',
     properties:
       'Type de DM : contondants. Arme à deux mains. Variante au choix de la faux (« même DM ») — table des dieux p. 127, note 5.',
     sourcePage: 127,
@@ -436,6 +462,7 @@ export const weapons: Weapon[] = [
     ranged: false,
     damage: { count: 1, die: 'd10' },
     price: null,
+    damageType: 'bludgeoning',
     properties:
       'Type de DM : contondants. Arme à deux mains. Variante au choix de la faux (« même DM ») — table des dieux p. 127, note 5.',
     sourcePage: 127,
@@ -456,6 +483,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd6' },
     range: '10 m',
     price: { amount: 8, unit: 'pa' },
+    damageType: 'piercing',
     properties: 'Type de DM : perforants. Action de mouvement pour être rechargée.',
     sourcePage: 185,
   },
@@ -471,6 +499,7 @@ export const weapons: Weapon[] = [
     damage: { count: 2, die: 'd4' },
     range: '30 m',
     price: { amount: 10, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Nécessite une action de mouvement pour être rechargée, arme tenue à deux mains.',
     sourcePage: 185,
@@ -487,6 +516,7 @@ export const weapons: Weapon[] = [
     damage: { count: 2, die: 'd6' },
     range: '60 m',
     price: { amount: 15, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Nécessite une action limitée pour être rechargée, arme tenue à deux mains.',
     sourcePage: 185,
@@ -502,6 +532,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd6' },
     range: '30 m',
     price: { amount: 4, unit: 'pa' },
+    damageType: 'piercing',
     properties: 'Type de DM : perforants. Arme tenue à deux mains.',
     sourcePage: 185,
   },
@@ -516,6 +547,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd8' },
     range: '50 m',
     price: { amount: 8, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Arme tenue à deux mains, nécessite d’avoir une valeur minimale de +1 en FOR.',
     sourcePage: 185,
@@ -532,6 +564,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd4' },
     range: '10 m',
     price: { amount: 3, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Couteaux de lancer : inflige seulement 1d3 DM en attaque au contact. Lancer trois couteaux au tour d’un seul test d’attaque est possible. Il s’agit d’une action limitée qui permet l’ajout de l’AGI aux DM.',
     sourcePage: 185,
@@ -548,6 +581,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd4' },
     range: '5 m',
     price: { amount: 3, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Ligne « Dague » de la table des armes d’attaque à distance (lancer) — l’arme de contact correspondante a l’id `dague`.',
     sourcePage: 185,
@@ -563,6 +597,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd4' },
     range: '20 m',
     price: null,
+    damageType: 'bludgeoning',
     properties: 'Type de DM : contondants. (Prix : — / non indiqué.)',
     sourcePage: 185,
   },
@@ -579,6 +614,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd6' },
     range: '5 m',
     price: { amount: 2, unit: 'pa' },
+    damageType: 'slashing',
     properties: 'Type de DM : tranchants.',
     sourcePage: 185,
   },
@@ -594,6 +630,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd6' },
     range: '20 m',
     price: { amount: 1, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Javelot : un javelot peut être utilisé avec un propulseur, une pièce de bois ou main qui permet d’augmenter sa portée. La portée est doublée, mais l’utilisation nécessite une action limitée.',
     sourcePage: 185,
@@ -610,6 +647,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd6' },
     range: '10 m',
     price: { amount: 3, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Lance : voir épieu et lance dans les armes d’attaque au contact (id `lance`). Ligne « Lance » de la table des armes d’attaque à distance.',
     sourcePage: 185,
@@ -625,6 +663,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd3' },
     range: '10 m',
     price: { amount: 1, unit: 'pc' },
+    damageType: 'bludgeoning',
     properties: 'Type de DM : contondants.',
     sourcePage: 185,
   },
@@ -642,6 +681,7 @@ export const weapons: Weapon[] = [
     damage: { count: 1, die: 'd10' },
     range: '20 m',
     price: { amount: 50, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Armes à poudre, soumises à l’autorisation du MJ (voir encadré), nécessite une action limitée pour être rechargée. Les armes à poudre ne conviennent pas à tous les univers de jeu, elles sont soumises à l’autorisation du MJ. Par défaut, même si ce n’est pas précisé dans les autres profils, seul l’arquebusier maîtrise les armes à poudre. Lorsqu’un personnage utilise une arme à poudre sans la maîtriser, non seulement, il subit un dé malus en attaque, mais de plus, s’il obtient 1 ou 2 au d20, la poudre explose de façon imprévue : elle lui inflige 1d4° DM et l’arme ne peut plus être utilisée pour le reste du combat. Si les armes à poudre sont interdites dans l’univers de jeu, la pétoire est remplacée par une arbalète de poing (p. 62).',
     sourcePage: 185,
@@ -660,6 +700,7 @@ export const weapons: Weapon[] = [
     damage: { count: 2, die: 'd6' },
     range: '50 m',
     price: { amount: 100, unit: 'pa' },
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Armes à poudre, soumises à l’autorisation du MJ (voir encadré), nécessite une action limitée pour être rechargée, arme tenue à deux mains. (Halfelins et gobelins peuvent utiliser des armes de plus petit calibre aux dés de DM réduits : pétoire 1d8 et mousquet 1d12.) Si les armes à poudre sont interdites dans l’univers de jeu, le mousquet est remplacé par une arbalète lourde (p. 62).',
     sourcePage: 185,
@@ -701,6 +742,7 @@ export const weapons: Weapon[] = [
     excludedWeaponModifications: ['doubleBarrel', 'magazine'],
     range: '100 m',
     price: null,
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Arme à poudre octroyée par la capacité Couleuvrine (voie de l’artilleur, rang 5). Sur un test d’attaque à distance réussi (dé bonus), elle inflige [5d4° + INT] DM à une portée de 100 m. Il faut ensuite deux rounds (L) pour la recharger. C’est une arme encombrante et il est impossible de transporter plus d’une couleuvrine. Elle ne compte pas dans la limite conseillée de trois armes à poudre chargées (p. 187). Si les armes à poudre sont interdites dans l’univers de jeu, la couleuvrine est remplacée par une baliste (p. 62).',
     sourcePage: 63,
@@ -724,6 +766,7 @@ export const weapons: Weapon[] = [
     excludedWeaponModifications: ['doubleBarrel', 'magazine'],
     range: '100 m',
     price: null,
+    damageType: 'piercing',
     properties:
       'Type de DM : perforants. Contrepartie sans poudre de la couleuvrine, pour la variante « Arbalétrier » : « vous pouvez remplacer […] la couleuvrine par une baliste » (p. 62). Le livre ne lui donne pas de statistiques propres — celles de la couleuvrine sont reprises : [5d4° + INT] DM à 100 m, deux rounds (L) pour recharger, arme encombrante. Elle ne compte pas dans la limite conseillée de trois armes chargées (p. 187).',
     sourcePage: 62,
@@ -998,7 +1041,7 @@ export const gear: Gear[] = [
     category: 'gear',
     price: { amount: 40, unit: 'pa' },
     description:
-      'Précieux (40 pa). Un métal bleu sombre, très dur et particulièrement lourd. En cas de mêlée fabriquées dans ce métal imposent un malus de -1 en attaque, mais le dé de DM augmente d’une catégorie et elles sont presque indestructibles (1d4/1d6/1d8/1d10/1d12). Si les DM sont exprimés sous la forme de deux dés, on seul augmente (2d4 devient 1d4+1d6, 2d6 devient 1d6+1d8). Les projectiles fabriqués dans ce métal voient leur portée divisée par deux. Les armures obtiennent un bonus de +1 en DEF, mais leur pénalité d’armure augmente de +2. Prix d’une arme : multiplier la valeur maximale des DM par le prix indiqué, puis ajouter le prix normal de l’arme (ex. épée longue DM 1d8, 6 pa en durium (40 pa) vaut (8 × 40) + 6 = 326 pa). Prix d’une armure : multiplier le bonus de DEF par le double du prix indiqué, puis ajouter le prix normal de l’armure (ex. cotte de mailles en durium vaut (5 × 2 × 40) + 25 = 425 pa).',
+      'Précieux (40 pa). Un métal bleu sombre, très dur et particulièrement lourd. En cas de mêlée fabriquées dans ce métal imposent un malus de -1 en attaque, mais le dé de DM augmente d’une catégorie et elles sont presque indestructibles ({1d4}/{1d6}/{1d8}/{1d10}/{1d12}). Si les DM sont exprimés sous la forme de deux dés, on seul augmente ({2d4} devient {1d4}+{1d6}, {2d6} devient {1d6}+{1d8}). Les projectiles fabriqués dans ce métal voient leur portée divisée par deux. Les armures obtiennent un bonus de +1 en DEF, mais leur pénalité d’armure augmente de +2. Prix d’une arme : multiplier la valeur maximale des DM par le prix indiqué, puis ajouter le prix normal de l’arme (ex. épée longue DM {1d8}, 6 pa en durium (40 pa) vaut (8 × 40) + 6 = 326 pa). Prix d’une armure : multiplier le bonus de DEF par le double du prix indiqué, puis ajouter le prix normal de l’armure (ex. cotte de mailles en durium vaut (5 × 2 × 40) + 25 = 425 pa).',
     sourcePage: 195,
   },
   {

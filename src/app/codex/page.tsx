@@ -6,8 +6,7 @@
  * `src/app/reference/page.tsx` : ossature seule ici, le comportement vit dans un composant dédié.
  *
  * Sous-pages fonctionnelles à ce jour : Voies, Objets magiques, Dieux, Familiers fantastiques,
- * Montures & véhicules. Équipement (PER-422) apparaît en entrée désactivée « à venir », sans
- * route propre pour l'instant.
+ * Montures & véhicules, Équipement (PER-422, dernière de la milestone).
  */
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
@@ -25,7 +24,7 @@ const ENTRIES: { label: string; href?: string }[] = [
   { label: 'Dieux', href: '/codex/dieux' },
   { label: 'Familiers fantastiques', href: '/codex/familiers' },
   { label: 'Montures & véhicules', href: '/codex/montures' },
-  { label: 'Équipement' },
+  { label: 'Équipement', href: '/codex/equipement' },
 ];
 
 export default function CodexPage() {

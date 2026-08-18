@@ -841,6 +841,26 @@ export interface EffectActivation {
    * Absent = aucun forçage (interrupteur purement manuel). Résolu par `linkedFeatureEffectForcesActivation`.
    */
   autoActiveWhenFeatureEffectActive?: { featureId: string; effectIndex: number };
+  /**
+   * L'interrupteur n'est PAS manuel : il est DÉRIVÉ de la présence d'une saisie dans
+   * `Character.effectInputs[<cette clé>]` (PER-375/PER-435, retour propriétaire 2026-08-18 : « si une
+   * forme est choisie, ça considère que c'est actif »). Cas d'usage : Forme animale (animaux-r5) — le
+   * joueur CHOISIT un animal réel via le sélecteur (`AnimalFormSelector`), et ce choix, à lui seul, vaut
+   * activation ; il n'y a rien de plus à basculer manuellement. Comportement de `isEffectActive`/
+   * `toggleEffect` quand ce champ est posé :
+   *  - actif ⟺ `character.effectInputs[activeWhenInputSet]` est une chaîne non vide (PAS
+   *    `character.effectToggles`, ignoré dans ce mode) ;
+   *  - couper l'interrupteur EFFACE la saisie (`setEffectInput(character, activeWhenInputSet, '')`,
+   *    qui purge au passage `Character.transformationAbilities[activeWhenInputSet]` s'il y en a un) ;
+   *  - l'ACTIVER manuellement (bascule ON sans saisie) est un NO-OP : il n'y a rien à activer sans
+   *    animal choisi, le joueur doit passer par le sélecteur.
+   * La clé n'est PAS forcément l'id de LA capacité porteuse de CET effet : plusieurs capacités peuvent
+   * partager la MÊME clé pour rester « totalement liées » à un seul état (ex. `prestige-changeforme-r5`
+   * porte un second interrupteur, sur la MÊME clé `'animaux-r5'`, pour rester en phase avec la capacité
+   * de druide qu'il octroie — un seul choix, deux cartes qui l'affichent). Absent = interrupteur manuel
+   * classique (`Character.effectToggles`).
+   */
+  activeWhenInputSet?: string;
 }
 
 /**
@@ -3604,11 +3624,15 @@ export interface CreatureProfile {
     sourceFeatureId: string;
   };
   /**
-   * Points de vigueur (V) : expression `richText` (« niveau × 5 »). OPTIONNELS : absents pour
+   * Points de vigueur (V) : expression `richText` (« niveau × 5 ») OU recopie d'une stat dérivée du
+   * MAÎTRE (`MasterStatRef`, ex. `{ fromMaster: 'maxHp' }` = « PV du PJ » de la forme panthère du félis,
+   * PER-329 : la barre de transformation vaut alors les PV MAX du personnage). OPTIONNELS : absents pour
    * une créature SANS PV (Serviteur invisible, p. 96 : « ne peut pas être combattu ») — la
    * section « Compagnons » n'affiche alors PAS de barre de vie (`resolveCreatureMaxHp` → `null`).
+   * NB : `resolveCreatureMaxHp` (compagnons) ne résout QUE la forme chaîne ; le cas `fromMaster: 'maxHp'`
+   * est propre aux TRANSFORMATIONS et résolu dans `activeTransformationWithHp` (qui a le maxHp du maître).
    */
-  hitPoints?: string;
+  hitPoints?: string | MasterStatRef;
   /**
    * Initiative (I) : nombre fixe (`richText`, ex. « 8 ») ou recopie d'une stat du maître.
    * OPTIONNELLE (même raison que `defense`/`hitPoints`).
@@ -4696,6 +4720,13 @@ export interface Weapon extends EquipmentBase {
   damage: WeaponDamage;
   /** DM à deux mains STRUCTURÉS pour les armes à une ou deux mains (PER-217). */
   twoHandedDamage?: WeaponDamage;
+  /**
+   * Type de DM STRUCTURÉ (PER-422, tables p. 183/185, colonne « Type de DM ») — jusqu'ici
+   * seulement noyé dans `properties` (« Type de DM : tranchants. »), jamais consommé en
+   * DONNÉE. Sert au filtre par type de DM du Codex (comparaison d'armes hors personnage) ;
+   * `properties` continue de porter la phrase verbatim, ce champ ne la remplace pas.
+   */
+  damageType: DamageType;
   /**
    * PLAGE DE CRITIQUE INTRINSÈQUE de l'arme (PER-225) — certaines armes élargissent le
    * critique par leur nature même (rapière, vivelame : 19-20 au lieu de 20, p. 183),

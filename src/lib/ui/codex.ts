@@ -20,6 +20,10 @@ export function codexPathHref(pathId: string): string {
  * Familiers et Montures (PER-421) sont DEUX routes distinctes (retour propriétaire : un seul
  * onglet commun ne servait à rien une fois les deux contenus enrichis) — plus de composant
  * partagé à onglets.
+ *
+ * Équipement (PER-422) : DERNIÈRE sous-page de la milestone — vue exhaustive/comparaison
+ * (tableau triable/filtrable), là où `ItemDialog` (création/édition de personnage) ne montre
+ * qu'un objet à la fois.
  */
 export const CODEX_SUBPAGES: readonly { label: string; href: string }[] = [
   { label: 'Voies', href: '/codex/voies' },
@@ -27,4 +31,5 @@ export const CODEX_SUBPAGES: readonly { label: string; href: string }[] = [
   { label: 'Dieux', href: '/codex/dieux' },
   { label: 'Familiers fantastiques', href: '/codex/familiers' },
   { label: 'Montures & véhicules', href: '/codex/montures' },
+  { label: 'Équipement', href: '/codex/equipement' },
 ];
