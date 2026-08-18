@@ -96,6 +96,7 @@ import {
   DEMI_ELFE_FEY_BLOOD_USAGE_KEY,
   mysticBorrowedSpellSubstitutions,
   mageAlternateAbilitySubstitutions,
+  priestDivineAbilitySubstitutions,
   shortRestLockKey,
   usageCounterMaximum,
   isUsageCounterHidden,
@@ -173,6 +174,21 @@ import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocompl
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { crossOutAfterSx } from '@/lib/ui/crossOut';
+
+/**
+ * PER-401 — substitutions de carac à appliquer au rendu NATIF d'une capacité (carte de voie) :
+ * fusion des deux sources indépendantes qui peuvent chacune en proposer (variante mage d'une voie
+ * de mystique, ET capacité divine du prêtre spécialiste) — un même personnage ne peut remplir
+ * qu'une des deux conditions à la fois en pratique, mais la fusion reste correcte si ça changeait.
+ */
+function nativeFeatureAbilitySubstitutions(character: Character | undefined, feature: Feature) {
+  if (!character) return undefined;
+  const subs = [
+    ...(mageAlternateAbilitySubstitutions(character, feature) ?? []),
+    ...(priestDivineAbilitySubstitutions(character, feature) ?? []),
+  ];
+  return subs.length > 0 ? subs : undefined;
+}
 
 /**
  * Deux barres diagonales en croix « capacité désactivée par l'armure » (PER-86) : légères,
@@ -4317,7 +4333,7 @@ function PathBlock({
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <PathFeatureCard feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} chosenDuration={chosenDurationFor(openFeature)} scalingTierBonus={scalingTierBonus} abilitySubstitutions={character ? mageAlternateAbilitySubstitutions(character, openFeature) : undefined} />
+                <PathFeatureCard feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} chosenDuration={chosenDurationFor(openFeature)} scalingTierBonus={scalingTierBonus} abilitySubstitutions={nativeFeatureAbilitySubstitutions(character, openFeature)} />
                 {openFeature.referencedFeatures && openFeature.referencedFeatures.length > 0 && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -4937,7 +4953,7 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <PathFeatureCard feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} chosenDuration={chosenDurationFor(feature)} scalingTierBonus={scalingTierBonus} abilitySubstitutions={character ? mageAlternateAbilitySubstitutions(character, feature) : undefined} />
+              <PathFeatureCard feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} chosenDuration={chosenDurationFor(feature)} scalingTierBonus={scalingTierBonus} abilitySubstitutions={nativeFeatureAbilitySubstitutions(character, feature)} />
               {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
