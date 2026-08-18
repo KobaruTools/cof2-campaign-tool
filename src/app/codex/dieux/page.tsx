@@ -1,10 +1,6 @@
 'use client';
 
-/**
- * Sous-page « Dieux » du Codex (PER-420). Ossature seule, sur le patron de
- * `src/app/codex/objets-magiques/page.tsx` : le comportement vit dans `CodexGodsBrowser`,
- * une grille (pas de sélecteur maître-détail, pas de `?id=`) — pas de `Suspense` requis.
- */
+import { Suspense } from 'react';
 import NextLink from 'next/link';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -25,7 +21,9 @@ export default function CodexGodsPage() {
         <Button variant="text" color="inherit" component={NextLink} href="/codex" sx={{ mb: 2 }}>
           ← Retour au Codex
         </Button>
-        <CodexGodsBrowser />
+        <Suspense fallback={null}>
+          <CodexGodsBrowser />
+        </Suspense>
       </Container>
     </Box>
   );
