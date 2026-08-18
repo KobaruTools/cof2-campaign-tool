@@ -71,6 +71,7 @@ import {
   testBonusSources,
   universalTestBonus,
   usageCounterMaximum,
+  priestDivineAbilitySubstitutions,
   type EffectContext,
 } from './effects';
 
@@ -2839,5 +2840,44 @@ describe('modsFromFeatures — stat-bonus-from-ability-choice (PER-327)', () => 
     expect(modsFromFeatures([HOST], ctx({ abilities: low, featureChoices: { [HOST]: ['VOL'] } }))).toEqual({
       luckPoints: -1,
     });
+  });
+});
+
+describe('priestDivineAbilitySubstitutions — capacité divine du prêtre spécialiste (PER-401, p. 122)', () => {
+  const priest = (over: Partial<Character> = {}): Character =>
+    ({
+      classId: 'pretre',
+      priestVocation: { mode: 'specialist', godId: 'arwendee', hostPathId: 'foi' },
+      featureIds: [],
+      ...over,
+    }) as Character;
+
+  it('généraliste : aucune substitution', () => {
+    const feature = featureById.get('archer-r1')!;
+    expect(priestDivineAbilitySubstitutions(priest({ priestVocation: { mode: 'generalist' } }), feature)).toBeUndefined();
+  });
+
+  it('spécialiste, capacité qui n’est PAS sa capacité divine actuelle : aucune substitution (rôdeur natif, par ex.)', () => {
+    const feature = featureById.get('brute-r2')!; // divine d'un autre dieu (Forthur), pas d'Arwendée
+    expect(priestDivineAbilitySubstitutions(priest(), feature)).toBeUndefined();
+  });
+
+  it('Arwendée → archer-r1 : substitution PER→CHA', () => {
+    const feature = featureById.get('archer-r1')!;
+    expect(priestDivineAbilitySubstitutions(priest(), feature)).toEqual([{ from: 'PER', to: 'CHA' }]);
+  });
+
+  it('Sélenne → poing-r1 : substitution FOR→CHA (s’ajoute au best-of FOR/AGI du token)', () => {
+    const feature = featureById.get('poing-r1')!;
+    const vocation = { mode: 'specialist' as const, godId: 'selenne', hostPathId: 'foi' };
+    expect(priestDivineAbilitySubstitutions(priest({ priestVocation: vocation }), feature)).toEqual([
+      { from: 'FOR', to: 'CHA' },
+    ]);
+  });
+
+  it('Forthur → brute-r2 : hors périmètre (bonus à un TEST de FOR, rien à scaler) → aucune substitution', () => {
+    const feature = featureById.get('brute-r2')!;
+    const vocation = { mode: 'specialist' as const, godId: 'forthur', hostPathId: 'foi' };
+    expect(priestDivineAbilitySubstitutions(priest({ priestVocation: vocation }), feature)).toBeUndefined();
   });
 });

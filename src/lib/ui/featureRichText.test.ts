@@ -557,6 +557,22 @@ describe('meilleure de plusieurs caractéristiques (FOR/AGI)', () => {
     // Le terme carac retient la plus forte (FOR 3).
     expect(resolved.parts[1]).toMatchObject({ kind: 'abilityBest', symbol: 'FOR', value: 3 });
   });
+
+  it('PER-401 — une substitution FOR→CHA ÉLARGIT le pool (capacité divine du prêtre spécialiste)', () => {
+    const segs = parseRichText('[FOR/AGI]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    // Fixture : CHA (4) > FOR (3) > AGI (1) → la substitution FOR→CHA gagne le best-of.
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 0, 0, [{ from: 'FOR', to: 'CHA' }]).parts[0];
+    expect(r).toMatchObject({ kind: 'abilityBest', symbol: 'CHA', value: 4, substituted: { from: 'FOR', to: 'CHA' } });
+  });
+
+  it('PER-401 — substitution non applicable (carac de destination pas meilleure) : FOR/AGI inchangés', () => {
+    const segs = parseRichText('[FOR/AGI]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const lowCha: Abilities = { ...abilities, CHA: 0 }; // CHA (0) < FOR (3) → pas d'avantage
+    const r = resolveExpr(expr.terms, lowCha, 1, progression, 0, 0, [{ from: 'FOR', to: 'CHA' }]).parts[0];
+    expect(r).toMatchObject({ kind: 'abilityBest', symbol: 'FOR', value: 3, substituted: undefined });
+  });
 });
 
 describe('resolveExpr — produit de variables (Téléportation, PER-163)', () => {

@@ -189,6 +189,21 @@ describe('featureArmorRestrictionViolations — restriction fine par capacité d
     });
   });
 
+  it('PER-401 — capacité divine du prêtre spécialiste (Sélenne/poing-r1) : suit le plafond du PRÊTRE, pas celui du moine', () => {
+    const pretre = makeChar({
+      classId: 'pretre',
+      priestVocation: { mode: 'specialist', godId: 'selenne', hostPathId: 'foi' },
+      featureIds: ['poing-r1'],
+      equipment: [wornArmor('chemise-de-mailles')], // autorisée au prêtre, interdite au moine
+    });
+    expect(featureArmorRestrictionViolations(pretre, ctx)).toHaveLength(0);
+  });
+
+  it('PER-401 — même capacité NATIVE du moine (pas de vocation divine) : toujours signalée', () => {
+    const moine = makeChar({ classId: 'moine', featureIds: ['poing-r1'], equipment: [wornArmor('chemise-de-mailles')] });
+    expect(featureArmorRestrictionViolations(moine, ctx).some((v) => v.featureId === 'poing-r1')).toBe(true);
+  });
+
   it('signale aussi les capacités PASSIVES (actionTypes vide) — décision propriétaire', () => {
     // maitrise-r1 « Agilité du singe » : capacité de moine passive.
     const moine = makeChar({ classId: 'moine', featureIds: ['maitrise-r1'], equipment: [wornArmor('cuir-simple')] });

@@ -18,7 +18,7 @@
  * Le moteur SIGNALE l'excès (avertissement non bloquant, fiche + récap wizard) ;
  * il ne retire rien de force (la fiche reste permissive). Cf. `checkCompliance`.
  */
-import { equipmentById, featureById } from '@/data';
+import { equipmentById, featureById, priestGodById } from '@/data';
 import type {
   Armor,
   ArmorAccessEffect,
@@ -418,8 +418,18 @@ export function featureArmorRestrictionViolations(
     ...armorLimitedBorrowedFeatureIds(character), // Touche-à-tout, souplesse propre (PER-153)
   ]);
   const exceptionCeilings = borrowedArmorExceptionCeilings(character); // exceptions de la voie A (PER-143)
+  // PER-401 — capacité DIVINE du prêtre spécialiste (p. 122) : contrairement à un emprunt
+  // (« Appel à une autre capacité », p. 41), le livre en fait une capacité NATIVE du prêtre qui
+  // remplace un rang de sa propre voie — elle ne porte donc PAS le plafond d'armure de son
+  // profil DONNEUR (ex. Poings de fer/moine = aucune armure). Le prêtre reste soumis à SON
+  // plafond de port global (PER-80, `wornArmorAllowedDef`), inchangé par ce module.
+  const divineFeatureId =
+    character.priestVocation?.mode === 'specialist'
+      ? priestGodById.get(character.priestVocation.godId)?.divineFeatureId
+      : undefined;
 
   for (const id of featureIds) {
+    if (id === divineFeatureId) continue;
     const feature = featureById.get(id);
     if (!feature || feature.isSpell) continue; // sorts → PER-82
     const path = ctx.pathById.get(feature.pathId);

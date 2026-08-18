@@ -808,14 +808,23 @@ export function resolveExpr(
         // Meilleure des caractéristiques listées (substitution optionnelle, ex.
         // FOR↔AGI) : on retient la plus forte au moment du rendu et on l'AFFICHE
         // (« AGI (3) »), l'info-bulle rappelant que c'est la meilleure des deux.
-        const best = term.abilities.reduce((a, b) => (abilities[b] > abilities[a] ? b : a));
+        // PER-401 : une substitution active (capacité divine du prêtre spécialiste, ex.
+        // FOR→CHA sur Poings de fer) ÉLARGIT le pool plutôt que de remplacer une carac
+        // listée — le prêtre garde FOR/AGI et gagne CHA en plus, meilleure des trois.
+        const extraSubs = term.abilities
+          .map((a) => substitutions?.find((s) => s.from === a && (s.unconditional || abilities[s.to] > abilities[a])))
+          .filter((s): s is AbilitySubstitution => !!s);
+        const pool = [...term.abilities, ...extraSubs.map((s) => s.to)];
+        const best = pool.reduce((a, b) => (abilities[b] > abilities[a] ? b : a));
+        const applied = extraSubs.find((s) => s.to === best);
         return {
           kind: 'abilityBest',
           sign: term.sign,
-          label: `Meilleure de ${term.abilities.map((a) => `${ABILITY_NAMES[a]} (${a})`).join(' ou ')}`,
+          label: `Meilleure de ${pool.map((a) => `${ABILITY_NAMES[a]} (${a})`).join(' ou ')}`,
           symbol: withCoeff(best, term.coeff),
           value: abilities[best] * (term.coeff ?? 1),
           coeff: term.coeff,
+          substituted: applied ? { from: applied.from, to: applied.to } : undefined,
         };
       }
       case 'rank':
