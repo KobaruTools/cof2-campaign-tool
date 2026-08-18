@@ -98,6 +98,8 @@ import {
 } from '@/lib/campaign/types';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useCharactersStore } from '@/stores/characters';
+import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
+import { useNpcPortraitCropRect, useNpcPortraitSrc } from '@/lib/storage/useNpcPortraitSrc';
 import { NpcFormDialog } from './NpcFormDialog';
 
 /** Identifiant `@dnd-kit` d'une carte de PNJ draggable — même préfixe de motif que
@@ -168,13 +170,17 @@ function NpcCard({
     data: { npcId: npc.id } satisfies NpcDragData,
   });
 
+  const portraitSrc = useNpcPortraitSrc(npc.id);
+  const portraitCropRect = useNpcPortraitCropRect(npc.id);
+  const croppedPortraitSrc = useCroppedImageSrc(portraitSrc ?? undefined, portraitCropRect);
+  const displayedPortraitSrc = croppedPortraitSrc ?? portraitSrc ?? undefined;
+
   return (
     <Box
       ref={setNodeRef}
       sx={{
         display: 'flex',
-        flexDirection: 'column',
-        gap: 0.5,
+        gap: 1,
         p: 1,
         border: 1,
         borderColor: 'divider',
@@ -183,56 +189,75 @@ function NpcCard({
         opacity: isDragging ? 0.4 : 1,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        <IconButton
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          size="small"
-          aria-label="Glisser pour déplacer"
+      {displayedPortraitSrc && (
+        <Box
+          component="img"
+          src={displayedPortraitSrc}
+          alt=""
+          aria-hidden
           sx={{
+            width: 56,
+            alignSelf: 'stretch',
             flexShrink: 0,
-            p: 0.25,
-            color: 'text.secondary',
-            cursor: 'grab',
-            touchAction: 'none',
-            '&:active': { cursor: 'grabbing' },
+            borderRadius: 1,
+            objectFit: 'cover',
+            objectPosition: 'top',
           }}
-        >
-          <DragIndicatorIcon fontSize="small" />
-        </IconButton>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 600 }} noWrap>
-            {npc.name}
-          </Typography>
-          <Box
-            component="span"
+        />
+      )}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexGrow: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <IconButton
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            size="small"
+            aria-label="Glisser pour déplacer"
             sx={{
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              px: 0.75,
-              py: 0.125,
-              borderRadius: 0.5,
-              color: NPC_DISPOSITION_ACCENT[npc.disposition],
-              border: `1px solid ${alpha(NPC_DISPOSITION_ACCENT[npc.disposition], 0.5)}`,
+              flexShrink: 0,
+              p: 0.25,
+              color: 'text.secondary',
+              cursor: 'grab',
+              touchAction: 'none',
+              '&:active': { cursor: 'grabbing' },
             }}
           >
-            {NPC_DISPOSITION_LABELS[npc.disposition]}
+            <DragIndicatorIcon fontSize="small" />
+          </IconButton>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 600 }} noWrap>
+              {npc.name}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              <Box
+                component="span"
+                sx={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  px: 0.75,
+                  py: 0.125,
+                  borderRadius: 0.5,
+                  color: NPC_DISPOSITION_ACCENT[npc.disposition],
+                  border: `1px solid ${alpha(NPC_DISPOSITION_ACCENT[npc.disposition], 0.5)}`,
+                }}
+              >
+                {NPC_DISPOSITION_LABELS[npc.disposition]}
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {NPC_STATUS_LABELS[npc.status]}
+              </Typography>
+            </Stack>
           </Box>
-          <Typography variant="caption" color="text.secondary">
-            {NPC_STATUS_LABELS[npc.status]}
+        </Box>
+        {(npc.role || npc.ancestryId) && (
+          <Typography variant="body2" color="text.secondary" noWrap sx={{ pl: 3.5 }}>
+            {[npc.role, npc.ancestryId ? ancestryById.get(npc.ancestryId)?.name : null]
+              .filter(Boolean)
+              .join(' · ')}
           </Typography>
-        </Stack>
+        )}
       </Box>
-      {(npc.role || npc.ancestryId) && (
-        <Typography variant="body2" color="text.secondary" noWrap sx={{ pl: 3.5 }}>
-          {[npc.role, npc.ancestryId ? ancestryById.get(npc.ancestryId)?.name : null]
-            .filter(Boolean)
-            .join(' · ')}
-        </Typography>
-      )}
-      <Divider sx={{ mt: 0.25 }} />
-      <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end' }}>
+      <Stack spacing={0.25} sx={{ flexShrink: 0 }}>
         <AppTooltip title="Modifier">
           <IconButton size="small" onClick={onEdit} disabled={busy}>
             <EditOutlinedIcon fontSize="small" />
