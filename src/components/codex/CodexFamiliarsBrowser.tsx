@@ -324,15 +324,12 @@ export function CodexFamiliarsBrowser() {
       sx={{
         display: 'grid',
         gap: 2,
-        // Colonnes DYNAMIQUES selon la largeur disponible (`auto-fit`/`minmax`, retour propriétaire),
-        // plutôt que des paliers fixes MUI (`md`/`xl`) qui restaient bloqués à 2 colonnes sur une
-        // large plage de largeurs. `maxWidth` = EXACTEMENT 3 cartes de 320px + 2 gouttières de 16px
-        // (992px) : `auto-fit` calcule son nombre de colonnes sur la largeur du CONTENEUR, donc un
-        // plafond trop large (ex. 1400px) laisse encore de la place pour une 4e colonne — 992px est
-        // le plus grand conteneur qui ne permet PAS d'en caser une 4e (4×320 + 3×16 = 1328 > 992).
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        maxWidth: 992,
-        mx: 'auto',
+        // MÊME wrapper plein-largeur que les autres grilles du Codex (`CodexGodsBrowser`) : paliers
+        // MUI qui stretchent les cartes sur toute la largeur du `Container` de la page (pas de
+        // `maxWidth` réduit qui rétrécit tout le bloc — retour propriétaire, l'`auto-fit`/`maxWidth`
+        // précédent limitait le CONTENEUR à 992px au lieu de juste plafonner le nombre de colonnes).
+        // Plafond à 3 colonnes (`lg`), jamais de palier `xl` supplémentaire.
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
         alignItems: 'stretch',
       }}
     >
