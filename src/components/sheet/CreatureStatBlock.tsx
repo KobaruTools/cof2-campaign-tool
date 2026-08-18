@@ -78,7 +78,9 @@ function CreatureStatChip({
         borderRadius: 0.75,
         border: 1,
         borderColor: 'divider',
-        bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+        bgcolor: (t) => alpha(t.palette.text.primary, 0.14),
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
       }}
     >
       <DerivedStatIcon statId={statId} size={22} />
@@ -225,7 +227,9 @@ export function CreatureAbilitiesGrid({ profile, masterAbilities, bonusDieAbilit
               borderColor: 'divider',
               py: large ? { xs: 0.5, sm: 0.6 } : mobileEnlarge ? { xs: 0.9, sm: 0.4 } : 0.4,
               cursor: 'help',
-              bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+              bgcolor: (t) => alpha(t.palette.text.primary, 0.14),
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
             }}
           />
         </AppTooltip>
@@ -448,7 +452,7 @@ export function CreatureStatsLine({
           // dégâts. Le tooltip de détail utile (« … du maître ») reste porté par la valeur.
           <CreatureStatChip statId={attackStatId}>
             {attack.fromMaster ? (
-              <MasterStatValue stat={attack.fromMaster} masterDerived={masterDerived} />
+              <MasterStatValue stat={attack.fromMaster} masterDerived={masterDerived} offset={attack.offset} />
             ) : (
               <Box component="span">{attack.value}</Box>
             )}
@@ -724,7 +728,7 @@ export function CreatureDerivedStats({
           {/* Chiffre du jet initial agrandi sur mobile — le DM qui suit garde sa taille. */}
           <EnlargedStatValue mobileEnlarge={mobileEnlarge}>
             {attack.fromMaster ? (
-              <MasterStatValue stat={attack.fromMaster} masterDerived={masterDerived} />
+              <MasterStatValue stat={attack.fromMaster} masterDerived={masterDerived} offset={attack.offset} />
             ) : (
               <Box component="span">{attack.value}</Box>
             )}
