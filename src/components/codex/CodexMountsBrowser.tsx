@@ -2,12 +2,13 @@
 
 /**
  * Navigateur « Montures & véhicules » du Codex (PER-421) — consultation en LECTURE SEULE de la
- * table « Prix des montures » (`mounts.ts`, p. 191), SANS personnage. Grille de blocs (retour
- * propriétaire, 3 colonnes maximum) — même patron que `CodexFamiliarsBrowser` : `auto-fit`/
- * `minmax` pour un nombre de colonnes dynamique selon la largeur, plafonné via `maxWidth`. Le
- * bloc de stats de combat (cheval de selle/guerre) est rendu via `BestiaryStatBlock` — MÊME
- * composant que le Bestiaire, aucune duplication de rendu — dans un accordéon replié par défaut
- * (cadrage propriétaire) pour ne pas alourdir le bloc.
+ * table « Prix des montures » (`mounts.ts`, p. 191), SANS personnage. TROIS sections distinctes
+ * (retour propriétaire) — Montures / Véhicules / Bardes — chacune sa propre grille de blocs (3
+ * colonnes maximum), même patron que `CodexFamiliarsBrowser` : `auto-fit`/`minmax` pour un nombre
+ * de colonnes dynamique selon la largeur, plafonné via `maxWidth`. Le bloc de stats de combat
+ * (cheval de selle/guerre) est rendu via `BestiaryStatBlock` — MÊME composant que le Bestiaire,
+ * aucune duplication de rendu — dans un accordéon replié par défaut (cadrage propriétaire) pour
+ * ne pas alourdir le bloc.
  *
  * Prix : jeton de monnaie (retour propriétaire) — MÊME langage visuel que le jeton « PA » de
  * `PurseField.tsx` (fiche personnage), en version statique (pas d'info-bulle/animation, catalogue
@@ -166,19 +167,41 @@ function BardeRow({ barde }: { barde: BardeCatalogEntry }) {
   );
 }
 
+/** Titre de section + séparateur, MÊME traitement pour les 3 catégories (retour propriétaire). */
+function SectionHeading({ children }: { children: string }) {
+  return (
+    <>
+      <Typography variant="h6" component="h2" sx={{ fontWeight: 700, mb: 1.5 }}>
+        {children}
+      </Typography>
+      <Divider sx={{ mb: 1.5 }} />
+    </>
+  );
+}
+
 export function CodexMountsBrowser() {
+  const ridingMounts = mounts.filter((m) => m.kind === 'mount');
+  const vehicles = mounts.filter((m) => m.kind === 'vehicle');
   return (
     <Stack spacing={3}>
-      <Box sx={gridSx}>
-        {mounts.map((entry) => (
-          <MountRow key={entry.id} entry={entry} />
-        ))}
+      <Box>
+        <SectionHeading>Montures</SectionHeading>
+        <Box sx={gridSx}>
+          {ridingMounts.map((entry) => (
+            <MountRow key={entry.id} entry={entry} />
+          ))}
+        </Box>
       </Box>
       <Box>
-        <Typography variant="h6" component="h2" sx={{ fontWeight: 700, mb: 1.5 }}>
-          Bardes (protections de monture)
-        </Typography>
-        <Divider sx={{ mb: 1.5 }} />
+        <SectionHeading>Véhicules</SectionHeading>
+        <Box sx={gridSx}>
+          {vehicles.map((entry) => (
+            <MountRow key={entry.id} entry={entry} />
+          ))}
+        </Box>
+      </Box>
+      <Box>
+        <SectionHeading>Bardes (protections de monture)</SectionHeading>
         <Box sx={gridSx}>
           {bardes.map((barde) => (
             <BardeRow key={barde.id} barde={barde} />
