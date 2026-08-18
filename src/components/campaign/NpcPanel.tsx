@@ -4,10 +4,16 @@
  * Contenu de l'onglet « PNJ » du tiroir d'outils du MJ (PER-428 socle + PER-429
  * fiche complète + PER-430 catégories/tri/recherche) : liste de cartes (badge de
  * disposition + sous-titre de rôle), création/édition via `NpcFormDialog`,
- * suppression par ligne, regroupement en catégories renommables/repliables
- * (SŒUR de `GmInventoryPanel`, mais sans glisser-déposer : la recatégorisation
- * passe par un menu par carte, `campaign_npcs.category_id` n'étant pas un tableau
- * `items` mutable en bloc comme `GmInventory`).
+ * suppression par ligne, regroupement en catégories renommables/repliables.
+ *
+ * Cartes/boutons/glisser-déposer repris à l'IDENTIQUE du langage visuel de
+ * `GmInventoryPanel.tsx` (PER-437, retour propriétaire de cohérence entre les
+ * panneaux du tiroir MJ) : carte bordurée à poignée dédiée, pied d'actions
+ * séparé par un filet, zones de catégorie droppables avec emplacement fantôme,
+ * `ToolbarActionButton` partagé pour les boutons de la barre d'outils. Le
+ * `DndContext` reste LOCAL à ce panneau (contrairement à celui, partagé entre
+ * deux composants, de `GmLootDrawerHost`) : les PNJ n'ont qu'une seule réserve,
+ * pas deux pools entre lesquels orchestrer un glisser inter-composants.
  *
  * Données PNJ persistées dans la table DÉDIÉE `campaign_npcs` (RLS propriétaire,
  * migrations 0029/0030/0033) — PAS le blob `Campaign` comme les autres onglets
@@ -20,20 +26,41 @@ import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import Diversity3Icon from '@mui/icons-material/Diversity3';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  pointerWithin,
+  useDndContext,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -41,7 +68,10 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import type { Theme } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
+import { ToolbarActionButton } from '@/components/campaign/ToolbarActionButton';
 import { useToast } from '@/components/toast/ToastProvider';
 import { ancestryById } from '@/data';
 import {
@@ -65,11 +95,27 @@ import {
   NPC_STATUS_LABELS,
   type Campaign,
   type Npc,
-  type NpcCategory,
 } from '@/lib/campaign/types';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useCharactersStore } from '@/stores/characters';
 import { NpcFormDialog } from './NpcFormDialog';
+
+/** Identifiant `@dnd-kit` d'une carte de PNJ draggable — même préfixe de motif que
+ * `permanentItemDragId` de `GmInventoryPanel.tsx`. */
+function npcDragId(npcId: string): string {
+  return `gm-npc:${npcId}`;
+}
+
+/** Identifiant `@dnd-kit` d'une zone de dépôt de catégorie (`null` → « Sans catégorie ») —
+ * même motif que `categoryDropId` de `GmInventoryPanel.tsx`. */
+function npcCategoryDropId(categoryId: string | null): string {
+  return `gm-npc-cat:${categoryId ?? 'none'}`;
+}
+
+/** Payload `@dnd-kit` posé par `NpcCard` sur le PNJ glissé. */
+interface NpcDragData {
+  npcId: string;
+}
 
 type SortMode = 'name' | 'disposition' | 'challenge';
 
@@ -97,39 +143,68 @@ function errorMessage(e: unknown): string {
   return String(e);
 }
 
-/** Une carte de PNJ — même langage visuel que la version PER-429 (accent de disposition à gauche). */
+/**
+ * Une carte de PNJ — même langage visuel/interaction que `InventoryItemRow` de
+ * `GmInventoryPanel.tsx` (PER-437, retour propriétaire de cohérence) : boîte
+ * bordurée, poignée de glisser dédiée (`DragIndicatorIcon`, jamais la carte
+ * entière — même motif, le point de saisie doit rester fixe pour que le
+ * fantôme suive le curseur sans décalage), pied d'actions séparé par un filet.
+ * L'accent de disposition (allié/neutre/ennemi) reste une bordure gauche
+ * colorée — signal propre aux PNJ, sans équivalent côté objets.
+ */
 function NpcCard({
   npc,
-  categories,
   onEdit,
   onDelete,
-  onMoveToCategory,
   busy,
 }: {
   npc: Npc;
-  categories: NpcCategory[];
   onEdit: () => void;
   onDelete: () => void;
-  onMoveToCategory: (categoryId: string | null) => void;
   busy: boolean;
 }) {
-  const [moveAnchor, setMoveAnchor] = useState<HTMLElement | null>(null);
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
+    id: npcDragId(npc.id),
+    data: { npcId: npc.id } satisfies NpcDragData,
+  });
 
   return (
     <Box
-      sx={(theme) => ({
+      ref={setNodeRef}
+      sx={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 1,
+        flexDirection: 'column',
+        gap: 0.5,
         p: 1,
-        borderRadius: 1,
-        border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+        border: 1,
+        borderColor: 'divider',
         borderLeft: `4px solid ${NPC_DISPOSITION_ACCENT[npc.disposition]}`,
-      })}
+        borderRadius: 1,
+        opacity: isDragging ? 0.4 : 1,
+      }}
     >
-      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <Typography sx={{ fontWeight: 600 }}>{npc.name}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <IconButton
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          size="small"
+          aria-label="Glisser pour déplacer"
+          sx={{
+            flexShrink: 0,
+            p: 0.25,
+            color: 'text.secondary',
+            cursor: 'grab',
+            touchAction: 'none',
+            '&:active': { cursor: 'grabbing' },
+          }}
+        >
+          <DragIndicatorIcon fontSize="small" />
+        </IconButton>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 600 }} noWrap>
+            {npc.name}
+          </Typography>
           <Box
             component="span"
             sx={{
@@ -148,88 +223,73 @@ function NpcCard({
             {NPC_STATUS_LABELS[npc.status]}
           </Typography>
         </Stack>
-        {(npc.role || npc.ancestryId) && (
-          <Typography variant="body2" color="text.secondary" noWrap>
-            {[npc.role, npc.ancestryId ? ancestryById.get(npc.ancestryId)?.name : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </Typography>
-        )}
       </Box>
-      <AppTooltip title="Déplacer vers une catégorie">
-        <IconButton size="small" onClick={(e) => setMoveAnchor(e.currentTarget)} disabled={busy}>
-          <FolderOutlinedIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-      <Menu anchorEl={moveAnchor} open={Boolean(moveAnchor)} onClose={() => setMoveAnchor(null)}>
-        <MenuItem
-          selected={npc.categoryId === null}
-          onClick={() => {
-            setMoveAnchor(null);
-            onMoveToCategory(null);
-          }}
-        >
-          Sans catégorie
-        </MenuItem>
-        {categories.map((cat) => (
-          <MenuItem
-            key={cat.id}
-            selected={npc.categoryId === cat.id}
-            onClick={() => {
-              setMoveAnchor(null);
-              onMoveToCategory(cat.id);
-            }}
-          >
-            {cat.name}
-          </MenuItem>
-        ))}
-      </Menu>
-      <Tooltip title="Modifier">
-        <span>
+      {(npc.role || npc.ancestryId) && (
+        <Typography variant="body2" color="text.secondary" noWrap sx={{ pl: 3.5 }}>
+          {[npc.role, npc.ancestryId ? ancestryById.get(npc.ancestryId)?.name : null]
+            .filter(Boolean)
+            .join(' · ')}
+        </Typography>
+      )}
+      <Divider sx={{ mt: 0.25 }} />
+      <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end' }}>
+        <AppTooltip title="Modifier">
           <IconButton size="small" onClick={onEdit} disabled={busy}>
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
-        </span>
-      </Tooltip>
-      <Tooltip title="Supprimer">
-        <span>
+        </AppTooltip>
+        <AppTooltip title="Supprimer">
           <IconButton size="small" color="error" onClick={onDelete} disabled={busy}>
             <DeleteOutlineIcon fontSize="small" />
           </IconButton>
-        </span>
-      </Tooltip>
+        </AppTooltip>
+      </Stack>
     </Box>
   );
 }
 
-/** En-tête + corps d'une catégorie (ou du groupe virtuel « Sans catégorie »). */
+/**
+ * En-tête + corps d'une catégorie (ou du groupe virtuel « Sans catégorie ») — ZONE
+ * DE DÉPÔT du glisser-déposer (PER-437), même motif que `CategoryGroup` de
+ * `GmInventoryPanel.tsx` : surlignage en pointillés au survol, emplacement fantôme
+ * (hauteur d'une carte) visible dès le début d'un glisser n'importe où dans ce
+ * panneau — pas seulement au survol exact de CETTE catégorie.
+ */
 function NpcCategoryGroup({
+  categoryId,
   name,
   collapsed,
   npcs,
-  categories,
   onToggleCollapsed,
   onRename,
   onRemoveCategory,
   onEdit,
   onDelete,
-  onMoveToCategory,
   busy,
+  layout,
 }: {
+  categoryId: string | null;
   name: string;
   collapsed: boolean;
   npcs: Npc[];
-  categories: NpcCategory[];
   onToggleCollapsed?: () => void;
   onRename?: (name: string) => void;
   onRemoveCategory?: () => void;
   onEdit: (npc: Npc) => void;
   onDelete: (id: string) => void;
-  onMoveToCategory: (npcId: string, categoryId: string | null) => void;
   busy: boolean;
+  /** Affichage des CARTES de cette catégorie — la catégorie elle-même reste toujours en ligne. */
+  layout: 'list' | 'columns';
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: npcCategoryDropId(categoryId) });
+  const { active } = useDndContext();
+  const dragging = Boolean(active);
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
+  // Renommage via MODALE (bouton dédié, même motif que `CategoryGroup` de
+  // `GmInventoryPanel.tsx`) — cohabite avec le renommage inline (clic sur le nom).
+  const [renameModalOpen, setRenameModalOpen] = useState(false);
+  const [renameModalDraft, setRenameModalDraft] = useState(name);
 
   const commitRename = () => {
     setRenaming(false);
@@ -238,8 +298,26 @@ function NpcCategoryGroup({
     else setDraft(name);
   };
 
+  const openRenameModal = () => {
+    setRenameModalDraft(name);
+    setRenameModalOpen(true);
+  };
+  const confirmRenameModal = () => {
+    const trimmed = renameModalDraft.trim();
+    if (trimmed && trimmed !== name) onRename?.(trimmed);
+    setRenameModalOpen(false);
+  };
+
   return (
-    <Box>
+    <Box
+      ref={setNodeRef}
+      sx={{
+        borderRadius: 1,
+        outline: isOver ? '2px dashed' : 'none',
+        outlineColor: 'secondary.main',
+        outlineOffset: 2,
+      }}
+    >
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minHeight: 36 }}>
         {onToggleCollapsed ? (
           <IconButton size="small" onClick={onToggleCollapsed}>
@@ -281,6 +359,13 @@ function NpcCategoryGroup({
           </Typography>
         )}
         <Box sx={{ flexGrow: renaming ? 1 : 0 }} />
+        {onRename && (
+          <AppTooltip title="Renommer la catégorie">
+            <IconButton size="small" onClick={openRenameModal} disabled={busy}>
+              <DriveFileRenameOutlineIcon fontSize="small" />
+            </IconButton>
+          </AppTooltip>
+        )}
         {onRemoveCategory && (
           <AppTooltip title="Supprimer la catégorie (les PNJ repassent « Sans catégorie »)">
             <IconButton size="small" onClick={onRemoveCategory} disabled={busy}>
@@ -289,28 +374,92 @@ function NpcCategoryGroup({
           </AppTooltip>
         )}
       </Stack>
+      {onRename && (
+        <Dialog open={renameModalOpen} onClose={() => setRenameModalOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Renommer la catégorie</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              size="small"
+              label="Nom de la catégorie"
+              value={renameModalDraft}
+              onChange={(e) => setRenameModalDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmRenameModal();
+              }}
+              fullWidth
+              sx={{ mt: 0.5 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setRenameModalOpen(false)}>Annuler</Button>
+            <Button variant="contained" disabled={!renameModalDraft.trim()} onClick={confirmRenameModal}>
+              Renommer
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
       {!collapsed && (
-        <Stack spacing={0.75} sx={{ pl: 4.5, pb: 1 }}>
-          {npcs.length === 0 ? (
-            <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-              Aucun PNJ dans cette catégorie.
-            </Typography>
+        <Box
+          sx={
+            layout === 'columns'
+              ? { pl: 4.5, pb: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }
+              : { pl: 4.5, pb: 1, display: 'flex', flexDirection: 'column', gap: 0.75 }
+          }
+        >
+          {dragging ? (
+            // Emplacement FANTÔME — même motif que `CategoryGroup` (hauteur d'UNE carte,
+            // visible dès le début du glisser, surligné en plus au survol exact).
+            <Box
+              sx={(theme) => ({
+                height: 40,
+                borderRadius: 1,
+                border: '2px dashed',
+                borderColor: isOver ? 'secondary.main' : alpha(theme.palette.text.secondary, 0.3),
+                bgcolor: isOver ? alpha(theme.palette.secondary.main, 0.12) : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isOver ? 'secondary.main' : 'text.disabled',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                transition: 'border-color 0.15s, background-color 0.15s, color 0.15s',
+                ...(layout === 'columns' && npcs.length === 0 && { gridColumn: '1 / -1' }),
+              })}
+            >
+              Déposer ici
+            </Box>
           ) : (
-            npcs.map((npc) => (
-              <NpcCard
-                key={npc.id}
-                npc={npc}
-                categories={categories}
-                onEdit={() => onEdit(npc)}
-                onDelete={() => onDelete(npc.id)}
-                onMoveToCategory={(catId) => onMoveToCategory(npc.id, catId)}
-                busy={busy}
-              />
-            ))
+            npcs.length === 0 && (
+              <Typography
+                variant="caption"
+                sx={{ color: 'text.disabled', ...(layout === 'columns' && { gridColumn: '1 / -1' }) }}
+              >
+                Aucun PNJ dans cette catégorie.
+              </Typography>
+            )
           )}
-        </Stack>
+          {npcs.map((npc) => (
+            <NpcCard key={npc.id} npc={npc} onEdit={() => onEdit(npc)} onDelete={() => onDelete(npc.id)} busy={busy} />
+          ))}
+        </Box>
       )}
     </Box>
+  );
+}
+
+/**
+ * Carte fantôme suivant le curseur pendant le glisser d'un PNJ — même motif que
+ * `DragGhost` de `GmLootDrawerHost.tsx` (le fantôme EST la carte, pas un aperçu
+ * générique), élévation en plus pour se détacher visuellement des cartes posées.
+ */
+function NpcDragGhost({ npc }: { npc: Npc }) {
+  return (
+    <Paper elevation={6} sx={{ width: 260, p: 1, borderRadius: 1, cursor: 'grabbing' }}>
+      <Typography sx={{ fontWeight: 600 }} noWrap>
+        {npc.name}
+      </Typography>
+    </Paper>
   );
 }
 
@@ -329,6 +478,36 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
   const [search, setSearch] = useState('');
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  // Préférence d'affichage purement visuelle (pas de persistance) — même motif que
+  // `GmInventoryPanel` : redémarre en liste à chaque ouverture du tiroir.
+  const [layout, setLayout] = useState<'list' | 'columns'>('list');
+  // Boutons pleins → icône seule entre `md` et `xl` (même palier que `GmInventoryPanel`,
+  // pour que les deux barres d'outils du tiroir MJ se comportent à l'identique).
+  const iconOnly = useMediaQuery((theme: Theme) => theme.breakpoints.down('xl'));
+
+  // Glisser-déposer d'une carte de PNJ vers une catégorie (PER-437) — DndContext LOCAL,
+  // ce panneau n'a qu'une seule réserve (cf. commentaire d'en-tête).
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor),
+  );
+  const [activeDragNpc, setActiveDragNpc] = useState<Npc | null>(null);
+
+  const onDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current as NpcDragData | undefined;
+    if (!data) return;
+    setActiveDragNpc(npcs.find((n) => n.id === data.npcId) ?? null);
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    setActiveDragNpc(null);
+    const data = event.active.data.current as NpcDragData | undefined;
+    const overId = event.over?.id;
+    if (!data || typeof overId !== 'string' || !overId.startsWith('gm-npc-cat:')) return;
+    const categoryId = overId === npcCategoryDropId(null) ? null : overId.slice('gm-npc-cat:'.length);
+    const npc = npcs.find((n) => n.id === data.npcId);
+    if (npc && npc.categoryId !== categoryId) void handleMoveToCategory(data.npcId, categoryId);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -445,174 +624,207 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
   );
 
   return (
-    <Stack spacing={2}>
-      <Button
-        variant="outlined"
-        startIcon={<AddIcon />}
-        onClick={() => setDialogTarget('create')}
-        sx={{ alignSelf: 'flex-start' }}
-      >
-        Nouveau PNJ
-      </Button>
-
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-        <TextField
-          size="small"
-          placeholder="Rechercher un PNJ (nom, description)…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ flexGrow: 1, minWidth: 200 }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
-        <ToggleButtonGroup
-          value={sortMode}
-          exclusive
-          size="small"
-          onChange={(_, value) => {
-            if (value) setSortMode(value);
-          }}
-        >
-          {SORT_MODES.map((m) => (
-            <ToggleButton key={m.value} value={m.value} aria-label={m.label}>
-              <Tooltip title={m.label}>{m.icon}</Tooltip>
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      </Stack>
-
-      {!searching &&
-        (newCategoryOpen ? (
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            <TextField
-              autoFocus
-              size="small"
-              placeholder="Nom de la catégorie"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCreateCategory();
-                if (e.key === 'Escape') {
-                  setNewCategoryOpen(false);
-                  setNewCategoryName('');
-                }
-              }}
-            />
-            <IconButton size="small" onClick={handleCreateCategory} disabled={busy}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        ) : (
-          <Button
-            variant="text"
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      autoScroll={{ enabled: false }}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragCancel={() => setActiveDragNpc(null)}
+    >
+      <Stack spacing={2}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+          <TextField
             size="small"
-            startIcon={<AddIcon fontSize="small" />}
-            onClick={() => setNewCategoryOpen(true)}
-            sx={{ alignSelf: 'flex-start' }}
-            disabled={busy}
+            placeholder="Rechercher un PNJ (nom, description)…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ flexGrow: 1, minWidth: 200 }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <ToggleButtonGroup
+            value={sortMode}
+            exclusive
+            size="small"
+            onChange={(_, value) => {
+              if (value) setSortMode(value);
+            }}
           >
-            Nouvelle catégorie
-          </Button>
-        ))}
-
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-          <CircularProgress size={24} />
-        </Box>
-      ) : npcs.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          Aucun PNJ pour l’instant. Créez-en un ci-dessus pour le retrouver ici.
-        </Typography>
-      ) : searching ? (
-        // Recherche active : liste PLATE (catégories masquées), triée selon le tri actif.
-        visibleNpcs.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            Aucun PNJ ne correspond à « {search.trim()} ».
-          </Typography>
-        ) : (
-          <Stack spacing={0.75}>
-            {sortNpcs(visibleNpcs, sortMode).map((npc) => (
-              <NpcCard
-                key={npc.id}
-                npc={npc}
-                categories={categories}
-                onEdit={() => setDialogTarget(npc)}
-                onDelete={() => handleDelete(npc.id)}
-                onMoveToCategory={(catId) => handleMoveToCategory(npc.id, catId)}
-                busy={busy}
-              />
+            {SORT_MODES.map((m) => (
+              <ToggleButton key={m.value} value={m.value} aria-label={m.label}>
+                <Tooltip title={m.label}>{m.icon}</Tooltip>
+              </ToggleButton>
             ))}
-          </Stack>
-        )
-      ) : (
-        <Stack spacing={1.5}>
-          {categories.map((cat) => (
-            <NpcCategoryGroup
-              key={cat.id}
-              name={cat.name}
-              collapsed={cat.collapsed}
-              npcs={sortNpcs(
-                visibleNpcs.filter((n) => n.categoryId === cat.id),
-                sortMode,
-              )}
-              categories={categories}
-              onToggleCollapsed={() => handleToggleCollapsed(cat.id)}
-              onRename={(name) => handleRenameCategory(cat.id, name)}
-              onRemoveCategory={() => handleRemoveCategory(cat.id)}
-              onEdit={(npc) => setDialogTarget(npc)}
-              onDelete={handleDelete}
-              onMoveToCategory={handleMoveToCategory}
-              busy={busy}
-            />
-          ))}
-          {(uncategorized.length > 0 || categories.length === 0) && (
-            <NpcCategoryGroup
-              name="Sans catégorie"
-              collapsed={false}
-              npcs={sortNpcs(uncategorized, sortMode)}
-              categories={categories}
-              onEdit={(npc) => setDialogTarget(npc)}
-              onDelete={handleDelete}
-              onMoveToCategory={handleMoveToCategory}
-              busy={busy}
-            />
+          </ToggleButtonGroup>
+          {/* Affichage liste/colonnes des cartes (même motif que `GmInventoryPanel`) — sans
+              intérêt en mode recherche (liste plate déjà compacte), masqué dans ce cas. */}
+          {!searching && (
+            <ToggleButtonGroup
+              value={layout}
+              exclusive
+              size="small"
+              onChange={(_, value) => {
+                if (value) setLayout(value);
+              }}
+            >
+              <ToggleButton value="list" aria-label="Affichage en liste">
+                <AppTooltip title="Liste">
+                  <ViewListIcon fontSize="small" />
+                </AppTooltip>
+              </ToggleButton>
+              <ToggleButton value="columns" aria-label="Affichage en colonnes">
+                <AppTooltip title="2 colonnes">
+                  <ViewColumnIcon fontSize="small" />
+                </AppTooltip>
+              </ToggleButton>
+            </ToggleButtonGroup>
           )}
         </Stack>
-      )}
 
-      {dialogTarget !== null && (
-        <NpcFormDialog
-          open
-          onClose={() => setDialogTarget(null)}
-          npc={dialogTarget === 'create' ? undefined : dialogTarget}
-          campaignCharacters={campaignCharacters}
-          existingNames={[
-            ...npcs.filter((n) => n.id !== (dialogTarget === 'create' ? '' : dialogTarget.id)).map((n) => n.name),
-            ...campaignCharacters.map((c) => c.name),
-          ]}
-          onSubmit={async (input) => {
-            try {
-              if (dialogTarget === 'create') {
-                await handleCreate(input);
-                showToast('PNJ créé.', 'success');
-              } else {
-                await handleUpdate(dialogTarget, input);
-                showToast('PNJ enregistré.', 'success');
+        {/* Rangée des boutons d'INTERACTION (catégorie/PNJ), TOUJOURS à part de la rangée
+            d'AFFICHAGE ci-dessus — même découpage que `GmInventoryPanel` (« Nouvelle
+            catégorie » + « Ajouter un objet » sur la même ligne). */}
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+          {!searching &&
+            (newCategoryOpen ? (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                <TextField
+                  autoFocus
+                  size="small"
+                  placeholder="Nom de la catégorie"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateCategory();
+                    if (e.key === 'Escape') {
+                      setNewCategoryOpen(false);
+                      setNewCategoryName('');
+                    }
+                  }}
+                />
+                <IconButton size="small" onClick={handleCreateCategory} disabled={busy}>
+                  <AddIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            ) : (
+              <ToolbarActionButton
+                icon={<AddIcon fontSize="small" />}
+                label="Nouvelle catégorie"
+                onClick={() => setNewCategoryOpen(true)}
+                disabled={busy}
+                iconOnly={iconOnly}
+              />
+            ))}
+          <ToolbarActionButton
+            icon={<AddIcon />}
+            label="Nouveau PNJ"
+            onClick={() => setDialogTarget('create')}
+            iconOnly={iconOnly}
+          />
+        </Stack>
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : npcs.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            Aucun PNJ pour l’instant. Créez-en un ci-dessus pour le retrouver ici.
+          </Typography>
+        ) : searching ? (
+          // Recherche active : liste PLATE (catégories masquées), triée selon le tri actif.
+          visibleNpcs.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              Aucun PNJ ne correspond à « {search.trim()} ».
+            </Typography>
+          ) : (
+            <Stack spacing={0.75}>
+              {sortNpcs(visibleNpcs, sortMode).map((npc) => (
+                <NpcCard
+                  key={npc.id}
+                  npc={npc}
+                  onEdit={() => setDialogTarget(npc)}
+                  onDelete={() => handleDelete(npc.id)}
+                  busy={busy}
+                />
+              ))}
+            </Stack>
+          )
+        ) : (
+          <Stack spacing={1.5}>
+            {categories.map((cat) => (
+              <NpcCategoryGroup
+                key={cat.id}
+                categoryId={cat.id}
+                name={cat.name}
+                collapsed={cat.collapsed}
+                npcs={sortNpcs(
+                  visibleNpcs.filter((n) => n.categoryId === cat.id),
+                  sortMode,
+                )}
+                onToggleCollapsed={() => handleToggleCollapsed(cat.id)}
+                onRename={(name) => handleRenameCategory(cat.id, name)}
+                onRemoveCategory={() => handleRemoveCategory(cat.id)}
+                onEdit={(npc) => setDialogTarget(npc)}
+                onDelete={handleDelete}
+                busy={busy}
+                layout={layout}
+              />
+            ))}
+            {(uncategorized.length > 0 || categories.length === 0) && (
+              <NpcCategoryGroup
+                categoryId={null}
+                name="Sans catégorie"
+                collapsed={false}
+                npcs={sortNpcs(uncategorized, sortMode)}
+                onEdit={(npc) => setDialogTarget(npc)}
+                onDelete={handleDelete}
+                busy={busy}
+                layout={layout}
+              />
+            )}
+          </Stack>
+        )}
+
+        {dialogTarget !== null && (
+          <NpcFormDialog
+            open
+            onClose={() => setDialogTarget(null)}
+            npc={dialogTarget === 'create' ? undefined : dialogTarget}
+            campaignCharacters={campaignCharacters}
+            existingNames={[
+              ...npcs.filter((n) => n.id !== (dialogTarget === 'create' ? '' : dialogTarget.id)).map((n) => n.name),
+              ...campaignCharacters.map((c) => c.name),
+            ]}
+            onSubmit={async (input) => {
+              try {
+                if (dialogTarget === 'create') {
+                  await handleCreate(input);
+                  showToast('PNJ créé.', 'success');
+                } else {
+                  await handleUpdate(dialogTarget, input);
+                  showToast('PNJ enregistré.', 'success');
+                }
+              } catch (e) {
+                showToast(`Enregistrement impossible : ${errorMessage(e)}`, 'error');
+                throw e;
               }
-            } catch (e) {
-              showToast(`Enregistrement impossible : ${errorMessage(e)}`, 'error');
-              throw e;
-            }
-          }}
-        />
-      )}
-    </Stack>
+            }}
+          />
+        )}
+      </Stack>
+      {/* `zIndex` explicite : ce panneau vit dans une `Drawer` MUI (z-index 1200, cf.
+          `GmNpcDrawer`) — sans lui, le fantôme (999 par défaut) restait peint dessous,
+          donc invisible pendant le glisser. Même valeur que `GmLootDrawerHost`. */}
+      <DragOverlay zIndex={1400}>{activeDragNpc ? <NpcDragGhost npc={activeDragNpc} /> : null}</DragOverlay>
+    </DndContext>
   );
 }

@@ -6,17 +6,17 @@
  * y prépare des objets uniques distribués À LA MAIN (pas de tirage), classés en
  * catégories renommables/repliables.
  *
- * NE POSE PAS son propre `Drawer` : c'est une EXTENSION du tiroir « Outils du MJ »,
- * pas un second tiroir indépendant — quand l'onglet Butin est actif, `GmToolsDrawer`
- * s'élargit et révèle ce panneau accolé à sa gauche (même `Paper`, même voile, même
- * fermeture). Le glisser-déposer entre les deux réserves (ce panneau ↔
- * `LootTreasurePanel`) est orchestré par le `DndContext` LOCAL de `GmToolsDrawerHost`
- * (relocalisation pure, jamais de duplication, cf. `gmInventory.ts`).
+ * NE POSE PAS son propre `Drawer` : c'est une EXTENSION du tiroir « Butin », pas un
+ * second tiroir indépendant — `GmLootDrawer` s'élargit et révèle ce panneau accolé à
+ * sa gauche (même `Paper`, même voile, même fermeture). Le glisser-déposer entre les
+ * deux réserves (ce panneau ↔ `LootTreasurePanel`) est orchestré par le `DndContext`
+ * LOCAL de `GmLootDrawerHost` (relocalisation pure, jamais de duplication, cf.
+ * `gmInventory.ts`).
  *
  * Données PERSISTÉES sur la campagne (`Campaign.gmInventory`, colonne jsonb) : même
  * motif `persist`/`busy`/toast d'erreur que `LootTreasurePanel`.
  */
-import { useState, type MouseEvent, type ReactElement } from 'react';
+import { useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -59,6 +59,7 @@ import { ItemDialog } from '@/components/sheet/ItemDialog';
 import { useToast } from '@/components/toast/ToastProvider';
 import { CoinPouchCreateDialog } from '@/components/campaign/CoinPouchCreateDialog';
 import { MagicItemGeneratorDialog } from '@/components/campaign/MagicItemGeneratorDialog';
+import { ToolbarActionButton } from '@/components/campaign/ToolbarActionButton';
 import type { Campaign, GmInventory, GmInventoryItem } from '@/lib/campaign';
 import {
   addCategory,
@@ -96,9 +97,9 @@ function errorMessage(e: unknown): string {
 }
 
 /**
- * Largeur (px, ≥ `sm`) du panneau. Partagée avec `GmToolsDrawer`, qui élargit son
- * `Paper` de cette même valeur quand l'onglet Butin est actif — le panneau occupe
- * exactement l'espace révélé, sans le déborder ni le sous-remplir.
+ * Largeur (px, ≥ `sm`) du panneau. Partagée avec `GmLootDrawer`, qui élargit son
+ * `Paper` de cette même valeur — le panneau occupe exactement l'espace révélé, sans
+ * le déborder ni le sous-remplir.
  */
 export const GM_INVENTORY_PANEL_WIDTH = 920;
 
@@ -150,7 +151,7 @@ function InventoryItemRow({
   onAssign: (character: Character) => void;
   onDuplicate: () => void;
   /** Relocalise vers la réserve aléatoire (mobile — pas de glisser-déposer possible, les
-   * deux réserves n'étant jamais visibles en même temps sous `md`, cf. `GmToolsDrawer`). */
+   * deux réserves n'étant jamais visibles en même temps sous `md`, cf. `GmLootDrawer`). */
   onTransferToRandom: () => void;
   busy: boolean;
 }) {
@@ -230,7 +231,7 @@ function InventoryItemRow({
           ))}
         </Menu>
         {/* Mobile seulement : sous `md`, un seul des deux panneaux est visible à la fois
-            (`GmToolsDrawer.mobileView`), donc le glisser-déposer entre réserves y est
+            (`GmLootDrawer.mobileView`), donc le glisser-déposer entre réserves y est
             impossible — ce bouton en est l'équivalent au clic. */}
         <AppTooltip title="Envoyer vers la réserve aléatoire">
           <IconButton
@@ -490,61 +491,17 @@ function CategoryGroup({
   );
 }
 
-/**
- * Bouton de la barre d'outils du panneau — plein (icône + texte) à partir de `xl`
- * (~1536px, le palier MUI le plus proche de 1400px demandé par le propriétaire),
- * icône seule en dessous : entre `md` et `xl`, ce panneau est plus étroit que sa
- * largeur préférée (`GM_INVENTORY_PANEL_WIDTH`) et les boutons pleins débordaient/
- * se faisaient recouvrir (retour propriétaire, capture d'écran à ~906px).
- */
-function ToolbarActionButton({
-  icon,
-  label,
-  onClick,
-  disabled,
-  color,
-  iconOnly,
-}: {
-  icon: ReactElement;
-  label: string;
-  onClick: (e: MouseEvent<HTMLElement>) => void;
-  disabled?: boolean;
-  color?: 'secondary';
-  iconOnly: boolean;
-}) {
-  if (iconOnly) {
-    return (
-      <AppTooltip title={label}>
-        <IconButton
-          size="small"
-          color={color}
-          onClick={onClick}
-          disabled={disabled}
-          sx={{ border: 1, borderColor: 'divider' }}
-        >
-          {icon}
-        </IconButton>
-      </AppTooltip>
-    );
-  }
-  return (
-    <Button variant="outlined" size="small" color={color} startIcon={icon} onClick={onClick} disabled={disabled}>
-      {label}
-    </Button>
-  );
-}
-
 export interface GmInventoryPanelProps {
   campaign: Campaign;
   /**
    * Catégorie visée par un dépôt EN COURS d'écriture serveur (`undefined` = aucun,
-   * `null` = « Sans catégorie ») — cf. `GmToolsDrawerHost.pendingTarget`. Affiche un
+   * `null` = « Sans catégorie ») — cf. `GmLootDrawerHost.pendingTarget`. Affiche un
    * squelette à l'emplacement, le temps que la mutation `gmInventory`/`loot` revienne.
    */
   pendingCategoryId?: string | null;
   /**
    * Retour au Butin demandé (flèche arrière, visible seulement sous `md` — cf.
-   * `GmToolsDrawer.mobileView`) : sous ce seuil, ce panneau occupe TOUT l'écran et masque
+   * `GmLootDrawer.mobileView`) : sous ce seuil, ce panneau occupe TOUT l'écran et masque
    * la colonne normale (donc sa croix de fermeture), sans ce bouton l'utilisateur resterait
    * bloqué ici. `undefined` sur `md` et plus, où les deux colonnes cohabitent déjà.
    */
@@ -704,9 +661,9 @@ export function GmInventoryPanel({ campaign, pendingCategoryId, onBackToTools }:
   return (
     <Box
       sx={{
-        // Remplit TOUJOURS la largeur reçue de `GmToolsDrawer` (jamais figée à `GM_INVENTORY_
+        // Remplit TOUJOURS la largeur reçue de `GmLootDrawer` (jamais figée à `GM_INVENTORY_
         // PANEL_WIDTH`, qui n'est que le maximum souhaité) — entre `md` et ~1480px de viewport, ce
-        // parent est plus étroit (`calc(100% - TOOLS_WIDTH)`) et ce panneau doit s'y adapter, pas
+        // parent est plus étroit (`calc(100% - LOOT_WIDTH)`) et ce panneau doit s'y adapter, pas
         // débordir.
         width: '100%',
         flexShrink: 0,
