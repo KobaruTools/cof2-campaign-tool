@@ -722,6 +722,9 @@ export function resolveCreatureMaxHp(
 ): number | null {
   // Créature SANS PV (Serviteur invisible, p. 96 — « ne peut pas être combattu ») : aucune barre.
   if (profile.hitPoints == null) return null;
+  // PV recopiés du maître (`{ fromMaster: 'maxHp' }`, transformations type panthère) : hors périmètre de
+  // ce résolveur COMPAGNON (pas de maxHp du maître ici) — résolu dans `activeTransformationWithHp`.
+  if (typeof profile.hitPoints !== 'string') return null;
   const total = resolveRichExprNumber(profile.hitPoints, abilities, level, rank);
   return total == null ? null : Math.max(0, total);
 }
