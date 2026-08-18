@@ -3,9 +3,10 @@
 /**
  * Sous-page « Objets magiques » du Codex (PER-419). Ossature seule, sur le patron de
  * `src/app/codex/voies/page.tsx` : le comportement vit dans `CodexMagicItemsBrowser`.
- * Pas de `?id=` ici (pas de sélecteur maître-détail comme les Voies) : les deux catalogues
- * (cristaux, propriétés d'enchantement) s'affichent en totalité, pas de `Suspense` requis.
+ * `CodexMagicItemsBrowser` lit `useSearchParams()` (deep-link `?id=`), donc wrap `Suspense`
+ * obligatoire (build Vercel).
  */
+import { Suspense } from 'react';
 import NextLink from 'next/link';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -26,7 +27,9 @@ export default function CodexMagicItemsPage() {
         <Button variant="text" color="inherit" component={NextLink} href="/codex" sx={{ mb: 2 }}>
           ← Retour au Codex
         </Button>
-        <CodexMagicItemsBrowser />
+        <Suspense fallback={null}>
+          <CodexMagicItemsBrowser />
+        </Suspense>
       </Container>
     </Box>
   );
