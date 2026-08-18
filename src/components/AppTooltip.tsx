@@ -24,6 +24,8 @@ export interface AppTooltipProps extends Omit<TooltipProps, 'title'> {
   page?: number | string;
   /** Section/titre de paragraphe à citer en source (cf. `SourceRef`). */
   section?: string;
+  /** Lien Codex du bouton accolé à la puce de source (cf. `SourceRef.codexHref`). */
+  codexHref?: string;
   /** Largeur maximale de la bulle (px ou valeur CSS). Défaut : laissé à MUI. */
   maxWidth?: number | string;
   /** Conserve les retours à la ligne du contenu (`white-space: pre-line`). */
@@ -52,6 +54,7 @@ export function AppTooltip({
   title,
   page,
   section,
+  codexHref,
   maxWidth,
   preLine,
   enterDelay,
@@ -83,7 +86,7 @@ export function AppTooltip({
       <Typography variant="body2" component="div" sx={{ mb: 1 }}>
         {title}
       </Typography>
-      <SourceRef page={page} section={section} />
+      <SourceRef page={page} section={section} codexHref={codexHref} />
     </Box>
   ) : (
     title

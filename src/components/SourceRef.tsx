@@ -61,18 +61,36 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
   // (bon libellé + icône) mais NON cliquable — sinon le clic ouvrirait le mauvais PDF.
   const available = meta.available !== false;
 
-  const open = (e: React.SyntheticEvent) => {
+  const rulesUrl = rulesHref(book, Number.isFinite(targetPage) ? targetPage : 1, term);
+
+  // Molette (clic milieu) ou Ctrl/Cmd/Maj-clic = onglet/fenêtre séparé·e, comme sur un vrai
+  // lien — sinon simple navigation douce (`router.push`) dans l'onglet courant. Utilisé par
+  // `open`/`goToCodex` (clic gauche) et `openAux`/`goToCodexAux` (clic milieu, événement séparé
+  // du DOM — `onClick` ne se déclenche pas pour le bouton du milieu).
+  const navigate = (e: React.MouseEvent | React.KeyboardEvent, url: string, forceNewTab = false) => {
     // Empêche le clic d'activer un conteneur cliquable englobant (ligne de liste, résumé
     // d'accordéon, carte de capacité…). `SourceRef` reste un `span[role=button]` plutôt qu'un
     // `<Link>` car il s'affiche parfois DANS un élément interactif (imbriquer une ancre y serait
     // du HTML invalide) : on navigue donc par programme.
     e.stopPropagation();
-    router.push(rulesHref(book, Number.isFinite(targetPage) ? targetPage : 1, term));
+    const newTab = forceNewTab || ('ctrlKey' in e && (e.ctrlKey || e.metaKey || e.shiftKey));
+    if (newTab) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      router.push(url);
+    }
   };
 
-  const goToCodex = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-    if (codexHref) router.push(codexHref);
+  const open = (e: React.MouseEvent | React.KeyboardEvent) => navigate(e, rulesUrl);
+  const openAux = (e: React.MouseEvent) => {
+    if (e.button === 1) navigate(e, rulesUrl, true);
+  };
+
+  const goToCodex = (e: React.MouseEvent | React.KeyboardEvent) => {
+    if (codexHref) navigate(e, codexHref);
+  };
+  const goToCodexAux = (e: React.MouseEvent) => {
+    if (codexHref && e.button === 1) navigate(e, codexHref, true);
   };
 
   return (
@@ -106,6 +124,7 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
             : `${meta.name} — bientôt disponible dans le visualiseur`
         }
         onClick={available ? open : undefined}
+        onAuxClick={available ? openAux : undefined}
         onKeyDown={
           available
             ? (e: React.KeyboardEvent) => {
@@ -154,6 +173,7 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
           tabIndex={0}
           title="Voir dans le Codex"
           onClick={goToCodex}
+          onAuxClick={goToCodexAux}
           onKeyDown={(e: React.KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
