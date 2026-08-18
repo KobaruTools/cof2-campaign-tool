@@ -14,9 +14,9 @@
  * `PurseField.tsx` (fiche personnage), en version statique (pas d'info-bulle/animation, catalogue
  * hors personnage). Montant en gras teinté de la couleur de la monnaie, à côté du jeton.
  *
- * Statistiques des bardes (retour propriétaire) : PARSÉES en encadrés signés (`StatModifierTag`,
- * `+2 DEF` / `−2 Init.`) plutôt qu'une phrase verbatim, sur une ligne séparée du nom/prix pour la
- * lisibilité — partagé avec `CodexFamiliarsBrowser` (bonus permanent de caractéristique).
+ * Statistiques des bardes (retour propriétaire) : phrase verbatim standard, seules les puces DEF/
+ * Init. (`RefChip`, tone="derived", MÊME rendu que le texte enrichi « Voies & capacités ») sont
+ * mises en avant — sur une ligne séparée du nom/prix pour la lisibilité.
  *
  * Pas de gating payant à prévoir : `mounts`/`bardes` sont des tableaux statiques du livre de base.
  */
@@ -28,15 +28,12 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { darken, lighten } from '@mui/material/styles';
 import { bardes, mounts } from '@/data';
 import type { BardeCatalogEntry, MountCatalogEntry } from '@/data/mounts';
-import type { Price } from '@/data/schema';
-import { CURRENCY_ABBREV, CURRENCY_COLOR, CURRENCY_LABEL, type CoinCurrency } from '@/lib/character/coinPouch';
-import { AppTooltip } from '@/components/AppTooltip';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
+import { PriceTag } from '@/components/codex/PriceTag';
 import { SourceRef } from '@/components/SourceRef';
-import { StatModifierTag } from '@/components/StatModifierTag';
+import { RefChip } from '@/components/sheet/FeatureRichText';
 
 const rowSx = {
   borderRadius: 2,
@@ -57,59 +54,6 @@ const gridSx = {
   gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
   alignItems: 'stretch',
 } as const;
-
-/** Retrouve la monnaie (`CoinCurrency`) à partir de son abréviation (« pa » → `'silver'`). */
-const CURRENCY_KEY_BY_ABBREV: Record<string, CoinCurrency> = Object.fromEntries(
-  (Object.entries(CURRENCY_ABBREV) as [CoinCurrency, string][]).map(([key, abbrev]) => [abbrev, key]),
-);
-
-/** Jeton de monnaie statique (pastille + code), MÊME rendu visuel que `PurseField.CoinToken` —
- * info-bulle au survol donnant le nom complet de la monnaie (retour propriétaire). */
-function CoinBadge({ code, color, title }: { code: string; color: string; title: string }) {
-  return (
-    <AppTooltip title={title}>
-      <Box
-        component="span"
-        sx={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          flexShrink: 0,
-          fontSize: '0.68rem',
-          fontWeight: 700,
-          lineHeight: 1,
-          letterSpacing: '-0.02em',
-          textTransform: 'uppercase',
-          cursor: 'help',
-          color: 'rgba(0, 0, 0, 0.2)',
-          textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-          border: `1.5px solid ${darken(color, 0.3)}`,
-          background: `linear-gradient(135deg, ${color} 0%, ${lighten(color, 0.28)} 100%)`,
-        }}
-      >
-        {code}
-      </Box>
-    </AppTooltip>
-  );
-}
-
-/** Prix affiché en jeton + montant gras teinté de la couleur de la monnaie. `null` si absent. */
-function PriceTag({ price }: { price: Price }) {
-  if (!price) return null;
-  const currencyKey = CURRENCY_KEY_BY_ABBREV[price.unit] ?? 'silver';
-  const color = CURRENCY_COLOR[currencyKey];
-  return (
-    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
-      <CoinBadge code={price.unit} color={color} title={CURRENCY_LABEL[currencyKey]} />
-      <Typography component="span" sx={{ fontWeight: 700, color }}>
-        {price.amount}
-      </Typography>
-    </Stack>
-  );
-}
 
 function MountRow({ entry }: { entry: MountCatalogEntry }) {
   const kindLabel = entry.kind === 'vehicle' ? 'Véhicule' : 'Monture';
@@ -163,12 +107,14 @@ function BardeRow({ barde }: { barde: BardeCatalogEntry }) {
         <Box sx={{ flexGrow: 1 }} />
         <SourceRef page={barde.sourcePage} term={barde.name} />
       </Stack>
-      {/* Statistiques PARSÉES (pas de phrase verbatim) sur leur propre ligne (retour propriétaire) :
-          DEF sur la monture, Initiative en malus à la monture ET au cavalier (p. 191). */}
-      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
-        <StatModifierTag value={barde.defBonus} label="DEF" />
-        <StatModifierTag value={-barde.defBonus} label="Init. (monture et cavalier)" />
-      </Stack>
+      {/* Même formatage que le texte enrichi « Voies & capacités » (retour propriétaire) : seule la
+          puce DEF/Init. (`RefChip`, tone="derived") est mise en avant, le reste de la phrase reste
+          en verbatim standard — DEF sur la monture, Initiative en malus à la monture ET au cavalier
+          (p. 191). */}
+      <Typography variant="body2" sx={{ mt: 1 }}>
+        +{barde.defBonus} <RefChip label="DEF" title="Défense" tone="derived" />, −{barde.defBonus}{' '}
+        <RefChip label="Init." title="Initiative" tone="derived" /> (monture et cavalier)
+      </Typography>
     </Box>
   );
 }

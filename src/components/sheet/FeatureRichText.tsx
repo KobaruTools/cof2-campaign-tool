@@ -219,7 +219,10 @@ function AbilityFormulaChip({
   );
 }
 
-function RefChip({
+/** Exportée pour réutilisation hors texte enrichi (ex. bonus de barde du Codex, PER-421 : `DEF`/
+ * `Init.` doivent porter la MÊME puce que dans « Voies & capacités », le reste de la phrase en
+ * verbatim standard — pas un encadré séparé sur toute la phrase). */
+export function RefChip({
   label,
   title,
   tone,

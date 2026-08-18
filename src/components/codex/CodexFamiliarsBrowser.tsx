@@ -22,9 +22,9 @@
  * défaut après le renvoi de page en fin d'en-tête (correct pour une carte de SÉLECTION où l'œil lit
  * le nom en premier, mais moins lisible ici où la carte ne présente qu'une seule capacité déjà
  * connue). Le bonus permanent de caractéristique (R7) est un `PathCard` sans `feature`/`detail`
- * (donc sans chevron, rien à déplier) portant `StatModifierTag` en `endAdornment` — même encadré
- * signé que `FormulaTotal` (Voies & Capacités), mais dans le MÊME cadre que les autres blocs plutôt
- * qu'un `caption` isolé.
+ * (donc sans chevron, rien à déplier) portant `AbilityChipBox` en `endAdornment` — même puce
+ * teintée que le texte enrichi (Voies & Capacités), mais dans le MÊME cadre que les autres blocs
+ * plutôt qu'un `caption` isolé.
  *
  * Pas de compteur d'usage ni de résolution par caractéristiques (pas de personnage ici) : voir
  * `FamiliarGrantedPowerNote.tsx` pour l'équivalent EN CONTEXTE personnage (compteurs, texte
@@ -36,6 +36,7 @@ import { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { classById, featureById, pathById } from '@/data';
 import { fantasticFamiliars, FAMILIAR_ENTITY_BY_OPTION } from '@/data/fantastic-familiars';
 import type { AbilityId, CreatureProfile, Feature, FantasticFamiliar, OptionFeatureChoice } from '@/data/schema';
@@ -43,7 +44,7 @@ import { ClassIcon } from '@/components/ClassIcon';
 import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
 import { AbilityChipBox, GlossaryRichText } from '@/components/sheet/FeatureRichText';
-import { CreatureAbilitiesGrid } from '@/components/sheet/CreatureStatBlock';
+import { CreatureAbilitiesGrid, DerivedStatRow } from '@/components/sheet/CreatureStatBlock';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { classColor } from '@/lib/ui/classColors';
 
@@ -212,55 +213,90 @@ function FamiliarBonusBlock({ abilityBonus }: { abilityBonus: AbilityId }) {
  * elles dépendent du rang de voie/niveau/caractéristiques du PERSONNAGE, qu'on n'a pas hors fiche —
  * les afficher comme un nombre concret serait FAUX (contrairement aux dés, dont la face de base est
  * une vraie convention établie ailleurs, `evolvingDieBase`).
+ *
+ * DEF/PV/Init./attaque reprennent le MÊME langage graphique que l'encadré « Compagnons » de la
+ * fiche de personnage (`DerivedStatRow`, icône cerclée + cadre bordé), mais UNE STAT PAR LIGNE
+ * (retour propriétaire) : la formule verbatim (« 10 + CHA ») est trop longue pour la puce compacte
+ * de la fiche, empilée côte à côte avec ses voisines. Les capacités spéciales suivent le même
+ * changement de format — cartes bordées sur 2 colonnes (`FamiliarAbilityBlocks`, moitié largeur
+ * chacune) plutôt qu'un texte en italique, sans dupliquer `CreatureSpecialAbilityBlocks` (celui-ci
+ * exige des caractéristiques/niveau de PERSONNAGE pour résoudre `RichInline`, absentes ici — on
+ * reste sur `GlossaryRichText`, formule symbolique).
  */
 function FamiliarStatsBlock({ familiar }: { familiar: FantasticFamiliar }) {
   const profile = familiarCreatureProfile(familiar);
   if (!profile) return null;
+  const attack = profile.attack;
+  // `fromMaster` est un `DerivedStatId` du schéma (data, plus large — inclut `def`/`recoveryDiceCount`,
+  // jamais utilisés pour une attaque) ; on ne retient que les 3 stats d'attaque valables pour l'icône.
+  const attackStatId =
+    attack?.fromMaster === 'magicAttack' || attack?.fromMaster === 'rangedAttack' ? attack.fromMaster : 'meleeAttack';
   return (
     <Box sx={{ mt: 0.5, p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.75 }}>
         Familier (taille {profile.size ?? 'minuscule'})
       </Typography>
       <CreatureAbilitiesGrid profile={profile} variant="large" />
-      <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', alignItems: 'baseline', mt: 1 }}>
+      <Stack spacing={0.6} sx={{ mt: 1 }}>
         {profile.defense && (
-          <Typography variant="body2" color="text.secondary">
-            <strong>Défense</strong> = <GlossaryRichText>{profile.defense}</GlossaryRichText>
-          </Typography>
+          <DerivedStatRow statId="defense" label="Défense">
+            <GlossaryRichText>{profile.defense}</GlossaryRichText>
+          </DerivedStatRow>
         )}
-        {profile.hitPoints && (
-          <Typography variant="body2" color="text.secondary">
-            <strong>PV</strong> = <GlossaryRichText>{profile.hitPoints}</GlossaryRichText>
-          </Typography>
+        {typeof profile.hitPoints === 'string' && (
+          <DerivedStatRow statId="maxHp" label="PV">
+            <GlossaryRichText>{profile.hitPoints}</GlossaryRichText>
+          </DerivedStatRow>
         )}
-        <Typography variant="body2" color="text.secondary">
-          <strong>Initiative</strong> = Initiative du personnage
-        </Typography>
-        {profile.attack && (
-          <Typography variant="body2" color="text.secondary">
-            <strong>{profile.attack.label ?? 'Attaque'}</strong> = attaque magique du personnage
-            {profile.attack.damage && (
+        <DerivedStatRow statId="initiative" label="Initiative">
+          Initiative du personnage
+        </DerivedStatRow>
+        {attack && (
+          <DerivedStatRow statId={attackStatId} label={attack.label ?? 'Attaque'}>
+            Attaque magique du personnage
+            {attack.damage && (
               <>
                 {' · '}
-                <GlossaryRichText>{profile.attack.damage}</GlossaryRichText>
+                <GlossaryRichText>{attack.damage}</GlossaryRichText>
               </>
             )}
-          </Typography>
+          </DerivedStatRow>
         )}
       </Stack>
-      {profile.specialAbilities?.map((ability, i) => (
-        <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, lineHeight: 1.5 }}>
-          <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
-            {ability.name}.
-          </Box>{' '}
-          <GlossaryRichText>{ability.richText ?? ability.text}</GlossaryRichText>
-        </Typography>
-      ))}
+      <FamiliarAbilityBlocks profile={profile} />
       {profile.note && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, fontStyle: 'italic' }}>
           {profile.note}
         </Typography>
       )}
+    </Box>
+  );
+}
+
+/**
+ * Capacités spéciales du familier en cartes bordées sur 2 colonnes (moitié largeur chacune,
+ * retour propriétaire) — MÊME présentation visuelle que `CreatureSpecialAbilityBlocks` (nom en
+ * gras + texte enrichi), mais en `GlossaryRichText` (formule symbolique, pas de personnage à
+ * résoudre ici) plutôt qu'en `RichInline`. `null` si le profil n'en a aucune.
+ */
+function FamiliarAbilityBlocks({ profile }: { profile: CreatureProfile }) {
+  const list = profile.specialAbilities ?? [];
+  if (list.length === 0) return null;
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 0.75, mt: 0.75 }}>
+      {list.map((ability, i) => (
+        <Box
+          key={i}
+          sx={{ border: 1, borderColor: 'divider', borderRadius: 1, px: 1, py: 0.75, bgcolor: (t) => alpha(t.palette.text.primary, 0.03) }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3, mb: 0.25 }}>
+            {ability.name}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" component="div" sx={{ lineHeight: 1.5 }}>
+            <GlossaryRichText>{ability.richText ?? ability.text}</GlossaryRichText>
+          </Typography>
+        </Box>
+      ))}
     </Box>
   );
 }

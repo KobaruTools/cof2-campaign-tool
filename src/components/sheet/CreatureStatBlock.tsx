@@ -418,7 +418,17 @@ export function CreatureStatsLine({
           </CreatureStatChip>
         )}
         {showHitPoints && profile.hitPoints && (
-          <CreatureStatChip statId="maxHp">{rich(profile.hitPoints)}</CreatureStatChip>
+          <CreatureStatChip statId="maxHp">
+            {isMasterRef(profile.hitPoints) ? (
+              <MasterStatValue
+                stat={profile.hitPoints.fromMaster}
+                masterDerived={masterDerived}
+                offset={profile.hitPoints.offset}
+              />
+            ) : (
+              rich(profile.hitPoints)
+            )}
+          </CreatureStatChip>
         )}
         {profile.initiative && (
           <CreatureStatChip statId="initiative">
@@ -568,6 +578,51 @@ function DerivedStatBlock({
   );
 }
 
+/**
+ * Bloc « icône de stat dérivée + valeur » PLEINE LARGEUR, une stat par LIGNE (PER-421, Codex
+ * familiers fantastiques) — même langage graphique que `DerivedStatBlock`/`CreatureStatChip`
+ * (icône cerclée, cadre bordé) mais empilé verticalement plutôt qu'en grille de puces côte à
+ * côte : le contenu ici est une FORMULE SYMBOLIQUE verbatim (« 10 + CHA », pas un total résolu),
+ * bien trop longue pour tenir dans une puce compacte. `label` = intitulé de la stat en gras
+ * avant la valeur (le Codex n'a pas de personnage pour se fier à l'icône seule comme le fait
+ * `CreatureStatChip`/`DerivedStatBlock`, dont les cartes voisines fixent déjà le contexte).
+ */
+export function DerivedStatRow({
+  statId,
+  label,
+  children,
+}: {
+  statId: UiDerivedStatId;
+  label?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Stack
+      direction="row"
+      spacing={1}
+      sx={{
+        alignItems: 'center',
+        px: 1,
+        py: 0.6,
+        borderRadius: 1,
+        border: 1,
+        borderColor: 'divider',
+        bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+      }}
+    >
+      <DerivedStatIcon statId={statId} size={26} title />
+      <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }}>
+        {label && (
+          <Box component="span" sx={{ fontWeight: 700 }}>
+            {label}{' '}
+          </Box>
+        )}
+        {children}
+      </Typography>
+    </Stack>
+  );
+}
+
 /** Enrobe UNIQUEMENT le chiffre (jamais le DM qui suit) d'une taille agrandie sur mobile. */
 function EnlargedStatValue({ mobileEnlarge, children }: { mobileEnlarge: boolean; children: ReactNode }) {
   if (!mobileEnlarge) return <>{children}</>;
@@ -631,7 +686,16 @@ export function CreatureDerivedStats({
       ),
     });
   }
-  if (showHitPoints && profile.hitPoints) statBlocks.push({ key: 'hp', statId: 'maxHp', content: rich(profile.hitPoints) });
+  if (showHitPoints && profile.hitPoints)
+    statBlocks.push({
+      key: 'hp',
+      statId: 'maxHp',
+      content: isMasterRef(profile.hitPoints) ? (
+        <MasterStatValue stat={profile.hitPoints.fromMaster} masterDerived={masterDerived} offset={profile.hitPoints.offset} />
+      ) : (
+        rich(profile.hitPoints)
+      ),
+    });
   if (profile.initiative) {
     statBlocks.push({
       key: 'init',
