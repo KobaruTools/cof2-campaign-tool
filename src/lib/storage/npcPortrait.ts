@@ -103,6 +103,10 @@ export async function uploadNpcPortrait(
     .upload(portraitPath(npcId), compressed, {
       contentType: 'image/webp',
       upsert: true,
+      // Sans ceci, défaut Supabase `max-age=3600` : un remplacement/retrait reste
+      // visible côté client jusqu'à une heure (réponse HTTP mise en cache par le
+      // navigateur), malgré un retrait bien effectif côté stockage.
+      cacheControl: '0',
     });
   if (error) throw error;
 
@@ -112,6 +116,7 @@ export async function uploadNpcPortrait(
     .upload(portraitCropPath(npcId), cropBlob, {
       contentType: 'application/json',
       upsert: true,
+      cacheControl: '0',
     });
   if (cropError) throw cropError;
 }
