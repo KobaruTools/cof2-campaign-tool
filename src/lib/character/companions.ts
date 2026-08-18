@@ -285,7 +285,8 @@ export function applyCreatureUpgrades(
     next.abilities = ab;
   }
   if (defBonus !== 0 && base.defense) next.defense = injectExprTerms(base.defense, [String(defBonus)]);
-  if (hpPerLevel !== 0 && base.hitPoints) next.hitPoints = injectExprTerms(base.hitPoints, [`niveau × ${hpPerLevel}`]);
+  if (hpPerLevel !== 0 && typeof base.hitPoints === 'string')
+    next.hitPoints = injectExprTerms(base.hitPoints, [`niveau × ${hpPerLevel}`]);
   if ((dmgFlat !== 0 || dmgDice.length > 0) && base.attack?.damage) {
     const adds = [...dmgDice];
     if (dmgFlat !== 0) adds.push(String(dmgFlat));
