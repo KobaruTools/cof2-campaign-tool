@@ -209,11 +209,11 @@ export function CreatureAbilitiesGrid({ profile, masterAbilities, bonusDieAbilit
           <AbilityValueBadge
             ability={id}
             value={resolved[id]}
-            iconSize={large ? 30 : 16}
+            iconSize={large ? 24 : 16}
             showCode
             codeVariant={large ? 'subtitle2' : 'caption'}
-            valueVariant={large ? 'h6' : 'caption'}
-            scaleBase={large ? '1.2rem' : undefined}
+            valueVariant={large ? 'subtitle1' : 'caption'}
+            scaleBase={large ? '1.05rem' : undefined}
             adornment={allBonusDice.has(id) ? <BonusDieBadge ability={id} size={large ? 14 : 12} /> : undefined}
             // Mobile (carte « Compagnons ») : icône + chiffre agrandis, largeur inchangée
             // (grille figée à 7 colonnes) — seule la hauteur de la puce grandit avec `py`.
