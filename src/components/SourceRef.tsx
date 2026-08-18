@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
+import { SectionIcon } from '@/components/SectionIcon';
 import { BOOKS, DEFAULT_BOOK_ID, rulesHref, type BookId } from '@/lib/ui/books';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
 
@@ -25,6 +26,13 @@ export interface SourceRefProps {
   term?: string;
   /** Livre source (défaut : livre des règles). Identifie l'icône et le nom en infobulle. */
   book?: BookId;
+  /**
+   * URL du Codex (PER-72 suite) quand cette référence CITE un rang de voie précis (peuple, profil,
+   * prestige) — ajoute un petit bouton « voir dans le Codex » à côté du badge, qui navigue vers la
+   * fiche de la voie et défile jusqu'à ce rang (`featureCodexHref`, `src/lib/ui/codex.ts`). Absent =
+   * pas de bouton (référence hors voie, ou renvoi générique).
+   */
+  codexHref?: string;
   /** Style additionnel fusionné par-dessus le badge. */
   sx?: SxProps<Theme>;
 }
@@ -43,7 +51,7 @@ export interface SourceRefProps {
  * point rend cliquables tous les renvois de page. Pour une PLAGE (« 219-220 »), on saute à la
  * première page. Sans page, on ouvre le livre au début.
  */
-export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: SourceRefProps) {
+export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHref, sx }: SourceRefProps) {
   const router = useRouter();
   const meta = BOOKS[book];
   const { Icon } = meta;
@@ -62,45 +70,65 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: S
     router.push(rulesHref(book, Number.isFinite(targetPage) ? targetPage : 1, term));
   };
 
+  const goToCodex = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+    if (codexHref) router.push(codexHref);
+  };
+
   return (
-    // `span[role=button]` plutôt qu'un vrai `<button>` : `SourceRef` s'affiche parfois À
-    // L'INTÉRIEUR d'éléments interactifs (résumé d'accordéon, ligne de liste) et un bouton
-    // imbriqué dans un bouton est du HTML invalide (erreur d'hydratation). Non interactif
-    // quand le livre est dormant (ni `role`, ni handlers, ni surbrillance au survol).
+    // Conteneur des DEUX boutons — la puce (ouvre le visualiseur) et, si `codexHref`, le bouton
+    // codex — SIBLINGS, jamais l'un dans l'autre : deux `span[role=button]` distincts, soudés visuellement
+    // (bords adjacents carrés + `-1px` de chevauchement) mais chacun sa propre zone de clic/clavier.
     <Box
       component="span"
-      role={available ? 'button' : undefined}
-      tabIndex={available ? 0 : undefined}
-      title={
-        available
-          ? `${meta.name} — ouvrir dans le visualiseur`
-          : `${meta.name} — bientôt disponible dans le visualiseur`
-      }
-      onClick={available ? open : undefined}
-      onKeyDown={
-        available
-          ? (e: React.KeyboardEvent) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                open(e);
-              }
-            }
-          : undefined
-      }
       sx={[
-        (theme) => ({
+        {
           display: 'inline-flex',
-          alignItems: 'center',
-          // Aligne le milieu du badge sur le milieu de la ligne de texte : sans ça, un
+          alignItems: 'stretch',
+          // Aligne le milieu du bloc sur le milieu de la ligne de texte : sans ça, un
           // `inline-flex` se cale sur la LIGNE DE BASE et paraît remonté au milieu d'une phrase.
           verticalAlign: 'middle',
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    >
+      {/* `span[role=button]` plutôt qu'un vrai `<button>` : `SourceRef` s'affiche parfois À
+          L'INTÉRIEUR d'éléments interactifs (résumé d'accordéon, ligne de liste) et un bouton
+          imbriqué dans un bouton est du HTML invalide (erreur d'hydratation). Non interactif
+          quand le livre est dormant (ni `role`, ni handlers, ni surbrillance au survol). */}
+      <Box
+        component="span"
+        role={available ? 'button' : undefined}
+        tabIndex={available ? 0 : undefined}
+        title={
+          available
+            ? `${meta.name} — ouvrir dans le visualiseur`
+            : `${meta.name} — bientôt disponible dans le visualiseur`
+        }
+        onClick={available ? open : undefined}
+        onKeyDown={
+          available
+            ? (e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  open(e);
+                }
+              }
+            : undefined
+        }
+        sx={(theme) => ({
+          display: 'inline-flex',
+          alignItems: 'center',
           gap: 0.5,
           px: 0.75,
-          py: 0.25,
-          borderRadius: 1,
+          py: 0.3,
+          // Coin droit carré côté codex : la puce est SOUDÉE au bouton qui la suit (même patron
+          // que `StatusChipVisual`/`ClearStatusButton` de la palette d'états de combat), pas un
+          // badge isolé qu'un simple filet séparerait.
+          borderRadius: codexHref ? '4px 0 0 4px' : 1,
           cursor: available ? 'pointer' : 'default',
           lineHeight: 1,
-          fontSize: '0.75rem',
+          fontSize: '0.85rem',
           fontVariantNumeric: 'tabular-nums',
           color: 'text.secondary',
           bgcolor: alpha(theme.palette.text.primary, 0.06),
@@ -114,12 +142,52 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: S
               borderColor: alpha(theme.palette.primary.main, 0.4),
             },
           }),
-        }),
-        ...(Array.isArray(sx) ? sx : [sx]),
-      ]}
-    >
-      <Icon sx={{ fontSize: 14 }} />
-      {label && <Box component="span">{label}</Box>}
+        })}
+      >
+        <Icon sx={{ fontSize: 17 }} />
+        {label && <Box component="span">{label}</Box>}
+      </Box>
+      {codexHref && (
+        <Box
+          component="span"
+          role="button"
+          tabIndex={0}
+          title="Voir dans le Codex"
+          onClick={goToCodex}
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              goToCodex(e);
+            }
+          }}
+          sx={(theme) => ({
+            display: 'inline-flex',
+            alignItems: 'center',
+            px: 0.7,
+            // `-1px` : superpose le bord gauche de ce bouton sur le bord droit de la puce qui le
+            // précède, pour qu'ils se lisent comme UN SEUL bloc soudé (même trait, pas deux liserés
+            // collés) — patron `ClearStatusButton` de la palette d'états de combat.
+            ml: '-1px',
+            // Coin gauche carré : jonction avec la puce. Coin droit arrondi, comme la puce quand
+            // elle est seule.
+            borderRadius: '0 4px 4px 0',
+            cursor: 'pointer',
+            color: 'text.secondary',
+            bgcolor: alpha(theme.palette.text.primary, 0.06),
+            border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
+            transition: theme.transitions.create(['background-color', 'border-color', 'color']),
+            '&:hover': {
+              color: 'text.primary',
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+              borderColor: alpha(theme.palette.primary.main, 0.4),
+            },
+          })}
+        >
+          {/* Même icône que l'entrée « Voies » du Codex (`CodexSubpageIcon`) — cohérence visuelle
+              avec l'en-tête plutôt qu'une icône MUI générique sans rapport. */}
+          <SectionIcon name="paths" size={16} />
+        </Box>
+      )}
     </Box>
   );
 }

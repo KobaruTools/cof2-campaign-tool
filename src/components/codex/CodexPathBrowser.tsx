@@ -15,7 +15,7 @@
  * URL PARTAGEABLE : `?id=<pathId>` sur `/codex/voies`, en VRAIES ancres (`NextLink`), jamais un
  * `router.push` manuel — patron de `ReferenceBrowser.tsx`/`referenceSectionHref`.
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
@@ -230,6 +230,10 @@ export function CodexPathBrowser() {
   const searchParams = useSearchParams();
   const requestedId = searchParams.get('id');
   const requestedPath = requestedId ? pathById.get(requestedId) : undefined;
+  // Défilement direct sur un RANG précis (PER-72 suite : bouton codex de la puce `SourceRef`,
+  // `?rank=<featureId>`, cf. `featureCodexHref`) — l'ancre est posée sur chaque carte de rang
+  // ci-dessous (`codex-rank-<featureId>`).
+  const requestedRankFeatureId = searchParams.get('rank');
 
   const ancestryGroups = useAncestryGroups(contentVersion);
   const classGroups = useClassGroups(contentVersion);
@@ -271,6 +275,21 @@ export function CodexPathBrowser() {
         .filter((f): f is NonNullable<typeof f> => !!f)
         .sort((a, b) => a.rank - b.rank)
     : [];
+
+  // Défile jusqu'au rang ciblé une fois ses capacités rendues (dépend de `rankFeatures`,
+  // recalculées via `selectedPath` : attendre son id en dépendance suffit, l'effet re-tourne
+  // dès que la bonne voie est affichée). `scrollIntoView({ block: 'start' })` seul cale le rang
+  // SOUS le bord haut du viewport, pas sous l'`AppBar` collée (`position: sticky`) qui le
+  // recouvrirait — on mesure sa hauteur réelle et on vise nous-mêmes le bon `scrollTop`, même
+  // patron que `scrollToSection` de la page personnage (`src/app/character/[id]/page.tsx`).
+  useEffect(() => {
+    if (!requestedRankFeatureId) return;
+    const el = document.getElementById(`codex-rank-${requestedRankFeatureId}`);
+    if (!el) return;
+    const headerHeight = document.getElementById('app-header')?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, [requestedRankFeatureId, selectedPath?.id]);
 
   const tabsNode = (
     <Tabs
@@ -369,6 +388,7 @@ export function CodexPathBrowser() {
               {rankFeatures.map((feature) => (
                 <Box
                   key={feature.id}
+                  id={`codex-rank-${feature.id}`}
                   sx={{ pb: 2, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}
                 >
                   <CollapsibleFeatureBody

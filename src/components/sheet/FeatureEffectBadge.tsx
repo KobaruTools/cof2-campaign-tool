@@ -3,16 +3,19 @@
 import type { ReactNode } from 'react';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CallSplitIcon from '@mui/icons-material/CallSplit';
+import CasinoIcon from '@mui/icons-material/Casino';
 import OpacityIcon from '@mui/icons-material/Opacity';
 import PersonalInjuryIcon from '@mui/icons-material/PersonalInjury';
 import RemoveModeratorIcon from '@mui/icons-material/RemoveModerator';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import { featureById } from '@/data';
 import type { Abilities } from '@/lib/engine';
 import { SourceRef } from '@/components/SourceRef';
 import { AttackQualifierBadge, type AttackBadgeColor } from '@/components/sheet/AttackQualifierBadge';
 import { CapabilityChip, RichInline } from '@/components/sheet/FeatureRichText';
+import { featureCodexHref } from '@/lib/ui/codex';
 
 /** Clé d'icône d'un effet de capacité (résolue ici, pour garder la couche de données SANS JSX). */
 export type FeatureEffectIcon =
@@ -21,7 +24,8 @@ export type FeatureEffectIcon =
   | 'merciless'
   | 'arcane-strike'
   | 'half-damage'
-  | 'ignore-rd';
+  | 'ignore-rd'
+  | 'bonus-die';
 
 const ICONS: Record<FeatureEffectIcon, ReactNode> = {
   bleeding: <OpacityIcon sx={{ fontSize: 18 }} />,
@@ -32,6 +36,8 @@ const ICONS: Record<FeatureEffectIcon, ReactNode> = {
   'half-damage': <CallSplitIcon sx={{ fontSize: 18 }} />,
   // Ignore la RD des créatures de grande taille (demi-ogre r4, PER-325) : bouclier barré = RD levée.
   'ignore-rd': <RemoveModeratorIcon sx={{ fontSize: 18 }} />,
+  // Dé bonus situationnel (gobelin r3 « Kafouiller » vs cible renversée, PER-331) : dé = dé bonus.
+  'bonus-die': <CasinoIcon sx={{ fontSize: 18 }} />,
 };
 
 /**
@@ -79,6 +85,7 @@ export function FeatureEffectBadge({
   abilities: Abilities;
   level: number;
 }) {
+  const sourceFeature = featureById.get(note.featureId);
   return (
     <AttackQualifierBadge
       color={note.color}
@@ -91,7 +98,10 @@ export function FeatureEffectBadge({
           </Typography>
           {note.sourcePage != null && (
             <Box sx={{ mb: 0.75 }}>
-              <SourceRef page={note.sourcePage} />
+              <SourceRef
+                page={note.sourcePage}
+                codexHref={sourceFeature ? featureCodexHref(sourceFeature) : undefined}
+              />
             </Box>
           )}
           <CapabilityChip featureId={note.featureId} label={null} />

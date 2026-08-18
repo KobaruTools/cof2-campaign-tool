@@ -81,6 +81,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { PathCard } from '@/components/PathCard';
 import { RankBadge } from '@/components/RankBadge';
 import { SourceRef } from '@/components/SourceRef';
+import { featureCodexHref } from '@/lib/ui/codex';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
 import { LevelUpPathsGrid } from '@/components/sheet/LevelUpPathsGrid';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
@@ -484,7 +485,7 @@ function DivineAcquisitionCard({
       <Box sx={{ mt: 1 }}>
         <FeatureText feature={divine} abilities={abilities} level={level} pathRank={divine.rank} />
         <Box sx={{ mt: 1 }}>
-          <SourceRef page={divine.sourcePage} term={divine.name} />
+          <SourceRef page={divine.sourcePage} term={divine.name} codexHref={featureCodexHref(divine)} />
         </Box>
       </Box>
 

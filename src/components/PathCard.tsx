@@ -21,6 +21,7 @@ import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { SourceRef } from '@/components/SourceRef';
 import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
+import { featureCodexHref } from '@/lib/ui/codex';
 import { prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
 
 export interface PathCardProps {
@@ -353,7 +354,7 @@ export function PathCard({
                 {/* Renvoi cliquable vers la page du rang dans le livre (PER-246). Le nom de la
                     capacité sert de terme à cibler/surligner dans le visualiseur (PER-59/61). */}
                 <Box sx={{ mt: 1 }}>
-                  <SourceRef page={feature.sourcePage} term={feature.name} />
+                  <SourceRef page={feature.sourcePage} term={feature.name} codexHref={featureCodexHref(feature)} />
                 </Box>
               </>
             ) : (

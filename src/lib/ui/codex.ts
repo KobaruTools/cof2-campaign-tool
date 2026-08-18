@@ -1,12 +1,28 @@
+import type { Feature } from '@/data/schema';
+
 /**
  * Constantes/URLs purement UI du Codex (PER-418) — bibliothèque de règles consultable HORS
  * personnage. Source unique du format d'URL partageable d'une voie, pour que tout lien vers
  * une voie (sélecteur, capacité empruntée) pointe au même endroit.
  */
 
-/** URL partageable d'une voie du Codex (`/codex/voies?id=<pathId>`). */
-export function codexPathHref(pathId: string): string {
-  return `/codex/voies?id=${encodeURIComponent(pathId)}`;
+/**
+ * URL partageable d'une voie du Codex (`/codex/voies?id=<pathId>`). `featureId` (PER-72 suite :
+ * bouton codex de la puce `SourceRef`) cible en plus un RANG précis de la voie — `CodexPathBrowser`
+ * y défile automatiquement (`?rank=<featureId>`, ancre = l'id de la capacité).
+ */
+export function codexPathHref(pathId: string, featureId?: string): string {
+  const base = `/codex/voies?id=${encodeURIComponent(pathId)}`;
+  return featureId ? `${base}&rank=${encodeURIComponent(featureId)}` : base;
+}
+
+/**
+ * URL du Codex pointant directement sur le RANG de voie où figure `feature` — pratique pour toute
+ * `SourceRef` liée à une capacité précise (bouton « voir dans le Codex »), sans reconstruire
+ * `codexPathHref` à chaque site d'appel.
+ */
+export function featureCodexHref(feature: Pick<Feature, 'pathId' | 'id'>): string {
+  return codexPathHref(feature.pathId, feature.id);
 }
 
 /**

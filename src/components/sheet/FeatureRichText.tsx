@@ -3,6 +3,7 @@
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
+import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import {
   alpha,
@@ -30,6 +31,7 @@ import { getOptionSelections } from '@/lib/character/choices';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
+import { RankBadge } from '@/components/RankBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DieIcon } from '@/components/DieIcon';
@@ -42,6 +44,7 @@ import {
   prestigeCategoryColor,
 } from '@/lib/ui/classColors';
 import { PRESTIGE_GRADIENT_STOPS } from '@/lib/ui/prestigeStyle';
+import { featureCodexHref } from '@/lib/ui/codex';
 import { useCapabilityScroll } from '@/components/sheet/capabilityScroll';
 import {
   dieAtRank,
@@ -340,10 +343,46 @@ export function CapabilityChip({
   const ancestryId = path?.type === 'ancestry' ? path.ancestryIds[0] : undefined;
   const isMage = path?.type === 'mage';
   const isPrestige = path?.type === 'prestige';
+  // Teinte + icône du PROFIL de la voie citée — calculées ici (avant le tooltip ET les deux
+  // branches de rendu ci-dessous) pour rester la SEULE source : le tooltip doit montrer la MÊME
+  // couleur/icône que la puce elle-même, jamais un second calcul qui pourrait diverger.
+  const pathTint = isPrestige
+    ? path?.type === 'prestige'
+      ? prestigeCategoryColor(path.category)
+      : PRESTIGE_PATH_COLOR
+    : classId
+      ? classColor(classId)
+      : isMage
+        ? MAGE_PATH_COLOR
+        : ANCESTRY_COLOR;
+  const pathIcon = classId ? (
+    <ClassIcon classId={classId} size={16} color={pathTint} />
+  ) : (
+    <AncestryIcon ancestryId={isPrestige ? 'prestige' : isMage ? 'mage' : ancestryId!} size={16} color={pathTint} />
+  );
   // Nom décliné par élément draconique (PER-74) quand la puce affiche le nom de la capacité citée
   // (`label` absent) — une référence croisée doit lire « Épée de foudre » comme la carte du rang.
   const ownName = useDeclined(feature ?? {}, feature?.name ?? featureId);
   const text = label ?? ownName;
+  // Info-bulle : origine (icône + nom de la voie, teintés de sa couleur de profil ; rang en puce
+  // `RankBadge`, MÊME norme que le Codex/l'historique de niveau) + sourceRef cliquable vers la page
+  // du rang, ELLE-MÊME dotée d'un petit bouton vers le Codex (PER-72 suite) — même patron que
+  // `StatusEffectChip`, dont l'info-bulle embarque déjà une `SourceRef`.
+  const tooltipTitle =
+    path && feature ? (
+      <Box>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.75 }}>
+          {pathIcon}
+          <Box component="span" sx={{ color: pathTint, fontWeight: 700, flexGrow: 1 }}>
+            {path.name}
+          </Box>
+          <RankBadge rank={feature.rank} color={pathTint} prestige={isPrestige} />
+        </Stack>
+        <SourceRef page={feature.sourcePage} term={feature.name} codexHref={featureCodexHref(feature)} />
+      </Box>
+    ) : (
+      feature?.name ?? text
+    );
   // Clic → ramène la vue sur « Voies & capacités » (bascule l'onglet, défile jusqu'à la section).
   // `null` hors fiche navigable (récap du wizard, écran de MJ) : la puce reste alors une simple
   // info-bulle, comme avant.
@@ -360,11 +399,8 @@ export function CapabilityChip({
   // pastille sombre). Icône = étoile de prestige. Donne aux breakdowns (carac/dérivées/tests…) une
   // identité cohérente pour la 7ᵉ voie, là où les autres voies ont leur couleur de profil/peuple.
   if (isPrestige) {
-    // Teinte de la famille de prestige (PER-74) : le liseré métallique tournant reste NEUTRE (signature
-    // « précieuse » commune), mais la pastille (fond + texte + étoile) prend la couleur de la famille.
-    const prestigeTint = path?.type === 'prestige' ? prestigeCategoryColor(path.category) : PRESTIGE_PATH_COLOR;
     return (
-      <AppTooltip title={path ? `${path.name}, rang ${feature.rank}` : feature.name}>
+      <AppTooltip title={tooltipTitle}>
         <Box
           component="span"
           onClick={
@@ -427,8 +463,8 @@ export function CapabilityChip({
               lineHeight: 1.4,
               // Teinte de famille claire sur teinte très sombre — même logique de contraste que les
               // autres puces de voie (or pour les génériques, vert/rouge/bleu/violet par famille).
-              color: lighten(prestigeTint, 0.6),
-              bgcolor: darken(prestigeTint, 0.78),
+              color: lighten(pathTint, 0.6),
+              bgcolor: darken(pathTint, 0.78),
               textShadow: '0 1px 1.5px rgba(0, 0, 0, 0.45)',
               '& svg': { filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4))' },
             }}
@@ -441,9 +477,8 @@ export function CapabilityChip({
     );
   }
 
-  const color = classId ? classColor(classId) : isMage ? MAGE_PATH_COLOR : ANCESTRY_COLOR;
   return (
-    <AppTooltip title={path ? `${path.name}, rang ${feature.rank}` : feature.name}>
+    <AppTooltip title={tooltipTitle}>
       <Box
         component="span"
         onClick={
@@ -468,11 +503,11 @@ export function CapabilityChip({
             lineHeight: 1.4,
             cursor: scrollToCapability ? 'pointer' : 'help',
             // Texte + icône : couleur de voie ÉCLAIRCIE vers le blanc (l'icône suit via `currentColor`).
-            color: lighten(color, 0.6),
+            color: lighten(pathTint, 0.6),
             // Fond : couleur de voie ASSOMBRIE vers le noir (contraste avec le texte éclairci).
-            bgcolor: darken(color, 0.7),
+            bgcolor: darken(pathTint, 0.7),
             border: 1,
-            borderColor: alpha(color, 0.45),
+            borderColor: alpha(pathTint, 0.45),
             // Ombre portée noire discrète derrière le texte et l'icône (SVG) pour renforcer le contraste.
             textShadow: '0 1px 1.5px rgba(0, 0, 0, 0.35)',
             '& svg': { filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35))' },
