@@ -32,7 +32,8 @@ import { darken, lighten } from '@mui/material/styles';
 import { bardes, mounts } from '@/data';
 import type { BardeCatalogEntry, MountCatalogEntry } from '@/data/mounts';
 import type { Price } from '@/data/schema';
-import { CURRENCY_ABBREV, CURRENCY_COLOR, type CoinCurrency } from '@/lib/character/coinPouch';
+import { CURRENCY_ABBREV, CURRENCY_COLOR, CURRENCY_LABEL, type CoinCurrency } from '@/lib/character/coinPouch';
+import { AppTooltip } from '@/components/AppTooltip';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { SourceRef } from '@/components/SourceRef';
 import { StatModifierTag } from '@/components/StatModifierTag';
@@ -61,32 +62,36 @@ const CURRENCY_KEY_BY_ABBREV: Record<string, CoinCurrency> = Object.fromEntries(
   (Object.entries(CURRENCY_ABBREV) as [CoinCurrency, string][]).map(([key, abbrev]) => [abbrev, key]),
 );
 
-/** Jeton de monnaie statique (pastille + code), MÊME rendu visuel que `PurseField.CoinToken`. */
-function CoinBadge({ code, color }: { code: string; color: string }) {
+/** Jeton de monnaie statique (pastille + code), MÊME rendu visuel que `PurseField.CoinToken` —
+ * info-bulle au survol donnant le nom complet de la monnaie (retour propriétaire). */
+function CoinBadge({ code, color, title }: { code: string; color: string; title: string }) {
   return (
-    <Box
-      component="span"
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 20,
-        height: 20,
-        borderRadius: '50%',
-        flexShrink: 0,
-        fontSize: '0.68rem',
-        fontWeight: 700,
-        lineHeight: 1,
-        letterSpacing: '-0.02em',
-        textTransform: 'uppercase',
-        color: 'rgba(0, 0, 0, 0.2)',
-        textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-        border: `1.5px solid ${darken(color, 0.3)}`,
-        background: `linear-gradient(135deg, ${color} 0%, ${lighten(color, 0.28)} 100%)`,
-      }}
-    >
-      {code}
-    </Box>
+    <AppTooltip title={title}>
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          flexShrink: 0,
+          fontSize: '0.68rem',
+          fontWeight: 700,
+          lineHeight: 1,
+          letterSpacing: '-0.02em',
+          textTransform: 'uppercase',
+          cursor: 'help',
+          color: 'rgba(0, 0, 0, 0.2)',
+          textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+          border: `1.5px solid ${darken(color, 0.3)}`,
+          background: `linear-gradient(135deg, ${color} 0%, ${lighten(color, 0.28)} 100%)`,
+        }}
+      >
+        {code}
+      </Box>
+    </AppTooltip>
   );
 }
 
@@ -97,7 +102,7 @@ function PriceTag({ price }: { price: Price }) {
   const color = CURRENCY_COLOR[currencyKey];
   return (
     <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
-      <CoinBadge code={price.unit} color={color} />
+      <CoinBadge code={price.unit} color={color} title={CURRENCY_LABEL[currencyKey]} />
       <Typography component="span" sx={{ fontWeight: 700, color }}>
         {price.amount}
       </Typography>

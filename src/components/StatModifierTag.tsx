@@ -1,36 +1,34 @@
 'use client';
 
 import Box from '@mui/material/Box';
-import { alpha } from '@mui/material/styles';
 
 /**
- * Modificateur constant signé (« +2 DEF », « −2 Init. »), même style d'encadré que l'« encadré
- * signé » d'une formule constante en texte enrichi de capacité (`FormulaTotal` de
- * `FeatureRichText.tsx`, patron Voies & Capacités) — en version plate, sans icône de stat : pour
- * une valeur déjà fixe et connue, sans formule à résoudre (catalogues hors personnage : Codex
- * montures/bardes, familiers fantastiques…).
+ * Modificateur constant signé (« +2 DEF », « −2 Init. ») pour une valeur déjà fixe et connue, sans
+ * formule à résoudre (catalogues hors personnage : Codex montures/bardes, familiers fantastiques…).
+ * Le NOMBRE reste en texte normal ; seul le LIBELLÉ de la stat (« DEF », « Init. ») est teinté en
+ * ambre — même convention que la puce de stat dérivée du texte enrichi (`RefChip`, tone !== 'ability',
+ * `FeatureRichText.tsx` : DEF/PV/jet d'attaque en ambre, distinct du bleu des formules).
  */
 export function StatModifierTag({ value, label }: { value: number; label: string }) {
   return (
     <Box
       component="span"
-      sx={(theme) => ({
+      sx={{
         display: 'inline-flex',
-        alignItems: 'center',
-        minHeight: '22px',
-        px: 0.6,
-        lineHeight: 1,
-        borderRadius: 1,
+        alignItems: 'baseline',
+        gap: 0.35,
         fontWeight: 600,
         fontVariantNumeric: 'tabular-nums',
         whiteSpace: 'nowrap',
-        bgcolor: alpha(theme.palette.primary.main, 0.1),
-        border: 1,
-        borderColor: alpha(theme.palette.primary.main, 0.35),
-      })}
+      }}
     >
-      {value >= 0 ? '+' : '−'}
-      {Math.abs(value)} {label}
+      <Box component="span" sx={{ color: 'text.primary' }}>
+        {value >= 0 ? '+' : '−'}
+        {Math.abs(value)}
+      </Box>
+      <Box component="span" sx={{ color: 'warning.main', fontWeight: 700 }}>
+        {label}
+      </Box>
     </Box>
   );
 }
