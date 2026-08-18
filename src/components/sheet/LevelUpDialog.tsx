@@ -418,6 +418,8 @@ function DivineAcquisitionCard({
   onRemove,
   abilities,
   level,
+  working,
+  onChoiceChange,
 }: {
   pending: PendingDivine;
   hosts: { id: string; name: string }[];
@@ -430,6 +432,9 @@ function DivineAcquisitionCard({
   /** Caractéristiques + niveau du personnage : pour l'enrichissement de la description (dés/formules). */
   abilities: Character['abilities'];
   level: number;
+  /** Personnage de travail : pour résoudre le choix éventuel porté par la divine. */
+  working: Character;
+  onChoiceChange: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
 }) {
   const divine = pending.feature;
   const cost = featureCost(divine, progression);
@@ -543,6 +548,21 @@ function DivineAcquisitionCard({
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
           Remplacera : <FeatureLabel feature={replacedNative} /> (rang {divine.rank} de la voie d’accueil)
         </Typography>
+      )}
+
+      {/* Choix porté par la divine (ex. option de règle) : à résoudre (bloquant), comme
+          n'importe quelle capacité acquise (PER-122). Dès la voie d'accueil désignée,
+          pas besoin d'attendre le clic « Choisir ». */}
+      {host && hasActionableChoice(working, divine.id) && (
+        <Box sx={{ mt: 1 }}>
+          <FeatureChoiceField
+            character={working}
+            featureId={divine.id}
+            mode="edit"
+            blocking
+            onChange={onChoiceChange}
+          />
+        </Box>
       )}
     </Box>
   );
@@ -1058,7 +1078,11 @@ export function LevelUpDialog({
       ? effectiveClassPathIds(characterClassForPaths, firearmsAllowed)
       : [],
   );
-  const divineFeatureId = acquiredSlot?.featureId;
+  // NB : on utilise `priestDivineFeatureId` (godId seul) plutôt que
+  // `acquiredSlot?.featureId` (exige `hostPathId`) : la voie d'origine de la
+  // divine doit rester exclue même quand la voie d'accueil n'est pas encore
+  // désignée, sinon elle fuite comme « profil engagé » (cf. legality.ts).
+  const divineFeatureId = priestDivineFeatureId(working);
   const startedPaths = new Set(
     working.featureIds
       .filter((id) => id !== divineFeatureId)
@@ -1653,6 +1677,8 @@ export function LevelUpDialog({
                 onRemove={removeDivine}
                 abilities={character.abilities}
                 level={newLevel}
+                working={working}
+                onChoiceChange={setChoice}
               />
             )}
 
