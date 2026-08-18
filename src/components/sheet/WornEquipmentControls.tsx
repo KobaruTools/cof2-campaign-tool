@@ -16,6 +16,7 @@ import type { Weapon, WeaponFamily } from '@/data/schema';
 import type { ArmorRestrictionViolation } from '@/lib/character/armorRestrictions';
 import {
   equipConflicts,
+  smallSizeWeaponWarnings,
   wornWeaponGripIsChoosable,
   wornWeaponIsTwoHanded,
 } from '@/lib/character/equipment';
@@ -135,10 +136,13 @@ export function WornControls({
   line,
   onWear,
   oneHandableFamilies = [],
+  smallSize = false,
 }: {
   line: EquipmentLine;
   onWear: (worn: WornState | undefined) => void;
   oneHandableFamilies?: readonly WeaponFamily[];
+  /** PER-330 — le personnage est de taille petite : une arme 1d8–1d10 expose le choix « Deux mains » (défaut). */
+  smallSize?: boolean;
 }) {
   const custom = isCustomItem(line);
   const item = custom ? null : equipmentById.get(line.itemId);
@@ -167,7 +171,7 @@ export function WornControls({
     // Prise au choix : arme « à une ou deux mains » du livre, ou arme à deux mains rendue maniable à
     // une main par une capacité (Poigne de fer du colosse, PER-74). Une arme à deux mains n'est
     // « intrinsèquement » à deux mains que lorsqu'aucune prise n'est offerte.
-    const canChooseGrip = wornWeaponGripIsChoosable(line, oneHandableFamilies);
+    const canChooseGrip = wornWeaponGripIsChoosable(line, oneHandableFamilies, smallSize);
     const intrinsicTwoHands = item.weaponCategory === 'twoHands' && !canChooseGrip;
 
     // Position combinée de l'arme (PER-219) : « main principale » et « deux mains » sont
@@ -180,7 +184,7 @@ export function WornControls({
       : line.worn.slot === 'offHand'
         ? 'offHand'
         : line.worn.slot === 'mainHand'
-          ? wornWeaponIsTwoHanded(line, oneHandableFamilies)
+          ? wornWeaponIsTwoHanded(line, oneHandableFamilies, smallSize)
             ? 'twoHands'
             : 'mainHand'
           : null;
@@ -295,12 +299,15 @@ export function WornControls({
 export function EquipConflictsAlert({
   equipment,
   oneHandableFamilies = [],
+  smallSize = false,
 }: {
   equipment: EquipmentLine[];
   /** PER-74 — familles d'armes à deux mains maniables à une main (Poigne de fer) : lèvent le conflit. */
   oneHandableFamilies?: readonly WeaponFamily[];
+  /** PER-330 — taille petite : une arme 1d8–1d10 tenue à deux mains (défaut) occupe les deux mains. */
+  smallSize?: boolean;
 }) {
-  const conflicts = equipConflicts(equipment, oneHandableFamilies);
+  const conflicts = equipConflicts(equipment, oneHandableFamilies, smallSize);
   if (conflicts.length === 0) return null;
   return (
     <AppAlert severity="warning" title="Chargement incohérent">
@@ -309,6 +316,35 @@ export function EquipConflictsAlert({
           <Typography key={c.kind} component="li" variant="body2">
             {/* Références de page (« (p. 188) ») parsées en puce de source (notion globale). */}
             <PageRefText>{c.message}</PageRefText>
+          </Typography>
+        ))}
+      </Stack>
+    </AppAlert>
+  );
+}
+
+/**
+ * PER-330 — Alerte non bloquante des armes TENUES EN MAIN qu'une créature de taille PETITE ne peut pas
+ * manier correctement (halfelin, frouïn — cf. `smallSizeWeaponWarnings`) : arme à une main dont les DM
+ * dépassent 1d6, arme > 1d10, arc long / arbalète lourde, rapière. `null` si le peuple n'est pas de
+ * taille petite ou si rien n'est en cause. Partagée fiche / wizard / écran de MJ, comme
+ * `EquipConflictsAlert`.
+ */
+export function SmallSizeWeaponAlert({
+  ancestryId,
+  equipment,
+}: {
+  ancestryId?: string;
+  equipment: EquipmentLine[];
+}) {
+  const warnings = smallSizeWeaponWarnings(ancestryId, equipment);
+  if (warnings.length === 0) return null;
+  return (
+    <AppAlert severity="warning" title="Taille petite : armes inadaptées">
+      <Stack component="ul" sx={{ m: 0, pl: 2 }} spacing={0.25}>
+        {warnings.map((w) => (
+          <Typography key={w.itemId} component="li" variant="body2">
+            {w.message}
           </Typography>
         ))}
       </Stack>

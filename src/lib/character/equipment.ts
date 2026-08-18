@@ -22,6 +22,7 @@ import type {
 } from './types';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from './types';
 import { effectiveItem } from './items';
+import { baseAncestrySize } from './size';
 import { magicMobilePenaltyReduction, magicPropertyTestBonuses } from './magicItemEffects';
 
 /**
@@ -171,6 +172,107 @@ export function oneHandDamageOverride(
 }
 
 /**
+ * PER-330 — RESTRICTION D'ARMES DE TAILLE PETITE (halfelin, p. 52 « Discrétion » ; frouïn, Le Compagnon
+ * p. 21 « Taille petite »). Une créature de taille PETITE (`baseAncestrySize === 'petite'`) :
+ *  - ne peut manier à UNE main qu'une arme dont les DM sont au max égaux à 1d6 (épée courte, masse…) ;
+ *  - doit utiliser les DEUX mains pour les armes qui infligent 1d8 à 1d10 DM (épée longue…) ;
+ *  - ne peut PAS utiliser d'arme infligeant plus de 1d10 DM (épée à deux mains 2d6…) ;
+ *  - ne peut PAS utiliser d'arc long ni d'arbalète lourde (interdits NOMMÉMENT, indépendamment du dé) ;
+ *  - la RAPIÈRE est exclue de l'usage à une main (exception nommée par le livre, malgré son 1d6).
+ *
+ * Le moteur n'a pas de notion d'« arme interdite » : cette règle est rendue en AVERTISSEMENT NON
+ * BLOQUANT (fiche permissive, arbitrage propriétaire PER-330) — on SIGNALE l'incohérence sur les armes
+ * TENUES EN MAIN, on ne réécrit ni la prise ni l'inventaire. Générique : couvre tout peuple de taille
+ * petite (halfelin natif + frouïn payant), pas de code spécifique par peuple.
+ */
+const SMALL_SIZE_FORBIDDEN_WEAPON_IDS: ReadonlySet<string> = new Set(['arc-long', 'arbalete-lourde']);
+const SMALL_SIZE_ONE_HAND_EXCLUDED_IDS: ReadonlySet<string> = new Set(['rapiere']);
+
+export interface SmallSizeWeaponWarning {
+  itemId: string;
+  name: string;
+  /** Message d'avertissement, prêt à afficher (sans référence de page). */
+  message: string;
+}
+
+/** DM MAXIMAUX d'un jet d'arme (nombre de dés × face maximale) — ex. `2d6` → 12, `1d8` → 8. */
+function weaponMaxDamage(damage: WeaponDamage): number {
+  const face = Number.parseInt(damage.die.slice(1), 10) || 0;
+  return damage.count * face;
+}
+
+/**
+ * Avertissements de taille PETITE pour les armes TENUES EN MAIN (cf. `SMALL_SIZE_FORBIDDEN_WEAPON_IDS`).
+ * Vide si le peuple n'est pas de taille petite ou si aucune arme portée ne viole la règle. Sans-safe.
+ */
+export function smallSizeWeaponWarnings(
+  ancestryId: string | undefined,
+  equipment: readonly EquipmentLine[] = [],
+): SmallSizeWeaponWarning[] {
+  if (baseAncestrySize(ancestryId) !== 'petite') return [];
+  const warnings: SmallSizeWeaponWarning[] = [];
+  for (const line of equipment) {
+    if (isCustomItem(line) || !line.worn) continue;
+    const item = effectiveItem(line);
+    if (item?.category !== 'weapon') continue;
+    if (SMALL_SIZE_FORBIDDEN_WEAPON_IDS.has(item.id)) {
+      warnings.push({
+        itemId: item.id,
+        name: item.name,
+        message: `${item.name} : interdite aux créatures de taille petite (trop grande à armer).`,
+      });
+      continue;
+    }
+    if (SMALL_SIZE_ONE_HAND_EXCLUDED_IDS.has(item.id)) {
+      warnings.push({
+        itemId: item.id,
+        name: item.name,
+        message: `${item.name} : ne peut pas être maniée par une créature de taille petite.`,
+      });
+      continue;
+    }
+    // La règle de dé (une main ≤ 1d6 / deux mains 1d8–1d10 / interdit > 1d10) ne vise que les armes
+    // de CONTACT : les armes à distance ne sont restreintes que par leurs interdictions nommées ci-dessus.
+    if (!item.melee) continue;
+    const max = weaponMaxDamage(item.damage);
+    if (max > 10) {
+      warnings.push({
+        itemId: item.id,
+        name: item.name,
+        message: `${item.name} : DM supérieurs à 1d10, interdite aux créatures de taille petite.`,
+      });
+    } else if (max > 6) {
+      // Bande 1d8–1d10 : à manier à DEUX mains par une créature de taille petite (elle s'y équipe à deux
+      // mains par défaut, cf. `smallSizeTwoHandWeapon`). On n'AVERTIT donc QUE si le joueur choisit de la
+      // tenir à une main — sinon le port est conforme et le bandeau serait un faux positif (PER-330).
+      if (!wornWeaponIsTwoHanded(line, [], true)) {
+        warnings.push({
+          itemId: item.id,
+          name: item.name,
+          message: `${item.name} : tenue à une main par une créature de taille petite (DM 1d8 à 1d10, à manier à DEUX mains).`,
+        });
+      }
+    }
+  }
+  return warnings;
+}
+
+/**
+ * PER-330 — Une arme de CONTACT normalement à une main (`weaponCategory: 'oneHand'`) dont les DM vont de
+ * 1d8 à 1d10 : une créature de taille petite (halfelin, frouïn) doit la manier à DEUX mains. Elle se
+ * comporte alors comme une arme « à une ou deux mains » — prise choisissable, défaut deux mains (cf.
+ * `wornWeaponGripIsChoosable`/`wornWeaponIsTwoHanded`), la tenir à une main déclenchant l'avertissement
+ * ci-dessus. Exclut les armes déjà à deux mains ou polyvalentes (gérées nativement), les armes > 1d10 et
+ * la rapière (interdites, cf. les sets nommés). C'est la mécanique « colosse inversé » (retour proprio).
+ */
+function smallSizeTwoHandWeapon(item: Weapon): boolean {
+  if (!item.melee || item.weaponCategory !== 'oneHand') return false;
+  if (SMALL_SIZE_ONE_HAND_EXCLUDED_IDS.has(item.id)) return false;
+  const max = weaponMaxDamage(item.damage);
+  return max > 6 && max <= 10;
+}
+
+/**
  * Une arme PORTÉE occupe-t-elle les deux mains ? Vrai si elle est intrinsèquement à
  * deux mains (`weaponCategory: 'twoHands'`) ou si le joueur a choisi la prise à deux
  * mains d'une arme `oneOrTwoHands` (`worn.grip === 'twoHands'`). Faux pour les armes
@@ -186,6 +288,7 @@ export function oneHandDamageOverride(
 export function wornWeaponIsTwoHanded(
   line: EquipmentLine,
   oneHandableFamilies: readonly WeaponFamily[] = [],
+  smallSize = false,
 ): boolean {
   if (!line.worn) return false;
   if (isCustomItem(line)) return line.worn.grip === 'twoHands';
@@ -196,6 +299,9 @@ export function wornWeaponIsTwoHanded(
     return isOneHandable(item, oneHandableFamilies) ? line.worn.grip !== 'oneHand' : true;
   }
   if (item.weaponCategory === 'oneOrTwoHands') return line.worn.grip === 'twoHands';
+  // PER-330 — taille petite : une arme 1d8–1d10 normalement à une main se manie à deux mains. Le défaut
+  // est les DEUX mains ; seule une prise explicitement notée `oneHand` la libère (parité avec le colosse).
+  if (smallSize && smallSizeTwoHandWeapon(item)) return line.worn.grip !== 'oneHand';
   return false;
 }
 
@@ -217,12 +323,15 @@ function isOneHandable(item: Weapon, oneHandableFamilies: readonly WeaponFamily[
 export function wornWeaponGripIsChoosable(
   line: EquipmentLine,
   oneHandableFamilies: readonly WeaponFamily[] = [],
+  smallSize = false,
 ): boolean {
   if (isCustomItem(line)) return false;
   const item = effectiveItem(line);
   if (item?.category !== 'weapon') return false;
   if (item.weaponCategory === 'oneOrTwoHands') return true;
-  return item.weaponCategory === 'twoHands' && isOneHandable(item, oneHandableFamilies);
+  if (item.weaponCategory === 'twoHands') return isOneHandable(item, oneHandableFamilies);
+  // PER-330 — taille petite : une arme 1d8–1d10 à une main ouvre le choix de prise (défaut deux mains).
+  return smallSize && smallSizeTwoHandWeapon(item);
 }
 
 /**
@@ -238,9 +347,10 @@ export function wornWeaponGripIsChoosable(
 export function isTwoHandedMeleeWeaponWielded(
   equipment: EquipmentLine[] = [],
   oneHandableFamilies: readonly WeaponFamily[] = [],
+  smallSize = false,
 ): boolean {
   return equipment.some((line) => {
-    if (!wornWeaponIsTwoHanded(line, oneHandableFamilies) || isCustomItem(line)) return false;
+    if (!wornWeaponIsTwoHanded(line, oneHandableFamilies, smallSize) || isCustomItem(line)) return false;
     const item = effectiveItem(line);
     return item?.category === 'weapon' && !!item.melee;
   });
@@ -332,7 +442,11 @@ export function wornRangedWeapon(equipment: EquipmentLine[]): Weapon | null {
  *  - arme en main : 2 si tenue à deux mains (voir `wornWeaponIsTwoHanded`), sinon 1 ;
  *  - accessoire : 0 (bottes/cape/anneau…, n'occupe aucune main).
  */
-function handsUsedByLine(line: EquipmentLine, oneHandableFamilies: readonly WeaponFamily[]): number {
+function handsUsedByLine(
+  line: EquipmentLine,
+  oneHandableFamilies: readonly WeaponFamily[],
+  smallSize = false,
+): number {
   const worn = line.worn;
   if (!worn) return 0;
   switch (worn.slot) {
@@ -341,7 +455,7 @@ function handsUsedByLine(line: EquipmentLine, oneHandableFamilies: readonly Weap
     case 'shield':
       return 1;
     case 'mainHand':
-      return wornWeaponIsTwoHanded(line, oneHandableFamilies) ? 2 : 1;
+      return wornWeaponIsTwoHanded(line, oneHandableFamilies, smallSize) ? 2 : 1;
     case 'offHand':
       return 1;
     case 'accessory':
@@ -383,6 +497,7 @@ export interface EquipConflict {
 export function equipConflicts(
   equipment: EquipmentLine[],
   oneHandableFamilies: readonly WeaponFamily[] = [],
+  smallSize = false,
 ): EquipConflict[] {
   const conflicts: EquipConflict[] = [];
   let armorCount = 0;
@@ -394,7 +509,7 @@ export function equipConflicts(
     if (!line.worn) continue;
     if (line.worn.slot === 'armor') armorCount += 1;
     else if (line.worn.slot === 'shield') shieldCount += 1;
-    handsUsed += handsUsedByLine(line, oneHandableFamilies);
+    handsUsed += handsUsedByLine(line, oneHandableFamilies, smallSize);
     if (!isCustomItem(line)) {
       if (line.itemId === 'carquois-de-20-fleches') quiverWorn = true;
       else if (line.itemId === 'sac-a-dos') backpackWorn = true;
@@ -753,6 +868,7 @@ export function setWornAt(
   index: number,
   worn: WornState | undefined,
   oneHandableFamilies: readonly WeaponFamily[] = [],
+  smallSize = false,
 ): EquipmentLine[] {
   const exclusiveHand =
     worn && (worn.slot === 'mainHand' || worn.slot === 'offHand') ? worn.slot : null;
@@ -762,7 +878,7 @@ export function setWornAt(
   const freesOtherHand =
     worn?.slot === 'mainHand' &&
     target !== undefined &&
-    wornWeaponIsTwoHanded({ ...target, worn }, oneHandableFamilies);
+    wornWeaponIsTwoHanded({ ...target, worn }, oneHandableFamilies, smallSize);
   return equipment.map((line, i) => {
     if (i === index) return { ...line, worn };
     if (exclusiveHand && line.worn?.slot === exclusiveHand) return { ...line, worn: undefined };

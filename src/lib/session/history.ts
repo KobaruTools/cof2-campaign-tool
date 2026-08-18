@@ -112,11 +112,18 @@ export function buildSessionHistory(
  * Charge l'historique des parties CLOSES d'une campagne (RLS lecture membres,
  * migration 0012 — MJ et joueurs y ont également accès). `limit` borne le nombre de
  * parties les plus récentes (pas de pagination pour cette première version).
+ *
+ * `playerId` (PER-416, drawer historique d'UN personnage) restreint aux parties où CE
+ * joueur a une trace dans `game_session_participants` (jointure par `player_id`, jamais
+ * toute la campagne) — `null` = personnage pas encore assigné à un joueur, donc aucune
+ * présence possible : historique vide sans requête supplémentaire. `undefined` (défaut)
+ * = pas de filtre, comportement historique inchangé (vues MJ/joueur pleine campagne).
  */
 export async function fetchSessionHistory(
   campaignId: string,
-  limit = 20,
+  opts: { limit?: number; playerId?: string | null } = {},
 ): Promise<SessionHistoryEntry[]> {
+  const { limit = 20, playerId } = opts;
   const supabase = createBrowserSupabaseClient();
 
   const { data: sessions, error: sessionsError } = await supabase
@@ -129,7 +136,21 @@ export async function fetchSessionHistory(
   if (sessionsError) throw sessionsError;
   if (!sessions || sessions.length === 0) return [];
 
-  const sessionIds = sessions.map((s) => s.id);
+  let matchingSessions = sessions;
+  if (playerId !== undefined) {
+    if (playerId === null) return [];
+    const { data: ownRows, error: ownRowsError } = await supabase
+      .from('game_session_participants')
+      .select('session_id')
+      .in('session_id', sessions.map((s) => s.id))
+      .eq('player_id', playerId);
+    if (ownRowsError) throw ownRowsError;
+    const attendedIds = new Set((ownRows ?? []).map((r) => r.session_id));
+    matchingSessions = sessions.filter((s) => attendedIds.has(s.id));
+    if (matchingSessions.length === 0) return [];
+  }
+
+  const sessionIds = matchingSessions.map((s) => s.id);
   const [{ data: participants, error: participantsError }, { data: players, error: playersError }] =
     await Promise.all([
       supabase.from('game_session_participants').select('*').in('session_id', sessionIds),
@@ -139,5 +160,5 @@ export async function fetchSessionHistory(
   if (playersError) throw playersError;
 
   const playerNameById = new Map((players ?? []).map((p) => [p.id, p.name]));
-  return buildSessionHistory(sessions, participants ?? [], playerNameById);
+  return buildSessionHistory(matchingSessions, participants ?? [], playerNameById);
 }

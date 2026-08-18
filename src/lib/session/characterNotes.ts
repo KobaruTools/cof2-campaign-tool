@@ -39,6 +39,26 @@ export async function fetchCharacterSessionNote(
 }
 
 /**
+ * Charge en un aller-retour les notes d'un personnage pour plusieurs parties (PER-416,
+ * drawer historique) — évite le N+1 de `fetchCharacterSessionNote` appelée par entrée.
+ * Absence de ligne pour une partie = pas encore écrit, à distinguer côté appelant.
+ */
+export async function fetchCharacterSessionNotesForSessions(
+  characterId: string,
+  sessionIds: string[],
+): Promise<Map<string, string>> {
+  if (sessionIds.length === 0) return new Map();
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase
+    .from('character_session_notes')
+    .select('session_id, content')
+    .eq('character_id', characterId)
+    .in('session_id', sessionIds);
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.session_id, row.content]));
+}
+
+/**
  * Crée ou met à jour la note d'un personnage pour une session — joueur sur SA
  * fiche ou MJ propriétaire de la fiche, et seulement tant que la partie reste
  * en cours (RLS `character_session_notes_insert`/`character_session_notes_update`).
