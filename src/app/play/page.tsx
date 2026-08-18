@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { HeaderContentSync } from '@/components/HeaderContentSync';
 import { HomeBackground } from '@/components/HomeBackground';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -71,8 +72,8 @@ export default async function PlayPage() {
             Espace joueur
           </Typography>
           {campaign?.description ? (
-            <Typography variant="body2" color="text.secondary">
-              {campaign.description}
+            <Typography variant="body2" component="div" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+              <GlossaryRichText>{campaign.description}</GlossaryRichText>
             </Typography>
           ) : null}
         </Stack>

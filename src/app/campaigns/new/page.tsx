@@ -40,6 +40,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { RichTextEditor } from '@/components/sheet/RichTextEditor';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { useToast } from '@/components/toast/ToastProvider';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
@@ -256,14 +258,15 @@ export default function CampaignCreatePage() {
                       if (e.key === 'Enter' && !e.shiftKey && nameValid) setStep(1);
                     }}
                   />
-                  <TextField
-                    label="Notes du MJ (optionnel)"
-                    fullWidth
-                    multiline
-                    minRows={3}
-                    value={draft.description}
-                    onChange={(e) => patch({ description: e.target.value })}
-                  />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      Notes du MJ (optionnel)
+                    </Typography>
+                    <RichTextEditor
+                      value={draft.description}
+                      onChange={(text) => patch({ description: text })}
+                    />
+                  </Box>
                 </Stack>
               )}
 
@@ -362,8 +365,8 @@ export default function CampaignCreatePage() {
                       <Typography variant="overline" color="text.secondary">
                         Notes du MJ
                       </Typography>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                        {draft.description.trim()}
+                      <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
+                        <GlossaryRichText>{draft.description.trim()}</GlossaryRichText>
                       </Typography>
                     </Box>
                   )}

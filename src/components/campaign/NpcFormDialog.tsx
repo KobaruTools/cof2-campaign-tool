@@ -80,7 +80,6 @@ import {
   normalizeCustomCreature,
   CUSTOM_FIELD_MAX_LENGTH,
   CUSTOM_LIST_MAX_LENGTH,
-  CUSTOM_TEXT_MAX_LENGTH,
   type CustomCreature,
 } from '@/lib/session/customCreature';
 import { useBestiaryStore } from '@/stores/bestiary';
@@ -714,16 +713,16 @@ export function NpcFormDialog({
                       </Stack>
                     </Stack>
 
-                    <TextField
-                      size="small"
-                      label="Description"
-                      placeholder="Notes de combat libres (facultatif)"
-                      value={statsDescription}
-                      onChange={(e) => setStatsDescription(e.target.value)}
-                      multiline
-                      minRows={2}
-                      slotProps={{ htmlInput: { maxLength: CUSTOM_TEXT_MAX_LENGTH } }}
-                    />
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        Description
+                      </Typography>
+                      <RichTextEditor
+                        value={statsDescription}
+                        onChange={setStatsDescription}
+                        placeholder="Notes de combat libres (facultatif)"
+                      />
+                    </Box>
 
                     <Stack spacing={1}>
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -843,19 +842,17 @@ export function NpcFormDialog({
                             sx={{ flex: '1 1 160px', minWidth: 140 }}
                             slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
                           />
-                          <TextField
-                            size="small"
-                            label="Texte"
-                            value={ability.text}
-                            onChange={(e) =>
-                              setStatsAbilities((prev) =>
-                                prev.map((a, i) => (i === index ? { ...a, text: e.target.value } : a)),
-                              )
-                            }
-                            multiline
-                            sx={{ flex: '3 1 260px', minWidth: 200 }}
-                            slotProps={{ htmlInput: { maxLength: CUSTOM_TEXT_MAX_LENGTH } }}
-                          />
+                          <Box sx={{ flex: '3 1 260px', minWidth: 200 }}>
+                            <RichTextEditor
+                              value={ability.text}
+                              onChange={(text) =>
+                                setStatsAbilities((prev) =>
+                                  prev.map((a, i) => (i === index ? { ...a, text } : a)),
+                                )
+                              }
+                              placeholder="Texte"
+                            />
+                          </Box>
                           <AppTooltip title="Retirer cette capacité">
                             <IconButton
                               size="small"

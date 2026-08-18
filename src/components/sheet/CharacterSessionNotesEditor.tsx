@@ -7,11 +7,17 @@
  * l'appelant) — ce composant ne fait qu'éditer la note de LA session déjà résolue, même
  * patron que `SessionLiveNotesPanel` (PER-427, notes MJ) mais clé composite
  * `(character_id, session_id)` au lieu de `session_id` seul.
+ *
+ * `RichTextEditor` (cohérent avec le reste de la fiche, cf. `CharacterSessionHistoryDrawer`)
+ * plutôt qu'un `TextField` brut — même patron lecture/écriture que les parties CLOSES
+ * (`GlossaryRichText` en lecture seule).
  */
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
+import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
+import { RichTextEditor } from '@/components/sheet/RichTextEditor';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { fetchCharacterSessionNote, upsertCharacterSessionNote } from '@/lib/session/characterNotes';
 
 export function CharacterSessionNotesEditor({
@@ -28,7 +34,6 @@ export function CharacterSessionNotesEditor({
   // se déclenche sans qu'aucune frappe n'ait modifié le texte.
   const [lastSaved, setLastSaved] = useState('');
   const [loaded, setLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,33 +57,33 @@ export function CharacterSessionNotesEditor({
   }, [characterId, sessionId]);
 
   const save = async (nextContent: string) => {
-    setSaving(true);
+    if (nextContent === lastSaved) return;
     setError(null);
     try {
       await upsertCharacterSessionNote(characterId, sessionId, nextContent);
       setLastSaved(nextContent);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue.');
-    } finally {
-      setSaving(false);
     }
   };
 
+  if (!loaded) return <Skeleton variant="rounded" height={80} />;
+
+  if (readOnly) {
+    return content.trim() === '' ? (
+      <Typography variant="body2" color="text.secondary">
+        Aucune note pour cette partie…
+      </Typography>
+    ) : (
+      <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
+        <GlossaryRichText>{content}</GlossaryRichText>
+      </Typography>
+    );
+  }
+
   return (
-    <Box>
-      <TextField
-        fullWidth
-        multiline
-        minRows={4}
-        maxRows={16}
-        placeholder="Aucune note pour cette partie…"
-        value={content}
-        disabled={!loaded || saving || readOnly}
-        onChange={(e) => setContent(e.target.value)}
-        onBlur={() => {
-          if (!readOnly && content !== lastSaved) void save(content);
-        }}
-      />
+    <Box onBlur={() => void save(content)}>
+      <RichTextEditor value={content} onChange={setContent} placeholder="Aucune note pour cette partie…" />
       {error && (
         <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
           {error}

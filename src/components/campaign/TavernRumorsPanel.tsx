@@ -30,9 +30,10 @@ import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { RichTextEditor } from '@/components/sheet/RichTextEditor';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { useToast } from '@/components/toast/ToastProvider';
 import type { Campaign, TavernRumor } from '@/lib/campaign';
 import {
@@ -178,7 +179,9 @@ export function TavernRumorsPanel({ campaign }: { campaign: Campaign }) {
           >
             Rumeur tirée
           </Typography>
-          <Typography sx={{ fontStyle: 'italic' }}>«&nbsp;{drawn.text}&nbsp;»</Typography>
+          <Typography sx={{ fontStyle: 'italic' }} component="div">
+            «&nbsp;<GlossaryRichText>{drawn.text}</GlossaryRichText>&nbsp;»
+          </Typography>
         </Paper>
       )}
 
@@ -215,21 +218,9 @@ export function TavernRumorsPanel({ campaign }: { campaign: Campaign }) {
             >
               {editing ? (
                 <>
-                  <TextField
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        void saveEdit();
-                      }
-                      if (e.key === 'Escape') cancelEdit();
-                    }}
-                    size="small"
-                    fullWidth
-                    multiline
-                    autoFocus
-                  />
+                  <Box sx={{ flexGrow: 1 }}>
+                    <RichTextEditor value={editText} onChange={setEditText} />
+                  </Box>
                   <Tooltip title="Enregistrer">
                     <span>
                       <IconButton
@@ -251,13 +242,14 @@ export function TavernRumorsPanel({ campaign }: { campaign: Campaign }) {
               ) : (
                 <>
                   <Typography
+                    component="div"
                     sx={{
                       flexGrow: 1,
                       color: r.served ? 'text.disabled' : 'text.primary',
                       textDecoration: r.served ? 'line-through' : 'none',
                     }}
                   >
-                    {r.text}
+                    <GlossaryRichText>{r.text}</GlossaryRichText>
                   </Typography>
                   {r.served && (
                     <Typography variant="caption" sx={{ color: 'text.disabled' }}>
@@ -291,20 +283,13 @@ export function TavernRumorsPanel({ campaign }: { campaign: Campaign }) {
 
         {/* Ajout d'une rumeur. */}
         <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', mt: 0.5 }}>
-          <TextField
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void handleAdd();
-              }
-            }}
-            size="small"
-            fullWidth
-            multiline
-            placeholder="Nouvelle rumeur (ex. « On raconte qu’un dragon rôde au nord »)"
-          />
+          <Box sx={{ flexGrow: 1 }}>
+            <RichTextEditor
+              value={newText}
+              onChange={setNewText}
+              placeholder="Nouvelle rumeur (ex. « On raconte qu’un dragon rôde au nord »)"
+            />
+          </Box>
           <Button
             variant="outlined"
             startIcon={<AddIcon />}

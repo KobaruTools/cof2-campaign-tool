@@ -21,9 +21,10 @@ import Popover from '@mui/material/Popover';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { RichTextEditor } from '@/components/sheet/RichTextEditor';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { fetchSessionHistory, type SessionHistoryEntry } from '@/lib/session/history';
 import { fetchSessionRecaps, upsertSessionRecap, type SessionRecap } from '@/lib/session/recap';
 import type { SessionEndReason } from '@/lib/session/types';
@@ -134,8 +135,8 @@ function SessionRecapBlock({
         <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
           Résumé du MJ
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
-          {recap.content}
+        <Typography variant="body2" component="div" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+          <GlossaryRichText>{recap.content}</GlossaryRichText>
         </Typography>
       </Box>
     );
@@ -189,20 +190,13 @@ function SessionRecapBlock({
           labelPlacement="start"
         />
       </Stack>
-      <TextField
-        fullWidth
-        multiline
-        minRows={2}
-        maxRows={8}
-        placeholder="Notes de résumé pour cette partie…"
-        value={content}
-        disabled={saving}
-        onChange={(e) => setContent(e.target.value)}
+      <Box
         onBlur={() => {
           if (content !== (recap?.content ?? '')) void save({ content });
         }}
-        size="small"
-      />
+      >
+        <RichTextEditor value={content} onChange={setContent} placeholder="Notes de résumé pour cette partie…" />
+      </Box>
       {error && (
         <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
           {error}

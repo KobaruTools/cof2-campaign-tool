@@ -49,7 +49,7 @@ import { CreaturePathBlock } from './CreaturePathBlock';
 import { creatureDefenseBadges, splitHitPointsNote } from './creatureDefenseBadges';
 import { lookupRiderKeyword } from '@/lib/bestiary/riderKeywords';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
-import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
+import { GlossaryRichText, GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
 import { VerbatimToggle } from '@/components/sheet/FeaturesByPath';
 
 /**
@@ -68,7 +68,7 @@ const BLOCK_GAP = 1;
  * défaut de la grille, cf. retrait de `alignItems: 'start'`), pour des blocs de même hauteur, plus
  * lisibles. Le padding (`px`/`py`) reste propre à chaque type de carte (fusionné via `sx` en tableau).
  */
-const interactiveBlockSx = (theme: Theme) => ({
+export const interactiveBlockSx = (theme: Theme) => ({
   height: '100%',
   borderRadius: 0.75,
   border: 1,
@@ -146,7 +146,7 @@ function AbilityRefChip({
         {ability.name}
       </Typography>
       <Typography variant="body2" component="div" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>
-        <GlossaryText>{ability.text}</GlossaryText>
+        <GlossaryRichText>{ability.richText ?? ability.text}</GlossaryRichText>
       </Typography>
     </Box>
   );
@@ -324,7 +324,7 @@ function AttackRider({
  *  - `*` → qualité de sort ;
  *  - `(A/L/G/M)` → type(s) d'action (p. 227).
  */
-function parseAbilityMarkers(name: string): {
+export function parseAbilityMarkers(name: string): {
   baseName: string;
   actionTypes: ActionType[];
   isSpell: boolean;
@@ -341,7 +341,7 @@ function parseAbilityMarkers(name: string): {
  * qu'il lit (`isSpell` / `actionTypes` / `actionTypesFromRank`). Couleur neutre de
  * voie de peuple. Ne rend rien si la capacité n'a ni sort ni type d'action.
  */
-function CreatureAbilityMarkers({ name }: { name: string }) {
+export function CreatureAbilityMarkers({ name }: { name: string }) {
   const { actionTypes, isSpell } = parseAbilityMarkers(name);
   if (!isSpell && actionTypes.length === 0) return null;
   const markerFeature = { isSpell, actionTypes, actionTypesFromRank: undefined } as unknown as Feature;
@@ -520,7 +520,7 @@ function StatChip({
  * (toggle « Texte d'origine »), on rend le `text` brut, sans aucun traitement (relecture « comme dans
  * le livre »). Les créatures n'ayant ni dé évolutif ni rang de voie, `level`/`rank` sont inertes.
  */
-function CreatureAbilityText({
+export function CreatureAbilityText({
   ability,
   creature,
   verbatim,
@@ -552,7 +552,7 @@ function CreatureAbilityText({
           evolvingDieBase
         />
       ) : (
-        <GlossaryText>{source}</GlossaryText>
+        <GlossaryRichText>{source}</GlossaryRichText>
       )}
     </Typography>
   );
@@ -1027,8 +1027,8 @@ export function BestiaryStatBlock({
       {!hideNotes && (creature.description || (creature.sharedAbilitiesNote && !hasInheritedAbilities)) && (
         <AppAlert severity="info" icon={<HistoryEduOutlinedIcon />} sx={{ mt: BLOCK_GAP }}>
           {creature.description && (
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55, fontStyle: 'italic' }}>
-              <PageRefText>{creature.description}</PageRefText>
+            <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55, fontStyle: 'italic' }}>
+              <GlossaryRichText>{creature.description}</GlossaryRichText>
             </Typography>
           )}
           {/* Renvoi aux capacités de la base SEULEMENT si elles ne sont pas déjà affichées

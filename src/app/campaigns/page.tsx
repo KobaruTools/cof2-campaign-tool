@@ -34,6 +34,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -265,8 +266,8 @@ export default function CampaignsPage() {
                         {campaign.name}
                       </Typography>
                       {campaign.description && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                          {campaign.description}
+                        <Typography variant="body2" component="div" color="text.secondary" sx={{ mt: 0.25, whiteSpace: 'pre-line' }}>
+                          <GlossaryRichText>{campaign.description}</GlossaryRichText>
                         </Typography>
                       )}
                       <Stack

@@ -33,6 +33,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { RichTextEditor } from '@/components/sheet/RichTextEditor';
 import { useToast } from '@/components/toast/ToastProvider';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
@@ -274,16 +275,15 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
                   value={form?.name ?? ''}
                   onChange={(e) => setForm((f) => (f ? { ...f, name: e.target.value } : f))}
                 />
-                <TextField
-                  label="Notes du MJ (optionnel)"
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  value={form?.description ?? ''}
-                  onChange={(e) =>
-                    setForm((f) => (f ? { ...f, description: e.target.value } : f))
-                  }
-                />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                    Notes du MJ (optionnel)
+                  </Typography>
+                  <RichTextEditor
+                    value={form?.description ?? ''}
+                    onChange={(text) => setForm((f) => (f ? { ...f, description: text } : f))}
+                  />
+                </Box>
               </Stack>
             </Paper>
 

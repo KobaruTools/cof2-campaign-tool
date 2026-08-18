@@ -17,8 +17,9 @@
  */
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
+import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
+import { RichTextEditor } from '@/components/sheet/RichTextEditor';
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import { fetchSessionNote, upsertSessionNote } from '@/lib/session/notes';
 
@@ -31,7 +32,6 @@ export function SessionLiveNotesPanel({ campaignId }: { campaignId: string }) {
   // quand `onBlur` se déclenche sans qu'aucune frappe n'ait modifié le texte.
   const [lastSaved, setLastSaved] = useState('');
   const [loaded, setLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Chargement de la note existante à l'apparition d'une session active (ou son changement,
@@ -73,15 +73,13 @@ export function SessionLiveNotesPanel({ campaignId }: { campaignId: string }) {
   }
 
   const save = async (nextContent: string) => {
-    setSaving(true);
+    if (nextContent === lastSaved) return;
     setError(null);
     try {
       await upsertSessionNote(sessionId, nextContent);
       setLastSaved(nextContent);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue.');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -91,19 +89,13 @@ export function SessionLiveNotesPanel({ campaignId }: { campaignId: string }) {
         Notes privées, visibles par vous seul — utile comme brouillon avant de rédiger le
         résumé de la partie.
       </Typography>
-      <TextField
-        fullWidth
-        multiline
-        minRows={10}
-        maxRows={24}
-        placeholder="Notez ce qui se passe à la table…"
-        value={content}
-        disabled={!loaded || saving}
-        onChange={(e) => setContent(e.target.value)}
-        onBlur={() => {
-          if (content !== lastSaved) void save(content);
-        }}
-      />
+      {!loaded ? (
+        <Skeleton variant="rounded" height={220} />
+      ) : (
+        <Box onBlur={() => void save(content)}>
+          <RichTextEditor value={content} onChange={setContent} placeholder="Notez ce qui se passe à la table…" />
+        </Box>
+      )}
       {error && (
         <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
           {error}
