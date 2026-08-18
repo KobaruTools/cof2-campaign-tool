@@ -296,27 +296,11 @@ function CreatureDefenseValue({ breakdown }: { breakdown: StatBreakdown }) {
       </Box>
     </Box>
   );
+  // Chiffre nu (comme `MasterStatValue`) : ce composant est déjà rendu à l'intérieur d'un badge
+  // bordé (`CreatureStatChip`/`DerivedStatBlock`) — une boîte teintée en plus ferait double emploi.
   return (
     <AppTooltip title={tooltip}>
-      <Box
-        component="span"
-        sx={(theme) => ({
-          display: 'inline-flex',
-          alignItems: 'center',
-          verticalAlign: 'middle',
-          minHeight: '22px',
-          whiteSpace: 'nowrap',
-          px: 0.6,
-          lineHeight: 1,
-          borderRadius: 1,
-          fontWeight: 700,
-          fontVariantNumeric: 'tabular-nums',
-          cursor: 'help',
-          bgcolor: alpha(theme.palette.primary.main, 0.1),
-          border: 1,
-          borderColor: alpha(theme.palette.primary.main, 0.35),
-        })}
-      >
+      <Box component="span" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', cursor: 'help' }}>
         {breakdown.total}
       </Box>
     </AppTooltip>
@@ -324,8 +308,11 @@ function CreatureDefenseValue({ breakdown }: { breakdown: StatBreakdown }) {
 }
 
 /**
- * Rend la valeur de DÉFENSE d'une créature (hors DEF alternative « en selle », traitée à part) : avec
- * ventilation par source si un bonus du maître y contribue (PER-256), sinon la valeur enrichie simple.
+ * Rend la valeur de DÉFENSE d'une créature (hors DEF alternative « en selle », traitée à part) : TOUJOURS
+ * en badge chiffre + ventilation « Base + Rang [+ bonus du maître] » en info-bulle (PER-256), plutôt que
+ * la formule brute (`RichInline` la rendrait en clair, « 13 + rang (2) = 15 », lisible en prose mais pas
+ * en valeur de stat isolée). Repli sur la valeur enrichie simple seulement si la DEF n'est pas
+ * décomposable en un total (ex. un dé — rarissime).
  */
 function creatureDefenseNode(
   profile: CreatureProfile,

@@ -319,11 +319,15 @@ export function applyCreatureUpgrades(
 
 /**
  * Ventilation de la DÉFENSE d'une créature par SOURCE (PER-256), pour l'info-bulle de sa mini-fiche :
- * « Base 10 + Rang 2 + Runes de défense 3 = 15 ». `undefined` si le profil ne porte aucun bonus de DEF
- * propagé (créature « nue » → le rendu numérique habituel suffit) ou si sa DEF n'est pas décomposable
- * en un total (dé). `abilities`/`level`/`rank` = même contexte que le rendu de la valeur (caractéristiques
- * du maître, niveau, rang atteint dans la voie hôte). À appeler avec le profil AFFICHÉ (issu de
- * `displayCreatureProfile`/`listCompanions`), seul porteur de l'entrée WeakMap.
+ * « Base 10 + Rang 2 + Runes de défense 3 = 15 ». Une créature « nue » (aucun bonus de DEF propagé par
+ * le maître) obtient quand même sa ventilation « Base + Rang » : toutes les DEF de créature s'écrivent
+ * `[N + rang]` (formule EXPR), pensée pour de la PROSE, pas pour une valeur de stat isolée — rendue
+ * telle quelle par `RichInline` elle s'affiche en clair (« 13 + rang (2) = 15 ») au lieu d'un chiffre
+ * badge avec breakdown en info-bulle (bug constaté sur le Familier du druide, mais générique à TOUT
+ * compagnon sans bonus propagé). `undefined` seulement si la DEF est absente ou non décomposable en un
+ * total (dé). `abilities`/`level`/`rank` = même contexte que le rendu de la valeur (caractéristiques du
+ * maître, niveau, rang atteint dans la voie hôte). À appeler avec le profil AFFICHÉ (issu de
+ * `displayCreatureProfile`/`listCompanions`) : seul lui peut porter une entrée dans la WeakMap des bonus.
  */
 export function creatureDefenseBreakdown(
   profile: CreatureProfile,
@@ -332,8 +336,9 @@ export function creatureDefenseBreakdown(
   rank: number,
 ): StatBreakdown | undefined {
   const sources = defenseSourcesByProfile.get(profile);
-  if (!sources) return undefined;
-  return buildDefenseBreakdown(sources.baseDefense, sources.upgrades, abilities, level, rank) ?? undefined;
+  const baseDefense = sources?.baseDefense ?? profile.defense;
+  const upgrades = sources?.upgrades ?? [];
+  return buildDefenseBreakdown(baseDefense, upgrades, abilities, level, rank) ?? undefined;
 }
 
 /**

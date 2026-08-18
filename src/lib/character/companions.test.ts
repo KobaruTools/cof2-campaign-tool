@@ -519,10 +519,16 @@ describe('bonus maître → créature (PER-94)', () => {
       ]);
     });
 
-    it('creatureDefenseBreakdown = undefined pour un golem SANS bonus de maître (rendu numérique simple)', () => {
+    it('creatureDefenseBreakdown ventile aussi un golem SANS bonus de maître (Base + Rang seulement)', () => {
       const c = forgesort();
       const profile = displayCreatureProfile(featureById.get('golem-r2')!, c)!;
-      expect(creatureDefenseBreakdown(profile, c.abilities, c.level, 2)).toBeUndefined();
+      const bd = creatureDefenseBreakdown(profile, c.abilities, c.level, 2);
+      expect(bd).toBeDefined();
+      expect(bd!.total).toBe(12);
+      expect(bd!.contributions).toEqual([
+        { label: 'Base', value: 10 },
+        { label: 'Rang', value: 2 },
+      ]);
     });
   });
 
