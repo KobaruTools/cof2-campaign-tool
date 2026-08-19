@@ -105,6 +105,8 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     id: 'araignee-geante',
     name: 'Araignée géante',
     pathId: 'prestige-familier-fantastique',
+    // Bloc de stats complet gratuit (Araignée géante, livre de base p. 286) — simple renvoi bonus.
+    bestiaryCrossRefSlug: 'araignee-geante',
     description:
       "Une araignée de la taille d'un familier normal, c'est-à-dire un monstre d'environ 30 cm de diamètre pattes comprises ! L'araignée possède une attaque (attaque = attaque magique du personnage) qui inflige 1 DM et oblige la victime à faire un test de CON difficulté [10 + rang atteint dans la voie]. En cas d'échec, la cible subit 1d4° DM de poison. Elle est capable de grimper aux murs.",
     descriptionRichText:
@@ -205,6 +207,9 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     id: 'fee-ou-lutin',
     name: 'Fée ou lutin',
     pathId: 'prestige-familier-fantastique',
+    // Bloc de stats complet côté « Fée » dans le Bestiaire payant — simple renvoi bonus (le lutin
+    // n'a pas d'équivalent chiffré séparé).
+    bestiaryCrossRefSlug: 'fee',
     description:
       "Le personnage adopte un lutin (30 cm) ou une fée (15 cm). Ce sont des créatures espiègles et farceuses (CHA +2) dont le MJ pourra parfois prendre le contrôle pour jouer des tours pendables aux alliés du personnage, et pourquoi pas au personnage lui-même. Fée et lutin possèdent la capacité de se rendre invisible à volonté. La fée peut voler (10 m par action de mouvement) et le lutin est capable de se téléporter sur une distance de 10 m par action de mouvement.",
     abilityOverrides: { CHA: 2 },
@@ -434,6 +439,9 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     id: 'stique',
     name: 'Stique',
     pathId: 'prestige-familier-fantastique',
+    // Bloc de stats complet dans le Bestiaire payant (même espèce, texte légèrement différent :
+    // « moustique géant et chauve-souris » ici vs « … et tique » côté monstre adulte) — renvoi bonus.
+    bestiaryCrossRefSlug: 'stique',
     description:
       "La stique est une affreuse petite créature de couleur verte de 30 cm de haut, croisement entre un moustique géant et une chauve-souris pourvue de quatre ailes. Elle possède six pattes barbelées lui permettant de s'accrocher férocement à ses victimes pour leur sucer le sang. Son exosquelette est excessivement dur et très difficile à briser sans blesser ces dernières au passage. Une stique attaque avec la valeur d'attaque magique du personnage. Si elle réussit son attaque, elle s'agrippe à sa proie pour lui aspirer le sang et inflige ainsi 1d4° DM par round. La stique vole à une vitesse de 10 m par action de mouvement.",
     descriptionRichText:

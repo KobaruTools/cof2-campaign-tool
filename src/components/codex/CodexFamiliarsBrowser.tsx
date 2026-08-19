@@ -344,11 +344,12 @@ function FamiliarCard({ familiar, highlighted }: { familiar: FantasticFamiliar; 
         <SourceRef
           page={familiar.sourcePage}
           term={familiar.name}
-          bestiaryHref={
-            familiar.requiresBestiaryCreatureSlug
-              ? bestiaryCreatureHref(familiar.requiresBestiaryCreatureSlug)
-              : undefined
-          }
+          // Lien direct : slug GATANT (Carnifurax/Pestif/Karcaillou) prioritaire, sinon simple
+          // renvoi bonus non gatant (Araignée géante/Fée/Stique du livre de base, `bestiaryCrossRefSlug`).
+          bestiaryHref={(() => {
+            const slug = familiar.requiresBestiaryCreatureSlug ?? familiar.bestiaryCrossRefSlug;
+            return slug ? bestiaryCreatureHref(slug) : undefined;
+          })()}
         />
       </Stack>
       <Typography variant="body2" component="div" sx={{ mt: 1 }}>
