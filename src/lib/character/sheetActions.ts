@@ -26,6 +26,7 @@ import { featureById } from '@/data';
 import { parseCoinPouchName, type CoinPouchInfo } from './coinPouch';
 import type {
   AbilityId,
+  CreatureSize,
   DamageDie,
   PoisonKind,
   StartingEquipmentChoiceOption,
@@ -223,16 +224,16 @@ export function toggleEffect(
  * bestiaire asynchrone). Absent = capacité ordinaire, `transformationAbilities` inchangé.
  *
  * `derivedStatsSnapshot` fait de même pour la DEF/Initiative IMPRIMÉES de la créature choisie (retour
- * propriétaire 2026-08-19 : elles n'étaient PAS mécanisées, seules les caracs l'étaient), dénormalisées
- * dans `transformationDerivedStats[featureId]` et relues par `activeDefenseOverride`/
- * `activeInitiativeOverride` (`effects.ts`).
+ * propriétaire 2026-08-19 : elles n'étaient PAS mécanisées, seules les caracs l'étaient), plus son
+ * NC/taille (changeforme-r7, coût en PM), dénormalisées dans `transformationDerivedStats[featureId]`
+ * et relues par `activeDefenseOverride`/`activeInitiativeOverride`/`animalFormManaCostFeature`.
  */
 export function setEffectInput(
   character: Character,
   featureId: string,
   value: string,
   abilitiesSnapshot?: Partial<Record<AbilityId, number>>,
-  derivedStatsSnapshot?: { defense?: number; initiative?: number },
+  derivedStatsSnapshot?: { defense?: number; initiative?: number; nc?: number; size?: CreatureSize },
 ): Partial<Character> {
   const next = { ...character.effectInputs };
   const trimmed = value.trim();

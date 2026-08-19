@@ -188,21 +188,19 @@ export function usePathFeatureState({
   /**
    * Vrai si la capacité porte un effet conditionnel/temporaire (PER-67).
    *
-   * PER-375/PER-435 (retour propriétaire 2026-08-19, corrige une inversion) : `prestige-changeforme-r5`
-   * porte un second toggle « totalement lié » à `animaux-r5` (même clé `activeWhenInputSet`) — MASQUÉ
-   * ici quand le personnage possède `animaux-r5` NATIVEMENT (druide) : le toggle vit alors sur la
-   * carte native « Forme animale » (sous « Voie des animaux »), pas de doublon ici. À l'inverse, quand
-   * `animaux-r5` n'est qu'OCTROYÉE par cette voie (le personnage n'est pas druide, ex. prêtre +
-   * changeforme), cette carte EST la carte d'origine : le toggle DOIT s'afficher ici (sinon plus aucune
-   * carte ne le porte). La carte « empruntée » d'`animaux-r5` que ce même rang affiche juste à côté
-   * (`borrowedFeatureOf`) n'affiche, elle, JAMAIS ce toggle (cf. `suppressAnimalForm`,
-   * `renderEffectToggles` dans `FeaturesByPath.tsx`) — un seul endroit, la carte d'origine.
+   * PER-375/PER-435 (retour propriétaire 2026-08-19) : `prestige-changeforme-r5` porte un second
+   * toggle « totalement lié » à `animaux-r5` (même clé `activeWhenInputSet`) — affiché SUR CETTE
+   * CARTE dans tous les cas, même quand le personnage possède `animaux-r5` NATIVEMENT (druide) :
+   * sans lui, rien sur la voie du changeforme ne permet de tester/voir le coût en PM `2 + NC`
+   * (changeforme-r7) sans quitter la voie pour aller chercher le toggle sous « Voie des animaux ».
+   * Un doublon assumé (le VRAI état — `effectInputs['animaux-r5']` — reste partagé par les deux
+   * cartes, aucun conflit). Seule la carte « empruntée » d'`animaux-r5` que ce même rang affiche
+   * juste à côté quand l'octroi est effectif (`borrowedFeatureOf`) n'affiche, elle, JAMAIS ce toggle
+   * (cf. `suppressAnimalForm`, `renderEffectToggles` dans `FeaturesByPath.tsx`) — ce serait, LÀ, un
+   * vrai doublon (les deux cartes sont côte à côte dans le même bloc empilé).
    */
   const hasEffectToggles = (feature: Feature) => {
     if (!character) return false;
-    if (feature.id === 'prestige-changeforme-r5' && character.featureIds.includes('animaux-r5')) {
-      return false;
-    }
     return conditionalEffectsOf(feature.id).length > 0;
   };
 

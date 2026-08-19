@@ -45,7 +45,7 @@ import Typography from '@mui/material/Typography';
 import { alpha, lighten, type Theme } from '@mui/material/styles';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
-import type { AbilityId, AbilitySubstitution, ActionType, Creature, CreatureProfile, CreatureSize, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, ActionType, CreatureProfile, CreatureSize, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import { CREATURE_SIZES, FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
@@ -59,6 +59,7 @@ import {
 } from '@/lib/character/choices';
 import { animalFormCategories, knownAnimalFormCategoryIds } from '@/lib/character/animalForms';
 import {
+  animalFormManaCostFeature,
   hasGiantOrPrehistoricAnimalFormAccess,
   isEligibleAnimalForm,
   maxAnimalFormSize,
@@ -188,6 +189,14 @@ import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocompl
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { crossOutAfterSx } from '@/lib/ui/crossOut';
+
+/**
+ * Snapshot dénormalisé de la créature choisie pour « Forme animale » (animaux-r5), transmis via
+ * `onSetEffectInput`/`onSetInput` jusqu'à `Character.transformationDerivedStats` (PER-375/PER-435,
+ * retour propriétaire 2026-08-19) : DEF/Initiative imprimées de la créature, plus son NC/taille
+ * (changeforme-r7, coût en PM lu par `animalFormManaCostFeature`).
+ */
+type AnimalFormDerivedStatsSnapshot = { defense?: number; initiative?: number; nc?: number; size?: CreatureSize };
 
 /**
  * PER-401 — substitutions de carac à appliquer au rendu NATIF d'une capacité (carte de voie) :
@@ -1455,7 +1464,7 @@ export interface FeaturesByPathProps {
    * par « Forme animale »). État transitoire, modifiable même hors édition. Absent
    * → la saisie est affichée en lecture seule (ou masquée si vide).
    */
-  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: { defense?: number; initiative?: number }) => void;
+  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: AnimalFormDerivedStatsSnapshot) => void;
   /**
    * Met à jour le décompte d'une capacité à usages limités (PER-70 — ex. « Les sept
    * vies du chat »). État de jeu, modifiable hors édition. Absent → compteur en
@@ -1735,7 +1744,7 @@ function AnimalFormSelector({
   onSetInput,
 }: {
   character: Character;
-  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: { defense?: number; initiative?: number }) => void;
+  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: AnimalFormDerivedStatsSnapshot) => void;
 }) {
   const list = useBestiaryStore((s) => s.list);
   const bestiaryStatus = useBestiaryStore((s) => s.status);
@@ -1800,9 +1809,11 @@ function AnimalFormSelector({
     const snapshot = Object.fromEntries(
       Object.entries(blob.abilities).filter(([ability]) => ability !== 'INT' && ability !== 'VOL'),
     ) as Partial<Record<AbilityId, number>>;
-    const derivedSnapshot: { defense?: number; initiative?: number } = {
+    const derivedSnapshot: AnimalFormDerivedStatsSnapshot = {
       ...(blob.defense !== undefined ? { defense: blob.defense } : {}),
       ...(blob.initiative !== undefined ? { initiative: blob.initiative } : {}),
+      ...(blob.nc !== undefined ? { nc: blob.nc } : {}),
+      ...(blob.size !== undefined ? { size: blob.size } : {}),
     };
     const current = character.transformationAbilities?.['animaux-r5'];
     const currentDerived = character.transformationDerivedStats?.['animaux-r5'];
@@ -1823,10 +1834,6 @@ function AnimalFormSelector({
     ) ?? -1;
   const active = effectIndex >= 0 && isEffectActive(character, 'animaux-r5', effectIndex);
 
-  const changeformeExtras = active && blob ? (
-    <AnimalFormChangeformeExtras creature={blob} />
-  ) : null;
-
   if (!onSetInput) {
     if (!value) return null;
     return (
@@ -1837,7 +1844,6 @@ function AnimalFormSelector({
         {active && blob && (
           <Box sx={{ mt: 1 }}>
             <BestiaryStatBlock creature={blob} dense hideNotes wideColumns />
-            {changeformeExtras}
           </Box>
         )}
       </Box>
@@ -1931,28 +1937,9 @@ function AnimalFormSelector({
       {active && blob && (
         <Box sx={{ mt: 1 }}>
           <BestiaryStatBlock creature={blob} dense hideNotes wideColumns />
-          {changeformeExtras}
         </Box>
       )}
     </Box>
-  );
-}
-
-/**
- * Bonus de la voie du changeforme, une fois un profil réel chargé (PER-375) : à r7/r8 (taille
- * grande/énorme), coût en PM de la transformation, `2 + NC` (`NC` en concentration) — formule
- * VERBATIM du livre (p. 170, « Grande forme animale ») affichée, jamais déduite automatiquement
- * du réservoir de mana (les coûts de sorts restent informatifs partout ailleurs dans le moteur).
- */
-function AnimalFormChangeformeExtras({ creature }: { creature: Creature }) {
-  const hasBigForm = creature.size === 'grande' || creature.size === 'enorme';
-  if (!hasBigForm || creature.nc == null) return null;
-  return (
-    <Stack spacing={0.25} sx={{ mt: 0.75 }}>
-      <Typography variant="caption" component="div">
-        Coût de la transformation : {2 + creature.nc} PM ({creature.nc} PM en concentration).
-      </Typography>
-    </Stack>
   );
 }
 
@@ -2088,7 +2075,7 @@ function AnimalFormDialog({
   onOpenChange,
 }: {
   character: Character;
-  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: { defense?: number; initiative?: number }) => void;
+  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: AnimalFormDerivedStatsSnapshot) => void;
   toggle: ReactNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -3330,7 +3317,7 @@ function PathBlock({
   /** États posés par le MJ en séance : grisent l'interrupteur du buff correspondant (PER-314). */
   sessionStatusIds?: readonly string[];
   /** Saisie libre corrélée à une capacité (animal de Forme animale, PER-70). */
-  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: { defense?: number; initiative?: number }) => void;
+  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: AnimalFormDerivedStatsSnapshot) => void;
   /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
   /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156). État de jeu, hors édition. */
@@ -4091,7 +4078,7 @@ function PathBlock({
                 (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)))
             ) && (
               <SpellManaBadge
-                feature={ghostShipManaCostFeature(character, borrowed ?? feature)}
+                feature={animalFormManaCostFeature(character, ghostShipManaCostFeature(character, borrowed ?? feature))}
                 // PER-74 — Capacité fabuleuse : sort (A) cible → concentration permanente (−2 PM) sur la goutte.
                 concentration={borrowed ? concentration : fabulousFor(feature).manaConcentration}
                 surcharge={character ? escalatingManaSurcharge(character, borrowed ?? feature) : 0}
@@ -4454,7 +4441,7 @@ function PathBlock({
                       />
                       {!itemNoMana && (
                         <SpellManaBadge
-                          feature={ghostShipManaCostFeature(character, item)}
+                          feature={animalFormManaCostFeature(character, ghostShipManaCostFeature(character, item))}
                           concentration={concentration}
                           surcharge={character ? escalatingManaSurcharge(character, item) : 0}
                           armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, item) : null}
@@ -5237,7 +5224,7 @@ function PathBlock({
                 </Typography>
               </Stack>
               <SpellManaBadge
-                feature={ghostShipManaCostFeature(character, feature)}
+                feature={animalFormManaCostFeature(character, ghostShipManaCostFeature(character, feature))}
                 concentration={fabulousFor(feature).manaConcentration}
                 surcharge={character ? escalatingManaSurcharge(character, feature) : 0}
                 armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, feature) : null}

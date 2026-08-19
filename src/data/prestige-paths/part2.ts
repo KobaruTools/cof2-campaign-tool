@@ -4398,11 +4398,14 @@ export const prestigeFeatures2: Feature[] = [
     // Second interrupteur, MÊME clé `activeWhenInputSet: 'animaux-r5'` que la capacité octroyée
     // (retour propriétaire 2026-08-18) : « totalement lié », pas une copie indépendante — les deux
     // cartes pilotent le MÊME choix (`isEffectActive`/`toggleEffect`, effects.ts/sheetActions.ts).
-    // MASQUÉ à l'écran (pas dupliqué) quand la capacité octroyée est EMPRUNTÉE ici (le personnage n'a
-    // pas la voie des animaux, `animaux-r5` n'a pas d'autre carte que celle-ci) — cf.
-    // `usePathFeatureState.hasEffectToggles`, seul endroit qui connaît cette redondance. Affiché
-    // quand le personnage possède `animaux-r5` NATIVEMENT ailleurs (druide) : sans ça, la voie du
-    // changeforme n'aurait AUCUN toggle visible (le vrai vit alors sous « Voie des animaux »).
+    // AFFICHÉ SUR CETTE CARTE dans tous les cas (retour propriétaire 2026-08-19, revient sur une
+    // décision de la veille) — y compris quand le personnage possède `animaux-r5` NATIVEMENT
+    // ailleurs (druide) : sans ce toggle ici, rien sur la voie du changeforme ne permet de voir/tester
+    // le coût `2 + NC` (r7) sans quitter la voie pour « Voie des animaux ». `animalFormManaCostFeature`
+    // (`animalFormPicker.ts`) applique la MÊME règle de coût à la pastille PM de cette carte. Seule la
+    // carte « empruntée » d'`animaux-r5` que ce même rang affiche juste à côté quand l'octroi est
+    // effectif reste SANS ce toggle (cf. `suppressAnimalForm`, `renderEffectToggles` dans
+    // `FeaturesByPath.tsx`) — là, ce serait un vrai doublon (cartes côte à côte).
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -4430,8 +4433,12 @@ export const prestigeFeatures2: Feature[] = [
     name: 'Transformation puissante',
     pathId: 'prestige-changeforme',
     rank: 6,
-    isSpell: true,
-    actionTypes: ['A'],
+    // Retour propriétaire 2026-08-19 : PASSIF (aucune action propre, aucun coût en mana propre) —
+    // modifie l'usage de Forme animale (animaux-r5), n'est pas un sort distinct qu'on lance.
+    // Hexagones (*)/(A) et pastille PM retirés (rang=PM aurait affiché un coût de 6 PM sans
+    // rapport avec le sort réellement lancé, le vrai coût suit la règle du r7 ci-dessous).
+    isSpell: false,
+    actionTypes: [],
     text:
       "Lorsqu'il prend une forme animale, le personnage peut conserver sa propre DEF et utiliser sa valeur d'attaque magique pour attaquer si ceux-ci sont supérieurs au profil de la forme choisie. Désormais, le personnage peut prendre la forme des animaux géants ou préhistoriques (mais toujours sans dépasser la taille M).",
     richText:
@@ -4446,8 +4453,10 @@ export const prestigeFeatures2: Feature[] = [
     name: 'Grande forme animale',
     pathId: 'prestige-changeforme',
     rank: 7,
-    isSpell: true,
-    actionTypes: ['A'],
+    // Retour propriétaire 2026-08-19 : PASSIF, même raison qu'au r6 ci-dessus — modifie le
+    // coût/la portée de Forme animale plutôt que d'être un sort qu'on lance séparément.
+    isSpell: false,
+    actionTypes: [],
     text:
       "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal de taille grande (ours, tigre, etc.). Il peut conserver sa DEF et utiliser sa valeur d'attaque magique pour attaquer s'il le souhaite. Le coût du sort est égal à 2 + NC de la créature en points de magie (ou NC PM en utilisant la concentration). Par exemple, une transformation en cheval coûte 3 PM (1 PM en concentration) tandis qu'une transformation en loup géant coûte 6 PM (4 PM en concentration).",
     richText:
@@ -4462,8 +4471,9 @@ export const prestigeFeatures2: Feature[] = [
     name: 'Forme animale énorme',
     pathId: 'prestige-changeforme',
     rank: 8,
-    isSpell: true,
-    actionTypes: ['A'],
+    // Retour propriétaire 2026-08-19 : PASSIF, même raison qu'au r6/r7 ci-dessus.
+    isSpell: false,
+    actionTypes: [],
     text:
       "Lorsqu'il utilise le sort de Forme animale, le personnage peut prendre la forme d'un animal ou d'un animal géant de taille énorme (par exemple, un éléphant). Il suit les mêmes règles que pour la capacité précédente.",
     richText:

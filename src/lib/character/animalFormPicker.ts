@@ -7,7 +7,7 @@
  * du livre type « Animal petit », ou contenu pas encore tagué) ne sont PAS restreintes par
  * catégorie — repli permissif plutôt qu'une classification devinée.
  */
-import { CREATURE_SIZES, type CreatureSize } from '@/data/schema';
+import { CREATURE_SIZES, type CreatureSize, type Feature } from '@/data/schema';
 import type { Character } from './types';
 
 /**
@@ -57,4 +57,36 @@ export function maxAnimalFormSize(character: Character): CreatureSize {
 export function sizeWithinLimit(size: CreatureSize | undefined, max: CreatureSize): boolean {
   if (!size) return false;
   return CREATURE_SIZES.indexOf(size) <= CREATURE_SIZES.indexOf(max);
+}
+
+/**
+ * Capacités dont la pastille PM doit refléter le coût RÉEL de la transformation (« Forme animale »,
+ * `animaux-r5` ; « Transformation en animal », `prestige-changeforme-r5` — MÊME clé d'activation
+ * `effectInputs['animaux-r5']`, retour propriétaire 2026-08-19 : le toggle du changeforme s'affiche
+ * désormais sur sa PROPRE carte même quand le personnage a `animaux-r5` nativement, cf.
+ * `hasEffectToggles`, `usePathFeatureState.tsx` — sa pastille doit donc suivre la même règle de coût,
+ * pas rester au coût de rang générique de « Transformation en animal »).
+ */
+const ANIMAL_FORM_MANA_COST_FEATURE_IDS = new Set(['animaux-r5', 'prestige-changeforme-r5']);
+
+/**
+ * Coût réel EN PM d'une transformation « Forme animale » une fois une créature de taille
+ * Grande/Énorme choisie ET active (retour propriétaire 2026-08-19, changeforme-r7, p. 170 :
+ * « le coût du sort est égal à 2 + NC de la créature »). Verbatim limité aux tailles Grande (r7) et
+ * Énorme (r8, « mêmes règles ») : rien dans le livre ne change le coût de rang standard des formes
+ * Petite/Moyenne, qui gardent leur pastille inchangée. Retourne `feature` TEL QUEL sinon (pas une
+ * capacité de `ANIMAL_FORM_MANA_COST_FEATURE_IDS`, aucune forme active, ou forme active mais
+ * Petite/Moyenne) — même patron que `ghostShipManaCostFeature` (`majorSummoningPath.ts`) : une
+ * surcharge PONCTUELLE de `manaCost` appliquée juste avant `SpellManaBadge`, jamais encodée dans les
+ * données statiques du sort.
+ */
+export function animalFormManaCostFeature<T extends Pick<Feature, 'id' | 'manaCost'>>(
+  character: Character | undefined,
+  feature: T,
+): T {
+  if (!character || !ANIMAL_FORM_MANA_COST_FEATURE_IDS.has(feature.id) || !character.effectInputs?.['animaux-r5'])
+    return feature;
+  const stats = character.transformationDerivedStats?.['animaux-r5'];
+  if (stats?.nc == null || (stats.size !== 'grande' && stats.size !== 'enorme')) return feature;
+  return { ...feature, manaCost: 2 + stats.nc };
 }

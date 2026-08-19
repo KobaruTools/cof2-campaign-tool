@@ -11,7 +11,7 @@
  *  - les valeurs dérivées ne sont **pas** stockées (recalculées à l'affichage),
  *    sauf surcharges manuelles explicites (`overrides`).
  */
-import { DERIVED_STAT_IDS } from '@/data/schema';
+import { DERIVED_STAT_IDS, type CreatureSize } from '@/data/schema';
 import type { ItemIconId } from '@/data/item-icons';
 import type {
   AbilityId,
@@ -1117,11 +1117,15 @@ export interface Character {
    * capacités naturelles de la forme choisie »). Même patron que `transformationAbilities` (dénormalisé
    * depuis le blob bestiaire de la créature choisie par `AnimalFormSelector`, lu par
    * `activeDefenseOverride`/`activeInitiativeOverride` dans `effects.ts`), mais pour les DEUX stats
-   * DÉRIVÉES imprimées telles quelles au bloc de la créature plutôt que recalculées depuis AGI. Clé =
+   * DÉRIVÉES imprimées telles quelles au bloc de la créature plutôt que recalculées depuis AGI.
+   * `nc`/`size` (retour propriétaire 2026-08-19, changeforme-r7, p. 170 : « le coût du sort est égal
+   * à 2 + NC de la créature ») dénormalisent en plus le NC et la taille de la créature choisie —
+   * lus par `animalFormManaCostFeature` (`animalFormPicker.ts`) pour afficher le coût réel en PM
+   * d'une forme Grande/Énorme sur la pastille de la capacité, au lieu du coût de rang générique. Clé =
    * id de la capacité PORTEUSE du choix (`'animaux-r5'`), comme `transformationAbilities`. Purgé (clé
    * supprimée) dès que le choix est effacé (`setEffectInput`). `{}` = aucune forme choisie.
    */
-  transformationDerivedStats: Record<string, { defense?: number; initiative?: number }>;
+  transformationDerivedStats: Record<string, { defense?: number; initiative?: number; nc?: number; size?: CreatureSize }>;
 
   /**
    * Compagnons MULTI-INSTANCES (PER-235) : clé = `id` de la capacité qui les octroie (ex.
