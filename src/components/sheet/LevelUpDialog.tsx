@@ -806,13 +806,14 @@ function LevelBadge({ level, color }: { level: number; color: string }) {
  * de courbe : les gains de PV restent petits, ça n'a pas besoin d'accélérer/ralentir.
  * Démarre après `delay` (500ms par défaut : le temps que l'entrée du wizard —
  * `levelUpDialogPop`, 0.5s — se termine), rejoué à chaque changement de cible
- * (recalcul du gain de PV — famille, dé de vie lancé…) ou de `resetKey` (ex. le
- * mode PV fixes/dé de vie : rebasculer sur PV fixes doit rejouer l'animation même
- * si la valeur numérique retombe sur le même gain). `stepMs` doit rester ⩾ à la
- * durée du flip (`FlipDigit`, 0.22s) : plus court, chaque flip est interrompu par
- * le suivant avant d'avoir pu se jouer, et tout le décompte se voit comme un bond
- * instantané au lieu d'un défilement. `null` = rien à afficher (profil incomplet).
- * Respecte `prefers-reduced-motion`.
+ * (recalcul du gain de PV — famille, dé de vie lancé…). Ne rejoue PAS si le
+ * gain retombe sur la même valeur (ex. bascule PV fixes ↔ dé de vie sans que le
+ * total affiché change — retour propriétaire 2026-08-19, l'ancien comportement
+ * forçait un rejeu via une clé dédiée même à valeur inchangée). `stepMs` doit
+ * rester ⩾ à la durée du flip (`FlipDigit`, 0.22s) : plus court, chaque flip est
+ * interrompu par le suivant avant d'avoir pu se jouer, et tout le décompte se
+ * voit comme un bond instantané au lieu d'un défilement. `null` = rien à
+ * afficher (profil incomplet). Respecte `prefers-reduced-motion`.
  *
  * Le wizard reste monté entre deux ouvertures (seule la prop `open` de `Dialog`
  * change) : sans `open` en dépendance, l'animation ne rejouerait qu'une fois. On la
@@ -821,23 +822,17 @@ function LevelBadge({ level, color }: { level: number; color: string }) {
 function useCountUp(
   target: number | null,
   open: boolean,
-  resetKey: unknown,
   { stepMs = 240, delay = 500 }: { stepMs?: number; delay?: number } = {},
 ): number | null {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [display, setDisplay] = useState<number | null>(target === null ? null : 0);
-  // Fermeture (ou changement de `resetKey`) : remet à 0 pour repartir de zéro,
-  // plutôt que de garder la valeur figée précédente. Ajustement pendant le rendu
-  // (pas d'effet), pattern recommandé par React — cf. `CoinInput` dans `PurseField`.
+  // Fermeture : remet à 0 pour repartir de zéro, plutôt que de garder la valeur
+  // figée précédente. Ajustement pendant le rendu (pas d'effet), pattern
+  // recommandé par React — cf. `CoinInput` dans `PurseField`.
   const [lastOpen, setLastOpen] = useState(open);
   if (open !== lastOpen) {
     setLastOpen(open);
     if (!open) setDisplay(target === null ? null : 0);
-  }
-  const [lastResetKey, setLastResetKey] = useState(resetKey);
-  if (resetKey !== lastResetKey) {
-    setLastResetKey(resetKey);
-    setDisplay(target === null ? null : 0);
   }
   useEffect(() => {
     // Rien à animer (fermé, pas de gain, ou mouvement réduit) : pas de setState ici,
@@ -856,7 +851,7 @@ function useCountUp(
       clearTimeout(startTimeoutId);
       clearTimeout(timeoutId);
     };
-  }, [open, target, resetKey, stepMs, delay, reducedMotion]);
+  }, [open, target, stepMs, delay, reducedMotion]);
   return !open || target === null || reducedMotion ? target : display;
 }
 
@@ -1288,7 +1283,7 @@ export function LevelUpDialog({
   // Le jet remplace la part « famille » ; la CON s'ajoute par-dessus (Option A, cf. ticket).
   const shownGain = rolling && rolledValid ? rolledNum + con : hpGain;
   // Effet « roulette » (0 → gain) rejoué à chaque recalcul du gain affiché.
-  const animatedGain = useCountUp(shownGain, open, hpMode);
+  const animatedGain = useCountUp(shownGain, open);
   // Bloquant : « dé de vie » choisi sans résultat valide saisi.
   const rolledPending = rolling && !rolledValid;
 
