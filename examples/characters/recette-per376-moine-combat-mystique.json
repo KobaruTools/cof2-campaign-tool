@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 24,
+  "id": "recette-per376-moine-combat-mystique",
+  "name": "Recette PER-376 — Moine, voie du combat mystique",
+  "identity": {
+    "description": "ATTENDU (PER-376, p.171) : r4 Attaque étourdissante — action LONGUE (pas d'effet passif sur la carte d'attaque, joué à l'oral au moment de l'action) ; richText calcule [10 + VOL] (pas de crochets littéraux). r5 Frappe concentrée — interrupteur \"En concentration\" affiche un badge RD 5 quand actif, disparaît OFF. r6 Pression nerveuse — compteur 1×/combat (reset repos court), PAS un bouton \"état infligé\". r7 Paume mortelle — compteur 1/jour affiché sur la carte (masqué du panneau État du perso, hideFromStatusPanel). r8 Main du tout puissant — compteur 1/jour + richText calcule [4d4° + VOL] DM."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "moine",
+  "level": 8,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 3
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 3
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "poing-r1",
+    "meditation-r1",
+    "prestige-combat-mystique-r4",
+    "prestige-combat-mystique-r5",
+    "prestige-combat-mystique-r6",
+    "prestige-combat-mystique-r7",
+    "prestige-combat-mystique-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-376 — voie du combat mystique, p.171. Recette moteur pur, pas de vérification navigateur (headless).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
