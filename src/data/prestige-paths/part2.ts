@@ -4520,6 +4520,11 @@ export const prestigeFeatures2: Feature[] = [
       value: 5,
       requiresActiveEffect: { featureId: 'prestige-combat-mystique-r5', index: 0 },
     },
+    // PER-440 : déclare l'état situationnel « En concentration » dans la palette de l'écran de MJ —
+    // POSE 100% manuelle (décision propriétaire : pas d'apparition automatique depuis l'interrupteur
+    // joueur), le MJ règle le compteur de tours lui-même sur le résultat du dé et retire l'état en fin
+    // de concentration, comme tout autre état posé.
+    situationalEffectIds: ['concentrating'],
     sourcePage: 171,
   },
   {
@@ -4583,6 +4588,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Cette capacité s'utilise seulement sur une créature vivante à 0 PV. La cible touchée récupère immédiatement [3d4°+ CHA] PV. Un patient ne peut bénéficier de cette capacité qu'une seule fois par combat.",
+    // PER-377 : limite PAR CIBLE (« un patient »), pas une ressource du personnage → PAS de
+    // `usageCounter` (même patron que Injonction mortelle/mages.ts-r109, Attaque au pommeau
+    // part1.ts:1625-1626), verbatim.
+    richText:
+      "Cette capacité s'utilise seulement sur une créature vivante à 0 PV. La cible touchée récupère immédiatement [3d4° + CHA] PV. Un patient ne peut bénéficier de cette capacité qu'une seule fois par combat.",
     sourcePage: 171,
   },
   {
@@ -4593,6 +4603,9 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: true,
     actionTypes: ['G'],
     text:
+      "D'un simple regard, le personnage soigne une cible (ou lui-même) à une portée de 20 m, elle récupère immédiatement [2d4° + CHA] PV.",
+    // PER-377 : notation d'auteur déjà en syntaxe formule richText finale, copiée telle quelle.
+    richText:
       "D'un simple regard, le personnage soigne une cible (ou lui-même) à une portée de 20 m, elle récupère immédiatement [2d4° + CHA] PV.",
     sourcePage: 171,
   },
@@ -4605,6 +4618,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le personnage peut rappeler à la vie un mort décédé depuis moins de [6 + CON du personnage] heures par un rituel de 30 min. Il doit avoir accès au corps. Le personnage revient à la conscience avec 1d4° PV et il est affaibli pendant 24 h. Le sort ne régénère pas les membres ou les parties perdues (il faut pour cela utiliser Régénération, sort de druide).",
+    // PER-377 : « CON du personnage » → `[6 + CON]` (le qualificatif est redondant, patron soins-r1/
+    // soins-r3 mystics.ts). PV de retour en {1d4°} (dé pur, sans modificateur). Renvoi de capacité
+    // vers Régénération (druide, `protecteur-r3`) balisé `[&protecteur-r3]` (patron chevalier/forgesort).
+    richText:
+      "Une fois par jour, le personnage peut rappeler à la vie un mort décédé depuis moins de [6 + CON] heures par un rituel de 30 min. Il doit avoir accès au corps. Le personnage revient à la conscience avec {1d4°} PV et il est affaibli pendant 24 h. Le sort ne régénère pas les membres ou les parties perdues (il faut pour cela utiliser [&protecteur-r3], sort de druide).",
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 171,
   },
   {
@@ -4616,6 +4635,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut enchanter une zone de 10 m de rayon autour de lui pour une durée de CHA rounds. La zone se met à luire d'une lumière bienfaitrice et l'air scintille. Toutes les créatures vivantes dans la zone récupèrent 2d4°PV à chaque round (à la fin de leur tour). Les morts-vivants et les démons subissent des DM équivalents. Une fois le sort lancé, la zone reste immobile.",
+    // PER-377 : « CHA rounds » = durée en QUANTITÉ BRUTE → `[=CHA]` (règle § 1, patron pression
+    // nerveuse combat-mystique-r6). PV de zone en {2d4°} (dé pur). Pas de limite d'usage énoncée
+    // (coût en PM géré ailleurs) → pas de `usageCounter`.
+    richText:
+      "Le personnage peut enchanter une zone de 10 m de rayon autour de lui pour une durée de [=CHA] rounds. La zone se met à luire d'une lumière bienfaitrice et l'air scintille. Toutes les créatures vivantes dans la zone récupèrent {2d4°} PV à chaque round (à la fin de leur tour). Les morts-vivants et les démons subissent des DM équivalents. Une fois le sort lancé, la zone reste immobile.",
     sourcePage: 171,
   },
   {
@@ -4627,6 +4651,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par aventure, le personnage peut rappeler à la vie un personnage décédé depuis moins de [CHA du prêtre] jours par un rituel de 7 h. Il doit avoir accès à une relique (ongle, cheveux, etc.). Le personnage rappelé à la vie revient à la conscience avec 1 PV, il est affaibli pendant 7 jours. Si une créature bénéficie de ce sort plus d'une fois dans sa vie, elle perd 1 point de CON pour chaque résurrection au-delà de la première.",
+    // PER-377 : « CHA du prêtre » → `[CHA]` (même correction que r6). « Une fois par aventure » :
+    // aucun `resetOn` d'aventure n'existe (cf. magie-esprit-r8, part2.ts:3225-3229) → verbatim, pas de
+    // `usageCounter`. Perte de CON aux résurrections répétées : bascule manuelle, non automatisable.
+    richText:
+      "Une fois par aventure, le personnage peut rappeler à la vie un personnage décédé depuis moins de [CHA] jours par un rituel de 7 h. Il doit avoir accès à une relique (ongle, cheveux, etc.). Le personnage rappelé à la vie revient à la conscience avec 1 PV, il est affaibli pendant 7 jours. Si une créature bénéficie de ce sort plus d'une fois dans sa vie, elle perd 1 point de CON pour chaque résurrection au-delà de la première.",
     sourcePage: 172,
   },
 
