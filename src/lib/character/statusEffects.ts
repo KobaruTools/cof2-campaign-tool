@@ -297,6 +297,15 @@ export function statusMaxIntensity(id: AnyStatusEffectId): number {
 }
 
 /**
+ * Vrai si le compteur de tours de cet état doit rester SECRET en projection (PER-440, ex. Frappe
+ * concentrée p. 171 : « le MJ garde cette durée secrète »). Le compteur reste visible/ajustable côté
+ * écran de MJ dans tous les cas — seule la vue projetée doit l'interroger.
+ */
+export function statusHidesDurationInProjection(id: AnyStatusEffectId): boolean {
+  return statusEntry(id)?.hideDurationInProjection === true;
+}
+
+/**
  * Ramène une intensité demandée dans les bornes valides de l'état : [1, plafond]. Pour un état
  * binaire, le plafond est 1 → toujours 1. Utile côté stockage (PER-278) pour clamper avant d'écrire.
  */

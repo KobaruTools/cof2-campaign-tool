@@ -1508,6 +1508,15 @@ export interface StatusEffectEntry {
     | { kind: 'path-rank'; rank: number }
     | { kind: 'character-level'; level: number }
     | { kind: 'ability'; ability: AbilityId };
+  /**
+   * DURÉE SECRÈTE (PER-440) : le compteur de tours de cet état, une fois posé, ne doit PAS être
+   * révélé en PROJECTION (écran partagé avec les joueurs) — le livre confie ce chiffre au seul MJ
+   * (ex. Frappe concentrée, combat mystique r5 p. 171 : « le MJ garde cette durée secrète »). Champ
+   * GÉNÉRIQUE : toute future capacité à durée tenue par le MJ le pose, sans cas cablé en dur. Absent
+   * (ou `false`) = comportement actuel, la pastille de durée reste visible partout (PER-305). Le
+   * compteur reste PLEINEMENT visible et ajustable côté écran de MJ — seule la projection le masque.
+   */
+  hideDurationInProjection?: boolean;
 }
 
 /**
@@ -1639,6 +1648,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'hypnotized',
   'petrified',
   'whirling-winds',
+  'concentrating',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1837,6 +1847,21 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Tant que la cible reste dans la zone du cyclone, elle subit 2d4° DM par round et doit réussir un test de FOR difficulté 15 à chaque round ou être renversée. Sort la zone pour être libérée de cet effet.",
     sourcePage: 169,
+  },
+  // « Frappe concentrée » (combat mystique r5, p. 171, PER-440). PUREMENT comportemental ici (aucun
+  // `modifiers`) : la RD 5 est DÉJÀ chiffrée côté fiche joueur via l'interrupteur `conditional-stat-bonus`
+  // + `damageReduction.requiresActiveEffect` (PER-376) — cet état n'est qu'un SUIVI manuel côté écran de
+  // MJ (posé/retiré/ajusté à la main, jamais automatique, cf. décision propriétaire 2026-08-19). Pose
+  // PAS un état de base : ni Immobilisé (dé malus aux tests d'attaque, pas d'interdiction totale) ni
+  // Ralenti (une action/round, pas RD5) ne collent → mécanique PROPRE, admissible (PER-288). Durée
+  // SECRÈTE (« le MJ garde cette durée secrète… ») : `hideDurationInProjection` masque le compteur de
+  // tours à la table, sans jamais le masquer au MJ.
+  concentrating: {
+    label: 'En concentration',
+    effect:
+      "Le personnage se concentre pendant 1d4 rounds (le MJ garde cette durée secrète) : il ne peut ni attaquer ni se déplacer, mais bénéficie d'une RD 5. Au round suivant, il peut réaliser une attaque dévastatrice (touche automatiquement, triple ses DM). S'il cesse sa concentration prématurément, il ne profite d'aucun bénéfice.",
+    sourcePage: 171,
+    hideDurationInProjection: true,
   },
 };
 

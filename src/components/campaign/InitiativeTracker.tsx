@@ -154,6 +154,7 @@ import {
   clampIntensity,
   isStackingStatus,
   resolveStatusModifiers,
+  statusHidesDurationInProjection,
   statusMaxIntensity,
   statusRemainingRounds,
   STATUS_DURATION_MAX,
@@ -1149,6 +1150,7 @@ function expiredSquareSx(theme: Theme) {
 function ReadonlyStatusIcon({
   applied,
   roundNumber,
+  projection = false,
 }: {
   applied: EffectiveStatus;
   /**
@@ -1156,11 +1158,21 @@ function ReadonlyStatusIcon({
    * (`origin: 'auto'`) n'en porte jamais : il suit les PV, pas la durée.
    */
   roundNumber: number;
+  /**
+   * Vrai quand CET appel rend la vue PROJETÉE (PER-440) : un état à durée secrète
+   * (`hideDurationInProjection`) y masque son compteur de tours, jamais sur l'écran de MJ — les
+   * états DÉDUITS (`origin: 'auto'`) n'y sont de toute façon appelés qu'avec `false` (par les cartes
+   * MJ), donc sans incidence sur eux.
+   */
+  projection?: boolean;
 }) {
   const { id, origin, autoReason } = applied;
   const intensity = clampIntensity(id, applied.intensity ?? 1);
   const stacked = isStackingStatus(id) && intensity > 1;
-  const remaining = statusRemainingRounds(applied, roundNumber);
+  const remaining =
+    projection && statusHidesDurationInProjection(id)
+      ? undefined
+      : statusRemainingRounds(applied, roundNumber);
   return (
     <AppTooltip
       title={<StatusEffectTooltip id={id} autoReason={autoReason} remainingRounds={remaining} />}
@@ -1420,7 +1432,7 @@ function ProjectionStatusStrip({
       }}
     >
       {applied.map((s) => (
-        <ReadonlyStatusIcon key={s.id} applied={s} roundNumber={roundNumber} />
+        <ReadonlyStatusIcon key={s.id} applied={s} roundNumber={roundNumber} projection />
       ))}
     </Box>
   );
