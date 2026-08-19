@@ -1043,6 +1043,14 @@ export interface ConditionalStatBonusEffect {
    */
   defenseOverride?: number;
   /**
+   * SURCHARGE ABSOLUE de l'INITIATIVE tant que cet interrupteur est ACTIF (retour propriétaire
+   * 2026-08-19, Forme animale) : symétrique de `defenseOverride`, pour une transformation en
+   * créature dont l'Initiative est un nombre FIXE imprimé plutôt qu'AGI + bonus habituels. REMPLACE
+   * la valeur affichée (une épingle manuelle du joueur, `Character.overrides`, garde priorité si les
+   * deux sont posées). Absent = Initiative recalculée normalement.
+   */
+  initiativeOverride?: number;
+  /**
    * RAPPEL DE SOIN au moment où cet interrupteur passe d'ACTIF à INACTIF (PER-375, changeforme r5,
    * p. 170 : « à la fin de la transformation, il récupère 3d4° PV »). Le moteur ne simule JAMAIS de
    * jet de dé (PRD #13, saisie libre uniquement) : ce champ ne calcule rien, il déclenche un simple

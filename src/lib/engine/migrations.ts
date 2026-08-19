@@ -501,6 +501,19 @@ function migrateV23toV24(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v24 → v25 : ajout de `transformationDerivedStats` (surcharge dynamique de DÉFENSE/INITIATIVE d'une
+ * forme animale CHOISIE en jeu, retour propriétaire 2026-08-19 — même patron que
+ * `transformationAbilities`). Purement additif : map vide (aucune forme choisie au chargement) si le
+ * champ est absent.
+ */
+function migrateV24toV25(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.transformationDerivedStats) === null) next.transformationDerivedStats = {};
+  next.schemaVersion = 25;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -528,6 +541,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   21: migrateV21toV22,
   22: migrateV22toV23,
   23: migrateV23toV24,
+  24: migrateV24toV25,
 };
 
 export class MigrationError extends Error {}

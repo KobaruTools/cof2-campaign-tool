@@ -207,6 +207,23 @@ describe('setEffectInput', () => {
     const c = char({ effectInputs: { 'animaux-r5': 'Ours brun' } });
     expect(setEffectInput(c, 'animaux-r5', '   ').effectInputs).toEqual({});
   });
+
+  it('dénormalise le snapshot de DEF/Initiative de la forme choisie (retour propriétaire 2026-08-19)', () => {
+    const patch = setEffectInput(char(), 'animaux-r5', 'Ours brun', { AGI: 2, CON: 5, FOR: 6 }, { defense: 16, initiative: 8 });
+    expect(patch.transformationAbilities).toEqual({ 'animaux-r5': { AGI: 2, CON: 5, FOR: 6 } });
+    expect(patch.transformationDerivedStats).toEqual({ 'animaux-r5': { defense: 16, initiative: 8 } });
+  });
+
+  it('une saisie vide purge aussi le snapshot de DEF/Initiative — pas de forme fantôme', () => {
+    const c = char({
+      effectInputs: { 'animaux-r5': 'Ours brun' },
+      transformationAbilities: { 'animaux-r5': { AGI: 2, CON: 5, FOR: 6 } },
+      transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+    });
+    const patch = setEffectInput(c, 'animaux-r5', '');
+    expect(patch.transformationAbilities).toEqual({});
+    expect(patch.transformationDerivedStats).toEqual({});
+  });
 });
 
 describe('setUsageCounter', () => {

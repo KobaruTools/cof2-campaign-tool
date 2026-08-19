@@ -17,6 +17,7 @@ import { currentHp } from '@/lib/character/gauges';
 import { isCustomItem, type Character, type EquipmentRef } from '@/lib/character/types';
 import {
   activeDefenseOverride,
+  activeInitiativeOverride,
   activeFeatureIdsForMods,
   activeRangedTargetMalusDieSources,
   aggregateImmunities,
@@ -374,6 +375,12 @@ export interface CharacterDerivedView {
    * d'air « Défense 25 »), indépendante de la formule habituelle. `null` = DEF recalculée normalement.
    */
   activeDefenseOverride: number | null;
+  /**
+   * Retour propriétaire 2026-08-19 — Initiative imposée par une transformation active (Forme
+   * animale : Initiative IMPRIMÉE de la créature choisie), symétrique de `activeDefenseOverride`.
+   * `null` = Initiative recalculée normalement.
+   */
+  activeInitiativeOverride: number | null;
   /**
    * PER-226 — sous-termes de breakdown des bonus à la touche conditionnés à l'arme portée (maître
    * d'armes : +1 au contact / à distance avec une arme de prédilection). Le TOTAL est déjà FONDU dans
@@ -751,6 +758,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const formAttackReplacingMelee = meleeReplacingFormAttack(character);
   // DEF imposée par une transformation active (PER-374, formes élémentaires) — voir `activeDefenseOverride`.
   const defenseOverride = activeDefenseOverride(character);
+  // Initiative imposée par une transformation active (retour propriétaire 2026-08-19, Forme animale).
+  const initiativeOverride = activeInitiativeOverride(character);
   // Bonus à la touche conditionnés à l'arme portée (PER-226) : maître d'armes +1 au contact avec une
   // arme de prédilection, +1 à distance avec une arme de jet de prédilection. Le total est FONDU dans
   // les mods (score) plus bas ; on garde le détail des sources pour l'infobulle de la touche.
@@ -927,6 +936,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedReplacingFormAttack: formAttackReplacingRanged,
     meleeReplacingFormAttack: formAttackReplacingMelee,
     activeDefenseOverride: defenseOverride,
+    activeInitiativeOverride: initiativeOverride,
     attackBonusModSources,
     itemDerivedModSources,
   };

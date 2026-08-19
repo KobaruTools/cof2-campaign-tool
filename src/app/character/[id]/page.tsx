@@ -885,6 +885,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       rangedReplacingFormAttack: formAttackReplacingRanged,
       meleeReplacingFormAttack: formAttackReplacingMelee,
       activeDefenseOverride: defenseOverride,
+      activeInitiativeOverride: initiativeOverride,
     },
     derivedCharacter,
     masterDerived,
@@ -1988,6 +1989,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   rangedReplacingFormAttack={formAttackReplacingRanged}
                   meleeReplacingFormAttack={formAttackReplacingMelee}
                   activeDefenseOverride={defenseOverride}
+                  activeInitiativeOverride={initiativeOverride}
                   attackBonusDie={display.attackBonusDieSources}
                   boundWeaponAttackDie={display.boundWeaponAttackDie}
                   attackMalusDie={attackMalusDie}

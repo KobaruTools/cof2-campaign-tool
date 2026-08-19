@@ -590,10 +590,28 @@ export function activeAbilityOverrides(character: Character): Partial<Record<Abi
 }
 
 /**
- * DEF imposée par une transformation ACTIVE (PER-374, formes élémentaires : « Défense 25 » fixe,
- * indépendante de la formule habituelle 10 + AGI + équipement). `null` = aucune surcharge active.
- * Une seule forme peut être active à la fois (interrupteurs mutuellement exclusifs) ; en cas de
- * conflit la dernière rencontrée l'emporte, comme `activeAbilityOverrideSources`.
+ * La surcharge DYNAMIQUE `character.transformationDerivedStats[inputKey]` (Forme animale, retour
+ * propriétaire 2026-08-19 — même patron que `transformationAbilities`, voir sa doc dans
+ * `activeAbilityOverrideSources`) est-elle ACTIVE ? Actif ⟺ l'interrupteur `activeWhenInputSet`
+ * correspondant, porté par LA capacité elle-même, l'est encore (le joueur a pu changer/retirer sa
+ * forme depuis).
+ */
+function isTransformationDerivedStatsInputActive(character: Character, inputKey: string): boolean {
+  const feature = featureById.get(inputKey);
+  if (!feature?.effects) return false;
+  const index = feature.effects.findIndex(
+    (e) => e.kind === 'conditional-stat-bonus' && e.activation.activeWhenInputSet === inputKey,
+  );
+  return index >= 0 && isEffectActive(character, inputKey, index);
+}
+
+/**
+ * DEF imposée par une transformation ACTIVE : soit un nombre FIXE imprimé dans les données
+ * (`Feature.effects[].defenseOverride`, PER-374, formes élémentaires : « Défense 25 »), soit la DEF
+ * de la créature CHOISIE en jeu (`character.transformationDerivedStats`, Forme animale, retour
+ * propriétaire 2026-08-19), indépendante de la formule habituelle 10 + AGI + équipement. `null` =
+ * aucune surcharge active. Une seule forme peut être active à la fois (interrupteurs mutuellement
+ * exclusifs) ; en cas de conflit la dernière rencontrée l'emporte, comme `activeAbilityOverrideSources`.
  */
 export function activeDefenseOverride(character: Character): number | null {
   let out: number | null = null;
@@ -604,6 +622,33 @@ export function activeDefenseOverride(character: Character): number | null {
       if (!isEffectActive(character, id, index)) return;
       out = e.defenseOverride;
     });
+  }
+  for (const [inputKey, stats] of Object.entries(character.transformationDerivedStats ?? {})) {
+    if (stats.defense === undefined || !isTransformationDerivedStatsInputActive(character, inputKey)) continue;
+    out = stats.defense;
+  }
+  return out;
+}
+
+/**
+ * Initiative imposée par une transformation ACTIVE : symétrique de `activeDefenseOverride`, soit un
+ * nombre FIXE imprimé dans les données (`Feature.effects[].initiativeOverride`), soit l'Initiative de
+ * la créature CHOISIE en jeu (`character.transformationDerivedStats`, Forme animale, retour
+ * propriétaire 2026-08-19). `null` = aucune surcharge active.
+ */
+export function activeInitiativeOverride(character: Character): number | null {
+  let out: number | null = null;
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    feature?.effects?.forEach((e, index) => {
+      if (e.kind !== 'conditional-stat-bonus' || e.initiativeOverride === undefined) return;
+      if (!isEffectActive(character, id, index)) return;
+      out = e.initiativeOverride;
+    });
+  }
+  for (const [inputKey, stats] of Object.entries(character.transformationDerivedStats ?? {})) {
+    if (stats.initiative === undefined || !isTransformationDerivedStatsInputActive(character, inputKey)) continue;
+    out = stats.initiative;
   }
   return out;
 }

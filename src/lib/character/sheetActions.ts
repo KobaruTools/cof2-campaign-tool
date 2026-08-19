@@ -213,20 +213,26 @@ export function toggleEffect(
 /**
  * Saisie libre d'état de jeu corrélée à une capacité (PER-70, ex. animal de Forme animale).
  * Une chaîne vide supprime la clé (pas de note fantôme) — et purge au passage
- * `Character.transformationAbilities[featureId]` s'il y en avait un (PER-375/PER-435 : pas de
- * snapshot de caracs fantôme pour une forme qu'on vient de quitter).
+ * `Character.transformationAbilities[featureId]`/`transformationDerivedStats[featureId]` s'il y en
+ * avait un (PER-375/PER-435 : pas de snapshot fantôme pour une forme qu'on vient de quitter).
  *
  * `abilitiesSnapshot`, quand fourni avec une valeur non vide, dénormalise les caractéristiques de la
  * forme CHOISIE (`AnimalFormSelector`, une fois le blob du bestiaire chargé) dans
  * `transformationAbilities[featureId]` — c'est de là que `activeAbilityOverrideSources` (`effects.ts`)
  * les relit, le moteur restant une fonction pure de `Character` seul (jamais d'accès au store
  * bestiaire asynchrone). Absent = capacité ordinaire, `transformationAbilities` inchangé.
+ *
+ * `derivedStatsSnapshot` fait de même pour la DEF/Initiative IMPRIMÉES de la créature choisie (retour
+ * propriétaire 2026-08-19 : elles n'étaient PAS mécanisées, seules les caracs l'étaient), dénormalisées
+ * dans `transformationDerivedStats[featureId]` et relues par `activeDefenseOverride`/
+ * `activeInitiativeOverride` (`effects.ts`).
  */
 export function setEffectInput(
   character: Character,
   featureId: string,
   value: string,
   abilitiesSnapshot?: Partial<Record<AbilityId, number>>,
+  derivedStatsSnapshot?: { defense?: number; initiative?: number },
 ): Partial<Character> {
   const next = { ...character.effectInputs };
   const trimmed = value.trim();
@@ -239,6 +245,16 @@ export function setEffectInput(
     patch.transformationAbilities = nextAbilities;
   } else if (trimmed !== '' && abilitiesSnapshot) {
     patch.transformationAbilities = { ...character.transformationAbilities, [featureId]: abilitiesSnapshot };
+  }
+  if (trimmed === '' && character.transformationDerivedStats?.[featureId]) {
+    const nextDerivedStats = { ...character.transformationDerivedStats };
+    delete nextDerivedStats[featureId];
+    patch.transformationDerivedStats = nextDerivedStats;
+  } else if (trimmed !== '' && derivedStatsSnapshot) {
+    patch.transformationDerivedStats = {
+      ...character.transformationDerivedStats,
+      [featureId]: derivedStatsSnapshot,
+    };
   }
   return patch;
 }

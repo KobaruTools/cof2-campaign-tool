@@ -97,8 +97,13 @@ import type { RestorableResourceKind } from './restorableResources';
  *   moteur (`activeAbilityOverrideSources`) reste une fonction PURE de `Character` seul, sans accès au
  *   store bestiaire asynchrone. Indexé par id de la capacité PORTEUSE du choix (`'animaux-r5'`),
  *   comme `transformationDepletion`. La migration ajoute `{}` (aucune forme choisie au chargement).
+ * v25 : ajout de `transformationDerivedStats` (surcharge DYNAMIQUE de DÉFENSE/INITIATIVE de la même
+ *   forme choisie — retour propriétaire 2026-08-19 : la DEF et l'Initiative imprimées au bloc de la
+ *   créature n'étaient PAS mécanisées, seules les caractéristiques (`transformationAbilities`)
+ *   l'étaient. Même patron (id de la capacité PORTEUSE, dénormalisé au choix par `AnimalFormSelector`).
+ *   La migration ajoute `{}` (aucune forme choisie au chargement).
  */
-export const SCHEMA_VERSION = 24;
+export const SCHEMA_VERSION = 25;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -1105,6 +1110,18 @@ export interface Character {
    * jamais de snapshot fantôme d'un animal qu'on a quitté. `{}` = aucune forme choisie.
    */
   transformationAbilities: Record<string, Partial<Record<AbilityId, number>>>;
+
+  /**
+   * Surcharge DYNAMIQUE de DÉFENSE/INITIATIVE d'une forme CHOISIE en jeu (retour propriétaire
+   * 2026-08-19, Forme animale `animaux-r5`, p. 114 : « acquiert… les attaques, la DEF et les
+   * capacités naturelles de la forme choisie »). Même patron que `transformationAbilities` (dénormalisé
+   * depuis le blob bestiaire de la créature choisie par `AnimalFormSelector`, lu par
+   * `activeDefenseOverride`/`activeInitiativeOverride` dans `effects.ts`), mais pour les DEUX stats
+   * DÉRIVÉES imprimées telles quelles au bloc de la créature plutôt que recalculées depuis AGI. Clé =
+   * id de la capacité PORTEUSE du choix (`'animaux-r5'`), comme `transformationAbilities`. Purgé (clé
+   * supprimée) dès que le choix est effacé (`setEffectInput`). `{}` = aucune forme choisie.
+   */
+  transformationDerivedStats: Record<string, { defense?: number; initiative?: number }>;
 
   /**
    * Compagnons MULTI-INSTANCES (PER-235) : clé = `id` de la capacité qui les octroie (ex.

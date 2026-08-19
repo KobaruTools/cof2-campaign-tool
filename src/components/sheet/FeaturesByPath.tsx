@@ -1455,7 +1455,7 @@ export interface FeaturesByPathProps {
    * par « Forme animale »). État transitoire, modifiable même hors édition. Absent
    * → la saisie est affichée en lecture seule (ou masquée si vide).
    */
-  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>) => void;
+  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: { defense?: number; initiative?: number }) => void;
   /**
    * Met à jour le décompte d'une capacité à usages limités (PER-70 — ex. « Les sept
    * vies du chat »). État de jeu, modifiable hors édition. Absent → compteur en
@@ -1735,7 +1735,7 @@ function AnimalFormSelector({
   onSetInput,
 }: {
   character: Character;
-  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>) => void;
+  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: { defense?: number; initiative?: number }) => void;
 }) {
   const list = useBestiaryStore((s) => s.list);
   const bestiaryStatus = useBestiaryStore((s) => s.status);
@@ -1786,20 +1786,34 @@ function AnimalFormSelector({
   const blob = value ? blobs[value] : undefined;
 
   // Mécanisation des caracs (retour propriétaire 2026-08-18, RAW p. 114 : « conserve seulement…
-  // INT et VOL ») : dès que le blob de la créature choisie est chargé, dénormalise ses
-  // caractéristiques (sauf INT/VOL) dans `Character.transformationAbilities['animaux-r5']` —
-  // `activeAbilityOverrideSources` (effects.ts) les relit de là, le moteur restant pur (aucun
-  // accès au store bestiaire). Peut arriver APRÈS la sélection (le blob n'est pas toujours déjà
-  // en cache) : redéclenché dès qu'il devient disponible. Un `JSON.stringify` suffit à comparer
-  // (7 clés max, valeurs numériques) — évite de réécrire le patch en boucle une fois à jour.
+  // INT et VOL ») ET de la DEF/Initiative (retour propriétaire 2026-08-19, même RAW : « acquiert…
+  // les attaques, la DEF et les capacités naturelles de la forme choisie ») : dès que le blob de la
+  // créature choisie est chargé, dénormalise ses caractéristiques (sauf INT/VOL) dans
+  // `Character.transformationAbilities['animaux-r5']` et sa DEF/Initiative IMPRIMÉES dans
+  // `transformationDerivedStats['animaux-r5']` — `activeAbilityOverrideSources`/
+  // `activeDefenseOverride`/`activeInitiativeOverride` (effects.ts) les relisent de là, le moteur
+  // restant pur (aucun accès au store bestiaire). Peut arriver APRÈS la sélection (le blob n'est pas
+  // toujours déjà en cache) : redéclenché dès qu'il devient disponible. Un `JSON.stringify` suffit à
+  // comparer — évite de réécrire le patch en boucle une fois à jour.
   useEffect(() => {
     if (!onSetInput || !value || !blob?.abilities) return;
     const snapshot = Object.fromEntries(
       Object.entries(blob.abilities).filter(([ability]) => ability !== 'INT' && ability !== 'VOL'),
     ) as Partial<Record<AbilityId, number>>;
+    const derivedSnapshot: { defense?: number; initiative?: number } = {
+      ...(blob.defense !== undefined ? { defense: blob.defense } : {}),
+      ...(blob.initiative !== undefined ? { initiative: blob.initiative } : {}),
+    };
     const current = character.transformationAbilities?.['animaux-r5'];
-    if (current && JSON.stringify(current) === JSON.stringify(snapshot)) return;
-    onSetInput('animaux-r5', value, snapshot);
+    const currentDerived = character.transformationDerivedStats?.['animaux-r5'];
+    if (
+      current &&
+      JSON.stringify(current) === JSON.stringify(snapshot) &&
+      currentDerived &&
+      JSON.stringify(currentDerived) === JSON.stringify(derivedSnapshot)
+    )
+      return;
+    onSetInput('animaux-r5', value, snapshot, derivedSnapshot);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, blob, onSetInput]);
 
@@ -2074,7 +2088,7 @@ function AnimalFormDialog({
   onOpenChange,
 }: {
   character: Character;
-  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>) => void;
+  onSetInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: { defense?: number; initiative?: number }) => void;
   toggle: ReactNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -3316,7 +3330,7 @@ function PathBlock({
   /** États posés par le MJ en séance : grisent l'interrupteur du buff correspondant (PER-314). */
   sessionStatusIds?: readonly string[];
   /** Saisie libre corrélée à une capacité (animal de Forme animale, PER-70). */
-  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>) => void;
+  onSetEffectInput?: (featureId: string, value: string, abilitiesSnapshot?: Partial<Record<AbilityId, number>>, derivedStatsSnapshot?: { defense?: number; initiative?: number }) => void;
   /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
   /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156). État de jeu, hors édition. */

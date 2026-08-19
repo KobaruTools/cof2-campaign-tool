@@ -40,6 +40,8 @@ import {
   damageReductionSources,
   stackedDamageReductions,
   activeAbilityOverrideSources,
+  activeDefenseOverride,
+  activeInitiativeOverride,
   activeFormAbilityBonuses,
   creatureBonusDiceForPath,
   acquiredTestDomainIds,
@@ -715,6 +717,48 @@ describe('surcharge de caractéristiques par transformation (PER-74, forme de lo
     const fromWolf = setEffectToggle(wolf({ 'prestige-lycanthrope-r5': [true] }), 'prestige-lycanthrope-r4', 0, true);
     expect(fromWolf['prestige-lycanthrope-r4']?.[0]).toBe(true);
     expect(fromWolf['prestige-lycanthrope-r5']?.[0]).toBe(false);
+  });
+});
+
+describe('DEF/Initiative imposées par Forme animale (retour propriétaire 2026-08-19, animaux-r5)', () => {
+  const druid = (over: Partial<Character> = {}): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 5,
+      abilities: { FOR: 0, AGI: 1, CON: 1, PER: 0, CHA: 0, INT: 0, VOL: 0 },
+      baseAbilities: { FOR: 0, AGI: 1, CON: 1, PER: 0, CHA: 0, INT: 0, VOL: 0 },
+      featureIds: ['animaux-r1', 'animaux-r5'],
+      ...over,
+    }) as Character;
+
+  it('aucune forme choisie → aucune surcharge', () => {
+    const c = druid();
+    expect(activeDefenseOverride(c)).toBeNull();
+    expect(activeInitiativeOverride(c)).toBeNull();
+  });
+
+  it('forme choisie mais interrupteur éteint (effectInputs vide) → aucune surcharge', () => {
+    const c = druid({ transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } } });
+    expect(activeDefenseOverride(c)).toBeNull();
+    expect(activeInitiativeOverride(c)).toBeNull();
+  });
+
+  it('forme active (loup choisi) → DEF et Initiative imposées par le bloc de la créature', () => {
+    const c = druid({
+      effectInputs: { 'animaux-r5': 'loup' },
+      transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+    });
+    expect(activeDefenseOverride(c)).toBe(16);
+    expect(activeInitiativeOverride(c)).toBe(8);
+  });
+
+  it('forme désactivée (effectInputs effacé) mais snapshot pas encore purgé → surcharge inactive', () => {
+    const c = druid({
+      effectInputs: {},
+      transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+    });
+    expect(activeDefenseOverride(c)).toBeNull();
+    expect(activeInitiativeOverride(c)).toBeNull();
   });
 });
 

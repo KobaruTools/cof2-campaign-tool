@@ -186,6 +186,13 @@ export interface DerivedStatsGridProps {
    */
   activeDefenseOverride?: number | null;
   /**
+   * Retour propriétaire 2026-08-19 — Initiative imposée par une FORME active (Forme animale :
+   * Initiative IMPRIMÉE de la créature choisie), symétrique de `activeDefenseOverride`. `null` =
+   * aucune surcharge, Initiative recalculée normalement. Priorité la plus BASSE : une surcharge
+   * manuelle (`overrides.initiative`) l'emporte toujours.
+   */
+  activeInitiativeOverride?: number | null;
+  /**
    * PER-74 — dé bonus à TOUTES les attaques (contact/distance/magie), auto tant que PV < niveau
    * (flibustier r8 « Pas de quartier »). Affiche un badge double-d20 sur les cartes d'attaque. Vide
    * ou absent = aucun.
@@ -274,6 +281,7 @@ export function DerivedStatsGrid({
   rangedReplacingFormAttack,
   meleeReplacingFormAttack,
   activeDefenseOverride = null,
+  activeInitiativeOverride = null,
   attackBonusDie = [],
   boundWeaponAttackDie = null,
   attackMalusDie = [],
@@ -355,9 +363,13 @@ export function DerivedStatsGrid({
         const manualForced = overrides ? key in overrides : false;
         // PER-374 — DEF imposée par une forme active (transformation) : priorité la plus BASSE, une
         // surcharge manuelle du joueur/MJ (`overrides.def`) l'emporte toujours si les deux sont posées.
-        const formForced = id === 'defense' && !manualForced && activeDefenseOverride !== null;
+        // Retour propriétaire 2026-08-19 — même patron pour l'Initiative (Forme animale).
+        const formForced =
+          (id === 'defense' && !manualForced && activeDefenseOverride !== null) ||
+          (id === 'initiative' && !manualForced && activeInitiativeOverride !== null);
         const forced = manualForced || formForced;
-        const overrideValue = manualForced ? (overrides![key] ?? 0) : formForced ? activeDefenseOverride : null;
+        const formForcedValue = id === 'defense' ? activeDefenseOverride : activeInitiativeOverride;
+        const overrideValue = manualForced ? (overrides![key] ?? 0) : formForced ? formForcedValue : null;
         const display = forced ? overrideValue : computed;
         // Vue compacte à 2 colonnes (mobile) réservée aux stats SIMPLES en lecture : titre
         // masqué et icône réduite pour gagner de la place. Les lignes d'attaque restent en
