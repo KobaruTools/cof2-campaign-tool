@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 25,
+  "id": "recette-per378-druide-maitre-de-la-nature",
+  "name": "Recette PER-378 — Druide, voie du maître de la nature",
+  "identity": {
+    "description": "ATTENDU (PER-378, p.172-173) : r4 Amitié animale — richText calcule [=PER] heures et terme nommé rang. r5 Seigneur de la nature — 2 choix de milieu (forêt/jungle puis montagnes/collines débloqué au rang 7), interrupteur « En milieu de prédilection » actif → dé bonus à TOUS les tests + soin {1d4°} PV automatique en récupération rapide (sans dépense de DR). r6 Invisibilité aux animaux — interrupteur PROPRE actif (indépendant de r5). r7 Monture géante — richText calcule [rang + PER], pas de creatureProfile (créature ouverte). r8 Magie druidique innée — usageCounter 3/jour + interrupteur PROPRE actif."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "druide",
+  "level": 8,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "prestige-maitre-de-la-nature-r4",
+    "prestige-maitre-de-la-nature-r5",
+    "prestige-maitre-de-la-nature-r6",
+    "prestige-maitre-de-la-nature-r7",
+    "prestige-maitre-de-la-nature-r8"
+  ],
+  "featureChoices": {
+    "prestige-maitre-de-la-nature-r5": [
+      "forest-jungle",
+      "mountain-hill"
+    ]
+  },
+  "effectToggles": {
+    "prestige-maitre-de-la-nature-r5": [
+      true
+    ],
+    "prestige-maitre-de-la-nature-r6": [
+      true
+    ],
+    "prestige-maitre-de-la-nature-r8": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "transformationDerivedStats": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-378 — voie du maître de la nature, p.172-173. Recette moteur pur, pas de vérification navigateur (headless).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
