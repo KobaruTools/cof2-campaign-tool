@@ -3669,6 +3669,15 @@ export interface CreatureProfile {
   /** Particularités libres (déplacement, « trop petit pour attaquer »…). */
   note?: string;
   /**
+   * CAPACITÉ d'attaque GRATUITE disponible UNIQUEMENT quand le maître est EN SELLE sur cette monture
+   * (PER-331, worg du gobelin p. 23 : « juché sur sa monture, il peut lui ordonner une morsure gratuite
+   * (G) une fois par round »). Rendue en CARTE de capacité dédiée (accent ambre, icône éclair) sur la
+   * carte du compagnon, affichée SEULEMENT lorsque l'interrupteur « en selle » est actif (`CompanionsPanel`,
+   * gaté sur `enSelleFor`). `text` est au format `richText` (dés/constantes résolus contre le MAÎTRE).
+   * Absent = aucune capacité montée. Réservé aux montures (`companionType: 'mount'`).
+   */
+  mountedFreeAttack?: { name: string; text: string };
+  /**
    * Description ENRICHIE d'une créature que le livre présente SANS bloc de stats (PER-235) :
    * une « force, pas une créature » (Serviteur invisible, invocation-r2, p. 96). Rendue en une
    * ligne `richText` (résolution des caractéristiques/formules du MAÎTRE, ex. `[CHA]`, `[=CHA]`)
@@ -4944,6 +4953,14 @@ export interface ProgressionRules {
 export const CREATURE_CATEGORIES = ['humanoides', 'animaux', 'creatures-fantastiques', 'pnj'] as const;
 export type CreatureCategory = (typeof CREATURE_CATEGORIES)[number];
 
+/**
+ * Catégories taxonomiques de « Forme animale » (mêmes ids que `animalFormCategory`
+ * ci-dessous et que les options de `animaux-r1`/`prestige-changeforme-r5`) — sert
+ * aussi bien au moteur (druide) qu'au sous-filtre du bestiaire.
+ */
+export const ANIMAL_FORM_CATEGORIES = ['mammals', 'fish', 'reptiles', 'birds', 'arthropods'] as const;
+export type AnimalFormCategory = (typeof ANIMAL_FORM_CATEGORIES)[number];
+
 /** Catégorie de taille (table p. 260). */
 export const CREATURE_SIZES = [
   'minuscule',
@@ -5100,7 +5117,7 @@ export interface Creature {
    * livre (« Animal petit »…) qu'aucune taxonomie précise ne couvre : dans ce cas le sélecteur ne
    * restreint pas cette créature par catégorie (repli permissif, cf. `AnimalFormSelector`).
    */
-  animalFormCategory?: 'mammals' | 'fish' | 'arthropods' | 'reptiles' | 'birds';
+  animalFormCategory?: AnimalFormCategory;
   /**
    * Marque une variante GÉANTE ou PRÉHISTORIQUE d'un animal (p. 170, rang 6 du changeforme :
    * « peut prendre la forme des animaux géants ou préhistoriques ») — gate son accès en Forme

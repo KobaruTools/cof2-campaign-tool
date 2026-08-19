@@ -5,6 +5,7 @@
  * chargé À LA DEMANDE pour la créature sélectionnée.
  */
 import type {
+  AnimalFormCategory,
   CreatureCategory,
   CreatureNature,
   CreatureSize,
@@ -24,7 +25,7 @@ export interface CreatureListItem {
   size?: CreatureSize;
   nature: CreatureNature[];
   /** Catégorie taxonomique pour « Forme animale » — cf. `Creature.animalFormCategory`. */
-  animalFormCategory?: 'mammals' | 'fish' | 'arthropods' | 'reptiles' | 'birds';
+  animalFormCategory?: AnimalFormCategory;
   /** Variante géante/préhistorique — cf. `Creature.animalFormFlavor`. */
   animalFormFlavor?: 'geant' | 'prehistorique';
   baseCreatureId?: string;

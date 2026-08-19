@@ -45,15 +45,18 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { alpha } from "@mui/material/styles";
 import {
+  ANIMAL_FORM_CATEGORIES,
   CREATURE_CATEGORIES,
   CREATURE_NATURES,
   CREATURE_SIZES,
+  type AnimalFormCategory,
   type CreatureCategory,
   type CreatureNature,
   type CreatureSize,
 } from "@/data/schema";
 import type { CreatureListItem } from "@/lib/bestiary";
 import {
+  ANIMAL_FORM_CATEGORY_LABELS,
   CREATURE_CATEGORY_LABELS,
   CREATURE_NATURE_LABELS,
   CREATURE_SIZE_LABELS,
@@ -381,13 +384,31 @@ function BestiaryBrowserView({
     "",
     (raw) => (typeof raw === "string" ? raw : undefined),
   );
-  const [category, setCategory] = usePersistedState<CreatureCategory | "all">(
-    "bestiary:category",
-    "all",
+  // Filtre catégorie : MULTI-SÉLECTION complémentaire (facette OR), pas exclusif — cocher
+  // « Animaux » PUIS « Humanoïdes » ajoute les deux catégories au lieu de remplacer le choix ;
+  // tout décocher retombe sur « tous » (tableau vide). Même patron que taille/nature ci-dessous.
+  const [categories, setCategories] = usePersistedState<CreatureCategory[]>(
+    "bestiary:categories",
+    [],
     (raw) =>
-      raw === "all" ||
-      (CREATURE_CATEGORIES as readonly string[]).includes(raw as string)
-        ? (raw as CreatureCategory | "all")
+      Array.isArray(raw)
+        ? (raw.filter((c) =>
+            (CREATURE_CATEGORIES as readonly string[]).includes(c),
+          ) as CreatureCategory[])
+        : undefined,
+  );
+  // Sous-filtre taxonomique de « Animaux » (Mammifères/Poissons/…, cf. `animalFormCategory`) —
+  // n'a de sens que si « Animaux » fait partie des catégories cochées ; masqué sinon.
+  const [animalFormCategories, setAnimalFormCategories] = usePersistedState<
+    AnimalFormCategory[]
+  >(
+    "bestiary:animal-form-categories",
+    [],
+    (raw) =>
+      Array.isArray(raw)
+        ? (raw.filter((c) =>
+            (ANIMAL_FORM_CATEGORIES as readonly string[]).includes(c),
+          ) as AnimalFormCategory[])
         : undefined,
   );
   // Filtre « livre source » : id de source ou `"all"`. Une valeur périmée (source
@@ -459,7 +480,8 @@ function BestiaryBrowserView({
   const filtersActive =
     query !== "" ||
     effectiveSource !== "all" ||
-    category !== "all" ||
+    categories.length > 0 ||
+    animalFormCategories.length > 0 ||
     sizes.length > 0 ||
     natures.length > 0 ||
     ncRange[0] !== ncMin ||
@@ -469,7 +491,8 @@ function BestiaryBrowserView({
   const resetFilters = () => {
     setQuery("");
     setSource("all");
-    setCategory("all");
+    setCategories([]);
+    setAnimalFormCategories([]);
     setSizes([]);
     setNatures([]);
     setNcRange([ncMin, ncMax]);
@@ -478,6 +501,8 @@ function BestiaryBrowserView({
   // Prédicat de correspondance d'une créature aux filtres actifs.
   const matches = useMemo(() => {
     const q = norm(query.trim());
+    const categorySet = new Set(categories);
+    const animalFormCategorySet = new Set(animalFormCategories);
     const sizeSet = new Set(sizes);
     const natureSet = new Set(natures);
     const [lo, hi] = ncRange;
@@ -485,7 +510,16 @@ function BestiaryBrowserView({
     return (c: CreatureListItem): boolean => {
       if (q && !norm(c.name).includes(q)) return false;
       if (effectiveSource !== "all" && c.sourceId !== effectiveSource) return false;
-      if (category !== "all" && c.category !== category) return false;
+      if (categorySet.size > 0 && !categorySet.has(c.category)) return false;
+      // Sous-filtre taxonomique : n'agit que sur les créatures « Animaux » ET seulement
+      // quand cette catégorie est cochée (sinon la rangée de chips reste masquée).
+      if (
+        categorySet.has("animaux") &&
+        animalFormCategorySet.size > 0 &&
+        c.category === "animaux" &&
+        (!c.animalFormCategory || !animalFormCategorySet.has(c.animalFormCategory))
+      )
+        return false;
       if (sizeSet.size > 0 && (!c.size || !sizeSet.has(c.size))) return false;
       if (natureSet.size > 0 && !(c.nature ?? []).some((n) => natureSet.has(n)))
         return false;
@@ -493,7 +527,17 @@ function BestiaryBrowserView({
       if (c.nc == null) return isFullNcRange;
       return c.nc >= lo && c.nc <= hi;
     };
-  }, [query, effectiveSource, category, sizes, natures, ncRange, ncMin, ncMax]);
+  }, [
+    query,
+    effectiveSource,
+    categories,
+    animalFormCategories,
+    sizes,
+    natures,
+    ncRange,
+    ncMin,
+    ncMax,
+  ]);
 
   // Familles visibles + variantes à montrer : si la base correspond, on déploie toute la
   // famille ; sinon on ne montre que les variantes qui correspondent (la base sert d'en-tête).
@@ -684,21 +728,34 @@ function BestiaryBrowserView({
           }}
         >
           <ToggleButtonGroup
-            exclusive
             size="small"
-            value={category}
-            onChange={(_, v: CreatureCategory | "all" | null) =>
-              v != null && setCategory(v)
-            }
+            value={categories}
+            onChange={(_, v: CreatureCategory[]) => setCategories(v)}
             sx={{ flexWrap: "wrap" }}
           >
-            <ToggleButton value="all">Toutes</ToggleButton>
             {CREATURE_CATEGORIES.map((c) => (
               <ToggleButton key={c} value={c}>
                 {CREATURE_CATEGORY_LABELS[c]}
               </ToggleButton>
             ))}
           </ToggleButtonGroup>
+
+          {/* Sous-filtre taxonomique de « Animaux » — n'apparaît que si cette catégorie est
+              cochée ci-dessus ; même patron multi-sélection complémentaire. */}
+          {categories.includes("animaux") && (
+            <ToggleButtonGroup
+              size="small"
+              value={animalFormCategories}
+              onChange={(_, v: AnimalFormCategory[]) => setAnimalFormCategories(v)}
+              sx={{ flexWrap: "wrap" }}
+            >
+              {ANIMAL_FORM_CATEGORIES.map((c) => (
+                <ToggleButton key={c} value={c}>
+                  {ANIMAL_FORM_CATEGORY_LABELS[c]}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          )}
 
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel id="bestiary-size-label">Taille</InputLabel>

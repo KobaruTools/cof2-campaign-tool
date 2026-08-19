@@ -1,5 +1,6 @@
 import type {
   AbilityId,
+  AnimalFormCategory,
   CreatureCategory,
   CreatureNature,
   CreatureProfile,
@@ -17,6 +18,20 @@ export const CREATURE_CATEGORY_LABELS: Record<CreatureCategory, string> = {
   animaux: "Animaux",
   "creatures-fantastiques": "Créatures fantastiques",
   pnj: "PNJ",
+};
+
+/**
+ * Libellés des catégories taxonomiques de « Forme animale » (mêmes textes que les
+ * options de `animaux-r1`, p. 114) — sous-filtre du bestiaire quand « Animaux » est
+ * sélectionné. Les mammifères n'ont pas d'option dédiée dans la voie (acquis d'office
+ * au rang 1) : libellé repris ici pour le filtre.
+ */
+export const ANIMAL_FORM_CATEGORY_LABELS: Record<AnimalFormCategory, string> = {
+  mammals: "Mammifères",
+  fish: "Poissons (et mollusques)",
+  reptiles: "Reptiles (et amphibiens)",
+  birds: "Oiseaux",
+  arthropods: "Arthropodes",
 };
 
 /** Libellés des tailles (table p. 260). */
