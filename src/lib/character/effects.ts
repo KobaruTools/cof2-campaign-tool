@@ -292,6 +292,11 @@ export interface RestRecoveryHealBonus {
   evolving: boolean;
   /** Contexte requis (repris de l'interrupteur), ex. « en milieu naturel ». */
   conditionLabel?: string;
+  /**
+   * `false` : soin AUTOMATIQUE à chaque récupération rapide, sans dépenser de DR (PER-74, maître de la
+   * nature r5). `true`/absent : comportement historique, le soin n'est ajouté que si un DR est dépensé.
+   */
+  requiresRecoveryDieSpend: boolean;
   sourcePage?: number;
 }
 
@@ -325,6 +330,7 @@ export function restRecoveryDieHealBonuses(character: Character): RestRecoveryHe
       die,
       evolving: !!bonus.dice.evolving,
       conditionLabel: bonus.conditionLabel,
+      requiresRecoveryDieSpend: bonus.requiresRecoveryDieSpend ?? true,
       sourcePage: bonus.sourcePage,
     });
   }
@@ -1820,6 +1826,34 @@ export function profileFeaturesDisabledByTransformation(
     if (source) disabled.set(targetId, { byFeatureId: source.byFeatureId, byFeatureName: source.byFeatureName });
   }
   return disabled;
+}
+
+/**
+ * Une transformation ACTIVE portant `disablesProfileFeatures` est-elle en cours (Métamorphose de
+ * l'ours r6/r8, formes élémentaires r8, Forme animale/changeforme, retour propriétaire 2026-08-19,
+ * animaux-r5 p. 114 : « ne peut ni utiliser son équipement ni ses propres capacités sous cette
+ * forme ») ? Réutilise le MÊME drapeau que `profileFeaturesDisabledByTransformation` (pas un second
+ * champ à maintenir) : toute transformation qui prive des capacités de profil prive AUSSI des
+ * propriétés d'objets magiques PORTÉS (RD/immunités/bonus de test de domaine — p. ex. Défense,
+ * Action libre, Ombre, Natation, cf. `magicItemEffects.ts`). Consommé par `damageReductionSources`
+ * et l'agrégation d'immunités (`characterDerivedView.ts`). N'affecte PAS les bonus de
+ * CARACTÉRISTIQUE d'objets (`abilityBonusesFromEquipment`, `effectiveAbilities`) : ceux-ci
+ * s'ajoutent délibérément par-dessus toute transformation depuis PER-272 (retour propriétaire
+ * confirmé 2026-08-19 en revisitant cette même question) — un anneau enchanté continue d'agir sous
+ * forme animale, seule la portée « propriété magique portée » ci-dessus change.
+ */
+export function magicItemPropertyBonusesDisabledByTransformation(character: Character): boolean {
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    const disabled = feature?.effects?.some(
+      (effect, index) =>
+        effect.kind === 'conditional-stat-bonus' &&
+        !!effect.disablesProfileFeatures &&
+        isEffectActive(character, id, index),
+    );
+    if (disabled) return true;
+  }
+  return false;
 }
 
 /**
@@ -3524,11 +3558,15 @@ export function damageReductionSources(character: Character): DamageReductionSou
   // RD portées par les OBJETS magiques PORTÉS (Défense/Défense sup → RD plate ; Résistance [substance] X
   // → RD typée ; Protection → ÷2 sur les critiques/sournoises ; p. 253, PER-307). Émises dans la MÊME
   // forme que les capacités pour être cumulées par `stackedDamageReductions` (une Défense RD 2 s'additionne
-  // à une Peau d'acier). Sans `featureId` : l'objet n'appartient à aucune voie.
-  for (const line of character.equipment ?? []) {
-    if (!line.worn) continue;
-    const name = lineDisplayName(line);
-    for (const reduction of magicDamageReductions(line)) out.push({ name, reduction });
+  // à une Peau d'acier). Sans `featureId` : l'objet n'appartient à aucune voie. Retour propriétaire
+  // 2026-08-19 : ignorées pendant une transformation `disablesProfileFeatures` (Forme animale, Métamorphose
+  // de l'ours, formes élémentaires) — cf. `magicItemPropertyBonusesDisabledByTransformation`.
+  if (!magicItemPropertyBonusesDisabledByTransformation(character)) {
+    for (const line of character.equipment ?? []) {
+      if (!line.worn) continue;
+      const name = lineDisplayName(line);
+      for (const reduction of magicDamageReductions(line)) out.push({ name, reduction });
+    }
   }
   return out;
 }

@@ -420,8 +420,13 @@ export function PlayerStatusPanel({
             />
             {/* Bonus de soin par DR ACTIF (Survie « en milieu naturel », native ou empruntée, PER-324) :
                 affiché « + <dé> » juste à droite du dé de récupération pour signaler visuellement que
-                chaque DR dépensé au repos soigne en plus. Chaque bonus a sa puce ; vide = rien. */}
-            {recoveryHealBonuses.map((b) => (
+                chaque DR dépensé au repos soigne en plus. Chaque bonus a sa puce ; vide = rien.
+                Les bonus SANS dépense de DR (`requiresRecoveryDieSpend: false`, PER-378) ne sont pas
+                repris ici — la puce parle explicitement de DR ; ils restent visibles dans la modale de
+                repos court elle-même. */}
+            {recoveryHealBonuses
+              .filter((b) => b.requiresRecoveryDieSpend)
+              .map((b) => (
               <AppTooltip
                 key={b.featureId}
                 title={`${b.name}${b.conditionLabel ? ` (${b.conditionLabel})` : ''} : +${b.count > 1 ? b.count : ''}${b.die}${b.evolving ? '°' : ''} PV par dé de récupération dépensé au repos`}

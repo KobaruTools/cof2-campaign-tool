@@ -2938,6 +2938,18 @@ interface FeatureChoiceBase {
    * chevalier dragon, ce que rien dans son libellé ne laisserait deviner. Absent = aucune précision.
    */
   note?: string;
+  /**
+   * Rang MINIMUM à atteindre dans la voie HÔTE (celle qui porte ce choix) pour que le choix soit
+   * PROPOSÉ du tout (PER-74, archimage r5 « Bâton magique », p. 154 : « à partir du rang 7, il peut
+   * AJOUTER » un 2e sort ; réutilisé maître de la nature r5, p. 172 : « un milieu naturel supplémentaire
+   * au rang 7 »). Retour proprio 2026-08-10 : masquer le contrôle tant que le palier n'est pas atteint
+   * plutôt que le laisser sélectionnable sans effet (la fiche est permissive PAR DÉFAUT, mais un choix
+   * qu'on peut faire sans qu'il se passe quoi que ce soit se lit comme un bug). Même traitement que
+   * `option.repeat` avant son premier palier (cf. `isChoiceActionable`, choices.ts). Générique à TOUS
+   * les `kind` de choix (déplacé de `PathFeatureChoice`, son seul porteur jusqu'ici). Absent = toujours
+   * proposé (comportement historique).
+   */
+  unlockedAtHostPathRank?: number;
 }
 
 /** Choix d'une caractéristique parmi un domaine autorisé. */
@@ -3074,16 +3086,6 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * comportement par défaut (exclusion). Résolu par `featuresInChoiceDomain`.
    */
   includeOwned?: boolean;
-  /**
-   * Rang MINIMUM à atteindre dans la voie HÔTE (celle qui porte ce choix) pour que le choix soit
-   * PROPOSÉ du tout (PER-74, archimage r5 « Bâton magique », p. 154 : « à partir du rang 7, il peut
-   * AJOUTER » un 2e sort). Retour proprio 2026-08-10 : masquer le contrôle tant que le palier n'est
-   * pas atteint plutôt que le laisser sélectionnable sans effet (la fiche est permissive PAR DÉFAUT,
-   * mais un choix qu'on peut faire sans qu'il se passe quoi que ce soit se lit comme un bug). Même
-   * traitement que `option.repeat` avant son premier palier (cf. `isChoiceActionable`, choices.ts).
-   * Absent = toujours proposé (comportement historique).
-   */
-  unlockedAtHostPathRank?: number;
 }
 
 /**
@@ -3306,6 +3308,20 @@ export interface FeatureChoiceOption {
    * l'option (même patron que `minLevel`) tant que non débloquée ; absent = aucune condition.
    */
   requiresBestiaryCreatureSlug?: string;
+  /**
+   * Slug d'une créature du Bestiaire dont les VRAIES statistiques REMPLACENT `creatureProfile` de
+   * cette option quand le compte l'a débloquée (PER-439 suite) — ex. Monture fantastique
+   * (cavalier-r5) : Pégase/Hippogriffe n'ont, à l'origine, que des caractéristiques EXTRAPOLÉES
+   * (absentes du livre de base) ; le supplément Bestiaire payant les chiffre réellement, mais on ne
+   * peut PAS les embarquer statiquement dans le bundle client (fuite du contenu payant à tout le
+   * monde, débloqué ou non — contrainte légale). Contrairement à `requiresBestiaryCreatureSlug`,
+   * ce champ NE GATE PAS l'option elle-même : elle reste choisissable par tous, avec son
+   * `creatureProfile` authored (souvent extrapolé) comme repli tant que la créature n'est pas
+   * accessible. Résolu à l'affichage (`preferredBestiaryCreatureSlug`, `companions.ts` +
+   * `FeaturesByPath.tsx`) via `creatureLinkAccess` contre `useBestiaryStore().list` (RLS-filtrée),
+   * puis converti par `creatureToProfile` (`src/lib/character/mounts.ts`).
+   */
+  preferBestiaryCreatureSlug?: string;
   /**
    * Profil de créature octroyé QUAND cette option est retenue (PER-140) — il PRIME sur le
    * `Feature.creatureProfile` de base. Ex. Monture fantastique : chaque monture (cheval de guerre
@@ -4528,6 +4544,16 @@ export interface Feature {
     dice: { count: number; die: Die; evolving?: boolean };
     /** Libellé du contexte requis, repris pour l'UI du repos (ex. « en milieu naturel »). */
     conditionLabel?: string;
+    /**
+     * `false` : le soin s'applique AUTOMATIQUEMENT à chaque récupération RAPIDE, sans dépenser de DR
+     * (PER-74, maître de la nature r5, p. 173 : « récupère 1d4° PV durant chaque récupération rapide »
+     * en milieu de prédilection — à distinguer du cas Survie/rôdeur ci-dessus, qui EXIGE une dépense).
+     * Rendu HORS du bloc « dépenser un DR » de `ShortRestDialog` (toujours visible tant que
+     * l'interrupteur est actif), et son soin s'ajoute que le joueur dépense un DR ou non. Absent (ou
+     * `true`) = comportement historique (soin lié à la dépense d'un DR). Sans effet en repos long
+     * (le texte ne vise que la récupération rapide) : `LongRestDialog` ignore ce champ.
+     */
+    requiresRecoveryDieSpend?: boolean;
     sourcePage?: number;
   };
   /**

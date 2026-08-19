@@ -44,6 +44,46 @@ function dieFaces(die: Die): number {
   return Number.parseInt(die.slice(1), 10) || 0;
 }
 
+/** Une ligne de saisie « dé de bonus lancé à la table », partagée par les bonus conditionnels et automatiques. */
+function BonusRollRow({
+  bonus,
+  raw,
+  onChange,
+}: {
+  bonus: RestRecoveryHealBonus;
+  raw: string;
+  onChange: (value: string) => void;
+}) {
+  const bf = dieFaces(bonus.die);
+  const v = Math.max(0, Math.round(Number.parseInt(raw, 10) || 0));
+  const invalid = raw !== '' && (v < 1 || v > bf);
+  return (
+    <Box sx={{ mt: 1.5 }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
+        <DieIcon die={bonus.die} size={20} />
+        <Typography variant="body2">
+          Soin supplémentaire — <strong>{bonus.name}</strong>
+          {bonus.conditionLabel ? ` (${bonus.conditionLabel})` : ''} : +{bonus.count > 1 ? bonus.count : ''}
+          {bonus.die}
+          {bonus.evolving ? '°' : ''} PV{' '}
+          {bonus.sourcePage != null && <SourceRef page={bonus.sourcePage} />}
+        </Typography>
+      </Stack>
+      <TextField
+        type="number"
+        size="small"
+        label={`Résultat du ${bonus.die}${bonus.evolving ? '°' : ''} lancé`}
+        value={raw}
+        onChange={(e) => onChange(e.target.value)}
+        slotProps={{ htmlInput: { min: 1, max: bf } }}
+        helperText={invalid ? `Le résultat doit être compris entre 1 et ${bf}.` : `Facultatif — 1 à ${bf}.`}
+        error={invalid}
+        fullWidth
+      />
+    </Box>
+  );
+}
+
 /**
  * Modale de repos court = récupération rapide (PER-151, p. 221). Rappelle les effets
  * automatiques (dégâts temporaires régénérés, capacités « par combat » réinitialisées)
@@ -67,14 +107,21 @@ export function ShortRestDialog({
   const parsedRoll = Math.max(0, Math.round(Number.parseInt(roll, 10) || 0));
   const canHeal = recoveryDiceCurrent > 0;
   const rollValid = canHeal && parsedRoll >= 1 && parsedRoll <= faces;
+  // Bonus liés à une DÉPENSE de DR (Survie « en milieu naturel ») vs bonus AUTOMATIQUES à chaque
+  // récupération rapide, sans dépense (PER-378, maître de la nature r5 : `requiresRecoveryDieSpend: false`).
+  const conditionalBonuses = healBonuses.filter((b) => b.requiresRecoveryDieSpend);
+  const unconditionalBonuses = healBonuses.filter((b) => !b.requiresRecoveryDieSpend);
   // Somme des dés de bonus VALIDES (dans 1..faces du dé de bonus) ; une saisie vide/hors plage compte 0
   // — le bonus reste facultatif et ne bloque jamais le soin de base.
-  const bonusHeal = healBonuses.reduce((sum, b) => {
-    const bf = dieFaces(b.die);
-    const v = Math.max(0, Math.round(Number.parseInt(bonusRolls[b.featureId] ?? '', 10) || 0));
-    return sum + (v >= 1 && v <= bf ? v : 0);
-  }, 0);
-  const healTotal = parsedRoll + halfLevel + bonusHeal;
+  const sumBonusRolls = (bonuses: RestRecoveryHealBonus[]) =>
+    bonuses.reduce((sum, b) => {
+      const bf = dieFaces(b.die);
+      const v = Math.max(0, Math.round(Number.parseInt(bonusRolls[b.featureId] ?? '', 10) || 0));
+      return sum + (v >= 1 && v <= bf ? v : 0);
+    }, 0);
+  const bonusHeal = sumBonusRolls(conditionalBonuses);
+  const unconditionalHeal = sumBonusRolls(unconditionalBonuses);
+  const healTotal = parsedRoll + halfLevel + bonusHeal + unconditionalHeal;
 
   const close = () => {
     setRoll('');
@@ -82,8 +129,9 @@ export function ShortRestDialog({
     onClose();
   };
   const confirm = (recoveryDieRoll: number | null) => {
-    // Le bonus ne s'applique QUE si un DR est réellement dépensé (soin) : repos sans soin → extraHeal 0.
-    const extra = recoveryDieRoll != null ? bonusHeal : 0;
+    // Le bonus lié à une dépense de DR ne s'applique QUE si un DR est réellement dépensé ; le bonus
+    // automatique (`unconditionalHeal`) s'applique à CHAQUE récupération rapide, DR dépensé ou non.
+    const extra = (recoveryDieRoll != null ? bonusHeal : 0) + unconditionalHeal;
     setRoll('');
     setBonusRolls({});
     onConfirm(recoveryDieRoll, extra);
@@ -119,43 +167,21 @@ export function ShortRestDialog({
                 helperText={
                   parsedRoll >= 1
                     ? rollValid
-                      ? `Soin appliqué : ${parsedRoll} + ${halfLevel}${bonusHeal ? ` + ${bonusHeal}` : ''} = ${healTotal} PV (−1 DR)`
+                      ? `Soin appliqué : ${parsedRoll} + ${halfLevel}${bonusHeal ? ` + ${bonusHeal}` : ''}${unconditionalHeal ? ` + ${unconditionalHeal}` : ''} = ${healTotal} PV (−1 DR)`
                       : `Le résultat doit être compris entre 1 et ${faces}.`
                     : `Saisissez le résultat du dé (1 à ${faces}).`
                 }
                 error={parsedRoll >= 1 && !rollValid}
                 fullWidth
               />
-              {healBonuses.map((b) => {
-                const bf = dieFaces(b.die);
-                const raw = bonusRolls[b.featureId] ?? '';
-                const v = Math.max(0, Math.round(Number.parseInt(raw, 10) || 0));
-                const invalid = raw !== '' && (v < 1 || v > bf);
-                return (
-                  <Box key={b.featureId} sx={{ mt: 1.5 }}>
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
-                      <DieIcon die={b.die} size={20} />
-                      <Typography variant="body2">
-                        Soin supplémentaire — <strong>{b.name}</strong>
-                        {b.conditionLabel ? ` (${b.conditionLabel})` : ''} : +{b.count > 1 ? b.count : ''}
-                        {b.die}{b.evolving ? '°' : ''} PV{' '}
-                        {b.sourcePage != null && <SourceRef page={b.sourcePage} />}
-                      </Typography>
-                    </Stack>
-                    <TextField
-                      type="number"
-                      size="small"
-                      label={`Résultat du ${b.die}${b.evolving ? '°' : ''} lancé`}
-                      value={raw}
-                      onChange={(e) => setBonusRolls((prev) => ({ ...prev, [b.featureId]: e.target.value }))}
-                      slotProps={{ htmlInput: { min: 1, max: bf } }}
-                      helperText={invalid ? `Le résultat doit être compris entre 1 et ${bf}.` : `Facultatif — 1 à ${bf}.`}
-                      error={invalid}
-                      fullWidth
-                    />
-                  </Box>
-                );
-              })}
+              {conditionalBonuses.map((b) => (
+                <BonusRollRow
+                  key={b.featureId}
+                  bonus={b}
+                  raw={bonusRolls[b.featureId] ?? ''}
+                  onChange={(value) => setBonusRolls((prev) => ({ ...prev, [b.featureId]: value }))}
+                />
+              ))}
             </Box>
           ) : (
             <AppAlert severity="info">
@@ -163,11 +189,23 @@ export function ShortRestDialog({
               <SourceRef page={221} />.
             </AppAlert>
           )}
+          {/* Bonus AUTOMATIQUE à chaque récupération rapide, sans dépense de DR (PER-378, maître de la
+              nature r5) : reste proposé même sans DR disponible, et s'applique aussi en « repos sans soin ». */}
+          {unconditionalBonuses.map((b) => (
+            <BonusRollRow
+              key={b.featureId}
+              bonus={b}
+              raw={bonusRolls[b.featureId] ?? ''}
+              onChange={(value) => setBonusRolls((prev) => ({ ...prev, [b.featureId]: value }))}
+            />
+          ))}
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={close}>Annuler</Button>
-        <Button onClick={() => confirm(null)}>Repos sans soin</Button>
+        <Button onClick={() => confirm(null)}>
+          {unconditionalHeal ? `Repos (+${unconditionalHeal} PV)` : 'Repos sans soin'}
+        </Button>
         {canHeal && (
           <Button variant="contained" disabled={!rollValid} onClick={() => confirm(parsedRoll)}>
             Soigner

@@ -321,9 +321,10 @@ export function isChoiceActionable(
   }
   if (choice.kind === 'option' && choice.repeat) return repeatableChoiceCount(character, choice) > 0;
   // Choix masqué tant qu'un palier de la voie HÔTE n'est pas atteint (PER-74, archimage r5 « Bâton
-  // magique », p. 154, retour proprio 2026-08-10 : `unlockedAtHostPathRank`). Rang de la voie hôte
-  // calculé en LOCAL (pas d'import d'`effects.ts` — cycle, `pathRanksFromFeatures` en dépend déjà).
-  if (choice.kind === 'feature-from-path' && choice.unlockedAtHostPathRank != null) {
+  // magique », p. 154, retour proprio 2026-08-10 : `unlockedAtHostPathRank`, générique à tout `kind`
+  // depuis maître de la nature r5, p. 172). Rang de la voie hôte calculé en LOCAL (pas d'import
+  // d'`effects.ts` — cycle, `pathRanksFromFeatures` en dépend déjà).
+  if (choice.unlockedAtHostPathRank != null) {
     const hostPathId = featureById.get(featureId)?.pathId;
     let hostRank = 0;
     if (hostPathId) {

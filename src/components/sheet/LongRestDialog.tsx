@@ -70,8 +70,11 @@ export function LongRestDialog({
   const halfLevel = Math.floor(level / 2);
   const healAmount = dieFaces(recoveryDie) + halfLevel;
   const canHeal = recoveryDiceMax > 0 && lethalDamage > 0;
+  // Bonus SANS dépense de DR (`requiresRecoveryDieSpend: false`, PER-378, maître de la nature r5) : le
+  // texte de règles ne vise que la récupération RAPIDE — sans objet ici, en repos long.
+  const applicableBonuses = healBonuses.filter((b) => b.requiresRecoveryDieSpend);
   // Somme des dés de bonus VALIDES (Survie…), facultatifs — une saisie vide/hors plage compte 0.
-  const bonusHeal = healBonuses.reduce((sum, b) => {
+  const bonusHeal = applicableBonuses.reduce((sum, b) => {
     const bf = dieFaces(b.die);
     const v = Math.max(0, Math.round(Number.parseInt(bonusRolls[b.featureId] ?? '', 10) || 0));
     return sum + (v >= 1 && v <= bf ? v : 0);
@@ -110,7 +113,7 @@ export function LongRestDialog({
           )}
 
           {canHeal &&
-            healBonuses.map((b) => {
+            applicableBonuses.map((b) => {
               const bf = dieFaces(b.die);
               const raw = bonusRolls[b.featureId] ?? '';
               const v = Math.max(0, Math.round(Number.parseInt(raw, 10) || 0));

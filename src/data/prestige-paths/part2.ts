@@ -4406,11 +4406,20 @@ export const prestigeFeatures2: Feature[] = [
     // carte « empruntée » d'`animaux-r5` que ce même rang affiche juste à côté quand l'octroi est
     // effectif reste SANS ce toggle (cf. `suppressAnimalForm`, `renderEffectToggles` dans
     // `FeaturesByPath.tsx`) — là, ce serait un vrai doublon (cartes côte à côte).
+    // `disablesProfileFeatures` (retour propriétaire 2026-08-19) : même primitive posée sur `animaux-r5`
+    // (mystics.ts, voir sa doc — RAW p. 114 « ne peut... utiliser ses propres capacités sous cette
+    // forme »), dupliquée ici pour le personnage qui n'a QUE le changeforme (pas druide) : l'octroi
+    // n'ajoute jamais `animaux-r5` à `character.featureIds` (pas de doublon), donc SEUL cet effet-ci
+    // porte le drapeau pour lui. `exceptPathIds: ['animaux']` protège la voie des animaux d'une
+    // auto-désactivation quand le personnage EST AUSSI druide (les deux sources actives, natif +
+    // octroi, exceptent alors chacune la voie) ; `prestige-changeforme` lui-même n'a jamais besoin
+    // d'exception (voie de PRESTIGE, jamais ciblée par `disablesProfileFeatures`).
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: 'Forme animale active', activeWhenInputSet: 'animaux-r5' },
+        disablesProfileFeatures: { exceptPathIds: ['animaux'] },
       },
     ],
     choices: [
@@ -4679,6 +4688,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage cible un animal à une distance maximale de 10 m et doit faire un test opposé d'attaque magique. En cas de réussite, l'animal se met au service du personnage et le défend pendant PER heures. À la fin du sort, l'animal s'enfuit. La somme des NC des animaux que le personnage garde sous contrôle ne peut à aucun moment dépasser le rang atteint dans la voie. À partir du rang 6, le personnage peut cibler les animaux géants et à partir du rang 8 les animaux fantastiques (griffon, ourhible, hippogriffe, etc.). Si le personnage essaie d'emmener un animal en milieu urbain, le sort prend immédiatement fin.",
+    // PER-378 : « PER heures » = quantité brute `[=PER]` (patron per74-elementaliste/archimage). « ne
+    // peut dépasser le rang atteint dans la voie » → terme nommé [#rang] (précédent identique :
+    // fighters.ts Botte secrète / adventurers.ts Tir explosif, « NC inférieur au [#rang] atteint dans
+    // la voie »). NC des animaux et la portée « 10 m » restent auto-glosés/littéraux (pas de token dédié).
+    richText:
+      "Le personnage cible un animal à une distance maximale de 10 m et doit faire un test opposé d'attaque magique. En cas de réussite, l'animal se met au service du personnage et le défend pendant [=PER] heures. À la fin du sort, l'animal s'enfuit. La somme des NC des animaux que le personnage garde sous contrôle ne peut à aucun moment dépasser le [#rang] atteint dans la voie. À partir du rang 6, le personnage peut cibler les animaux géants et à partir du rang 8 les animaux fantastiques (griffon, ourhible, hippogriffe, etc.). Si le personnage essaie d'emmener un animal en milieu urbain, le sort prend immédiatement fin.",
     sourcePage: 172,
   },
   {
@@ -4690,6 +4705,61 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Choisissez un milieu naturel de prédilection, puis un milieu naturel supplémentaire au rang 7. Lorsque le personnage est dans un milieu naturel de prédilection, il obtient un dé bonus à tous ses tests et récupère 1d4° PV durant chaque récupération rapide. Milieux naturels de prédilection : forêt et jungle, déserts et plaines, montagnes et collines, marais et milieu aquatique, grottes et profondeurs.",
+    // PER-378, retours propriétaire 2026-08-19 :
+    //  - milieu de prédilection = choix `option` PARMI les 5 catégories du livre, 1 slot dès
+    //    l'acquisition + 1 slot supplémentaire « au rang 7 » — `unlockedAtHostPathRank: 7` (généralisé
+    //    depuis `PathFeatureChoice`/archimage r5 « Bâton magique » à TOUT `kind` de choix, schema.ts/
+    //    choices.ts, pour couvrir un choix `option`). Les 5 catégories ne portent AUCUN effet chiffré
+    //    propre : c'est un repère narratif, l'activation mécanique reste l'interrupteur ci-dessous.
+    //  - « dé bonus à tous ses tests » en milieu de prédilection → interrupteur INDÉPENDANT (patron
+    //    L'amour du risque, casse-cou r6, part1.ts:1496-1502 : `conditional-stat-bonus` + `allTestsDie`,
+    //    `activation.kind: 'condition'`) — pas de primitive cross-capacité créée : r6/r8 ci-dessous
+    //    portent chacun leur PROPRE interrupteur « En milieu de prédilection », basculés en parallèle.
+    //  - « récupère 1d4° PV durant chaque récupération rapide » : soin AUTOMATIQUE, PAS conditionné à
+    //    une dépense de DR (à la différence de Survie/rôdeur p. 72) → `recoveryDieHealBonus` étendu
+    //    d'un `requiresRecoveryDieSpend: false` (schema.ts/effects.ts/ShortRestDialog.tsx) ; sans effet
+    //    en repos long (le texte ne vise que la récupération rapide).
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Milieu naturel de prédilection',
+        options: [
+          { id: 'forest-jungle', label: 'Forêt et jungle' },
+          { id: 'desert-plain', label: 'Déserts et plaines' },
+          { id: 'mountain-hill', label: 'Montagnes et collines' },
+          { id: 'swamp-water', label: 'Marais et milieu aquatique' },
+          { id: 'cave-depths', label: 'Grottes et profondeurs' },
+        ],
+      },
+      {
+        kind: 'option',
+        prompt: 'Milieu naturel de prédilection supplémentaire (à partir du rang 7)',
+        options: [
+          { id: 'forest-jungle', label: 'Forêt et jungle' },
+          { id: 'desert-plain', label: 'Déserts et plaines' },
+          { id: 'mountain-hill', label: 'Montagnes et collines' },
+          { id: 'swamp-water', label: 'Marais et milieu aquatique' },
+          { id: 'cave-depths', label: 'Grottes et profondeurs' },
+        ],
+        unlockedAtHostPathRank: 7,
+      },
+    ],
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        allTestsDie: true,
+        activation: { kind: 'condition', label: 'En milieu de prédilection', activeByDefault: false },
+      },
+    ],
+    recoveryDieHealBonus: {
+      dice: { count: 1, die: 'd4', evolving: true },
+      conditionLabel: 'En milieu de prédilection',
+      requiresRecoveryDieSpend: false,
+      sourcePage: 173,
+    },
+    richText:
+      "Choisissez un milieu naturel de prédilection, puis un milieu naturel supplémentaire au rang 7. Lorsque le personnage est dans un milieu naturel de prédilection, il obtient un dé bonus à tous ses tests et récupère {1d4°} PV durant chaque récupération rapide. Milieux naturels de prédilection : forêt et jungle, déserts et plaines, montagnes et collines, marais et milieu aquatique, grottes et profondeurs.",
     sourcePage: 173,
   },
   {
@@ -4700,6 +4770,20 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text:
+      "Lorsqu'il est dans un milieu de prédilection, le personnage est totalement indétectable par les animaux et les insectes même géants, tant qu'il le décide (que ce soit par la vue, l'odorat ou l'ouïe). S'il entreprend une action offensive contre un animal, la capacité prend fin immédiatement et ne sera à nouveau active qu'à la fin d'une récupération rapide.",
+    // PER-378 : interrupteur PROPRE « En milieu de prédilection » (marqueur pur, `bonuses: []` — aucune
+    // stat chiffrée, cf. Invocation d'un démon/Armure de pierre), même patron que r5 mais INDÉPENDANT
+    // (retour proprio : 3 interrupteurs séparés plutôt qu'une dépendance cross-capacité). La fin
+    // anticipée sur action offensive et le blocage jusqu'à la prochaine récupération rapide restent
+    // manuels (le joueur bascule l'interrupteur), comme le reste de la fiche permissive.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'En milieu de prédilection', activeByDefault: false },
+      },
+    ],
+    richText:
       "Lorsqu'il est dans un milieu de prédilection, le personnage est totalement indétectable par les animaux et les insectes même géants, tant qu'il le décide (que ce soit par la vue, l'odorat ou l'ouïe). S'il entreprend une action offensive contre un animal, la capacité prend fin immédiatement et ne sera à nouveau active qu'à la fin d'une récupération rapide.",
     sourcePage: 173,
   },
@@ -4712,6 +4796,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage obtient une monture géante de son choix (mammouth, dinosaure, aigle géant, etc.). Elle doit être adaptée à un de ses milieux de prédilection et le NC de la créature ne peut pas être supérieur à [rang + PER]. Si le cadre de jeu ne le permet pas, le meneur de jeu peut décider d'interdire les dinosaures de la liste. La monture géante est parfaitement sous contrôle et lorsque le personnage la monte, elle peut attaquer une fois par round sur son ordre (action d'attaque pour la monture, l'ordre est une action gratuite pour le cavalier).",
+    // PER-378 : la créature reste un choix NARRATIF ouvert (« de son choix », toute créature adaptée au
+    // milieu, arbitrée par le MJ), à la différence des montures FIXES de cavalier-r5 (Monture
+    // fantastique, liste close de `creatureProfile`) — aucun profil de créature dédié n'est donc posé
+    // ici. Seule la formule du plafond de NC est mécanisée (`[rang + PER]`, formule de MODIFICATEUR).
+    richText:
+      "Le personnage obtient une monture géante de son choix (mammouth, dinosaure, aigle géant, etc.). Elle doit être adaptée à un de ses milieux de prédilection et le NC de la créature ne peut pas être supérieur à [rang + PER]. Si le cadre de jeu ne le permet pas, le meneur de jeu peut décider d'interdire les dinosaures de la liste. La monture géante est parfaitement sous contrôle et lorsque le personnage la monte, elle peut attaquer une fois par round sur son ordre (action d'attaque pour la monture, l'ordre est une action gratuite pour le cavalier).",
     sourcePage: 173,
   },
   {
@@ -4722,6 +4812,21 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: ['G'],
     text:
+      "3 fois par jour, lorsqu'il est dans un milieu de prédilection, le personnage peut lancer n'importe quel sort de druide de son choix (le même ou trois sorts différents). Ceci est une action gratuite qui ne peut être utilisée qu'une seule fois par round et ne coûte aucun point de mana.",
+    // PER-378 : le sort effectif est RE-CHOISI à chaque usage (« le même ou trois sorts différents »),
+    // contrairement à Pouvoir unique (armure sacrée) qui FIGE un sort à l'acquisition — aucune primitive
+    // de choix ne supporte un choix RE-FAIT à chaque usage, donc pas de sélecteur ici (retour proprio :
+    // verbatim + compteur). Pool journalier mécanisé (`usageCounter`) + interrupteur PROPRE « En milieu
+    // de prédilection » (3e interrupteur indépendant de la voie, même patron que r5/r6).
+    usageCounter: { max: 3, resetOn: 'day', hideFromStatusPanel: true },
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'En milieu de prédilection', activeByDefault: false },
+      },
+    ],
+    richText:
       "3 fois par jour, lorsqu'il est dans un milieu de prédilection, le personnage peut lancer n'importe quel sort de druide de son choix (le même ou trois sorts différents). Ceci est une action gratuite qui ne peut être utilisée qu'une seule fois par round et ne coûte aucun point de mana.",
     sourcePage: 173,
   },
