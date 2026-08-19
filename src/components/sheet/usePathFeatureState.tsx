@@ -188,16 +188,19 @@ export function usePathFeatureState({
   /**
    * Vrai si la capacité porte un effet conditionnel/temporaire (PER-67).
    *
-   * PER-375/PER-435 : `prestige-changeforme-r5` porte un second toggle « totalement lié » à
-   * `animaux-r5` (même clé `activeWhenInputSet`) — MASQUÉ ici quand `animaux-r5` est EMPRUNTÉE
-   * (le personnage n'a pas la voie des animaux), pour ne pas afficher deux fois le même toggle sur
-   * deux cartes de la même voie (celle-ci ET la capacité octroyée juste à côté). Affiché quand le
-   * personnage la possède NATIVEMENT ailleurs (druide) : sans ce cas, la voie du changeforme
-   * n'aurait plus AUCUN toggle visible (le vrai vivrait alors seul sous « Voie des animaux »).
+   * PER-375/PER-435 (retour propriétaire 2026-08-19, corrige une inversion) : `prestige-changeforme-r5`
+   * porte un second toggle « totalement lié » à `animaux-r5` (même clé `activeWhenInputSet`) — MASQUÉ
+   * ici quand le personnage possède `animaux-r5` NATIVEMENT (druide) : le toggle vit alors sur la
+   * carte native « Forme animale » (sous « Voie des animaux »), pas de doublon ici. À l'inverse, quand
+   * `animaux-r5` n'est qu'OCTROYÉE par cette voie (le personnage n'est pas druide, ex. prêtre +
+   * changeforme), cette carte EST la carte d'origine : le toggle DOIT s'afficher ici (sinon plus aucune
+   * carte ne le porte). La carte « empruntée » d'`animaux-r5` que ce même rang affiche juste à côté
+   * (`borrowedFeatureOf`) n'affiche, elle, JAMAIS ce toggle (cf. `suppressAnimalForm`,
+   * `renderEffectToggles` dans `FeaturesByPath.tsx`) — un seul endroit, la carte d'origine.
    */
   const hasEffectToggles = (feature: Feature) => {
     if (!character) return false;
-    if (feature.id === 'prestige-changeforme-r5' && !character.featureIds.includes('animaux-r5')) {
+    if (feature.id === 'prestige-changeforme-r5' && character.featureIds.includes('animaux-r5')) {
       return false;
     }
     return conditionalEffectsOf(feature.id).length > 0;

@@ -28,6 +28,7 @@ import {
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { ANCESTRY_MARKER_COLOR } from '@/lib/ui/classColors';
 import {
+  ANIMAL_FORM_CATEGORY_LABELS,
   CREATURE_NATURE_LABELS,
   CREATURE_SIZE_LABELS,
   creatureNcLabel,
@@ -793,6 +794,13 @@ export function BestiaryStatBlock({
         {creature.nature?.map((n) => (
           <MetaPill key={n}>{CREATURE_NATURE_LABELS[n]}</MetaPill>
         ))}
+        {/* Sous-catégorie taxonomique (mammifère, reptile…) — seulement pour les créatures de la
+            catégorie « animaux » taguées (retour propriétaire 2026-08-19) : même donnée que le
+            sélecteur de Forme animale (`animalFormCategory`, migration 0039), affichée ici comme un
+            tag de plus. Les animaux non tagués (repli permissif du sélecteur) n'affichent rien. */}
+        {creature.category === 'animaux' && creature.animalFormCategory && (
+          <MetaPill>{ANIMAL_FORM_CATEGORY_LABELS[creature.animalFormCategory]}</MetaPill>
+        )}
       </Stack>
 
       {/* Grille des 7 caractéristiques (valeurs fixes) + dé bonus inné (double-d20). En mode

@@ -1,6 +1,7 @@
 'use client';
 
 import AddIcon from '@mui/icons-material/Add';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -3385,15 +3386,6 @@ function PathBlock({
   // (native + octroyée) : l'ACTIVER sans forme choisie ouvre cette modale plutôt qu'un no-op
   // silencieux (cf. `renderEffectToggles` ci-dessous) — un seul état d'ouverture pour les deux.
   const [animalFormDialogOpen, setAnimalFormDialogOpen] = useState(false);
-  // Nom de la forme choisie pour la puce « valeur » du toggle (cf. `renderEffectToggles` ci-dessous) —
-  // chargé ici indépendamment de `AnimalFormSelector` (pas forcément monté quand la carte compacte
-  // seule est visible, détail replié).
-  const animalFormValue = character?.effectInputs?.['animaux-r5'] ?? '';
-  const animalFormBlobs = useBestiaryStore((s) => s.blobs);
-  const loadAnimalFormBlob = useBestiaryStore((s) => s.loadBlob);
-  useEffect(() => {
-    if (animalFormValue) loadAnimalFormBlob(animalFormValue);
-  }, [animalFormValue, loadAnimalFormBlob]);
   // PER-363 — Chasseur ailé (r7) : son interrupteur devient MJ-only (voir `renderEffectToggles`) ;
   // `isPlayer` reflète la SESSION courante (magic link joueur), pas le personnage affiché.
   const { isPlayer } = useIsPlayerSession();
@@ -3551,36 +3543,72 @@ function PathBlock({
    * (vue colonne), le libellé complet passant en infobulle. Désactivés (non
    * interactifs) si la capacité est exclue par une autre active.
    */
-  const renderEffectToggles = (feature: Feature, opts: { compact?: boolean } = {}) => {
+  const renderEffectToggles = (
+    feature: Feature,
+    opts: { compact?: boolean; suppressAnimalForm?: boolean } = {},
+  ) => {
     if (!character || conditionalEffectsOf(feature.id).length === 0) return null;
     // Chasseur ailé (PER-363, r7) : ce toggle reste PUREMENT INDICATIF (retour propriétaire) — un
     // pense-bête togglable par le joueur comme n'importe quel autre effet temporaire. C'est le
     // bouton « Invoquer » dédié (MJ seulement, cf. la modale de détail) qui ajoute réellement la
     // créature au combat.
-    // Forme animale (animaux-r5, prestige-changeforme-r5, PER-375/PER-435) : le choix se fait
-    // via `AnimalFormSelector`/`Character.effectInputs`, pas un interrupteur manuel — un Switch
-    // classique donnait à tort l'impression d'un on/off normal. On rend donc la puce
-    // « Choisir »/valeur bleue habituelle (`ChoiceTodoBadge`/`ChoiceValueBadge`, même patron que
-    // tout choix de la fiche) à la place, qui ouvre la modale du sélecteur — cliquer la valeur
-    // la rouvre aussi pour EN CHANGER (l'Autocomplete y permet de vider la sélection).
-    if (feature.id === 'animaux-r5' || feature.id === 'prestige-changeforme-r5') {
-      const selectedName = animalFormValue ? animalFormBlobs[animalFormValue]?.name ?? animalFormValue : undefined;
-      return selectedName ? (
-        <ChoiceValueBadge label={selectedName} compact={opts.compact} onClick={() => setAnimalFormDialogOpen(true)} />
-      ) : (
-        <ChoiceTodoBadge label="Choisir une forme" compact={opts.compact} onClick={() => setAnimalFormDialogOpen(true)} />
-      );
-    }
+    // Forme animale (animaux-r5, prestige-changeforme-r5, PER-375/PER-435) : ACTIVER ce toggle sans
+    // forme choisie est un no-op moteur — au lieu de le laisser silencieux, on ouvre directement le
+    // sélecteur (même modale que la puce « Choisir »/valeur ci-dessous). `suppressAnimalForm` : posé
+    // par les appelants sur la carte EMPRUNTÉE d'`animaux-r5` (`borrowed`, octroyée par
+    // `prestige-changeforme-r5`) — le toggle vit UNIQUEMENT sur la carte D'ORIGINE (la carte native
+    // « Forme animale » si le personnage est druide, sinon la carte « Transformation en animal »
+    // elle-même) : afficher un second toggle sur la sous-carte empruntée serait un doublon confus
+    // (retour propriétaire 2026-08-19 — cf. `hasEffectToggles`, symétrique, dans `usePathFeatureState`).
+    const isAnimalFormToggle = feature.id === 'animaux-r5' || feature.id === 'prestige-changeforme-r5';
+    if (isAnimalFormToggle && opts.suppressAnimalForm) return null;
+    const handleToggle = isAnimalFormToggle
+      ? (featureId: string, index: number, active: boolean) => {
+          if (active) {
+            setAnimalFormDialogOpen(true);
+            return;
+          }
+          onToggleEffect?.(featureId, index, active);
+        }
+      : onToggleEffect;
+    // Bouton « changer de forme » (flèches Autorenew) : rouvre le sélecteur SANS couper/rallumer le
+    // toggle — sinon on perdrait pour rien l'état de jeu (dé de récupération dépensé, etc.).
+    // Volontairement hors mécanique officielle (le livre ne prévoit pas de changer de forme à la
+    // volée) : la fiche reste libre, l'infobulle le précise.
+    const animalFormEffectIndex = isAnimalFormToggle
+      ? featureById.get(feature.id)?.effects?.findIndex(
+          (e) => e.kind === 'conditional-stat-bonus' && e.activation.kind === 'temporary',
+        ) ?? -1
+      : -1;
+    const showChangeFormButton =
+      isAnimalFormToggle &&
+      animalFormEffectIndex >= 0 &&
+      isEffectActive(character, feature.id, animalFormEffectIndex);
     return (
-      <FeatureEffectToggles
-        character={character}
-        featureId={feature.id}
-        compact={opts.compact}
-        onToggle={onToggleEffect}
-        onSpendRecoveryDie={onSpendRecoveryDie}
-        disabled={isDisabled(feature)}
-        sessionStatusIds={sessionStatusIds}
-      />
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <FeatureEffectToggles
+          character={character}
+          featureId={feature.id}
+          compact={opts.compact}
+          onToggle={handleToggle}
+          onSpendRecoveryDie={onSpendRecoveryDie}
+          disabled={isDisabled(feature)}
+          sessionStatusIds={sessionStatusIds}
+        />
+        {showChangeFormButton && (
+          <AppTooltip title="Changer de forme sans désactiver le toggle — liberté de la fiche en cas d'erreur, pas une mécanique de jeu prévue par le livre.">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAnimalFormDialogOpen(true);
+              }}
+            >
+              <AutorenewIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </AppTooltip>
+        )}
+      </Stack>
     );
   };
 
@@ -3854,6 +3882,14 @@ function PathBlock({
           // rapport avec les emprunts).
           const borrowSlotCount = (feature.choices ?? []).filter((c) => c.kind === 'feature-from-path').length;
           const hasMultipleBorrowSlots = !repl && borrowSlotCount > 1;
+          // PER-375/PER-435 (retour propriétaire 2026-08-19) : `prestige-changeforme-r5` porte un choix
+          // `option` (catégorie d'animaux) TOTALEMENT INDÉPENDANT du grant fixe qu'il octroie
+          // (`grantedFeatures: animaux-r5`) — contrairement au cas générique `feature-from-path`
+          // (Bâton magique…), où le choix de l'hôte EST le choix de quelle capacité emprunter (déjà
+          // affiché via la carte empruntée, donc masqué ici pour ne pas doublonner). Sans cette
+          // exception, `!borrowed` ci-dessous cacherait la SEULE puce « Choisir » possible pour un
+          // personnage sans Forme animale native (prêtre + voie du changeforme seule, sans druide).
+          const showHostChoiceDespiteBorrowed = feature.id === 'prestige-changeforme-r5';
           // PER-74 — Bâton magique (archimage r5) : une fois les DEUX emprunts résolus, les cartes de
           // sorts empilées (ci-dessous) disent déjà tout — la puce « Choisir » (résolue, donc réduite à
           // un simple badge bleu redondant) n'a plus rien à apporter à cet endroit et fait double emploi
@@ -4094,7 +4130,9 @@ function PathBlock({
                 milieu naturel ») en mode COLONNE : même exposition compacte que l'hôte — sans quoi on ne
                 pourrait pas activer l'effet (dont le bonus de soin par DR au repos) sans ouvrir la modale. */}
             {borrowed && hasEffectToggles(borrowed) && (
-              <Box sx={{ mt: 0.5, width: '100%' }}>{renderEffectToggles(borrowed, { compact: true })}</Box>
+              <Box sx={{ mt: 0.5, width: '100%' }}>
+                {renderEffectToggles(borrowed, { compact: true, suppressAnimalForm: true })}
+              </Box>
             )}
             {/* Rappel compact de l'élément résisté choisi (Maîtrise des éléments, PER-137) : badge bleu
                 « Feu/Froid… » pour ne pas oublier que l'effet est actif (le sélecteur est dans la modale). */}
@@ -4167,7 +4205,7 @@ function PathBlock({
                 est rendue plus bas dans la « bande de l'hôte » (retour proprio 2026-08-10 : elle
                 doit apparaître sous le nom de l'HÔTE, pas dans la carte de devant qui montre déjà
                 la capacité EMPRUNTÉE — cf. plus bas). */}
-            {hasChoices(feature) && !borrowed && (
+            {hasChoices(feature) && (!borrowed || showHostChoiceDespiteBorrowed) && (
               <Box
                 sx={{
                   mt: 'auto',
@@ -4838,8 +4876,10 @@ function PathBlock({
                             footer={
                               <>
                                 {/* Toggle(s) d'effet conditionnel de l'emprunt (PER-324, ex. Survie « en milieu
-                                    naturel ») — même exposition que la carte native. Rien si aucun. */}
-                                {renderEffectToggles(borrowed)}
+                                    naturel ») — même exposition que la carte native. Rien si aucun.
+                                    `suppressAnimalForm` : Forme animale/changeforme n'affiche son toggle QUE
+                                    sur la carte d'origine (jamais ici, cf. `renderEffectToggles`). */}
+                                {renderEffectToggles(borrowed, { suppressAnimalForm: true })}
                                 {hasChoices(borrowed) ? (
                                   <>
                                     <Divider sx={{ my: 1 }} />
@@ -5425,8 +5465,10 @@ function PathBlock({
                               {/* Interrupteurs d'effets conditionnels de la capacité EMPRUNTÉE (PER-324) : une
                                   capacité empruntée porteuse d'un effet à interrupteur (ex. Survie « en milieu
                                   naturel ») doit exposer le MÊME toggle que sa version native — sinon on ne peut
-                                  pas activer son effet (dont le bonus de soin par DR au repos). Rien si aucun. */}
-                              {renderEffectToggles(borrowed)}
+                                  pas activer son effet (dont le bonus de soin par DR au repos). Rien si aucun.
+                                  `suppressAnimalForm` : Forme animale/changeforme n'affiche son toggle QUE sur
+                                  la carte d'origine (jamais ici, cf. `renderEffectToggles`). */}
+                              {renderEffectToggles(borrowed, { suppressAnimalForm: true })}
                               {hasChoices(borrowed) ? (
                                 <>
                                   <Divider sx={{ my: 1 }} />
