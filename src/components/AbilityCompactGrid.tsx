@@ -40,7 +40,7 @@ export function AbilityCompactGrid({ abilities, bonusDieAbilities }: AbilityComp
               borderColor: 'divider',
               py: 0.5,
               cursor: 'help',
-              bgcolor: (t) => alpha(t.palette.common.black, 0.35),
+              bgcolor: (t) => alpha(t.palette.common.black, 0.15),
               backdropFilter: 'blur(6px)',
               WebkitBackdropFilter: 'blur(6px)',
             }}

@@ -1,6 +1,7 @@
 'use client';
 
 import AddIcon from '@mui/icons-material/Add';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -59,6 +60,7 @@ import {
 import { animalFormCategories, knownAnimalFormCategoryIds } from '@/lib/character/animalForms';
 import {
   hasGiantOrPrehistoricAnimalFormAccess,
+  isEligibleAnimalForm,
   maxAnimalFormSize,
   sizeWithinLimit,
 } from '@/lib/character/animalFormPicker';
@@ -1767,6 +1769,7 @@ function AnimalFormSelector({
     // (ex. Araignée géante, Rat géant : 'creatures-fantastiques') — le rang 6 les débloque quand
     // même (p. 170), leur catégorie d'AFFICHAGE au bestiaire n'a pas à changer pour ça.
     .filter((c) => c.category === 'animaux' || (c.category === 'creatures-fantastiques' && !!c.animalFormFlavor))
+    .filter((c) => isEligibleAnimalForm(c.id))
     .filter((c) => sizeWithinLimit(c.size, maxSize))
     .filter((c) => !c.animalFormFlavor || giantAccess)
     .filter(
@@ -1819,7 +1822,7 @@ function AnimalFormSelector({
         </Typography>
         {active && blob && (
           <Box sx={{ mt: 1 }}>
-            <BestiaryStatBlock creature={blob} dense hideNotes />
+            <BestiaryStatBlock creature={blob} dense hideNotes wideColumns />
             {changeformeExtras}
           </Box>
         )}
@@ -1913,7 +1916,7 @@ function AnimalFormSelector({
       )}
       {active && blob && (
         <Box sx={{ mt: 1 }}>
-          <BestiaryStatBlock creature={blob} dense hideNotes />
+          <BestiaryStatBlock creature={blob} dense hideNotes wideColumns />
           {changeformeExtras}
         </Box>
       )}
@@ -2074,7 +2077,7 @@ function AnimalFormDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Dialog open={open} onClose={() => onOpenChange(false)} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={() => onOpenChange(false)} maxWidth="sm" fullWidth>
       <DialogTitle>Transformation — Forme animale</DialogTitle>
       <DialogContent>
         {toggle}
@@ -3557,16 +3560,45 @@ function PathBlock({
           onToggleEffect?.(featureId, index, active);
         }
       : onToggleEffect;
+    // Forme animale ACTIVE (retour propriétaire 2026-08-19) : petit bouton « changer de forme » à
+    // côté de l'interrupteur, pour rouvrir le sélecteur SANS couper/rallumer le toggle (ce qui
+    // remettrait à zéro l'état de jeu — dé de récupération dépensé, etc. — pour rien). Volontairement
+    // hors mécanique officielle (le livre ne prévoit pas de changer de forme à la volée) : la fiche
+    // reste libre, l'infobulle le précise.
+    const animalFormEffectIndex = isAnimalFormToggle
+      ? featureById.get(feature.id)?.effects?.findIndex(
+          (e) => e.kind === 'conditional-stat-bonus' && e.activation.kind === 'temporary',
+        ) ?? -1
+      : -1;
+    const showChangeFormButton =
+      isAnimalFormToggle &&
+      animalFormEffectIndex >= 0 &&
+      isEffectActive(character, feature.id, animalFormEffectIndex);
     return (
-      <FeatureEffectToggles
-        character={character}
-        featureId={feature.id}
-        compact={opts.compact}
-        onToggle={handleToggle}
-        onSpendRecoveryDie={onSpendRecoveryDie}
-        disabled={isDisabled(feature)}
-        sessionStatusIds={sessionStatusIds}
-      />
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <FeatureEffectToggles
+          character={character}
+          featureId={feature.id}
+          compact={opts.compact}
+          onToggle={handleToggle}
+          onSpendRecoveryDie={onSpendRecoveryDie}
+          disabled={isDisabled(feature)}
+          sessionStatusIds={sessionStatusIds}
+        />
+        {showChangeFormButton && (
+          <AppTooltip title="Changer de forme sans désactiver le toggle — liberté de la fiche en cas d'erreur, pas une mécanique de jeu prévue par le livre.">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAnimalFormDialogOpen(true);
+              }}
+            >
+              <AutorenewIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </AppTooltip>
+        )}
+      </Stack>
     );
   };
 

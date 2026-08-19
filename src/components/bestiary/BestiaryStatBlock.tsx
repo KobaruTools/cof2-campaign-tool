@@ -73,7 +73,7 @@ export const interactiveBlockSx = (theme: Theme) => ({
   borderRadius: 0.75,
   border: 1,
   borderColor: alpha(theme.palette.text.primary, 0.12),
-  bgcolor: alpha(theme.palette.common.black, 0.35),
+  bgcolor: alpha(theme.palette.common.black, 0.15),
   backdropFilter: 'blur(6px)',
   WebkitBackdropFilter: 'blur(6px)',
   transition: theme.transitions.create(['border-color', 'box-shadow'], { duration: 120 }),
@@ -478,7 +478,7 @@ function StatChip({
         borderRadius: 1,
         border: 1,
         borderColor: 'divider',
-        bgcolor: (t) => alpha(t.palette.common.black, 0.35),
+        bgcolor: (t) => alpha(t.palette.common.black, 0.15),
         backdropFilter: 'blur(6px)',
         WebkitBackdropFilter: 'blur(6px)',
       }}

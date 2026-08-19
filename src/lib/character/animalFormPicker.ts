@@ -24,6 +24,21 @@ export function hasGiantOrPrehistoricAnimalFormAccess(character: Character): boo
   );
 }
 
+/**
+ * Créatures du bestiaire à exclure de « Forme animale » malgré une taille/catégorie
+ * compatibles : la « Nuée de bestioles » (p. 145) n'est PAS un individu mais un
+ * regroupement (« les caractéristiques données ici correspondent à un groupe de
+ * créatures ») — un PJ ne peut pas se transformer en nuée. Non tagué par
+ * `animalFormCategory` (le filtre par catégorie de `animalForms.ts` est permissif sur
+ * les créatures non taguées), d'où cette liste noire explicite par id.
+ */
+const ANIMAL_FORM_EXCLUDED_IDS = new Set(['nuee-de-bestioles']);
+
+/** La créature (par id/slug) est-elle éligible à « Forme animale » ? */
+export function isEligibleAnimalForm(id: string): boolean {
+  return !ANIMAL_FORM_EXCLUDED_IDS.has(id);
+}
+
 /** Taille max de base de « Forme animale » (« taille moyenne ou inférieure », p. 114). */
 const BASE_MAX_SIZE: CreatureSize = 'moyenne';
 
