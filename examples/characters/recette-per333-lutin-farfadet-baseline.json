@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 25,
+  "id": "recette-per333-lutin-farfadet-baseline",
+  "name": "Recette PER-333 — Lutin (Voie du farfadet)",
+  "identity": {
+    "gender": "male",
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Lutin » (taille TRÈS PETITE) + « Voie du farfadet » (rangs 1-5). Caracs de peuple : +1 AGI, +1 PER (choix), -1 CON, -2 FOR. Créature très petite : +2 DEF, +5 discrétion, DM d’arme plafonnés (arc court ICI → 1d6). r1 Né d’un chou → vision 20 m + téléport 10 m (verbatim) + RD 5 contre armes non-fer-froid (rang 5). r2 Langage des animaux → octroi de Langage des animaux (druide). r3 Invisibilité (L) → octroi d’Invisibilité (magicien) sans mana, 3/jour. r4 Monture féerique → monture (bloc MONTURE : DEF 16, Init 16, PV niveau×4, attaque magique du perso 1d4°+2). r5 Seigneur féerique → +1 CHA et +1 VOL."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "lutin",
+  "classId": "rodeur",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -2,
+    "AGI": 1,
+    "CON": -1,
+    "PER": 1,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": -2,
+    "AGI": 1,
+    "CON": -1,
+    "PER": 1,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "lutin-farfadet",
+  "featureIds": [
+    "lutin-farfadet-r1",
+    "lutin-farfadet-r2",
+    "lutin-farfadet-r3",
+    "lutin-farfadet-r4",
+    "lutin-farfadet-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "transformationDerivedStats": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arc-court",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "twoHands"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-333 — lutin (farfadet). Recette du contenu payant « Le Compagnon » (source companion).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

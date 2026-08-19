@@ -28,6 +28,7 @@ import {
   type PathFeatureChoice,
 } from '@/data/schema';
 import type { Character, FeatureChoiceSelection } from './types';
+import { ancestryTraitFeatureIds } from './equipment';
 
 /**
  * Id de la capacité DIVINE d'un prêtre spécialiste (issue d'un autre profil, p. 122),
@@ -752,9 +753,12 @@ export function grantedArmorExemptFeatureIds(character: Character): Set<string> 
 
 /**
  * Ids effectifs pour l'agrégation des effets : capacités acquises + capacités
- * empruntées par choix + capacités OCTROYÉES par grant fixe, dédoublonnés. À passer à
- * `modsFromFeatures` / `featureModSources` pour que les bonus plats d'une capacité
- * empruntée ou octroyée s'appliquent.
+ * empruntées par choix + capacités OCTROYÉES par grant fixe + TRAITS DE PEUPLE innés
+ * (PER-333, `ancestryTraitFeatureIds` : le lutin « Créature très petite » y porte son
+ * +2 DEF / +5 discrétion), dédoublonnés. À passer à `modsFromFeatures` /
+ * `featureModSources` pour que les bonus plats d'une capacité empruntée, octroyée ou d'un
+ * trait de peuple s'appliquent. (Le demi-ogre « Taille grande », sans `effects`, n'ajoute
+ * rien ici.)
  */
 export function effectiveFeatureIdsForMods(character: Character): string[] {
   return [
@@ -762,6 +766,7 @@ export function effectiveFeatureIdsForMods(character: Character): string[] {
       ...character.featureIds,
       ...borrowedFeatureIds(character),
       ...grantedFeatureIds(character),
+      ...ancestryTraitFeatureIds(character.ancestryId),
     ]),
   ];
 }

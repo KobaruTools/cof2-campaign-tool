@@ -117,6 +117,10 @@ export function oneHandableWeaponFamilies(featureIds: readonly string[] = []): W
  */
 const ANCESTRY_TRAIT_FEATURE_IDS: Record<string, readonly string[]> = {
   'demi-ogre': ['demi-ogre-taille-grande'],
+  // PER-333 — lutin « Créature très petite » : trait de peuple inné (rang 0, hors voie) portant le
+  // +2 DEF / +5 discrétion (effets agrégés via `effectiveFeatureIdsForMods`) et le plafond de DM
+  // d'arme 1d4/1d6 (cf. `verySmallWeaponDamageOverride`).
+  lutin: ['lutin-tres-petite'],
 };
 
 /** Ids des capacités de trait de peuple INNÉES du personnage (0..n), selon son `ancestryId`. */
@@ -303,6 +307,33 @@ export function wornWeaponIsTwoHanded(
   // est les DEUX mains ; seule une prise explicitement notée `oneHand` la libère (parité avec le colosse).
   if (smallSize && smallSizeTwoHandWeapon(item)) return line.worn.grip !== 'oneHand';
   return false;
+}
+
+/**
+ * PER-333 — PLAFOND DE DM D'ARME des créatures TRÈS PETITES (lutin, Le Compagnon p. 27 : « les fées
+ * et les lutins infligent seulement 1d4 DM lors d'attaques au contact ou à distance avec une arme à
+ * une main. Avec une arme à deux mains (une épée courte ou un arc), ils infligent 1d6 DM »). Le dé
+ * d'arme est REMPLACÉ (DM liés à la précision, non à la force d'impact) : 1d4 tenue à une main, 1d6
+ * tenue à deux mains, quelle que soit l'arme (contact ou distance). Le plafond est LEVÉ tant que
+ * « Fée révérée » (`lutin-fee-r4`, forme humaine, effet index 0) est active (« DM normaux selon
+ * l'arme utilisée »). `null` = aucun plafond (dé natif). Ne concerne que les créatures très petites.
+ */
+export function verySmallWeaponDamageOverride(
+  character: {
+    ancestryId?: string;
+    featureIds: readonly string[];
+    effectToggles?: Record<string, readonly (boolean | null)[]>;
+  },
+  line: EquipmentLine,
+): WeaponDamage | null {
+  if (baseAncestrySize(character.ancestryId) !== 'tres-petite') return null;
+  if (isCustomItem(line) || !line.worn) return null;
+  const item = effectiveItem(line);
+  if (item?.category !== 'weapon') return null;
+  // Forme humaine (Fée révérée) : le personnage « inflige des DM normalement selon l'arme utilisée ».
+  if (character.effectToggles?.['lutin-fee-r4']?.[0] === true) return null;
+  const twoHanded = wornWeaponIsTwoHanded(line, oneHandableWeaponFamiliesForCharacter(character), true);
+  return twoHanded ? { count: 1, die: 'd6' } : { count: 1, die: 'd4' };
 }
 
 /**

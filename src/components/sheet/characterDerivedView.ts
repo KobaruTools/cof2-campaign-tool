@@ -47,6 +47,7 @@ import {
   derivedBonusesFromEquipment,
   oneHandDamageOverride,
   oneHandingFeatureIds,
+  verySmallWeaponDamageOverride,
 } from '@/lib/character/equipment';
 import { mountedInitiativePenalty } from '@/lib/character/mounts';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
@@ -203,8 +204,14 @@ function wornWeaponDamage(
   // grande » : épées → 1d12), tant que la voie r4 (« Toujours plus lourd ») ne lève pas la réduction. Ne
   // remplace que le DÉ (count/die) ; on garde `modifier`/`nonLethal`/`evolving` de l'arme. Contact seul.
   const oneHandOverride = mode === 'melee' ? oneHandDamageOverride(line, oneHandingFeatureIds(character)) : null;
-  const baseDamage = oneHandOverride
-    ? { ...grippedDamage, count: oneHandOverride.count, die: oneHandOverride.die }
+  // PER-333 — créature TRÈS PETITE (lutin) : le dé d'arme est plafonné à 1d4 (tenue à une main) ou
+  // 1d6 (tenue à deux mains), au contact comme à distance, sauf sous forme humaine (Fée révérée).
+  // Priorité sur le dé natif ET sur la réduction demi-ogre. Ne remplace que le DÉ (count/die) ; on
+  // conserve `modifier`/`nonLethal`/`evolving` de l'arme.
+  const verySmallOverride = verySmallWeaponDamageOverride(character, line);
+  const dieOverride = verySmallOverride ?? oneHandOverride;
+  const baseDamage = dieOverride
+    ? { ...grippedDamage, count: dieOverride.count, die: dieOverride.die }
     : grippedDamage;
   // CANON DOUBLE (artilleur-r4, p. 63, PER-284) : « Il double le dé de DM de l'arme (mais pas les dés
   // bonus ni les bonus) » → on double le NOMBRE de dés (1d10 → 2d10), jamais le modificateur.
