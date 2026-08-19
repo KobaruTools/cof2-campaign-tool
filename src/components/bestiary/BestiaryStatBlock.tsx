@@ -611,6 +611,21 @@ export interface BestiaryStatBlockProps {
   wideColumns?: boolean;
 }
 
+/**
+ * Nom EXACT (verbatim livre) d'une `specialAbility` qui n'est pas une capacité de combat mais une
+ * note d'éligibilité à la voie de prestige du familier fantastique (mineur/profil de magie/majeur,
+ * même patron que `FantasticFamiliar`) — portée aujourd'hui par 3 créatures payantes du Bestiaire
+ * (carnifurax, pestif, karcaillou). Tant qu'elle n'est pas wirée dans `fantastic-familiars.ts`
+ * (ticket à créer), on l'exclut du rendu générique des capacités : sinon elle s'affiche comme une
+ * compétence de combat ordinaire, y compris hors bestiaire (preview « Forme animale », carte
+ * compagnon de l'écran MJ).
+ */
+const FANTASTIC_FAMILIAR_NOTE_NAME = 'Familier fantastique';
+
+function isFantasticFamiliarNote(ability: CreatureSpecialAbility): boolean {
+  return ability.name === FANTASTIC_FAMILIAR_NOTE_NAME;
+}
+
 export function BestiaryStatBlock({
   creature,
   hideNotes = false,
@@ -667,9 +682,10 @@ export function BestiaryStatBlock({
     derivedStats.push({ statId: 'initiative', value: creature.initiative, note: creature.initiativeNote });
   const hasAttacks = !!creature.attacks && creature.attacks.length > 0;
   const hasPaths = !!creature.paths && creature.paths.length > 0;
-  // Capacités affichées = héritées de la base (résolues par l'appelant) PUIS propres.
-  const ownAbilities = creature.specialAbilities ?? [];
-  const inherited = inheritedAbilities ?? [];
+  // Capacités affichées = héritées de la base (résolues par l'appelant) PUIS propres, hors note
+  // d'éligibilité « Familier fantastique » (cf. `isFantasticFamiliarNote`).
+  const ownAbilities = (creature.specialAbilities ?? []).filter((a) => !isFantasticFamiliarNote(a));
+  const inherited = (inheritedAbilities ?? []).filter((a) => !isFantasticFamiliarNote(a));
   const hasInheritedAbilities = inherited.length > 0;
   const abilityCount = inherited.length + ownAbilities.length;
   const hasSpecialAbilities = abilityCount > 0;
