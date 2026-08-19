@@ -10,7 +10,7 @@
 import { CREATURE_SIZES } from '@/data/schema';
 import type { CreatureSize } from '@/data/schema';
 
-const SMALL_ANCESTRY_IDS = new Set(['halfelin', 'frouin', 'gobelin']);
+const SMALL_ANCESTRY_IDS = new Set(['halfelin', 'frouin', 'gobelin', 'kobold']);
 
 /**
  * Peuples de taille « grande » d'office (PER-325, demi-ogre : « considéré comme de taille grande » —

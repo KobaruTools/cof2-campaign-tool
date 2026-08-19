@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 24,
+  "id": "recette-per332-kobold-baseline",
+  "name": "Recette PER-332 — Kobold (Le Compagnon)",
+  "identity": {
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Kobold » (taille PETITE, badge Identité) + « Voie du kobold » (rangs 1-5). Caracs de peuple : +1 AGI, +1 PER, -1 FOR, -1 CON (toutes fixes, déjà appliquées ; le +1 AGI / +1 PER du r5 est ajouté par le moteur). r1 Ruse kobold → +3 en Fabrication de pièges ET en Détection de pièges ; morsure [1d4 + FOR] LÉTALE (non évolutive) remplaçant les mains nues ; vision 30 m dans le noir (verbatim). r2 Chétif → +1 DEF (FIXE) et +3 Discrétion. r3 Piège improvisé → capacité à action LIMITÉE (hexagone L), texte verbatim (difficulté [10 + rangs], 2d4°/immobilisée/ralentie sur la victime). r4 Attaque vicieuse → INTERRUPTEUR +2 en attaque au contact (ICI ACTIVÉ) + badge situationnel +1d4° DM sous la carte d’attaque au CONTACT. r5 Ruse instinctive → +1 AGI et +1 PER. Armes tenues (épée courte à une main, arc court à deux mains) : ADAPTÉES à la taille petite → aucun avertissement."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "kobold",
+  "classId": "voleur",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 1,
+    "CON": -1,
+    "PER": 1,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 1,
+    "CON": -1,
+    "PER": 1,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "kobold",
+  "featureIds": [
+    "kobold-r1",
+    "kobold-r2",
+    "kobold-r3",
+    "kobold-r4",
+    "kobold-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "kobold-r4": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    },
+    {
+      "itemId": "arc-court",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "twoHands"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-332 — kobold. Recette du contenu payant « Le Compagnon » (source companion).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

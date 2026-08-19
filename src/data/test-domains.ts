@@ -174,6 +174,11 @@ export const testDomains: TestDomain[] = [
       'Bricoler, réparer ou comprendre des mécanismes (y compris manipuler des armes de siège). Le désamorçage manuel d’un piège relève de la Dextérité (Désamorçage de pièges).',
   },
   { id: 'science', label: 'Science', abilities: ['INT'], sourcePage: 99 },
+  // conception / fabrication de pièges (Ruse kobold, kobold, kobold-r1, Le Compagnon p. 25, PER-332) :
+  // « concevoir, fabriquer (…) les pièges » → savoir-faire d'artisan, INT (comme `tinkering`/`smithing`).
+  // Distinct de `disarm-traps` (désamorçage manuel, AGI), de `trap-detection` (repérer, PER) et de
+  // `tinkering` (mécanismes généraux, qui exclut justement les pièges) : ici on CRÉE le piège.
+  { id: 'trap-making', label: 'Fabrication de pièges', abilities: ['INT'], sourcePage: 25 },
   // forgesort « alchimie ou chimie » (étude des potions) → INT.
   { id: 'alchemy', label: 'Alchimie', abilities: ['INT'], sourcePage: 98 },
   { id: 'chemistry', label: 'Chimie', abilities: ['INT'], sourcePage: 98 },

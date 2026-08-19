@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 24,
+  "id": "recette-per332-kobold-jouable",
+  "name": "Xochitl, kobold roublard",
+  "identity": {
+    "gender": "female",
+    "description": "Fiche JOUABLE réaliste : kobold voleur niveau 6, écailles rouges. Points dépensés : Voie du kobold r1-r3 (Ruse kobold, Chétif, Piège improvisé), Voie de l’assassin r1-r2 (Discrétion, Attaque sournoise — se cumule avec Attaque vicieuse), Voie du roublard r1-r2 (Doigts agiles, Aux aguets). Équipement adapté à la taille petite : épée courte (1 main), arc court (2 mains), dague, armure de cuir simple ; bourse de départ. À vérifier dans l’app : +3 Fabrication/Détection de pièges (r1) empilé au +3 Détection du roublard r2 ; morsure létale disponible ; DEF +1 (Chétif) ; interrupteur Attaque vicieuse à activer en embuscade."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "kobold",
+  "classId": "voleur",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "INT": 1,
+    "CHA": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "INT": 1,
+    "CHA": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "kobold",
+  "featureIds": [
+    "kobold-r1",
+    "kobold-r2",
+    "kobold-r3",
+    "assassin-r1",
+    "assassin-r2",
+    "roublard-r1",
+    "roublard-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 25,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    },
+    {
+      "itemId": "arc-court",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "twoHands"
+      }
+    },
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-332 — kobold. Fiche jouable de recette (source companion).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

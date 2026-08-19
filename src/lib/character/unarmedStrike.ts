@@ -173,6 +173,18 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
     sources = addSource(sources, 'felis-r2');
   }
 
+  // KOBOLD — Ruse kobold (voie du kobold r1, Le Compagnon p. 25, PER-332) : le kobold peut remplacer une
+  // attaque à mains nues par une morsure qui inflige [1d4 + FOR] DM LÉTAUX. Contrairement au félis, un seul
+  // dé fixe (non évolutif) et la FOR seule (pas de substitution d'AGI). Placé APRÈS félis-r2 et AVANT le
+  // moine/colosse/poing (mêmes règles de préséance : un kobold moine garde le dé ≥ et la létalité AU CHOIX).
+  if (has('kobold-r1')) {
+    damage = { count: 1, die: 'd4' };
+    evolving = false;
+    damageAbilities = ['FOR'];
+    lethality = 'lethal';
+    sources = addSource(sources, 'kobold-r1');
+  }
+
   // Trait de profil du moine (p. 119) : DM létaux AU CHOIX à mains nues — le moine maîtrise sa force
   // et décide toujours si le coup est létal ou non (jamais forcé).
   if (isMonk) lethality = 'choice';
