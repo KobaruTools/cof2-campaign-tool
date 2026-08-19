@@ -6,6 +6,7 @@
 import { classById, featureById, pathById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
 import { effectiveClassPathIds } from '@/lib/character/classDisplay';
+import { priestDivineSlot, type DivineSlot } from '@/lib/character/choices';
 import type { Character } from '@/lib/character/types';
 import { ANCESTRY_COLOR, MAGE_PATH_COLOR, classColor, prestigeCategoryColor } from '@/lib/ui/classColors';
 import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
@@ -106,6 +107,16 @@ function borrowedColorOf(character: Character, feature: Feature): string | undef
 }
 
 /**
+ * Couleur d'origine de la capacité DIVINE d'un prêtre spécialiste (p. 122), si
+ * `feature` est celle qui occupe ce slot d'accueil — signale « ça vient d'ailleurs »,
+ * même convention que `FeaturesByPath` (`originColor`). `undefined` sinon.
+ */
+function divineColorOf(character: Character, feature: Feature, slot: DivineSlot | null): string | undefined {
+  if (!slot || feature.id !== slot.featureId) return undefined;
+  return pathColor(pathById.get(feature.pathId), character.classId);
+}
+
+/**
  * Résume les voies d'un personnage en une grille de 7 emplacements FIXES : peuple/mage
  * en tête, profils au milieu, prestige toujours en dernier (voir placement plus bas).
  * Les emplacements sans voie valent `undefined`. Chaque rang débloqué porte sa couleur
@@ -113,16 +124,24 @@ function borrowedColorOf(character: Character, feature: Feature): string | undef
  * inconnus sont ignorés (comme sur la fiche).
  */
 export function pathColumns(character: Character): (PathColumn | undefined)[] {
+  // Capacité divine d'un prêtre spécialiste (p. 122) : occupe le slot de sa voie
+  // D'ACCUEIL, pas de sa voie d'origine — même logique que `legality.ts`
+  // (`effectivePathId`) et `FeaturesByPath` (`divineSlotReplacement`). Sans ce
+  // relogement, la divine ouvrait sa propre colonne fantôme (voie d'origine) ET
+  // laissait un trou dans la colonne d'accueil, ce qui cassait à la fois l'affichage
+  // (colonne en trop) et le rang suivant cliquable (index de rang décalé).
+  const divineSlot = priestDivineSlot(character);
   const byPath = new Map<string, { path: Path | undefined; features: Map<number, Feature>; order: number }>();
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
     if (!feature) continue;
-    const entry = byPath.get(feature.pathId);
+    const pathId = divineSlot && id === divineSlot.featureId ? divineSlot.hostPathId : feature.pathId;
+    const entry = byPath.get(pathId);
     if (entry) {
       entry.features.set(feature.rank, feature);
     } else {
-      byPath.set(feature.pathId, {
-        path: pathById.get(feature.pathId),
+      byPath.set(pathId, {
+        path: pathById.get(pathId),
         features: new Map([[feature.rank, feature]]),
         order: byPath.size,
       });
@@ -157,12 +176,23 @@ export function pathColumns(character: Character): (PathColumn | undefined)[] {
     const rankColors = [...entry.features.entries()]
       .sort((a, b) => a[0] - b[0])
       .slice(0, PATH_RANK_COUNT)
-      // Un rang qui a emprunté une capacité prend la couleur plate du profil emprunté ; sinon la couleur
-      // de la voie — ou le dégradé précieux pour le prestige.
-      .map(([, feature]) => borrowedColorOf(character, feature) ?? prestigeFill ?? baseColor);
-    const features = (entry.path?.featureIds ?? [])
-      .slice(0, PATH_RANK_COUNT)
-      .map((id) => featureById.get(id));
+      // Un rang qui a emprunté une capacité prend la couleur plate du profil emprunté ; un rang occupé
+      // par la capacité DIVINE du prêtre spécialiste prend la couleur de sa voie d'origine ; sinon la
+      // couleur de la voie — ou le dégradé précieux pour le prestige.
+      .map(
+        ([, feature]) =>
+          borrowedColorOf(character, feature) ?? divineColorOf(character, feature, divineSlot) ?? prestigeFill ?? baseColor,
+      );
+    // Rang occupé par la capacité DIVINE (prêtre spécialiste) : montre la capacité
+    // RÉELLEMENT acquise (`entry.features`, ex. « Coup de boutoir » du pagne), pas la
+    // native de la voie qu'elle a remplacée (« Miracle mineur ») — sinon l'infobulle du
+    // rang mentait sur ce que le personnage a effectivement. Rang pas encore acquis :
+    // repli sur la native de la voie (seule connue, sert à prévisualiser/acheter).
+    const nativeFeatureIds = entry.path?.featureIds ?? [];
+    const features = Array.from({ length: PATH_RANK_COUNT }, (_, i) => {
+      const rank = i + 1;
+      return entry.features.get(rank) ?? featureById.get(nativeFeatureIds[i]);
+    });
     return { path: entry.path, name: entry.path?.name, rankColors, features };
   };
   // Chaque voie occupe un EMPLACEMENT FIXE, pas une colonne compactée : peuple/mage
