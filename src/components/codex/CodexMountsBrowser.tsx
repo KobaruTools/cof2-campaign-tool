@@ -37,6 +37,7 @@ import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { PriceTag } from '@/components/codex/PriceTag';
 import { SourceRef } from '@/components/SourceRef';
 import { RefChip } from '@/components/sheet/FeatureRichText';
+import { bestiaryCreatureHref } from '@/lib/ui/creatureLinks';
 
 const rowSx = {
   borderRadius: 2,
@@ -85,7 +86,13 @@ function MountRow({ entry, highlighted }: { entry: MountCatalogEntry; highlighte
           </Typography>
         )}
         <Box sx={{ flexGrow: 1 }} />
-        <SourceRef page={entry.sourcePage} term={entry.name} />
+        <SourceRef
+          page={entry.sourcePage}
+          term={entry.name}
+          // Monture apte au combat (PER-439 suite) : son bloc de stats est le MÊME creature que le
+          // Bestiaire (id partagé, cf. `mounts.ts`) — lien direct vers sa fiche.
+          bestiaryHref={entry.creature ? bestiaryCreatureHref(entry.creature.id) : undefined}
+        />
       </Stack>
       {entry.note && (
         <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: entry.creature ? 1.5 : 2, fontStyle: 'italic' }}>

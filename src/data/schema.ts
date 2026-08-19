@@ -3309,17 +3309,19 @@ export interface FeatureChoiceOption {
    */
   requiresBestiaryCreatureSlug?: string;
   /**
-   * Slug d'une créature du Bestiaire dont les VRAIES statistiques REMPLACENT `creatureProfile` de
-   * cette option quand le compte l'a débloquée (PER-439 suite) — ex. Monture fantastique
-   * (cavalier-r5) : Pégase/Hippogriffe n'ont, à l'origine, que des caractéristiques EXTRAPOLÉES
-   * (absentes du livre de base) ; le supplément Bestiaire payant les chiffre réellement, mais on ne
-   * peut PAS les embarquer statiquement dans le bundle client (fuite du contenu payant à tout le
-   * monde, débloqué ou non — contrainte légale). Contrairement à `requiresBestiaryCreatureSlug`,
-   * ce champ NE GATE PAS l'option elle-même : elle reste choisissable par tous, avec son
-   * `creatureProfile` authored (souvent extrapolé) comme repli tant que la créature n'est pas
-   * accessible. Résolu à l'affichage (`preferredBestiaryCreatureSlug`, `companions.ts` +
-   * `FeaturesByPath.tsx`) via `creatureLinkAccess` contre `useBestiaryStore().list` (RLS-filtrée),
-   * puis converti par `creatureToProfile` (`src/lib/character/mounts.ts`).
+   * Slug d'une créature du Bestiaire dont les VRAIES caractéristiques (AGI/CON/FOR/PER/CHA/INT/VOL
+   * + dé bonus SEULEMENT — jamais DEF/PV/Initiative/attaque, qui restent le gabarit FIXE de la
+   * capacité, RAW p. 84 : « la valeur exacte des caractéristiques peut varier selon la créature »)
+   * remplacent celles de `creatureProfile` quand le compte l'a débloquée (PER-439 suite) — ex.
+   * Monture fantastique (cavalier-r5) : Pégase/Hippogriffe n'ont, à l'origine, que des
+   * caractéristiques EXTRAPOLÉES (absentes du livre de base) ; le supplément Bestiaire payant les
+   * chiffre réellement, mais on ne peut PAS les embarquer statiquement dans le bundle client (fuite
+   * du contenu payant à tout le monde, débloqué ou non — contrainte légale). Contrairement à
+   * `requiresBestiaryCreatureSlug`, ce champ NE GATE PAS l'option elle-même : elle reste
+   * choisissable par tous, avec son `creatureProfile` authored (souvent extrapolé) comme repli tant
+   * que la créature n'est pas accessible. Résolu à l'affichage (`preferredBestiaryCreatureSlug`,
+   * `companions.ts` + `FeaturesByPath.tsx`) via `creatureLinkAccess` contre
+   * `useBestiaryStore().list` (RLS-filtrée).
    */
   preferBestiaryCreatureSlug?: string;
   /**
@@ -3874,6 +3876,15 @@ export interface FantasticFamiliar {
    * correspondante (`FeatureChoiceOption.requiresBestiaryCreatureSlug`, même valeur).
    */
   requiresBestiaryCreatureSlug?: string;
+  /**
+   * Slug d'une créature du Bestiaire qui donne un bloc de stats COMPLET pour ce familier du
+   * LIVRE DE BASE (ex. Araignée géante p. 286, gratuite ; Fée/Stique dans le supplément payant) —
+   * simple renvoi BONUS pour qui veut le détail complet, PAS un gating (le familier reste
+   * accessible à tous, contrairement à `requiresBestiaryCreatureSlug`). Absent = pas de créature
+   * correspondante connue. Si la source est payante et non débloquée, le lien mène à une fiche
+   * verrouillée — comportement attendu, identique aux autres renvois bestiaire de l'app.
+   */
+  bestiaryCrossRefSlug?: string;
   /** Texte de présentation verbatim (aspect, déplacement, attaque innée…). */
   description: string;
   /**

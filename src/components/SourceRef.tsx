@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
-import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import { SectionIcon } from '@/components/SectionIcon';
 import { BOOKS, DEFAULT_BOOK_ID, rulesHref, type BookId } from '@/lib/ui/books';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
@@ -36,8 +35,9 @@ export interface SourceRefProps {
   codexHref?: string;
   /**
    * URL de la fiche du Bestiaire (PER-439) quand cette référence CITE une créature qui y a son
-   * propre bloc de stats — ajoute un petit bouton « voir dans le Bestiaire » (icône patte),
-   * soudé APRÈS le bouton Codex s'il est aussi présent. Même patron que `codexHref`
+   * propre bloc de stats — ajoute un petit bouton « voir dans le Bestiaire » (tête de loup, même
+   * icône que le bouton Bestiaire de l'en-tête), soudé APRÈS le bouton Codex s'il est aussi
+   * présent. Même patron que `codexHref`
    * (`bestiaryCreatureHref`, `src/lib/ui/creatureLinks.ts`). Absent = pas de bouton.
    */
   bestiaryHref?: string;
@@ -129,7 +129,9 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
       title: 'Voir dans le Bestiaire',
       onClick: goToBestiary,
       onAux: goToBestiaryAux,
-      icon: <PetsOutlinedIcon sx={{ fontSize: 16 }} />,
+      // Tête de loup — même icône que le bouton Bestiaire de l'en-tête et l'entrée « Familiers
+      // fantastiques » du Codex (`CodexSubpageIcon`, `SectionIcon name="companions"`).
+      icon: <SectionIcon name="companions" size={16} />,
     });
   }
 

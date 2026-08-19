@@ -1041,10 +1041,12 @@ export const fighterFeatures: Feature[] = [
     // attaque = attaque magique du chevalier, DM 2d4°+5, Init. recopiée du maître ; PV [=10 + niveau × 6]
     // (terrestres) ou [=10 + niveau × 5] (volantes). Les CARACTÉRISTIQUES (« varient selon la créature »)
     // sont tirées du bestiaire du livre : Cheval de guerre p. 267, Lion (félin géant) p. 269, Ours brun
-    // p. 271. Les montures volantes (pégase/griffon/hippogriffe) ne figurant PAS au bestiaire du livre de
-    // base, leurs caractéristiques sont EXTRAPOLÉES (cheval + aigle commun p. 266) — TODO(extraction) à
-    // affiner si une source officielle les donne. Le richText garde la prose (PV volante [=10 + niveau × 5]
-    // affichés dynamiquement).
+    // p. 271, Griffon p. 286 (gratuit, livre de base). Pégase et Hippogriffe n'ont PAS de bloc dans le
+    // livre de base : caractéristiques EXTRAPOLÉES en repli, remplacées par les vraies (Le Bestiaire,
+    // payant, p. 150 pégase / p. 118 hippogriffe) une fois le compte débloqué (PER-439,
+    // `preferBestiaryCreatureSlug` sur ces deux options — jamais embarquées statiquement, contenu
+    // payant). Le richText garde la prose (PV
+    // volante [=10 + niveau × 5] affichés dynamiquement).
     richText:
       'Le chevalier obtient une monture puissante (cheval de guerre lourd, ours, félin géant, etc.). La valeur exacte des caractéristiques peut varier selon la créature. Lorsqu’il est en selle, le chevalier peut faire attaquer sa monture une fois par round en action gratuite. À partir du niveau 9, le chevalier peut obtenir une monture volante (pégase, griffon, hippogriffe, etc.) si le MJ l’autorise (il devra vérifier qu’une monture volante n’entre pas en contradiction avec les aventures prévues). Dans ce cas, en vol, la monture couvre une distance de 20 m par action de mouvement, mais ses PV sont seulement égaux à [=10 + niveau × 5].',
     text:
@@ -1098,9 +1100,15 @@ export const fighterFeatures: Feature[] = [
             },
           },
           {
+            // PER-439 suite : caractéristiques toujours EXTRAPOLÉES en repli (aucune source
+            // gratuite pour le pégase) — remplacées par les vraies (AGI 2/CON 5/FOR 5/PER 2/
+            // CHA 2/INT -3/VOL 0, dé bonus CON+PER) une fois le Bestiaire payant débloqué sur
+            // le compte (`preferBestiaryCreatureSlug`, `FeaturesByPath.tsx`). Le reste du bloc
+            // (DEF/PV/attaque) ne varie jamais : gabarit fixe de « Monture fantastique » (p. 84).
             id: 'pegasus',
             label: 'Pégase (monture volante)',
             minLevel: 9,
+            preferBestiaryCreatureSlug: 'pegase',
             creatureProfile: {
               name: 'Pégase',
               companionType: 'mount',
@@ -1109,28 +1117,37 @@ export const fighterFeatures: Feature[] = [
               hitPoints: '[=10 + niveau × 5]',
               initiative: { fromMaster: 'initiative' },
               attack: { label: 'Ruade', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
-              note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées (absente du bestiaire du livre de base).',
+              note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées à défaut du Bestiaire payant (Le Bestiaire, p. 150).',
             },
           },
           {
+            // PER-439 suite : le griffon EST dans le bestiaire GRATUIT du livre de base (p. 286) —
+            // caractéristiques réelles reprises directement (AGI 3/CON 6/FOR 6/PER 2/CHA 0/INT -3/
+            // VOL 1, dé bonus PER), plus d'extrapolation ni de gating nécessaire (contenu déjà
+            // accessible à tous). DEF/PV/attaque restent le gabarit fixe de « Monture fantastique ».
             id: 'griffin',
             label: 'Griffon (monture volante)',
             minLevel: 9,
             creatureProfile: {
               name: 'Griffon',
               companionType: 'mount',
-              abilities: { AGI: 3, CON: 5, FOR: 5, PER: 3, CHA: -2, INT: -3, VOL: 2 },
+              abilities: { AGI: 3, CON: 6, FOR: 6, PER: 2, CHA: 0, INT: -3, VOL: 1 },
+              bonusDieAbilities: ['PER'],
               defense: '20',
               hitPoints: '[=10 + niveau × 5]',
               initiative: { fromMaster: 'initiative' },
               attack: { label: 'Bec et griffes', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
-              note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées (absent du bestiaire du livre de base).',
+              note: 'En vol : 20 m par action de mouvement.',
             },
           },
           {
+            // PER-439 suite : caractéristiques extrapolées en repli, remplacées par les vraies une
+            // fois le Bestiaire payant débloqué (`preferBestiaryCreatureSlug`) — même patron que le
+            // pégase ci-dessus.
             id: 'hippogriff',
             label: 'Hippogriffe (monture volante)',
             minLevel: 9,
+            preferBestiaryCreatureSlug: 'hippogriffe',
             creatureProfile: {
               name: 'Hippogriffe',
               companionType: 'mount',
@@ -1139,7 +1156,7 @@ export const fighterFeatures: Feature[] = [
               hitPoints: '[=10 + niveau × 5]',
               initiative: { fromMaster: 'initiative' },
               attack: { label: 'Bec et griffes', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
-              note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées (absent du bestiaire du livre de base).',
+              note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées à défaut du Bestiaire payant (Le Bestiaire).',
             },
           },
           {

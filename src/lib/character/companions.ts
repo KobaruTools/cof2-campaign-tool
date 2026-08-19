@@ -89,6 +89,27 @@ export function effectiveCreatureProfile(
 }
 
 /**
+ * Slug de créature du Bestiaire dont l'option ACTUELLEMENT retenue préfère les VRAIES
+ * caractéristiques (PER-439 suite, `FeatureChoiceOption.preferBestiaryCreatureSlug`) — ex. Monture
+ * fantastique : Pégase/Hippogriffe. `undefined` si aucune option retenue n'en porte un (ou pas de
+ * personnage). NE DÉCIDE PAS de l'accès (juste lequel slug regarder) : l'appelant vérifie
+ * séparément `creatureLinkAccess` avant de fusionner les caractéristiques réelles (cf.
+ * `FeaturesByPath.tsx`) — ce module reste pur, sans dépendance au store bestiaire.
+ */
+export function preferredBestiaryCreatureSlug(feature: Feature, character: Character | undefined): string | undefined {
+  if (!character) return undefined;
+  for (let i = 0; i < (feature.choices ?? []).length; i += 1) {
+    const def = feature.choices![i];
+    if (def.kind !== 'option') continue;
+    const raw = getSelection(character, feature.id, i);
+    const id = Array.isArray(raw) ? raw[0] : raw;
+    const opt = id ? def.options.find((o) => o.id === id) : undefined;
+    if (opt?.preferBestiaryCreatureSlug) return opt.preferBestiaryCreatureSlug;
+  }
+  return undefined;
+}
+
+/**
  * Amélioration de créature dont le champ `def` scalant a déjà été RÉSOLU en nombre (les autres
  * champs sont inchangés). La résolution se fait AU GATHER, contre la voie de la capacité SOURCE
  * (`resolveValue`), car le rang pertinent est celui du maître dans SA voie (ex. rang `runes`), pas

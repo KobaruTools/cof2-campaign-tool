@@ -10,6 +10,7 @@ import {
   displayCreatureProfile,
   effectiveCreatureProfile,
   listCompanions,
+  preferredBestiaryCreatureSlug,
   pruneCompanionDepletion,
   pruneCompanionInstances,
   resolveCompanionInstanceLimit,
@@ -426,6 +427,54 @@ describe('companionType (PER-175)', () => {
     expect(karcaillou.profile.name).toBe('Karcaillou');
     expect(karcaillou.profile.size).toBe('minuscule');
     expect((karcaillou.profile.specialAbilities ?? []).map((a) => a.name)).toEqual(['Pétrification']);
+  });
+});
+
+// PER-439 suite — Monture fantastique (cavalier-r5) : Pégase/Hippogriffe préfèrent les vraies
+// caractéristiques du Bestiaire une fois débloqué (`preferBestiaryCreatureSlug`) ; Griffon (gratuit)
+// et les montures terrestres n'ont pas ce champ (déjà réel/statique, pas de bascule nécessaire).
+describe('preferredBestiaryCreatureSlug (PER-439 suite)', () => {
+  const knight = (over: Partial<Character> = {}) =>
+    char({
+      classId: 'guerrier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      featureIds: ['cavalier-r5'],
+      ...over,
+    });
+
+  it('pégase/hippogriffe retenus → slug du Bestiaire correspondant', () => {
+    expect(
+      preferredBestiaryCreatureSlug(
+        featureById.get('cavalier-r5')!,
+        knight({ featureChoices: { 'cavalier-r5': ['pegasus'] } }),
+      ),
+    ).toBe('pegase');
+    expect(
+      preferredBestiaryCreatureSlug(
+        featureById.get('cavalier-r5')!,
+        knight({ featureChoices: { 'cavalier-r5': ['hippogriff'] } }),
+      ),
+    ).toBe('hippogriffe');
+  });
+
+  it('griffon (gratuit) ou monture terrestre retenue → aucun slug (déjà réel/statique)', () => {
+    expect(
+      preferredBestiaryCreatureSlug(
+        featureById.get('cavalier-r5')!,
+        knight({ featureChoices: { 'cavalier-r5': ['griffin'] } }),
+      ),
+    ).toBeUndefined();
+    expect(
+      preferredBestiaryCreatureSlug(
+        featureById.get('cavalier-r5')!,
+        knight({ featureChoices: { 'cavalier-r5': ['war-horse'] } }),
+      ),
+    ).toBeUndefined();
+  });
+
+  it('aucune monture retenue → undefined', () => {
+    expect(preferredBestiaryCreatureSlug(featureById.get('cavalier-r5')!, knight())).toBeUndefined();
   });
 });
 

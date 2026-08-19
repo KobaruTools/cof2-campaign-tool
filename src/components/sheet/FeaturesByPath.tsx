@@ -86,8 +86,10 @@ import { CrystalAssignmentSelect } from './CrystalAssignmentSelect';
 import {
   creatureDefenseAltActive,
   displayCreatureProfile,
+  preferredBestiaryCreatureSlug,
   resolveCompanionInstanceLimit,
 } from '@/lib/character/companions';
+import { creatureLinkAccess } from '@/lib/ui/lockedContentAccess';
 import {
   borrowedPowerIntegrityKey,
   borrowedPowerUsedKey,
@@ -3375,6 +3377,45 @@ function PathBlock({
   testBonuses?: TestDomainBonus[];
 }) {
   const { path, features } = group;
+  // PER-439 suite — options dont le profil AFFICHÉ préfère les VRAIES stats du Bestiaire une fois
+  // débloquées (ex. Monture fantastique : Pégase/Hippogriffe, `preferBestiaryCreatureSlug`).
+  // Précalculé pour TOUTE la voie (pas par capacité) : `useEffect` ne peut pas être appelé à
+  // l'intérieur d'un `.map()` sur les capacités du groupe (règle des hooks).
+  const bestiaryList = useBestiaryStore((s) => s.list);
+  const bestiaryBlobs = useBestiaryStore((s) => s.blobs);
+  const loadBestiaryBlob = useBestiaryStore((s) => s.loadBlob);
+  const preferredBestiarySlugs = character
+    ? Array.from(
+        new Set(
+          features
+            .map((f) => preferredBestiaryCreatureSlug(f, character))
+            .filter((slug): slug is string => !!slug),
+        ),
+      )
+    : [];
+  useEffect(() => {
+    for (const slug of preferredBestiarySlugs) loadBestiaryBlob(slug);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferredBestiarySlugs.join(','), loadBestiaryBlob]);
+  /**
+   * Profil AFFICHÉ d'une capacité (PER-439 suite) : SEULES les caractéristiques (AGI/CON/FOR/PER/
+   * CHA/INT/VOL + dé bonus) sont remplacées par les vraies valeurs du Bestiaire quand l'option
+   * retenue en préfère une ET que le compte l'a débloquée (`creatureLinkAccess`) — DEF/PV/
+   * Initiative/attaque restent le GABARIT FIXE authored (RAW p. 84 : « la valeur exacte des
+   * caractéristiques peut varier selon la créature », le reste du bloc « Monture fantastique » ne
+   * varie PAS — ce n'est jamais les stats brutes du monstre sauvage, bien plus hautes). Repli
+   * silencieux sur le profil authored (souvent extrapolé) tant que non accessible : jamais de fuite
+   * de contenu payant à un compte qui ne l'a pas.
+   */
+  const resolveDisplayProfile = (feat: Feature): CreatureProfile | undefined => {
+    const base = displayCreatureProfile(feat, character);
+    if (!base) return base;
+    const slug = character ? preferredBestiaryCreatureSlug(feat, character) : undefined;
+    if (!slug) return base;
+    const blob = bestiaryBlobs[slug];
+    if (!blob?.abilities || creatureLinkAccess(bestiaryList, slug) !== 'accessible') return base;
+    return { ...base, abilities: blob.abilities, bonusDieAbilities: blob.bonusDieAbilities };
+  };
   // Cette voie porte-t-elle Forme animale (animaux-r5), NATIVEMENT (voie des animaux du druide) OU
   // par OCTROI (`grantedFeatures`, changeforme-r5, PER-375) ? Générique : couvre les deux sans
   // connaître `prestige-changeforme` par son id — sert à monter la modale (`AnimalFormDialog`),
@@ -4751,7 +4792,7 @@ function PathBlock({
                   />
                 )}
                 {(() => {
-                  const profile = displayCreatureProfile(openFeature, character);
+                  const profile = resolveDisplayProfile(openFeature);
                   return profile && abilities && level != null ? (
                     <Box sx={{ mt: 1.5 }}>
                       <CreatureStatBlock
@@ -5357,7 +5398,7 @@ function PathBlock({
                 />
               )}
               {(() => {
-                const profile = displayCreatureProfile(feature, character);
+                const profile = resolveDisplayProfile(feature);
                 return profile && abilities && level != null ? (
                   <Box sx={{ mt: 1.5 }}>
                     <CreatureStatBlock
