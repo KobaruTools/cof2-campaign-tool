@@ -47,13 +47,14 @@ import {
   CharacterList,
   type CharacterListAction,
 } from '@/components/character-list/CharacterList';
+import { CharacterListSearchBar } from '@/components/character-list/CharacterListSearchBar';
 import { CharacterListSkeleton } from '@/components/character-list/CharacterListSkeleton';
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
-import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
 import { HomeBackground } from '@/components/HomeBackground';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { storageKeys } from '@/lib/storage/keys';
+import { normalizeSearchText } from '@/lib/ui/searchText';
 import { AttachCharacterDialog } from '@/components/home/AttachCharacterDialog';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { useHeaderContent } from '@/stores/headerContent';
@@ -69,6 +70,9 @@ import { hrefFromIndex, useCharacterSlugIndex, useResolvedCampaign } from '@/lib
 
 // Pas de tri par campagne ici : la campagne est le contexte implicite.
 const CAMPAIGN_SORT_KEYS: SortKey[] = ['updatedAt', 'name', 'level'];
+
+/** Normalise pour une recherche insensible à la casse, aux accents et aux ligatures (`œ`/`æ`). */
+const norm = normalizeSearchText;
 
 export default function CampaignPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid: cidParam } = use(params);
@@ -117,6 +121,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const [importOpen, setImportOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortState>({ key: 'updatedAt', dir: 'desc' });
   // Section « Archivés » (morts + retraités) repliable, repliée par défaut, choix
   // persisté en local (comme l'accueil). Une seule clé partagée par les campagnes.
@@ -161,24 +166,35 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     setToDelete(null);
   };
 
-  // Personnages de CETTE campagne (FK `campaignId`), puis tri partagé.
-  const rows = useMemo(() => {
-    const dir = sort.dir === 'asc' ? 1 : -1;
-    return characters
-      .filter((c) => c.campaignId === cid)
-      .map((c) => summarizeInCampaign(c, campaign))
-      .sort((a, b) => {
-        switch (sort.key) {
-          case 'name':
-            return dir * a.name.localeCompare(b.name, 'fr');
-          case 'level':
-            return dir * (a.level - b.level) || a.name.localeCompare(b.name, 'fr');
-          default:
-            return dir * a.updatedAt.localeCompare(b.updatedAt);
-        }
-      });
+  // Personnages de CETTE campagne (FK `campaignId`), avant recherche/tri.
+  const campaignRows = useMemo(
+    () => characters.filter((c) => c.campaignId === cid).map((c) => summarizeInCampaign(c, campaign)),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- contentVersion déclenche le recalcul, jamais lu directement
-  }, [characters, cid, campaign, sort, contentVersion]);
+    [characters, cid, campaign, contentVersion],
+  );
+
+  // Recherche masquée sous ce seuil (peu d'intérêt pour une poignée de personnages).
+  const showSearch = campaignRows.length >= 20;
+
+  // Filtre (recherche, si affichée) puis tri. Pas de campagne à filtrer (contexte implicite).
+  const rows = useMemo(() => {
+    const q = showSearch ? norm(query.trim()) : '';
+    const filtered = q
+      ? campaignRows.filter((r) => norm(`${r.name} ${r.ancestry} ${r.characterClass}`).includes(q))
+      : campaignRows;
+
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      switch (sort.key) {
+        case 'name':
+          return dir * a.name.localeCompare(b.name, 'fr');
+        case 'level':
+          return dir * (a.level - b.level) || a.name.localeCompare(b.name, 'fr');
+        default:
+          return dir * a.updatedAt.localeCompare(b.updatedAt);
+      }
+    });
+  }, [campaignRows, query, sort]);
 
   // Split actifs / archivés (PER-183) : « Archivés » est un terme d'UI désignant
   // l'union mort ∪ retiré (pas une valeur de statut). Le changement de statut se
@@ -337,7 +353,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           </Button>
         </Stack>
 
-        {draft && draft.campaignId === cid && (
+        {draft && (
           <AppAlert
             severity="info"
             sx={{ mb: 3 }}
@@ -347,7 +363,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
                   color="inherit"
                   size="small"
                   component={Link}
-                  href={`/create?campaign=${cid}`}
+                  href={draft.campaignId === cid ? `/create?campaign=${cid}` : '/create'}
                 >
                   Reprendre
                 </Button>
@@ -361,7 +377,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           </AppAlert>
         )}
 
-        {rows.length === 0 ? (
+        {campaignRows.length === 0 ? (
           <Paper
             variant="outlined"
             sx={{
@@ -381,84 +397,114 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             </Typography>
           </Paper>
         ) : (
-          <Stack spacing={2}>
-            {/* Tri mobile partagé par les deux sections (le desktop trie via les
-                en-têtes de chaque tableau) + décompte des personnages de la campagne,
-                aligné à droite au-dessus du tableau. */}
-            <Stack
-              direction="row"
-              spacing={2}
-              sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}
-            >
-              <SortControl
-                sort={sort}
-                keys={CAMPAIGN_SORT_KEYS}
-                onPickSort={pickSort}
-                onToggleDir={toggleDir}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
-                {rows.length} personnage{rows.length > 1 ? 's' : ''}
-              </Typography>
-            </Stack>
+          <>
+            <CharacterListSearchBar
+              query={query}
+              onQueryChange={setQuery}
+              placeholder="Rechercher (nom, peuple, profil)"
+              count={rows.length}
+              sort={sort}
+              keys={CAMPAIGN_SORT_KEYS}
+              onPickSort={pickSort}
+              onToggleDir={toggleDir}
+              showSearch={showSearch}
+            />
 
-            {/* Vivants (`status = active`) : simple liste, sans titre (comme l'accueil).
-                Un léger message si tous les personnages sont archivés. */}
-            {activeRows.length > 0 ? (
-              list(activeRows)
+            {rows.length === 0 ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  bgcolor: 'rgba(30, 30, 34, 0.55)',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                  borderColor: 'rgba(255, 255, 255, 0.10)',
+                  borderTopLeftRadius: { md: 0 },
+                  borderTopRightRadius: { md: 0 },
+                }}
+              >
+                <Typography color="text.secondary">
+                  Aucun personnage ne correspond à « {query} ».
+                </Typography>
+              </Paper>
             ) : (
-              <Typography color="text.secondary">Aucun personnage vivant.</Typography>
-            )}
-
-            {/* Archivés (mort ∪ retiré) : section repliable, repliée par défaut, état
-                persisté en local (comme l'accueil). Masquée si aucun archivé. */}
-            {archivedRows.length > 0 && (
-              <Box>
-                <Box
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setArchivedOpen(!archivedOpen)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setArchivedOpen(!archivedOpen);
-                    }
-                  }}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'rgba(0, 0, 0, 0.35)',
-                    border: '1px solid rgba(255, 255, 255, 0.10)',
-                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.45)' },
-                    // Ouvert : le bouton se raccorde à la liste en dessous (angles bas
-                    // carrés, plus de liseré bas pour éviter le double trait).
-                    ...(archivedOpen && {
-                      borderBottomLeftRadius: 0,
-                      borderBottomRightRadius: 0,
-                      borderBottom: 'none',
-                    }),
-                  }}
-                >
-                  <ExpandMoreIcon
+              <>
+                {/* Vivants (`status = active`) : simple liste, raccordée au bloc de
+                    recherche au-dessus (comme l'accueil). Un léger message si tous les
+                    personnages sont archivés. */}
+                {activeRows.length > 0 ? (
+                  list(activeRows, true)
+                ) : (
+                  <Paper
+                    variant="outlined"
                     sx={{
-                      transition: 'transform 0.2s',
-                      transform: archivedOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                      p: 4,
+                      textAlign: 'center',
+                      bgcolor: 'rgba(30, 30, 34, 0.55)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitBackdropFilter: 'blur(6px)',
+                      borderColor: 'rgba(255, 255, 255, 0.10)',
+                      borderTopLeftRadius: { md: 0 },
+                      borderTopRightRadius: { md: 0 },
                     }}
-                  />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    Archivés ({archivedRows.length})
-                  </Typography>
-                </Box>
-                <Collapse in={archivedOpen} unmountOnExit>
-                  {list(archivedRows, true)}
-                </Collapse>
-              </Box>
+                  >
+                    <Typography color="text.secondary">Aucun personnage vivant.</Typography>
+                  </Paper>
+                )}
+
+                {/* Archivés (mort ∪ retiré) : section repliable, repliée par défaut, état
+                    persisté en local (comme l'accueil). Masquée si aucun archivé. */}
+                {archivedRows.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Box
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setArchivedOpen(!archivedOpen)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setArchivedOpen(!archivedOpen);
+                        }
+                      }}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        p: 1.5,
+                        borderRadius: 2,
+                        bgcolor: 'rgba(0, 0, 0, 0.35)',
+                        border: '1px solid rgba(255, 255, 255, 0.10)',
+                        '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.45)' },
+                        // Ouvert : le bouton se raccorde à la liste en dessous (angles bas
+                        // carrés, plus de liseré bas pour éviter le double trait).
+                        ...(archivedOpen && {
+                          borderBottomLeftRadius: 0,
+                          borderBottomRightRadius: 0,
+                          borderBottom: 'none',
+                        }),
+                      }}
+                    >
+                      <ExpandMoreIcon
+                        sx={{
+                          transition: 'transform 0.2s',
+                          transform: archivedOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                        }}
+                      />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        Archivés ({archivedRows.length})
+                      </Typography>
+                    </Box>
+                    <Collapse in={archivedOpen} unmountOnExit>
+                      {list(archivedRows, true)}
+                    </Collapse>
+                  </Box>
+                )}
+              </>
             )}
-          </Stack>
+          </>
         )}
       </Container>
 

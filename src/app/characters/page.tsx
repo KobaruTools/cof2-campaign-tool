@@ -27,7 +27,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import SearchIcon from '@mui/icons-material/Search';
 import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -38,10 +37,8 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
-import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
@@ -52,9 +49,9 @@ import {
   type CharacterListAction,
   type CharacterListGroup,
 } from '@/components/character-list/CharacterList';
+import { CharacterListSearchBar } from '@/components/character-list/CharacterListSearchBar';
 import { CharacterListSkeleton } from '@/components/character-list/CharacterListSkeleton';
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
-import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey } from '@/components/character-list/sort';
 import { usePersistedSort } from '@/components/character-list/usePersistedSort';
 import { HomeBackground } from '@/components/HomeBackground';
@@ -355,46 +352,16 @@ export default function CharactersPage() {
           </Paper>
         ) : (
           <>
-            {/* Bloc de recherche, collé en haut du tableau : fond noir translucide
-                + flou, arrondi seulement en haut (le tableau prolonge le bas). */}
-            <Box
-              sx={{
-                p: 1.5,
-                bgcolor: 'rgba(0, 0, 0, 0.45)',
-                backdropFilter: 'blur(6px)',
-                WebkitBackdropFilter: 'blur(6px)',
-                border: '1px solid rgba(255, 255, 255, 0.10)',
-                borderRadius: 2,
-                borderBottomLeftRadius: { md: 0 },
-                borderBottomRightRadius: { md: 0 },
-                borderBottom: { md: 'none' },
-                mb: { xs: 2, md: 0 },
-              }}
-            >
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Rechercher (nom, peuple, profil, campagne)"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-              <SortControl
-                sort={sort}
-                keys={HOME_SORT_KEYS}
-                onPickSort={pickSort}
-                onToggleDir={toggleDir}
-                sx={{ mt: 1 }}
-              />
-            </Box>
+            <CharacterListSearchBar
+              query={query}
+              onQueryChange={setQuery}
+              placeholder="Rechercher (nom, peuple, profil, campagne)"
+              count={rows.length}
+              sort={sort}
+              keys={HOME_SORT_KEYS}
+              onPickSort={pickSort}
+              onToggleDir={toggleDir}
+            />
 
             {rows.length === 0 ? (
               <Paper
