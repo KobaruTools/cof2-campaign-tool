@@ -1,7 +1,6 @@
 'use client';
 
 import AddIcon from '@mui/icons-material/Add';
-import AutorenewIcon from '@mui/icons-material/Autorenew';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -72,7 +71,7 @@ import {
   interactiveBlockSx,
   parseAbilityMarkers,
 } from '@/components/bestiary/BestiaryStatBlock';
-import { CREATURE_SIZE_LABELS } from '@/lib/ui/creature';
+import { ANIMAL_FORM_CATEGORY_LABELS, CREATURE_SIZE_LABELS } from '@/lib/ui/creature';
 import { codexPathHref, featureCodexHref } from '@/lib/ui/codex';
 import {
   activeCrystalIds,
@@ -2013,6 +2012,9 @@ function ActiveAnimalFormAbilities({ character, verbatim }: { character: Charact
           </Typography>
           {blob.sourcePage > 0 && <SourceRef page={blob.sourcePage} term={blob.name} />}
           {blob.size && <MetaPill>{CREATURE_SIZE_LABELS[blob.size]}</MetaPill>}
+          {blob.category === 'animaux' && blob.animalFormCategory && (
+            <MetaPill>{ANIMAL_FORM_CATEGORY_LABELS[blob.animalFormCategory]}</MetaPill>
+          )}
         </Stack>
         <Typography
           variant="caption"
@@ -3383,6 +3385,15 @@ function PathBlock({
   // (native + octroyée) : l'ACTIVER sans forme choisie ouvre cette modale plutôt qu'un no-op
   // silencieux (cf. `renderEffectToggles` ci-dessous) — un seul état d'ouverture pour les deux.
   const [animalFormDialogOpen, setAnimalFormDialogOpen] = useState(false);
+  // Nom de la forme choisie pour la puce « valeur » du toggle (cf. `renderEffectToggles` ci-dessous) —
+  // chargé ici indépendamment de `AnimalFormSelector` (pas forcément monté quand la carte compacte
+  // seule est visible, détail replié).
+  const animalFormValue = character?.effectInputs?.['animaux-r5'] ?? '';
+  const animalFormBlobs = useBestiaryStore((s) => s.blobs);
+  const loadAnimalFormBlob = useBestiaryStore((s) => s.loadBlob);
+  useEffect(() => {
+    if (animalFormValue) loadAnimalFormBlob(animalFormValue);
+  }, [animalFormValue, loadAnimalFormBlob]);
   // PER-363 — Chasseur ailé (r7) : son interrupteur devient MJ-only (voir `renderEffectToggles`) ;
   // `isPlayer` reflète la SESSION courante (magic link joueur), pas le personnage affiché.
   const { isPlayer } = useIsPlayerSession();
@@ -3546,59 +3557,30 @@ function PathBlock({
     // pense-bête togglable par le joueur comme n'importe quel autre effet temporaire. C'est le
     // bouton « Invoquer » dédié (MJ seulement, cf. la modale de détail) qui ajoute réellement la
     // créature au combat.
-    // Forme animale (animaux-r5, PER-375/PER-435, retour propriétaire 2026-08-18) : ACTIVER ce
-    // toggle sans forme choisie est un no-op moteur (`toggleEffect`, rien à activer) — au lieu de le
-    // laisser silencieux, on ouvre directement le sélecteur (même modale que le bouton d'en-tête).
-    // Couper reste inchangé (retire la forme normalement, via `onToggleEffect`).
-    const isAnimalFormToggle = feature.id === 'animaux-r5' || feature.id === 'prestige-changeforme-r5';
-    const handleToggle = isAnimalFormToggle
-      ? (featureId: string, index: number, active: boolean) => {
-          if (active) {
-            setAnimalFormDialogOpen(true);
-            return;
-          }
-          onToggleEffect?.(featureId, index, active);
-        }
-      : onToggleEffect;
-    // Forme animale ACTIVE (retour propriétaire 2026-08-19) : petit bouton « changer de forme » à
-    // côté de l'interrupteur, pour rouvrir le sélecteur SANS couper/rallumer le toggle (ce qui
-    // remettrait à zéro l'état de jeu — dé de récupération dépensé, etc. — pour rien). Volontairement
-    // hors mécanique officielle (le livre ne prévoit pas de changer de forme à la volée) : la fiche
-    // reste libre, l'infobulle le précise.
-    const animalFormEffectIndex = isAnimalFormToggle
-      ? featureById.get(feature.id)?.effects?.findIndex(
-          (e) => e.kind === 'conditional-stat-bonus' && e.activation.kind === 'temporary',
-        ) ?? -1
-      : -1;
-    const showChangeFormButton =
-      isAnimalFormToggle &&
-      animalFormEffectIndex >= 0 &&
-      isEffectActive(character, feature.id, animalFormEffectIndex);
+    // Forme animale (animaux-r5, prestige-changeforme-r5, PER-375/PER-435) : le choix se fait
+    // via `AnimalFormSelector`/`Character.effectInputs`, pas un interrupteur manuel — un Switch
+    // classique donnait à tort l'impression d'un on/off normal. On rend donc la puce
+    // « Choisir »/valeur bleue habituelle (`ChoiceTodoBadge`/`ChoiceValueBadge`, même patron que
+    // tout choix de la fiche) à la place, qui ouvre la modale du sélecteur — cliquer la valeur
+    // la rouvre aussi pour EN CHANGER (l'Autocomplete y permet de vider la sélection).
+    if (feature.id === 'animaux-r5' || feature.id === 'prestige-changeforme-r5') {
+      const selectedName = animalFormValue ? animalFormBlobs[animalFormValue]?.name ?? animalFormValue : undefined;
+      return selectedName ? (
+        <ChoiceValueBadge label={selectedName} compact={opts.compact} onClick={() => setAnimalFormDialogOpen(true)} />
+      ) : (
+        <ChoiceTodoBadge label="Choisir une forme" compact={opts.compact} onClick={() => setAnimalFormDialogOpen(true)} />
+      );
+    }
     return (
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <FeatureEffectToggles
-          character={character}
-          featureId={feature.id}
-          compact={opts.compact}
-          onToggle={handleToggle}
-          onSpendRecoveryDie={onSpendRecoveryDie}
-          disabled={isDisabled(feature)}
-          sessionStatusIds={sessionStatusIds}
-        />
-        {showChangeFormButton && (
-          <AppTooltip title="Changer de forme sans désactiver le toggle — liberté de la fiche en cas d'erreur, pas une mécanique de jeu prévue par le livre.">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                setAnimalFormDialogOpen(true);
-              }}
-            >
-              <AutorenewIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </AppTooltip>
-        )}
-      </Stack>
+      <FeatureEffectToggles
+        character={character}
+        featureId={feature.id}
+        compact={opts.compact}
+        onToggle={onToggleEffect}
+        onSpendRecoveryDie={onSpendRecoveryDie}
+        disabled={isDisabled(feature)}
+        sessionStatusIds={sessionStatusIds}
+      />
     );
   };
 
