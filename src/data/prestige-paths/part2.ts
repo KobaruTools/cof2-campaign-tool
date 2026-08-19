@@ -4355,6 +4355,25 @@ export const prestigeFeatures2: Feature[] = [
       "Le personnage peut prendre la forme d'un animal de son choix parmi chat, chien, chevreuil, saumon ou corbeau. Il doit choisir cet animal à l'acquisition de ce sort et ce sera toujours le même. La transformation dure PER minutes ou PER heures si le personnage connaît le sort de druide Forme animale de la voie des animaux. Il peut faire l'acquisition d'une forme de voyage supplémentaire par rang atteint dans la voie. Voir le sort de druide Forme animale pour les effets.",
     richText:
       "Le personnage peut prendre la forme d'un animal de son choix parmi chat, chien, chevreuil, saumon ou corbeau. Il doit choisir cet animal à l'acquisition de ce sort et ce sera toujours le même. La transformation dure [=PER] minutes ou [=PER] heures si le personnage connaît le sort de druide [&animaux-r5] de la voie des animaux. Il peut faire l'acquisition d'une forme de voyage supplémentaire par rang atteint dans la voie. Voir le sort de druide [&animaux-r5] pour les effets.",
+    // Choix RÉPÉTABLE (même patron « Choisir »/valeur bleue que Langage des animaux, animaux-r1) :
+    // 5 formes FIXES (aucun profil de créature — RAW ne chiffre pas ces animaux, contrairement à
+    // Forme animale qui pioche une vraie créature du bestiaire) ; 1 retenue à l'acquisition (rang 4),
+    // +1 par rang supplémentaire atteint dans CETTE MÊME voie (`by: 'path-rank'`, nouvelle variante,
+    // schema.ts) — 5 rangs (4→8) pour 5 formes, aucune ne peut manquer de forme à choisir.
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Forme de voyage (une par rang atteint dans la voie du changeforme)',
+        repeat: { by: 'path-rank', pathId: 'prestige-changeforme', fromRank: 4 },
+        options: [
+          { id: 'chat', label: 'Chat' },
+          { id: 'chien', label: 'Chien' },
+          { id: 'chevreuil', label: 'Chevreuil' },
+          { id: 'saumon', label: 'Saumon' },
+          { id: 'corbeau', label: 'Corbeau' },
+        ],
+      },
+    ],
     sourcePage: 170,
   },
   {
@@ -4465,6 +4484,11 @@ export const prestigeFeatures2: Feature[] = [
     // PER-290 : inflige l'état Étourdi mais attaque RÉPÉTABLE (aucun cap « 1×/combat par état ») → PAS de
     // `inflictableStates` (réservé au toggle 1×/combat, patron spadassin-r5). Le nom d'état dans le
     // verbatim est déjà auto-glosé (StatusEffectChip, PER-208).
+    // PER-376 : la notation d'auteur `[10 + VOL]` du `text` EST déjà la syntaxe formule richText finale
+    // (démo `[1d4° + CHA]`) — copiée telle quelle pour que le rendu la calcule (sinon crochets littéraux,
+    // `RichTextRun` sans `richText` ne parse pas les formules).
+    richText:
+      "Le personnage réalise une attaque à mains nues ou avec une arme contondante. En plus des DM habituels, si le NC de la victime est inférieur au rang atteint dans la voie, elle doit réussir un test de CON difficulté [10 + VOL] ou être étourdie pour un round.",
     sourcePage: 171,
   },
   {
@@ -4476,6 +4500,26 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage se concentre pendant 1d4 rounds (le MJ garde cette durée secrète et annonce au joueur lorsqu'il est prêt) pendant lesquels il ne peut ni attaquer ni se déplacer, mais bénéficie d'une RD 5. Au round suivant, en utilisant une action d'attaque, il peut réaliser une attaque dévastatrice : il touche automatiquement et il triple ses DM. S'il cesse sa concentration prématurément, le personnage ne profite d'aucun bénéfice.",
+    // PER-376 : seul le dé de durée (secret du MJ) est balisé — RD/DM restent littéraux (jargon
+    // auto-glosé). « touche automatiquement »/« triple ses DM » : attaque manuelle non simulée par le
+    // moteur (pas de jet d'attaque réel dans l'app), donc pas de mécanisation au-delà de l'interrupteur RD.
+    richText:
+      "Le personnage se concentre pendant {1d4} rounds (le MJ garde cette durée secrète et annonce au joueur lorsqu'il est prêt) pendant lesquels il ne peut ni attaquer ni se déplacer, mais bénéficie d'une RD 5. Au round suivant, en utilisant une action d'attaque, il peut réaliser une attaque dévastatrice : il touche automatiquement et il triple ses DM. S'il cesse sa concentration prématurément, le personnage ne profite d'aucun bénéfice.",
+    // PER-376 : interrupteur « En concentration » (validé propriétaire, patron formes du lycanthrope
+    // `damageReduction.requiresActiveEffect`) — badge RD5 affiché tant que la bascule est ON, à couper
+    // manuellement (durée réelle de 1d4 rounds jouée à l'oral, pas de minuteur).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'En concentration', activeByDefault: false },
+      },
+    ],
+    damageReduction: {
+      kind: 'flat',
+      value: 5,
+      requiresActiveEffect: { featureId: 'prestige-combat-mystique-r5', index: 0 },
+    },
     sourcePage: 171,
   },
   {
@@ -4487,6 +4531,13 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, s'il réussit un test d'attaque au contact à mains nues, le personnage pince le nerf d'une créature humanoïde. Si le NC de la cible est inférieur au rang atteint dans la voie, elle est paralysée pour VOL minutes. Si son NC est supérieur ou égal, elle est paralysée pour 1 round seulement.",
+    // PER-376 : « VOL minutes » = stat en QUANTITÉ BRUTE (durée), pas un modificateur → `[=VOL]` (règle
+    // de population § 1 du doc richText). « 1 round » reste littéral (constante, pas de stat).
+    richText:
+      "Une fois par combat, s'il réussit un test d'attaque au contact à mains nues, le personnage pince le nerf d'une créature humanoïde. Si le NC de la cible est inférieur au rang atteint dans la voie, elle est paralysée pour [=VOL] minutes. Si son NC est supérieur ou égal, elle est paralysée pour 1 round seulement.",
+    // PER-376 : retour propriétaire — compteur « 1×/combat » classique (reset repos court), PAS le
+    // bouton-bascule « État infligé ce combat » du patron spadassin-r5.
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
     sourcePage: 171,
   },
   {
@@ -4498,6 +4549,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le personnage peut tenter une attaque à mains nues capable de tuer net un adversaire. Le personnage doit être au contact est réussir un test opposé d'attaque magique contre sa cible. En cas de réussite, la victime meurt sur le coup. Si elle est d'un niveau supérieur ou égal au personnage, elle est seulement paralysée pour 1 round.",
+    // PER-376 : ni dé ni formule dans le texte (« test opposé »/« attaque magique »/« paralysée » déjà
+    // auto-glosés) → pas de richText (patron Attaque déterminée du chevalier). Limite « une fois par
+    // jour » de l'ATTAQUE elle-même (pas un état répétable à capper) → `usageCounter`, pas
+    // `inflictableStates`.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 171,
   },
   {
@@ -4509,6 +4565,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le personnage frappe le sol de la paume de sa main. Une onde de choc dévastatrice percute toutes les créatures face à lui sur 20 m de large et autant de profondeur. Chacune d'elle est renversée et subit [4d4° + VOL] DM.",
+    // PER-376 : notation d'auteur `[4d4° + VOL]` déjà en syntaxe formule richText finale, copiée telle
+    // quelle (même raison que r4). « renversée » auto-glosé (état Renversé du glossaire).
+    richText:
+      "Une fois par jour, le personnage frappe le sol de la paume de sa main. Une onde de choc dévastatrice percute toutes les créatures face à lui sur 20 m de large et autant de profondeur. Chacune d'elle est renversée et subit [4d4° + VOL] DM.",
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 171,
   },
 

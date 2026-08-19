@@ -3298,14 +3298,21 @@ export interface FeatureChoiceOption {
 }
 
 /**
- * Détermine COMBIEN d'options distinctes un choix répétable octroie. Une seule
- * variante à ce jour : autant que de voies (de profils donnés) dont le personnage
- * a atteint un rang — ex. Golem supérieur : « une amélioration de plus à chaque
- * fois qu'il atteint le rang 5 dans une voie de forgesort » (p. 100). Le compte
- * est DYNAMIQUE (dépend de la progression) ; il est résolu par le moteur de choix
- * (`repeatableChoiceCount`, `src/lib/character/choices.ts`).
+ * Détermine COMBIEN d'options distinctes un choix répétable octroie. Le compte est
+ * DYNAMIQUE (dépend de la progression) ; il est résolu par le moteur de choix
+ * (`repeatableChoiceCount`, `src/lib/character/choices.ts`). Deux variantes :
+ *  - `paths-at-rank` : autant que de voies (de profils donnés) dont le personnage a atteint
+ *    un rang SEUIL — ex. Golem supérieur, « une amélioration de plus à chaque fois qu'il
+ *    atteint le rang 5 dans une voie de forgesort » (p. 100), plusieurs voies EXTERNES
+ *    comptées contre un même seuil.
+ *  - `path-rank` : autant que de rangs atteints DANS LA VOIE HÔTE elle-même à partir d'un
+ *    rang d'acquisition — ex. Forme de voyage (`prestige-changeforme-r4`, p. 170), « une
+ *    forme de voyage supplémentaire par rang atteint dans la voie » : 1 forme au rang 4
+ *    (acquisition), 2 au rang 5, …, 5 au rang 8 (plafond de la voie).
  */
-export interface ChoiceRepeat {
+export type ChoiceRepeat = PathsAtRankChoiceRepeat | PathRankChoiceRepeat;
+
+export interface PathsAtRankChoiceRepeat {
   by: 'paths-at-rank';
   /** Profils dont les voies de profil sont comptées (ex. `['forgesort']`). */
   classIds: string[];
@@ -3324,6 +3331,21 @@ export interface ChoiceRepeat {
    * (`budget > base` ⟺ capacité acquise ET au moins une voie au rang requis). Absent = toujours actif.
    */
   requiresFeatureId?: string;
+}
+
+/**
+ * Choix répétable qui scale avec le rang atteint dans SA PROPRE voie hôte (ex. Forme de voyage,
+ * `prestige-changeforme-r4`, p. 170) — DISTINCT de `paths-at-rank` (seuil unique, plusieurs voies
+ * EXTERNES). Budget = `rang atteint dans pathId` − `fromRank` + 1 (0 si le rang n'est pas encore
+ * atteint) : rang == `fromRank` → 1 pick (la forme choisie à l'acquisition), chaque rang
+ * supplémentaire de LA MÊME voie en ajoute un de plus.
+ */
+export interface PathRankChoiceRepeat {
+  by: 'path-rank';
+  /** Voie dont on suit le rang (`Path.id`, ex. 'prestige-changeforme') — toujours la voie hôte. */
+  pathId: string;
+  /** Rang d'acquisition de la capacité hôte (1er pick accordé dès ce rang atteint, ex. 4). */
+  fromRank: number;
 }
 
 /** Choix d'une option dans une liste énumérée explicitement. */

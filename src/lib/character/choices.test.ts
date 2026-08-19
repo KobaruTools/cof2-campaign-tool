@@ -600,6 +600,66 @@ describe('choix `option` répétable (Golem supérieur)', () => {
   });
 });
 
+// Forme de voyage (prestige-changeforme-r4, p. 170) : choix répétable `path-rank` — DISTINCT de
+// `paths-at-rank` (seuil unique, plusieurs voies externes) — scale avec le rang atteint dans SA
+// PROPRE voie : 1 forme au rang 4 (acquisition), +1 par rang supplémentaire du changeforme.
+describe('prestige-changeforme-r4 « Forme de voyage » — choix répétable `path-rank`', () => {
+  const changeforme = (over: Partial<Character> = {}) =>
+    makeCharacter({
+      classId: 'mystique',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      featureIds: ['prestige-changeforme-r4'],
+      ...over,
+    });
+  const formeVoyageChoice = featureChoiceDefs('prestige-changeforme-r4')[0] as OptionFeatureChoice;
+
+  it('porte bien un choix `option` répétable `path-rank`', () => {
+    expect(formeVoyageChoice.kind).toBe('option');
+    expect(formeVoyageChoice.repeat).toEqual({
+      by: 'path-rank',
+      pathId: 'prestige-changeforme',
+      fromRank: 4,
+    });
+  });
+
+  it('repeatableChoiceCount = 1 forme au rang 4, +1 par rang supplémentaire de la voie', () => {
+    expect(repeatableChoiceCount(changeforme(), formeVoyageChoice)).toBe(1);
+    expect(
+      repeatableChoiceCount(
+        changeforme({ featureIds: ['prestige-changeforme-r4', 'prestige-changeforme-r5'] }),
+        formeVoyageChoice,
+      ),
+    ).toBe(2);
+    expect(
+      repeatableChoiceCount(
+        changeforme({
+          featureIds: [
+            'prestige-changeforme-r4',
+            'prestige-changeforme-r5',
+            'prestige-changeforme-r6',
+            'prestige-changeforme-r7',
+            'prestige-changeforme-r8',
+          ],
+        }),
+        formeVoyageChoice,
+      ),
+    ).toBe(5); // plafond de la voie = 5 formes, autant que d'options
+  });
+
+  it('un répétable `path-rank` est « à faire » dès le rang d’acquisition atteint', () => {
+    const d = changeforme();
+    expect(isChoiceActionable(d, 'prestige-changeforme-r4', formeVoyageChoice)).toBe(true);
+    expect(unmadeChoiceIndexes(d, 'prestige-changeforme-r4')).toEqual([0]);
+    expect(
+      unmadeChoiceIndexes(
+        changeforme({ featureChoices: { 'prestige-changeforme-r4': [['chat']] } }),
+        'prestige-changeforme-r4',
+      ),
+    ).toEqual([]);
+  });
+});
+
 // Gagne-pain LIBRE d'humain-r1 (PER-73) : un choix `custom-skill` (index 1) visible seulement si
 // l'origine « Libre » (id 'custom') est retenue au choix d'origine (index 0). Nom libre + 2 domaines.
 describe('humain-r1 « Libre » — choix custom-skill conditionnel (PER-73)', () => {

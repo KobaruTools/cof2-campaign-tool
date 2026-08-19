@@ -236,7 +236,8 @@ function ChoiceControl({
   // Choix `option` RÉPÉTABLE avec une option `repeatable` (ex. Spécialisation, maitre-d-armes-r3) :
   // catégories distinctes (multisélection) + compteur ± pour l'option répétable (« +1 DM »). Chaque
   // unité (catégorie ou instance répétable) consomme le budget partagé `repeat`.
-  if (choice.kind === 'option' && choice.repeat && hasRepeatableOption(choice)) {
+  if (choice.kind === 'option' && choice.repeat?.by === 'paths-at-rank' && hasRepeatableOption(choice)) {
+    const repeat = choice.repeat;
     const { distinct, repeatCounts, used } = splitRepeatableSelections(character, featureId, index);
     const budget = repeatableChoiceCount(character, choice);
     const remaining = budget - used;
@@ -247,7 +248,7 @@ function ChoiceControl({
     // Picks de progression débloqués (ex. Spécialisation prise ET ≥1 voie au rang requis) ⟺
     // budget au-delà de la base. Tant que verrouillé, on n'expose QUE la catégorie de base :
     // ni stepper « +1 DM », ni jargon de jalon (cf. PER-72, choix consolidé sur Armes de prédilection).
-    const base = choice.repeat!.base ?? 0;
+    const base = repeat.base ?? 0;
     const repeatableUnlocked = budget > base;
 
     const rebuild = (nextDistinct: string[], nextCounts: Record<string, number>) => {
@@ -280,8 +281,8 @@ function ChoiceControl({
                     ? 'Choix obligatoire'
                     : 'Catégorie de prédilection de base'
                   : over
-                    ? `${used}/${budget} retenue(s) — au-delà du budget (base + 1 par voie au rang ${choice.repeat!.rank})`
-                    : `${used}/${budget} retenue(s) — catégorie de base + 1 par voie au rang ${choice.repeat!.rank} ; budget restant : ${Math.max(0, remaining)}`
+                    ? `${used}/${budget} retenue(s) — au-delà du budget (base + 1 par voie au rang ${repeat.rank})`
+                    : `${used}/${budget} retenue(s) — catégorie de base + 1 par voie au rang ${repeat.rank} ; budget restant : ${Math.max(0, remaining)}`
               }
             />
           )}
@@ -329,9 +330,13 @@ function ChoiceControl({
     const allowed = repeatableChoiceCount(character, choice);
     const over = ids.length > allowed;
     const empty = ids.length === 0;
+    const repeatHint =
+      choice.repeat.by === 'path-rank'
+        ? `une par rang atteint (dès le rang ${choice.repeat.fromRank})`
+        : `une par voie au rang ${choice.repeat.rank}`;
     const help = blocking && empty
       ? 'Choix obligatoire'
-      : `${ids.length}/${allowed} retenue(s) — une par voie au rang ${choice.repeat.rank}`;
+      : `${ids.length}/${allowed} retenue(s) — ${repeatHint}`;
     return (
       <Autocomplete
         multiple

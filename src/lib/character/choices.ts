@@ -256,13 +256,26 @@ export function hasRepeatableOption(choice: OptionFeatureChoice): boolean {
 
 /**
  * Nombre d'options DISTINCTES qu'un choix `option` octroie au personnage : 1 pour
- * un choix simple, ou — pour un choix répétable (`repeat`) — le nombre de voies de
- * profil (des profils visés) dont le personnage a atteint le rang requis. Ex. Golem
- * supérieur (`by: 'paths-at-rank'`, `classIds: ['forgesort']`, `rank: 5`) : une
- * amélioration par voie de forgesort au rang 5 (p. 100).
+ * un choix simple, ou — pour un choix répétable (`repeat`) — dépend de la variante
+ * (cf. `ChoiceRepeat`, schema.ts) :
+ *  - `paths-at-rank` : le nombre de voies de profil (des profils visés) dont le personnage a
+ *    atteint le rang SEUIL requis. Ex. Golem supérieur (`classIds: ['forgesort']`, `rank: 5`) :
+ *    une amélioration par voie de forgesort au rang 5 (p. 100).
+ *  - `path-rank` : le nombre de rangs atteints dans SA PROPRE voie hôte au-delà du rang
+ *    d'acquisition. Ex. Forme de voyage (`pathId: 'prestige-changeforme'`, `fromRank: 4`) :
+ *    1 forme au rang 4, 2 au rang 5, etc.
  */
 export function repeatableChoiceCount(character: Character, choice: OptionFeatureChoice): number {
   if (!choice.repeat) return 1;
+  if (choice.repeat.by === 'path-rank') {
+    const { pathId, fromRank } = choice.repeat;
+    let maxRank = 0;
+    for (const id of character.featureIds) {
+      const feature = featureById.get(id);
+      if (feature?.pathId === pathId) maxRank = Math.max(maxRank, feature.rank);
+    }
+    return maxRank >= fromRank ? maxRank - fromRank + 1 : 0;
+  }
   const { classIds, rank, base, requiresFeatureId } = choice.repeat;
   // Picks de base toujours accordés (ex. la catégorie de prédilection de base, maitre-d-armes-r1).
   let count = base ?? 0;
