@@ -368,6 +368,65 @@ describe('companionType (PER-175)', () => {
     expect(poison.richText).toContain('{1d4°}');
     expect(poison.richText).toContain('[10 + rang]');
   });
+
+  // PER-439 — 3 familiers supplémentaires du Bestiaire payant (carnifurax/pestif/karcaillou),
+  // gatés via `requiresBestiaryCreatureSlug` (vérifié ici sur la DÉFINITION du choix — le gating
+  // d'ACCÈS lui-même, dépendant du store bestiaire, est vérifié côté composant, pas ici).
+  it('carnifurax/pestif/karcaillou : options du choix marquées `requiresBestiaryCreatureSlug`', () => {
+    const options = (featureById.get('prestige-familier-fantastique-r3')!.choices![0] as {
+      options: { id: string; requiresBestiaryCreatureSlug?: string }[];
+    }).options;
+    for (const slug of ['carnifurax', 'pestif', 'karcaillou']) {
+      const opt = options.find((o) => o.id === slug);
+      expect(opt?.requiresBestiaryCreatureSlug).toBe(slug);
+    }
+    // Les 12 familiers du livre de base ne portent PAS ce champ.
+    const lezard = options.find((o) => o.id === 'lezard-voltaique');
+    expect(lezard?.requiresBestiaryCreatureSlug).toBeUndefined();
+  });
+
+  it('carnifurax choisi : profil minuscule avec Morsure 1d4 et son dé bonus contre les armures lourdes', () => {
+    const carnifurax = listCompanions(
+      char({
+        featureIds: ['prestige-familier-fantastique-r3'],
+        featureChoices: { 'prestige-familier-fantastique-r3': ['carnifurax'] },
+      }),
+    )[0];
+    expect(carnifurax.companionType).toBe('familiar');
+    expect(carnifurax.profile.name).toBe('Carnifurax');
+    expect(carnifurax.profile.size).toBe('minuscule');
+    expect(carnifurax.profile.attack).toEqual({ label: 'Morsure', fromMaster: 'magicAttack', damage: '1d4' });
+    expect((carnifurax.profile.specialAbilities ?? []).map((a) => a.name)).toEqual(['Ouvre-boîte']);
+  });
+
+  it('pestif choisi : garde SES PROPRES caractéristiques (pas le gabarit minuscule générique)', () => {
+    const pestif = listCompanions(
+      char({
+        featureIds: ['prestige-familier-fantastique-r3'],
+        featureChoices: { 'prestige-familier-fantastique-r3': ['pestif'] },
+      }),
+    )[0];
+    expect(pestif.profile.name).toBe('Pestif');
+    // Caractéristiques PROPRES du pestif (RAW p.151), pas celles du gabarit minuscule (AGI 3/CON 2/…).
+    expect(pestif.profile.abilities).toEqual({ AGI: 3, CON: 1, FOR: -3, PER: 2, CHA: 1, INT: -1, VOL: 2 });
+    expect((pestif.profile.specialAbilities ?? []).map((a) => a.name)).toEqual([
+      'Résistance',
+      'Camouflage',
+      'Explosion finale',
+    ]);
+  });
+
+  it('karcaillou choisi : profil minuscule avec Pétrification (mineure) sur Morsure', () => {
+    const karcaillou = listCompanions(
+      char({
+        featureIds: ['prestige-familier-fantastique-r3'],
+        featureChoices: { 'prestige-familier-fantastique-r3': ['karcaillou'] },
+      }),
+    )[0];
+    expect(karcaillou.profile.name).toBe('Karcaillou');
+    expect(karcaillou.profile.size).toBe('minuscule');
+    expect((karcaillou.profile.specialAbilities ?? []).map((a) => a.name)).toEqual(['Pétrification']);
+  });
 });
 
 describe('resolveCreatureMaxHp', () => {

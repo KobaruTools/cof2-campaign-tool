@@ -1,10 +1,11 @@
 'use client';
 
 /**
- * Navigateur « Familiers fantastiques » du Codex (PER-421) — consultation en LECTURE SEULE des 12
+ * Navigateur « Familiers fantastiques » du Codex (PER-421) — consultation en LECTURE SEULE des
  * familiers de la voie de prestige `prestige-familier-fantastique` (`fantastic-familiars.ts`,
- * p. 133-136), SANS personnage. Grille de blocs (patron `CodexGodsBrowser`, PER-420) : pas de
- * sélecteur maître-détail, tout affiché d'un coup.
+ * 12 du livre de base p. 133-136 + 3 du Bestiaire payant, PER-439), SANS personnage. Grille de
+ * blocs (patron `CodexGodsBrowser`, PER-420) : pas de sélecteur maître-détail, tout affiché d'un
+ * coup.
  *
  * Contenu retenu (cadrage propriétaire) : les 3 blocs de capacité référencés par la voie (R4
  * Pouvoir mineur, R5 Résistance/profil de sorts, R7 Pouvoir supérieur + bonus), PUIS la description
@@ -30,7 +31,12 @@
  * `FamiliarGrantedPowerNote.tsx` pour l'équivalent EN CONTEXTE personnage (compteurs, texte
  * enrichi résolu).
  *
- * Pas de gating payant à prévoir : `fantasticFamiliars` est un tableau statique du livre de base.
+ * Pas de gating payant ICI (PER-439) : le Codex reste une consultation PURE (comme les 12 du livre
+ * de base, toujours montrés sans personnage ni compte) — les 3 familiers du Bestiaire s'affichent
+ * en clair au même titre que les autres, données STATIQUES déjà dans le bundle client de toute
+ * façon (rien à protéger d'une fuite). Le gating RÉEL (ne peut pas être SÉLECTIONNÉ sans avoir
+ * débloqué le Bestiaire) vit côté personnage, sur l'option de choix du rang 3 elle-même
+ * (`FeatureChoiceOption.requiresBestiaryCreatureSlug`, `FeatureChoiceField.tsx`).
  */
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -160,6 +166,10 @@ function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; s
   const color = classId ? classColor(classId) : undefined;
   const className = classId ? classById.get(classId)?.name : undefined;
   const grants = power.grants;
+  // Profil affiché entre parenthèses : nom de classe résolu, sinon le profil verbatim du livre —
+  // ABSENT pour une voie de prestige OUVERTE à toute une famille sans classe unique désignée
+  // (ex. Litomorphose, karcaillou, PER-439), auquel cas on omet la parenthèse entièrement.
+  const profileLabel = className ?? grants?.profile;
 
   return (
     <PathCard
@@ -172,7 +182,7 @@ function FamiliarPowerBlock({ familiar, slot }: { familiar: FantasticFamiliar; s
       repeatFeatureName={false}
       rankLabel={
         grants
-          ? `Conféré par ${grants.pathName} (${className ?? grants.profile})${grants.usage ? ` — ${grants.usage}` : ''}`
+          ? `Conféré par ${grants.pathName}${profileLabel ? ` (${profileLabel})` : ''}${grants.usage ? ` — ${grants.usage}` : ''}`
           : referenced
             ? 'Pouvoir propre au familier'
             : ''

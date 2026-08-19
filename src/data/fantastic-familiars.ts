@@ -20,6 +20,12 @@
  * → rendus en CARTE « pouvoir original » (titre + hexagones + corps enrichi), même gabarit que les cartes conférées.
  *
  * Source : CBHS_06_Chroniques_Oubliees_2_web_v2.pdf, p. 133-136.
+ *
+ * PER-439 — 3 familiers SUPPLÉMENTAIRES du Bestiaire payant (Carnifurax/Pestif/Karcaillou),
+ * chacun portant un encart « Familier fantastique » du MÊME patron (R4/R5/R7) au fil de son
+ * propre bloc de créature (pas dans l'encadré p. 133-136). `requiresBestiaryCreatureSlug` les
+ * marque comme gatés au contenu payant Bestiaire (Codex + option de choix du rang 3) —
+ * absent sur les 12 familiers ci-dessus, toujours du livre de base.
  */
 
 import type { FantasticFamiliar } from './schema';
@@ -462,6 +468,107 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
       usageLimit: { max: 1, reset: 'combat' },
     },
     sourcePage: 136,
+  },
+  // PER-439 — familiers supplémentaires du Bestiaire payant (encart « Familier fantastique »
+  // au fil du bloc de la créature, verbatim `private/bestiary-paid.ts`).
+  {
+    id: 'carnifurax',
+    name: 'Carnifurax',
+    pathId: 'prestige-familier-fantastique',
+    requiresBestiaryCreatureSlug: 'carnifurax',
+    description:
+      "Si le MJ l'autorise, un PJ peut capturer un jeune carnifurax et en faire un familier (voie du familier fantastique). Le familier bénéficie d'une attaque (1d4 DM), ainsi que d'un dé bonus en attaque contre tout humanoïde équipé d'une armure de mailles ou de plaques.",
+    minorPower: {
+      text: 'Vivacité, rang 1 de la voie du combat (guerrier).',
+      grants: {
+        name: 'Vivacité',
+        rank: 1,
+        pathName: 'voie du combat',
+        profile: 'guerrier',
+        featureId: 'combat-r1',
+      },
+    },
+    spellProfile: 'magicien',
+    superiorPower: {
+      text: 'Attaque brutale, voie de la brute (barbare).',
+      grants: {
+        name: 'Attaque brutale',
+        rank: 3,
+        pathName: 'voie de la brute',
+        profile: 'barbare',
+        featureId: 'brute-r3',
+      },
+      abilityBonus: 'AGI',
+    },
+    sourcePage: 47,
+  },
+  {
+    id: 'pestif',
+    name: 'Pestif',
+    pathId: 'prestige-familier-fantastique',
+    requiresBestiaryCreatureSlug: 'pestif',
+    description:
+      "Le pestif est un compagnon plein d'humour et d'un tempérament farceur, mais il est aussi très affectueux.",
+    minorPower: {
+      text: "Le pestif n'accorde pas de pouvoir mineur, mais il peut utiliser son souffle (voir profil) sur ordre de son maître. Utilisez le profil du pestif, en remplaçant la DEF et les PV par ceux du familier décrit dans la voie de prestige du familier fantastique.",
+      // Pouvoir PROPRE (pas de capacité de profil) : le souffle est celui de la créature elle-même
+      // (bloc « Pestif », p. 151), réutilisé tel quel par le familier — cf. `original`.
+      original: {
+        name: 'Souffle',
+        actionTypes: ['L'],
+        richText:
+          "Une fois par combat, cône de 5 m de long sur 5 m de large infligeant automatiquement {3d6} DM (nature selon le plan élémentaire du pestif), divisés par deux si la victime réussit un test d'AGI difficulté 10.",
+      },
+      usageLimit: { max: 1, reset: 'combat' },
+    },
+    spellProfile: 'magicien',
+    superiorPower: {
+      text: 'Le pestif confère le sort Maîtrise des éléments (rang 2 de la voie de la magie élémentaire, magicien). Le personnage peut lancer ce sort gratuitement une fois par combat (pas de dépense de PM).',
+      grants: {
+        name: 'Maîtrise des éléments',
+        rank: 2,
+        pathName: 'voie de la magie élémentaire',
+        profile: 'magicien',
+        usage: 'une fois par combat, gratuitement (pas de dépense de PM)',
+        featureId: 'magie-elementaire-r2',
+      },
+      abilityBonus: 'CHA',
+      usageLimit: { max: 1, reset: 'combat' },
+    },
+    sourcePage: 151,
+  },
+  {
+    id: 'karcaillou',
+    name: 'Karcaillou',
+    pathId: 'prestige-familier-fantastique',
+    requiresBestiaryCreatureSlug: 'karcaillou',
+    description:
+      "Le karcaillou est un compagnon agréable pourvu qu'on le laisse se nourrir, ce qui peut parfois poser problème. Personne ne sait si cela est en rapport avec ce type de contrariété, mais les karcailloux apprivoisés ont un pouvoir pétrifiant bien moins puissant.",
+    minorPower: {
+      text: "Lorsque le familier réussit une attaque de morsure, sa victime doit réussir un test de CON difficulté 10 ou être ralentie et invalide pour 1 round.",
+      // Pouvoir PROPRE : version affaiblie de la Pétrification du karcaillou adulte (créature),
+      // pas une capacité de profil → `original` (même patron que le rider de morsure ci-dessus).
+      original: {
+        name: 'Pétrification (mineure)',
+        richText:
+          "Lorsque le familier réussit une attaque de morsure, sa victime doit réussir un test de CON difficulté 10 ou être ralentie et invalide pour 1 round.",
+      },
+    },
+    spellProfile: 'forgesort',
+    superiorPower: {
+      text: 'Litomorphose (rang 5 de la voie élémentaire de la terre, voie de prestige de mystique).',
+      grants: {
+        name: 'Litomorphose',
+        rank: 5,
+        pathName: 'voie élémentaire de la terre',
+        // Pas de `profile` : voie de prestige OUVERTE à toute la famille mystique (et aux mages
+        // connaissant un sort de terre, cf. `prestige-elementaire-de-la-terre`), aucune classe
+        // unique désignée par le RAW (« voie de prestige de mystique »).
+        featureId: 'prestige-elementaire-de-la-terre-r5',
+      },
+      abilityBonus: 'CON',
+    },
+    sourcePage: 123,
   },
 ];
 

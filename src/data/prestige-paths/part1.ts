@@ -285,6 +285,73 @@ const FAMILIAR_OPTION_LIST: FeatureChoiceOption[] = [
         note: 'Vole 10 m par action de mouvement.',
       },
     },
+    // PER-439 — familiers supplémentaires du Bestiaire payant : gatés (`requiresBestiaryCreatureSlug`,
+    // même slug que l'entité `FantasticFamiliar`), grisés dans le sélecteur tant que non débloqués.
+    {
+      id: 'carnifurax',
+      label: 'Carnifurax',
+      requiresBestiaryCreatureSlug: 'carnifurax',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Carnifurax',
+        attack: { label: 'Morsure', fromMaster: 'magicAttack', damage: '1d4' },
+        specialAbilities: [
+          {
+            name: 'Ouvre-boîte',
+            text: 'Dé bonus en attaque contre tout humanoïde équipé d’une armure de mailles ou de plaques.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'pestif',
+      label: 'Pestif',
+      requiresBestiaryCreatureSlug: 'pestif',
+      creatureProfile: {
+        // Seul familier qui NE PART PAS du gabarit minuscule (RAW p. 151 : « remplacez la DEF et
+        // les PV par ceux du familier », les CARACTÉRISTIQUES restent les siennes propres) — pas de
+        // `...MINUSCULE_FAMILIAR`, seuls DEF/PV/Init. en reprennent la formule.
+        companionType: 'familiar',
+        size: 'minuscule',
+        abilities: { AGI: 3, CON: 1, FOR: -3, PER: 2, CHA: 1, INT: -1, VOL: 2 },
+        defense: MINUSCULE_FAMILIAR.defense,
+        hitPoints: MINUSCULE_FAMILIAR.hitPoints,
+        initiative: MINUSCULE_FAMILIAR.initiative,
+        name: 'Pestif',
+        attack: { label: 'Griffes', fromMaster: 'magicAttack', damage: '1d4' },
+        specialAbilities: [
+          {
+            name: 'Résistance',
+            text: "Immunisé à certains DM selon son plan d'origine (Brouillard : foudre et acide ; Boue : poison et acide ; Vapeur : feu et acide ; Magma : feu et poison ; Poussière : poison et foudre ; Glace : froid et poison).",
+          },
+          {
+            name: 'Camouflage',
+            text: "Devient totalement invisible s'il reste immobile dans un environnement qui correspond à son élément.",
+          },
+          {
+            name: 'Explosion finale',
+            text: 'Réduit à 0 PV, il explose dans une gerbe élémentaire produisant les mêmes effets que son souffle dans un rayon de 2 m.',
+          },
+        ],
+        note: 'Vole (ailes de chauve-souris).',
+      },
+    },
+    {
+      id: 'karcaillou',
+      label: 'Karcaillou',
+      requiresBestiaryCreatureSlug: 'karcaillou',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Karcaillou',
+        attack: { label: 'Morsure', fromMaster: 'magicAttack', damage: '1d4' },
+        specialAbilities: [
+          {
+            name: 'Pétrification',
+            text: 'Sur une touche, la victime réussit un test de CON difficulté 10 ou est ralentie et invalide pour 1 round.',
+          },
+        ],
+      },
+    },
 ];
 
 const FANTASTIC_FAMILIAR_OPTIONS: NonNullable<Feature['choices']>[number] = {

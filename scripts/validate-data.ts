@@ -1136,7 +1136,7 @@ for (const f of fantasticFamiliars) {
   // Capacités conférées (R4/R7) : le profil cité doit exister. featureId non résolu = normal (différé).
   for (const [rank, power] of [['R4', f.minorPower] as const, ['R7', f.superiorPower] as const]) {
     const g = power.grants;
-    if (g && !isKnownProfile(g.profile))
+    if (g?.profile && !isKnownProfile(g.profile))
       err(`[familier ${f.id} ${rank}] profil de la capacité conférée inconnu : ${g.profile}`);
     // PER-74 : featureId de la capacité conférée RÉSOLU → doit pointer une capacité existante.
     if (g?.featureId && !featureById.has(g.featureId))

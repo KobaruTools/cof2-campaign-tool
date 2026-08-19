@@ -3298,6 +3298,15 @@ export interface FeatureChoiceOption {
    */
   minLevel?: number;
   /**
+   * Option qui N'EST PROPOSÉE que si le compte a débloqué la créature payante référencée (slug du
+   * Bestiaire, PER-439) — ex. Carnifurax/Pestif/Karcaillou comme choix supplémentaires de la voie du
+   * familier fantastique, en plus des 12 du livre de base. Vérifié via `creatureLinkAccess` (même
+   * primitive que les références croisées verrouillées, PER-396) contre `useBestiaryStore().list`
+   * (RLS-filtrée : n'y figure que si la source payante est débloquée sur ce compte). L'UI grise
+   * l'option (même patron que `minLevel`) tant que non débloquée ; absent = aucune condition.
+   */
+  requiresBestiaryCreatureSlug?: string;
+  /**
    * Profil de créature octroyé QUAND cette option est retenue (PER-140) — il PRIME sur le
    * `Feature.creatureProfile` de base. Ex. Monture fantastique : chaque monture (cheval de guerre
    * lourd, ours, félin géant, pégase…) a sa propre mini-fiche. Absent = pas de créature propre à
@@ -3790,8 +3799,13 @@ export interface FamiliarGrantedPower {
   rank?: number;
   /** Voie d'origine, verbatim (ex. « voie de la divination »). */
   pathName: string;
-  /** Profil d'origine (id de profil, ex. 'ensorceleur'). */
-  profile: string;
+  /**
+   * Profil d'origine (id de profil, ex. 'ensorceleur'). Absent pour une voie de PRESTIGE
+   * générique OUVERTE à toute une famille sans classe unique désignée par le livre (ex.
+   * Litomorphose, karcaillou, PER-439 : « voie de prestige de mystique », pas un profil
+   * précis) — l'affichage retombe alors sur le seul `pathName`.
+   */
+  profile?: string;
   /** Fréquence d'usage verbatim si précisée (ex. « une fois par jour »). */
   usage?: string;
   /** featureId résolu si la capacité existe déjà dans les données. Différé → généralement absent. */
@@ -3822,11 +3836,12 @@ export interface FamiliarOriginalPower {
 /**
  * FAMILIER FANTASTIQUE (PER-84) — une des 12 créatures de l'encadré « Les familiers
  * fantastiques » (p. 133-136) que le joueur CHOISIT en prenant la voie du familier
- * fantastique (`prestige-familier-fantastique`). Le stat-block de base (taille minuscule)
- * est porté par la capacité de RANG 3 de la voie ; chaque familier n'apporte que ses
- * PARTICULARITÉS et surtout les éléments référencés par les rangs 4/5/7 de la voie :
- * un pouvoir mineur (R4), un profil de magie dont on apprend un ou deux sorts (R5), un
- * pouvoir supérieur + un bonus de +1 à une caractéristique (R7).
+ * fantastique (`prestige-familier-fantastique`), PLUS les familiers supplémentaires du
+ * Bestiaire payant (Carnifurax/Pestif/Karcaillou, PER-439, cf. `requiresBestiaryCreatureSlug`).
+ * Le stat-block de base (taille minuscule) est porté par la capacité de RANG 3 de la voie ;
+ * chaque familier n'apporte que ses PARTICULARITÉS et surtout les éléments référencés par les
+ * rangs 4/5/7 de la voie : un pouvoir mineur (R4), un profil de magie dont on apprend un ou
+ * deux sorts (R5), un pouvoir supérieur + un bonus de +1 à une caractéristique (R7).
  */
 export interface FantasticFamiliar {
   /** Slug d'id (clé de contenu, français conservé comme les autres entités). */
@@ -3835,6 +3850,14 @@ export interface FantasticFamiliar {
   pathId: string;
   /** Nom affiché (français, ex. « Animal céleste »). */
   name: string;
+  /**
+   * Slug de créature du Bestiaire (PER-439) dont ce familier reprend l'encart « Familier
+   * fantastique » imprimé dans le supplément payant (ex. `'carnifurax'`) — absent pour les 12
+   * familiers du livre de base. Sert de clé de gating (`creatureLinkAccess` contre
+   * `useBestiaryStore().list`, RLS-filtrée) au Codex ET à l'option de choix du rang 3
+   * correspondante (`FeatureChoiceOption.requiresBestiaryCreatureSlug`, même valeur).
+   */
+  requiresBestiaryCreatureSlug?: string;
   /** Texte de présentation verbatim (aspect, déplacement, attaque innée…). */
   description: string;
   /**

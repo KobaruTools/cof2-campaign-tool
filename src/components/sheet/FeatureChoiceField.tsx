@@ -29,6 +29,8 @@ import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schem
 import { highestAbilities, lowestAbilities } from '@/lib/character/ancestry';
 import { effectiveAbilities, pathRanksFromFeatures, testDomainSourceFeatureIds } from '@/lib/character/effects';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { creatureLinkAccess } from '@/lib/ui/lockedContentAccess';
+import { useBestiaryStore } from '@/stores/bestiary';
 import { PageRefText } from '@/components/SourceRef';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
@@ -152,6 +154,9 @@ function ChoiceControl({
   onChange: (index: number, value: FeatureChoiceSelection) => void;
 }) {
   const selection = getSelection(character, featureId, index);
+  // Liste bestiaire (RLS-filtrée) pour les options gatées par un contenu payant du Bestiaire
+  // (`requiresBestiaryCreatureSlug`, PER-439) — un seul hook, peu importe si CE choix en a besoin.
+  const bestiaryList = useBestiaryStore((s) => s.list);
   // Contrôles SIMPLES (ability / option simple / feature-from-path) : la sélection est
   // une chaîne|null. Un choix `option` répétable (géré plus bas) lit ses ids via
   // getOptionSelections — on neutralise donc un éventuel tableau ici.
@@ -382,11 +387,23 @@ function ChoiceControl({
           {choice.options.map((opt) => {
             // Option verrouillée par le niveau (PER-140, ex. montures volantes au niveau 9) :
             // grisée tant que le personnage n'a pas le niveau requis.
-            const locked = opt.minLevel != null && character.level < opt.minLevel;
+            const levelLocked = opt.minLevel != null && character.level < opt.minLevel;
+            // Option verrouillée par un contenu payant (PER-439, ex. Carnifurax/Pestif/Karcaillou,
+            // familiers fantastiques supplémentaires du Bestiaire) : grisée tant que la créature
+            // référencée n'apparaît pas dans la liste bestiaire du compte (RLS, `creatureLinkAccess`).
+            const paidLocked =
+              !!opt.requiresBestiaryCreatureSlug &&
+              creatureLinkAccess(bestiaryList, opt.requiresBestiaryCreatureSlug) !== 'accessible';
+            const locked = levelLocked || paidLocked;
+            const lockedSuffix = levelLocked
+              ? ` — niveau ${opt.minLevel} requis`
+              : paidLocked
+                ? ' — Bestiaire (contenu payant) requis'
+                : '';
             return (
               <MenuItem key={opt.id} value={opt.id} disabled={locked}>
                 {opt.label}
-                {locked ? ` — niveau ${opt.minLevel} requis` : ''}
+                {lockedSuffix}
               </MenuItem>
             );
           })}
@@ -912,14 +929,39 @@ function RepeatOptionDisplay({
       })),
   ];
 
+  // Rappel visuel (retour propriétaire 2026-08-19) : les MAMMIFÈRES sont communiqués ET
+  // transformables (Forme animale) d'office au rang 1 (RAW p. 114), jamais une option de CE choix
+  // (qui ne porte que sur la catégorie SUPPLÉMENTAIRE du rang 4) — d'où l'absence déroutante d'un
+  // « Mammifères » à côté d'« Oiseaux ». Puce non interactive (pas d'`onClick`, cf. `ChoiceValueBadge`)
+  // en TÊTE de liste, hors du compteur qui ne porte que sur les catégories réellement choisies.
+  // Uniquement sur `animaux-r1` (Langage des animaux) : la voie de prestige du changeforme
+  // (`prestige-changeforme-r5`) n'accorde PAS ce bonus gratuit à un personnage sans druide natif
+  // (`animalForms.ts`, `knownAnimalFormCategoryIds`).
+  const innateMammals =
+    featureId === 'animaux-r1' ? (
+      <ChoiceValueBadge
+        key="mammals-innate"
+        label="Mammifères"
+        compact={compact}
+        title="Communication et Forme animale offertes d'office au rang 1 (p. 114) — pas un choix"
+      />
+    ) : null;
+
   if (entries.length === 0) {
     const badge = <ChoiceTodoBadge compact={compact} onClick={onEdit} />;
-    if (compact) return <Box>{badge}</Box>;
+    if (compact)
+      return (
+        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+          {innateMammals}
+          {badge}
+        </Stack>
+      );
     return (
       <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
           {choice.prompt} ({counter}) :
         </Typography>
+        {innateMammals}
         {badge}
       </Stack>
     );
@@ -928,6 +970,7 @@ function RepeatOptionDisplay({
   if (compact) {
     return (
       <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+        {innateMammals}
         {entries.map((e) => (
           <ChoiceValueBadge key={e.key} label={e.label} compact onClick={onEditValue} />
         ))}
@@ -944,6 +987,11 @@ function RepeatOptionDisplay({
         {choice.prompt} ({counter}) :
       </Typography>
       <Stack spacing={0.25} sx={{ mt: 0.25 }}>
+        {innateMammals && (
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            {innateMammals}
+          </Stack>
+        )}
         {entries.map((e) => (
           <Stack key={e.key} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
             <ChoiceValueBadge label={e.label} onClick={onEditValue} />
