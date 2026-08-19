@@ -1,10 +1,11 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import { SectionIcon } from '@/components/SectionIcon';
 import { BOOKS, DEFAULT_BOOK_ID, rulesHref, type BookId } from '@/lib/ui/books';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
@@ -33,6 +34,13 @@ export interface SourceRefProps {
    * pas de bouton (référence hors voie, ou renvoi générique).
    */
   codexHref?: string;
+  /**
+   * URL de la fiche du Bestiaire (PER-439) quand cette référence CITE une créature qui y a son
+   * propre bloc de stats — ajoute un petit bouton « voir dans le Bestiaire » (icône patte),
+   * soudé APRÈS le bouton Codex s'il est aussi présent. Même patron que `codexHref`
+   * (`bestiaryCreatureHref`, `src/lib/ui/creatureLinks.ts`). Absent = pas de bouton.
+   */
+  bestiaryHref?: string;
   /** Style additionnel fusionné par-dessus le badge. */
   sx?: SxProps<Theme>;
 }
@@ -51,7 +59,7 @@ export interface SourceRefProps {
  * point rend cliquables tous les renvois de page. Pour une PLAGE (« 219-220 »), on saute à la
  * première page. Sans page, on ouvre le livre au début.
  */
-export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHref, sx }: SourceRefProps) {
+export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHref, bestiaryHref, sx }: SourceRefProps) {
   const router = useRouter();
   const meta = BOOKS[book];
   const { Icon } = meta;
@@ -92,6 +100,38 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
   const goToCodexAux = (e: React.MouseEvent) => {
     if (codexHref && e.button === 1) navigate(e, codexHref, true);
   };
+
+  const goToBestiary = (e: React.MouseEvent | React.KeyboardEvent) => {
+    if (bestiaryHref) navigate(e, bestiaryHref);
+  };
+  const goToBestiaryAux = (e: React.MouseEvent) => {
+    if (bestiaryHref && e.button === 1) navigate(e, bestiaryHref, true);
+  };
+
+  // Boutons SUPPLÉMENTAIRES à souder après la puce, dans l'ordre Codex PUIS Bestiaire — seul le
+  // DERNIER de la chaîne a son coin droit arrondi (les autres restent carrés des deux côtés, `-1px`
+  // de chevauchement pour se lire comme un seul bloc soudé, cf. commentaire plus bas).
+  const extraButtons: { key: string; title: string; onClick: typeof goToCodex; onAux: typeof goToCodexAux; icon: ReactNode }[] = [];
+  if (codexHref) {
+    extraButtons.push({
+      key: 'codex',
+      title: 'Voir dans le Codex',
+      onClick: goToCodex,
+      onAux: goToCodexAux,
+      // Même icône que l'entrée « Voies » du Codex (`CodexSubpageIcon`) — cohérence visuelle
+      // avec l'en-tête plutôt qu'une icône MUI générique sans rapport.
+      icon: <SectionIcon name="paths" size={16} />,
+    });
+  }
+  if (bestiaryHref) {
+    extraButtons.push({
+      key: 'bestiary',
+      title: 'Voir dans le Bestiaire',
+      onClick: goToBestiary,
+      onAux: goToBestiaryAux,
+      icon: <PetsOutlinedIcon sx={{ fontSize: 16 }} />,
+    });
+  }
 
   return (
     // Conteneur des DEUX boutons — la puce (ouvre le visualiseur) et, si `codexHref`, le bouton
@@ -141,10 +181,10 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
           gap: 0.5,
           px: 0.75,
           py: 0.3,
-          // Coin droit carré côté codex : la puce est SOUDÉE au bouton qui la suit (même patron
-          // que `StatusChipVisual`/`ClearStatusButton` de la palette d'états de combat), pas un
-          // badge isolé qu'un simple filet séparerait.
-          borderRadius: codexHref ? '4px 0 0 4px' : 1,
+          // Coin droit carré dès qu'un bouton supplémentaire suit : la puce est SOUDÉE au premier
+          // d'entre eux (même patron que `StatusChipVisual`/`ClearStatusButton` de la palette
+          // d'états de combat), pas un badge isolé qu'un simple filet séparerait.
+          borderRadius: extraButtons.length > 0 ? '4px 0 0 4px' : 1,
           cursor: available ? 'pointer' : 'default',
           lineHeight: 1,
           fontSize: '0.85rem',
@@ -166,48 +206,51 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
         <Icon sx={{ fontSize: 17 }} />
         {label && <Box component="span">{label}</Box>}
       </Box>
-      {codexHref && (
-        <Box
-          component="span"
-          role="button"
-          tabIndex={0}
-          title="Voir dans le Codex"
-          onClick={goToCodex}
-          onAuxClick={goToCodexAux}
-          onKeyDown={(e: React.KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              goToCodex(e);
-            }
-          }}
-          sx={(theme) => ({
-            display: 'inline-flex',
-            alignItems: 'center',
-            px: 0.7,
-            // `-1px` : superpose le bord gauche de ce bouton sur le bord droit de la puce qui le
-            // précède, pour qu'ils se lisent comme UN SEUL bloc soudé (même trait, pas deux liserés
-            // collés) — patron `ClearStatusButton` de la palette d'états de combat.
-            ml: '-1px',
-            // Coin gauche carré : jonction avec la puce. Coin droit arrondi, comme la puce quand
-            // elle est seule.
-            borderRadius: '0 4px 4px 0',
-            cursor: 'pointer',
-            color: 'text.secondary',
-            bgcolor: alpha(theme.palette.text.primary, 0.06),
-            border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
-            transition: theme.transitions.create(['background-color', 'border-color', 'color']),
-            '&:hover': {
-              color: 'text.primary',
-              bgcolor: alpha(theme.palette.primary.main, 0.12),
-              borderColor: alpha(theme.palette.primary.main, 0.4),
-            },
-          })}
-        >
-          {/* Même icône que l'entrée « Voies » du Codex (`CodexSubpageIcon`) — cohérence visuelle
-              avec l'en-tête plutôt qu'une icône MUI générique sans rapport. */}
-          <SectionIcon name="paths" size={16} />
-        </Box>
-      )}
+      {extraButtons.map((btn, i) => {
+        const isLast = i === extraButtons.length - 1;
+        return (
+          <Box
+            key={btn.key}
+            component="span"
+            role="button"
+            tabIndex={0}
+            title={btn.title}
+            onClick={btn.onClick}
+            onAuxClick={btn.onAux}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                btn.onClick(e);
+              }
+            }}
+            sx={(theme) => ({
+              display: 'inline-flex',
+              alignItems: 'center',
+              px: 0.7,
+              // `-1px` : superpose le bord gauche de ce bouton sur le bord droit de l'élément qui le
+              // précède (puce ou bouton précédent), pour qu'ils se lisent comme UN SEUL bloc soudé
+              // (même trait, pas deux liserés collés) — patron `ClearStatusButton` de la palette
+              // d'états de combat.
+              ml: '-1px',
+              // Coin gauche TOUJOURS carré (jonction avec l'élément précédent) ; coin droit arrondi
+              // SEULEMENT pour le dernier bouton de la chaîne.
+              borderRadius: isLast ? '0 4px 4px 0' : 0,
+              cursor: 'pointer',
+              color: 'text.secondary',
+              bgcolor: alpha(theme.palette.text.primary, 0.06),
+              border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
+              transition: theme.transitions.create(['background-color', 'border-color', 'color']),
+              '&:hover': {
+                color: 'text.primary',
+                bgcolor: alpha(theme.palette.primary.main, 0.12),
+                borderColor: alpha(theme.palette.primary.main, 0.4),
+              },
+            })}
+          >
+            {btn.icon}
+          </Box>
+        );
+      })}
     </Box>
   );
 }

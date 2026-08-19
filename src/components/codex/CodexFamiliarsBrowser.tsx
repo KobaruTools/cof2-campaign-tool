@@ -44,9 +44,11 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import { classById, featureById, pathById } from '@/data';
 import { fantasticFamiliars, FAMILIAR_ENTITY_BY_OPTION } from '@/data/fantastic-familiars';
 import type { AbilityId, CreatureProfile, Feature, FantasticFamiliar, OptionFeatureChoice } from '@/data/schema';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { PathCard } from '@/components/PathCard';
 import { SourceRef } from '@/components/SourceRef';
@@ -54,6 +56,7 @@ import { AbilityChipBox, GlossaryRichText } from '@/components/sheet/FeatureRich
 import { CreatureAbilitiesGrid, DerivedStatRow } from '@/components/sheet/CreatureStatBlock';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { classColor } from '@/lib/ui/classColors';
+import { bestiaryCreatureHref } from '@/lib/ui/creatureLinks';
 
 /**
  * Mini-fiche de créature du familier (rang 3 de la voie, p. 132) — RÉUTILISE la donnée
@@ -328,7 +331,25 @@ function FamiliarCard({ familiar, highlighted }: { familiar: FantasticFamiliar; 
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
           {familiar.name}
         </Typography>
-        <SourceRef page={familiar.sourcePage} term={familiar.name} />
+        {/* Patte du Bestiaire (PER-439) : signale un familier du supplément payant, même icône/
+            tooltip que l'insigne du sélecteur « Forme animale » (`AnimalFormSelector`) — badge
+            SEUL, indépendant du compte courant (pas de gating dans le Codex, cf. en-tête). */}
+        {familiar.requiresBestiaryCreatureSlug && (
+          <AppTooltip title="Supplément Bestiaire (contenu payant)">
+            <Box component="span" aria-label="Contenu payant" sx={{ display: 'inline-flex', color: 'text.secondary' }}>
+              <PetsOutlinedIcon sx={{ fontSize: 18 }} />
+            </Box>
+          </AppTooltip>
+        )}
+        <SourceRef
+          page={familiar.sourcePage}
+          term={familiar.name}
+          bestiaryHref={
+            familiar.requiresBestiaryCreatureSlug
+              ? bestiaryCreatureHref(familiar.requiresBestiaryCreatureSlug)
+              : undefined
+          }
+        />
       </Stack>
       <Typography variant="body2" component="div" sx={{ mt: 1 }}>
         {familiar.descriptionRichText ? (
@@ -370,10 +391,15 @@ function FamiliarCard({ familiar, highlighted }: { familiar: FantasticFamiliar; 
 }
 
 export function CodexFamiliarsBrowser() {
-  const sorted = useMemo(
-    () => [...fantasticFamiliars].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
-    [],
-  );
+  // Tri alphabétique DANS chaque groupe, mais les 3 familiers du Bestiaire payant (PER-439)
+  // restent à la FIN de la grille (retour propriétaire) — pas mélangés aux 12 du livre de base
+  // malgré l'ordre alphabétique global, pour qu'on les retrouve toujours au même endroit.
+  const sorted = useMemo(() => {
+    const byName = (a: FantasticFamiliar, b: FantasticFamiliar) => a.name.localeCompare(b.name, 'fr');
+    const base = fantasticFamiliars.filter((f) => !f.requiresBestiaryCreatureSlug).sort(byName);
+    const paid = fantasticFamiliars.filter((f) => f.requiresBestiaryCreatureSlug).sort(byName);
+    return [...base, ...paid];
+  }, []);
 
   // Défilement direct sur un FAMILIER précis (suite bouton codex, `?id=<familiarId>`, cf.
   // `familiarCodexHref` — branché par `FamiliarGrantedPowerNote`) — même patron que les autres
