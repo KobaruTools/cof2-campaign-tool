@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type Character } from './types';
 import { animalFormCategories, communicableAnimalCategories, knownAnimalFormCategoryIds } from './animalForms';
+import { profileFeaturesDisabledByTransformation } from './effects';
 
 function makeCharacter(over: Partial<Character>): Character {
   return {
@@ -119,5 +120,67 @@ describe('knownAnimalFormCategoryIds', () => {
       featureChoices: { 'animaux-r1': [['reptiles', 'fantastic-animals']] },
     });
     expect(knownAnimalFormCategoryIds(c)).toEqual(new Set(['mammals', 'reptiles']));
+  });
+});
+
+describe('Forme animale (animaux-r5/prestige-changeforme-r5) désactive les capacités de profil (p. 114)', () => {
+  it("forme INACTIVE : aucune capacité désactivée", () => {
+    const c = makeCharacter({
+      featureIds: ['animaux-r1', 'animaux-r5', 'fauve-r1'],
+    });
+    expect(profileFeaturesDisabledByTransformation(c).size).toBe(0);
+  });
+
+  it('druide natif, forme ACTIVE : les AUTRES voies de profil (fauve) sont désactivées', () => {
+    const c = makeCharacter({
+      featureIds: ['animaux-r1', 'animaux-r5', 'fauve-r1'],
+      effectInputs: { 'animaux-r5': 'chat' },
+    });
+    const disabled = profileFeaturesDisabledByTransformation(c);
+    expect(disabled.has('fauve-r1')).toBe(true);
+  });
+
+  it("druide natif, forme ACTIVE : la voie des animaux ELLE-MÊME reste utilisable (exceptPathIds, sinon la transformation se désactiverait elle-même)", () => {
+    const c = makeCharacter({
+      featureIds: ['animaux-r1', 'animaux-r5', 'fauve-r1'],
+      effectInputs: { 'animaux-r5': 'chat' },
+    });
+    const disabled = profileFeaturesDisabledByTransformation(c);
+    expect(disabled.has('animaux-r1')).toBe(false);
+    expect(disabled.has('animaux-r5')).toBe(false);
+  });
+
+  it("changeforme SEUL (pas druide), transformation ACTIVE : les autres voies de profil sont désactivées", () => {
+    const c = makeCharacter({
+      featureIds: ['combat-r1', 'prestige-changeforme-r4', 'prestige-changeforme-r5'],
+      effectInputs: { 'animaux-r5': 'chat' },
+    });
+    const disabled = profileFeaturesDisabledByTransformation(c);
+    expect(disabled.has('combat-r1')).toBe(true);
+    // La voie du changeforme (PRESTIGE) n'est jamais visée par sa propre désactivation.
+    expect(disabled.has('prestige-changeforme-r4')).toBe(false);
+    expect(disabled.has('prestige-changeforme-r5')).toBe(false);
+  });
+
+  it('druide ET changeforme (dédoublonné), forme ACTIVE : la voie des animaux et le changeforme restent tous deux utilisables', () => {
+    const c = makeCharacter({
+      featureIds: [
+        'animaux-r1',
+        'animaux-r5',
+        'fauve-r1',
+        'prestige-changeforme-r4',
+        'prestige-changeforme-r5',
+        'prestige-changeforme-r7',
+      ],
+      effectInputs: { 'animaux-r5': 'ours' },
+      transformationDerivedStats: { 'animaux-r5': { nc: 4, size: 'grande' } },
+    });
+    const disabled = profileFeaturesDisabledByTransformation(c);
+    expect(disabled.has('fauve-r1')).toBe(true);
+    expect(disabled.has('animaux-r1')).toBe(false);
+    expect(disabled.has('animaux-r5')).toBe(false);
+    // Les rangs 6/7/8 du changeforme (qui modifient l'usage de Forme animale) restent aussi utilisables
+    // — voies de PRESTIGE, jamais ciblées par `disablesProfileFeatures`.
+    expect(disabled.has('prestige-changeforme-r7')).toBe(false);
   });
 });

@@ -1732,6 +1732,37 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
       'acid',
     ]);
   });
+
+  it('objet magique porté (Défense, RD 2) : compte normalement sans transformation active', () => {
+    const c = char([], {
+      equipment: [
+        { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' }, magicProperties: [{ kind: 'defense' }] },
+      ],
+    });
+    expect(damageReductionSources(c)).toEqual([
+      { name: 'Épée longue', reduction: { kind: 'flat', value: 2, scopes: undefined } },
+    ]);
+  });
+
+  it("retour propriétaire 2026-08-19 : la RD d'un objet magique porté ne compte PLUS sous Forme animale (disablesProfileFeatures actif)", () => {
+    const c = char(['animaux-r5'], {
+      effectInputs: { 'animaux-r5': 'chat' },
+      equipment: [
+        { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' }, magicProperties: [{ kind: 'defense' }] },
+      ],
+    });
+    expect(damageReductionSources(c)).toEqual([]);
+  });
+
+  it("Métamorphose de l'ours (r6) active : même neutralisation de la RD d'objet magique", () => {
+    const c = char(['prestige-ours-r6'], {
+      effectToggles: { 'prestige-ours-r6': [true] },
+      equipment: [
+        { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' }, magicProperties: [{ kind: 'defense' }] },
+      ],
+    });
+    expect(damageReductionSources(c)).toEqual([]);
+  });
 });
 
 describe('resetUsageCounters — réinitialisation par repos (PER-151)', () => {

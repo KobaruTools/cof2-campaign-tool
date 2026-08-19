@@ -386,12 +386,20 @@ export const mysticFeatures: Feature[] = [
     // `healOnDeactivate` (PER-375, changeforme-r5, p. 170) : rappel de soin {3d4°} PV au retour à
     // la forme normale — ne concerne QUE le druide qui a AUSSI la voie du changeforme
     // (`requiresFeatureId`), pas Forme animale seule.
+    // `disablesProfileFeatures` (retour propriétaire 2026-08-19, RAW ci-dessus : « ne peut... utiliser
+    // ses propres capacités sous cette forme ») — même primitive que Métamorphose de l'ours/formes
+    // élémentaires. `exceptPathIds: ['animaux']` s'impose ICI (contrairement à l'ours/aux élémentaires,
+    // toujours de type 'prestige' donc jamais auto-ciblés) : la voie des animaux ELLE-MÊME est de type
+    // 'class' — sans l'exception, la transformation se désactiverait elle-même (et Langage des animaux,
+    // r1) dès qu'active, un comportement absurde. Les AUTRES voies de profil du druide (fauve,
+    // protecteur…) restent bien désactivées.
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: 'Forme animale active', activeWhenInputSet: 'animaux-r5' },
         healOnDeactivate: { dice: '3d4°', requiresFeatureId: 'prestige-changeforme-r5' },
+        disablesProfileFeatures: { exceptPathIds: ['animaux'] },
       },
     ],
     sourcePage: 114,

@@ -26,6 +26,7 @@ import {
   effectContext,
   finesseAttackForMode,
   type FinesseAttackView,
+  magicItemPropertyBonusesDisabledByTransformation,
   manaCastingAbility,
   modsFromFeatures,
   rangedAttackElement,
@@ -494,8 +495,12 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     }
   }
   // Immunités d'ÉTAT (peur, charme, ralenti, immobilisé) — PER-103, fusionnées comme puces vertes dans
-  // la carte Défense. Icône d'état dédiée ; le nom complet reste dans le tooltip via `title`.
-  const statusImmunityBadges: DefenseBadgeData[] = aggregateImmunities(modFeatureIds, character.equipment).map((imm) => ({
+  // la carte Défense. Icône d'état dédiée ; le nom complet reste dans le tooltip via `title`. Retour
+  // propriétaire 2026-08-19 : les immunités PORTÉES PAR L'ÉQUIPEMENT (Action libre) ne comptent plus
+  // pendant une transformation `disablesProfileFeatures` (Forme animale, Métamorphose de l'ours, formes
+  // élémentaires) — celles des capacités restent, seul l'équipement magique est ignoré.
+  const immunityEquipment = magicItemPropertyBonusesDisabledByTransformation(character) ? [] : character.equipment;
+  const statusImmunityBadges: DefenseBadgeData[] = aggregateImmunities(modFeatureIds, immunityEquipment).map((imm) => ({
     key: `imm-${imm.id}`,
     variant: 'immunity',
     statusEffect: imm.id,

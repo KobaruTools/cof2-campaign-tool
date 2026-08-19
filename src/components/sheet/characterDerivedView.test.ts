@@ -458,3 +458,30 @@ describe('objets enchantés : apport de statistiques dérivées (PER-273)', () =
     expect(view.derivedInput!.mods?.maxHp).toBe(7);
   });
 });
+
+describe('objet magique porté : immunité (Action libre) neutralisée sous transformation (retour propriétaire 2026-08-19)', () => {
+  const freeActionRing: EquipmentLine = {
+    custom: true,
+    name: 'Anneau de liberté',
+    quantity: 1,
+    worn: { slot: 'accessory' },
+    magicProperties: [{ kind: 'free-action' }],
+  };
+
+  it('sans transformation : immunité « Ralenti » portée par l’objet, présente dans les badges Défense', () => {
+    const view = buildCharacterDerivedView(makeCharacter({ equipment: [freeActionRing] }));
+    expect(view.defenseBadges).toContainEqual(expect.objectContaining({ title: 'Immunité : Ralenti' }));
+  });
+
+  it('Forme animale active : l’immunité de l’objet ne compte plus (disablesProfileFeatures)', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({
+        classId: 'druide',
+        featureIds: ['animaux-r5'],
+        effectInputs: { 'animaux-r5': 'chat' },
+        equipment: [freeActionRing],
+      }),
+    );
+    expect(view.defenseBadges).not.toContainEqual(expect.objectContaining({ title: 'Immunité : Ralenti' }));
+  });
+});
