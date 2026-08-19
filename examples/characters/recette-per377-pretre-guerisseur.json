@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 25,
+  "id": "recette-per377-pretre-guerisseur",
+  "name": "Recette PER-377 — Prêtre, voie du guérisseur",
+  "identity": {
+    "description": "ATTENDU (PER-377, p.171-172) : r4 Premiers soins — richText calcule [3d4° + CHA] PV, PAS de compteur affiché (limite « par patient/par combat », verbatim, non trackée). r5 Soins rapides — richText calcule [2d4° + CHA] PV, aucune limite. r6 Rappel à la vie — richText calcule [6 + CON] heures et {1d4°} PV, renvoi de capacité [&protecteur-r3] affiché en puce « Régénération », compteur 1×/jour visible sur la carte (hideFromStatusPanel). r7 Zone de vie — richText calcule [=CHA] rounds (quantité brute) et {2d4°} PV, aucune limite. r8 Résurrection — richText calcule [CHA] jours, PAS de compteur (« une fois par aventure », aucun resetOn d'aventure, verbatim)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 8,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "protecteur-r3",
+    "prestige-guerisseur-r4",
+    "prestige-guerisseur-r5",
+    "prestige-guerisseur-r6",
+    "prestige-guerisseur-r7",
+    "prestige-guerisseur-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "transformationDerivedStats": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-377 — voie du guérisseur, p.171-172. Recette moteur pur, pas de vérification navigateur (headless). protecteur-r3 (Régénération, druide) ajouté seulement pour matérialiser la cible du renvoi [&protecteur-r3].",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
