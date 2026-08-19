@@ -776,7 +776,7 @@ export function resolveCreatureAttackBonus(
   attack: NonNullable<CreatureProfile['attack']>,
   masterDerived: DerivedStats | undefined,
 ): number | undefined {
-  if (attack.fromMaster) return masterDerived ? masterStatValue(masterDerived, attack.fromMaster) : undefined;
+  if (attack.fromMaster) return masterDerived ? masterStatValue(masterDerived, attack.fromMaster) + (attack.offset ?? 0) : undefined;
   if (!attack.value) return undefined;
   const match = attack.value.match(/-?\d+/);
   return match ? parseInt(match[0], 10) : undefined;

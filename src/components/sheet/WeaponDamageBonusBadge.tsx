@@ -7,7 +7,7 @@ import { alpha } from '@mui/material/styles';
 import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DamageValue } from '@/components/DamageValue';
-import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
 
 /** Notation du/des dé(s) d'un bonus (ex. « 1d4° »), pour `DamageValue`. */
 function diceNotation(b: SituationalDamageBonus): string | null {
@@ -38,7 +38,9 @@ export function WeaponDamageBonusBadge({ bonus }: { bonus: SituationalDamageBonu
       </Box>
       {bonus.conditionLabel && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-          {bonus.conditionLabel}
+          {/* Libellé glosé : un état préjudiciable cité (ex. « renversée ») devient une pastille
+              d'état dédiée (StatusEffectChip via GameTermsRun). */}
+          <GlossaryText>{bonus.conditionLabel}</GlossaryText>
         </Typography>
       )}
     </Box>

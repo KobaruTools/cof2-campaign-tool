@@ -3671,12 +3671,14 @@ export interface CreatureProfile {
   /**
    * CAPACITÉ d'attaque GRATUITE disponible UNIQUEMENT quand le maître est EN SELLE sur cette monture
    * (PER-331, worg du gobelin p. 23 : « juché sur sa monture, il peut lui ordonner une morsure gratuite
-   * (G) une fois par round »). Rendue en CARTE de capacité dédiée (accent ambre, icône éclair) sur la
-   * carte du compagnon, affichée SEULEMENT lorsque l'interrupteur « en selle » est actif (`CompanionsPanel`,
-   * gaté sur `enSelleFor`). `text` est au format `richText` (dés/constantes résolus contre le MAÎTRE).
+   * (G) une fois par round »). Rendue en CARTE de capacité dédiée (même gabarit NEUTRE que les capacités
+   * de créature) sur la carte du compagnon, affichée SEULEMENT lorsque l'interrupteur « en selle » est
+   * actif (`CompanionsPanel`, gaté sur `enSelleFor`). `text` est au format `richText` (dés/constantes
+   * résolus contre le MAÎTRE). `actionType` (optionnel) rend un hexagone de marqueur d'action à côté du
+   * titre (ex. `'G'` = action gratuite), même style que les marqueurs des cartes de capacité.
    * Absent = aucune capacité montée. Réservé aux montures (`companionType: 'mount'`).
    */
-  mountedFreeAttack?: { name: string; text: string };
+  mountedFreeAttack?: { name: string; actionType?: ActionType; text: string };
   /**
    * Description ENRICHIE d'une créature que le livre présente SANS bloc de stats (PER-235) :
    * une « force, pas une créature » (Serviteur invisible, invocation-r2, p. 96). Rendue en une

@@ -23,6 +23,8 @@ import {
   CreatureDescriptionRich,
   CreatureSpecialAbilityBlocks,
 } from './CreatureStatBlock';
+import { RichInline } from './FeatureRichText';
+import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
 
 interface CompanionCardProps {
   entry: CompanionEntry;
@@ -143,6 +145,26 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
               mini-fiche de la carte de VOIE (verbatim de la capacité) ; la carte compagnon reste
               centrée sur le jeu (PV + stats + capacités) et ne le duplique pas (PER-216). */}
           <CreatureSpecialAbilityBlocks profile={profile} abilities={abilities} level={level} rank={pathRank} />
+          {/* Capacité d'attaque GRATUITE disponible seulement EN SELLE (PER-331, morsure du worg) : carte de
+              capacité dédiée (même gabarit NEUTRE que les capacités de créature), avec un hexagone de
+              marqueur d'action (G) à côté du titre ; affichée quand l'interrupteur « en selle » est actif. */}
+          {mounted === true && profile.mountedFreeAttack && (
+            <Box
+              sx={{ border: 1, borderColor: 'divider', borderRadius: 1, px: 1, py: 0.75, bgcolor: (t) => alpha(t.palette.text.primary, 0.03) }}
+            >
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 0.25 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+                  {profile.mountedFreeAttack.name}
+                </Typography>
+                {profile.mountedFreeAttack.actionType && (
+                  <ActionMarkerHex marker={profile.mountedFreeAttack.actionType} size={18} />
+                )}
+              </Stack>
+              <Typography variant="caption" color="text.secondary" component="div" sx={{ lineHeight: 1.5 }}>
+                <RichInline text={profile.mountedFreeAttack.text} abilities={abilities} level={level} rank={pathRank} />
+              </Typography>
+            </Box>
+          )}
         </Stack>
 
         {/* Colonne droite : caractéristiques (style bestiaire) + stats dérivées empilées */}

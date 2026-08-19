@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CallSplitIcon from '@mui/icons-material/CallSplit';
-import CasinoIcon from '@mui/icons-material/Casino';
 import OpacityIcon from '@mui/icons-material/Opacity';
 import PersonalInjuryIcon from '@mui/icons-material/PersonalInjury';
 import RemoveModeratorIcon from '@mui/icons-material/RemoveModerator';
@@ -24,8 +23,7 @@ export type FeatureEffectIcon =
   | 'merciless'
   | 'arcane-strike'
   | 'half-damage'
-  | 'ignore-rd'
-  | 'bonus-die';
+  | 'ignore-rd';
 
 const ICONS: Record<FeatureEffectIcon, ReactNode> = {
   bleeding: <OpacityIcon sx={{ fontSize: 18 }} />,
@@ -36,8 +34,6 @@ const ICONS: Record<FeatureEffectIcon, ReactNode> = {
   'half-damage': <CallSplitIcon sx={{ fontSize: 18 }} />,
   // Ignore la RD des créatures de grande taille (demi-ogre r4, PER-325) : bouclier barré = RD levée.
   'ignore-rd': <RemoveModeratorIcon sx={{ fontSize: 18 }} />,
-  // Dé bonus situationnel (gobelin r3 « Kafouiller » vs cible renversée, PER-331) : dé = dé bonus.
-  'bonus-die': <CasinoIcon sx={{ fontSize: 18 }} />,
 };
 
 /**

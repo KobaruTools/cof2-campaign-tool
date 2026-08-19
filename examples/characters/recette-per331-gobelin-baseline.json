@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 24,
+  "id": "recette-per331-gobelin-baseline",
+  "name": "Recette PER-331 — Gobelin (Le Compagnon)",
+  "identity": {
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Gobelin » (taille PETITE, badge Identité) + « Voie du gobelin » (rangs 1-5). Caracs de peuple : +1 AGI, +1 PER, -1 FOR, -1 VOL (toutes fixes, déjà appliquées ; le +1 AGI / +1 PER du r5 est ajouté par le moteur). r1 Vivacité gobeline → +3 Init, +3 Discrétion, vision 30 m (verbatim). r2 Attaque groupée → INTERRUPTEUR +2 en attaque au contact (inactif par défaut ; à activer si on vise la même cible qu’un allié). r3 Kafouiller → bonus situationnel +1d4° DM (badge « contre une créature renversée », état glosé) sous la carte d’attaque au CONTACT seule ; « dé bonus » verbatim. r4 Worg → MONTURE (section Compagnons) : DEF 17, PV 30 (niveau 6 × 5), Init du gobelin, Morsure « attaque magique du gobelin + 2 » DM 1d4°+5. Bouton « En selle / À pied » ; ICI monté EN SELLE → CARTE de capacité « Morsure gratuite (G) » sur la carte du worg. r5 Vif et alerte → +1 AGI et +1 PER. Armes tenues (épée courte à une main, arc court à deux mains) : ADAPTÉES à la taille petite → aucun avertissement."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "gobelin",
+  "classId": "voleur",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 1,
+    "CON": 0,
+    "PER": 1,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": -1
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 1,
+    "CON": 0,
+    "PER": 1,
+    "INT": 0,
+    "CHA": 0,
+    "VOL": -1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "gobelin",
+  "featureIds": [
+    "gobelin-r1",
+    "gobelin-r2",
+    "gobelin-r3",
+    "gobelin-r4",
+    "gobelin-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "gobelin-r4": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    },
+    {
+      "itemId": "arc-court",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "twoHands"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-331 — gobelin. Recette du contenu payant « Le Compagnon » (source companion).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "mountedKey": "gobelin-r4"
+}
