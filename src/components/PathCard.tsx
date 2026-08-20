@@ -11,7 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import Radio from '@mui/material/Radio';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha, lighten } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { Feature } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
@@ -22,7 +22,7 @@ import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { SourceRef } from '@/components/SourceRef';
 import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
 import { featureCodexHref } from '@/lib/ui/codex';
-import { prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
+import { prestigeGemStops, prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
 
 export interface PathCardProps {
   /** Nom affiché en tête (chaîne simple, ou nœud enrichi — ex. `FeatureLabel`). */
@@ -156,6 +156,10 @@ export function PathCard({
   const ghostHoverSx = checkZoneSelects
     ? { '&:hover .PathCard-ghostCheck': { opacity: 0.5 } }
     : undefined;
+  // Fond de la carte de prestige : mêmes arrêts clair/sombre que le liseré « métal précieux »
+  // (`prestigeStaticBorderSx`/les cases de la grille), plutôt qu'un dégradé clair→gris ad hoc —
+  // cohérent avec le reste de l'habillage prestige (retour proprio).
+  const [prestigeLight, prestigeDark] = prestigeGemStops(prestigeTint);
   return (
     <Box
       onClick={() => {
@@ -175,7 +179,7 @@ export function PathCard({
           ? {
               ...prestigeStaticBorderSx(checked ? 2 : 1, 'inherit', prestigeTint),
               border: 0,
-              background: `linear-gradient(45deg, ${alpha(prestigeTint ? lighten(prestigeTint, 0.55) : '#f5e7a0', checked ? 0.34 : 0.2)} 0%, ${alpha('#d0d0d0', checked ? 0.14 : 0.08)} 85%)`,
+              background: `linear-gradient(45deg, ${alpha(prestigeLight, checked ? 0.34 : 0.2)} 0%, ${alpha(prestigeDark, checked ? 0.14 : 0.08)} 100%)`,
             }
           : {
               border: borderWidth,

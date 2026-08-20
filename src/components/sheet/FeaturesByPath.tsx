@@ -56,6 +56,7 @@ import {
   hasIncompleteCustomSkill,
   hasUnmadeChoice,
   borrowedNoManaFeatureIds,
+  borrowedFeaturesOf,
 } from '@/lib/character/choices';
 import { animalFormCategories, knownAnimalFormCategoryIds } from '@/lib/character/animalForms';
 import {
@@ -66,6 +67,7 @@ import {
   sizeWithinLimit,
 } from '@/lib/character/animalFormPicker';
 import { useBestiaryStore } from '@/stores/bestiary';
+import type { CreatureListItem } from '@/lib/bestiary';
 import {
   BestiaryStatBlock,
   CreatureAbilityMarkers,
@@ -86,6 +88,8 @@ import { CrystalAssignmentSelect } from './CrystalAssignmentSelect';
 import {
   creatureDefenseAltActive,
   displayCreatureProfile,
+  isCreatureEligibleForOpenRoster,
+  openBestiaryRosterBudget,
   preferredBestiaryCreatureSlug,
   resolveCompanionInstanceLimit,
 } from '@/lib/character/companions';
@@ -116,6 +120,7 @@ import {
   shortRestLockKey,
   usageCounterMaximum,
   isUsageCounterHidden,
+  pathRanksFromFeatures,
   type DisabledFeatureReason,
   type TestDomainBonus,
   type DominatedTestSource,
@@ -586,40 +591,6 @@ function demiElfeFeyBloodNote(spellcaster: boolean): ReactNode {
       (<SourceRef page={10} />).
     </>
   );
-}
-
-/**
- * TOUTES les capacités EMPRUNTÉES par les choix `feature-from-path` résolus d'une capacité (PER-74,
- * Bâton magique de l'archimage r5 : DEUX choix sur la MÊME capacité, chacun donnant sa propre carte
- * d'emprunt, empilées dans l'ordre des choix). Généralise `borrowedFeatureOf` (qui ne renvoyait que
- * la PREMIÈRE, hypothèse valable pour toutes les autres capacités empruntantes du jeu, qui n'en ont
- * qu'une).
- */
-function borrowedFeaturesOf(character: Character | undefined, feature: Feature): Feature[] {
-  if (!character) return [];
-  const out: Feature[] = [];
-  // Grants FIXES (PER-323, cambion « Enfant des ténèbres », « La belle et la bête ») : chaque capacité
-  // octroyée est rendue comme un emprunt, SAUF si le personnage la possède déjà nativement (pas de
-  // doublon — la carte native passe en (G)) ou si son palier `minLevel` (Aspect du démon, niv. 10)
-  // n'est pas atteint.
-  for (const grant of feature.grantedFeatures ?? []) {
-    if (grant.minLevel != null && character.level < grant.minLevel) continue;
-    if (character.featureIds.includes(grant.featureId)) continue;
-    const g = featureById.get(grant.featureId);
-    if (g) out.push(g);
-  }
-  const defs = feature.choices;
-  const sels = character.featureChoices?.[feature.id];
-  if (defs && sels) {
-    for (let i = 0; i < defs.length; i++) {
-      if (defs[i].kind !== 'feature-from-path') continue;
-      const sel = sels[i];
-      if (typeof sel !== 'string') continue;
-      const f = featureById.get(sel);
-      if (f) out.push(f);
-    }
-  }
-  return out;
 }
 
 /**
@@ -1497,6 +1468,12 @@ export interface FeaturesByPathProps {
    */
   onSummonCompanionInstance?: (featureId: string) => void;
   /**
+   * Charme un animal du BESTIAIRE pour un ROSTER OUVERT (PER-378, Amitié animale,
+   * `Feature.openBestiaryRoster`) : ajoute une instance liée au slug choisi (`WildAllyRosterPicker`).
+   * Absent → picker en lecture seule (pas d'ajout). État de jeu, modifiable hors édition.
+   */
+  onSummonOpenRosterCreature?: (featureId: string, creatureId: string) => void;
+  /**
    * Le MJ invoque le Chasseur ailé au combat (PER-363, r7, p. 160) : bouton dédié de la modale de
    * détail, MJ SEULEMENT (masqué/désactivé pour un joueur — `useIsPlayerSession`). N'a aucun lien
    * avec l'interrupteur de la carte, purement indicatif. Absent → bouton non rendu.
@@ -1941,6 +1918,130 @@ function AnimalFormSelector({
           <BestiaryStatBlock creature={blob} dense hideNotes wideColumns />
         </Box>
       )}
+    </Box>
+  );
+}
+
+/**
+ * Roster OUVERT de compagnons (PER-378, Amitié animale, `Feature.openBestiaryRoster`) : choisit une
+ * créature du BESTIAIRE (liste RLS-filtrée — payant compris, `useBestiaryStore`) et l'ajoute comme
+ * instance — même mécanique d'ajout/PV/suppression qu'un compagnon multi-instances classique (zombie,
+ * `SummonInstanceBadge`), mais chaque instance porte SA PROPRE créature au lieu du même profil fixe.
+ * Budget = somme des NC des créatures déjà actives ≤ rang atteint dans la voie hôte (verbatim
+ * p. 172). Les options hors budget/palier restent VISIBLES mais DÉSACTIVÉES + un suffixe explique
+ * pourquoi (patron `FeatureChoiceField` : le joueur doit voir ce qu'il débloquera au rang suivant),
+ * PAS le hard-filter d'`AnimalFormSelector` (qui, lui, exclut carrément les tailles hors de portée).
+ * Le contenu payant non débloqué n'apparaît structurellement jamais dans `list` (RLS) : aucune
+ * vérification d'accès supplémentaire n'est nécessaire ici.
+ */
+function WildAllyRosterPicker({
+  feature,
+  character,
+  onSummon,
+}: {
+  feature: Feature;
+  character: Character;
+  onSummon?: (featureId: string, creatureId: string) => void;
+}) {
+  const roster = feature.openBestiaryRoster;
+  const list = useBestiaryStore((s) => s.list);
+  const bestiaryStatus = useBestiaryStore((s) => s.status);
+  const loadBestiaryList = useBestiaryStore((s) => s.loadList);
+  const paidSourceIds = useBestiaryStore((s) => s.paidSourceIds);
+  useEffect(() => {
+    loadBestiaryList();
+  }, [loadBestiaryList]);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  if (!roster) return null;
+  const pathRank = pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? feature.rank;
+  const { used, max } = openBestiaryRosterBudget(character, feature, list ?? []);
+  // Univers de base (p. 172) : tout animal ORDINAIRE, PLUS les variantes géantes/préhistoriques et
+  // les animaux fantastiques (rangées ailleurs au bestiaire) — le palier de rang décide ensuite si
+  // l'option est RETENABLE (`reasonFor`), pas si elle apparaît.
+  const options = (list ?? [])
+    .filter(
+      (c) =>
+        c.category === 'animaux' ||
+        (c.category === 'creatures-fantastiques' && (!!c.animalFormFlavor || !!c.isFantasticAnimal)),
+    )
+    .sort((a, b) => (a.nc ?? 0) - (b.nc ?? 0) || a.sortOrder - b.sortOrder);
+  const pending = options.find((o) => o.id === pendingId) ?? null;
+
+  const reasonFor = (o: CreatureListItem): string | null => {
+    if (!isCreatureEligibleForOpenRoster(o, roster, pathRank)) {
+      return o.isFantasticAnimal
+        ? `animal fantastique — rang ${roster.fantasticUnlockRank} requis`
+        : `variante géante/préhistorique — rang ${roster.giantUnlockRank} requis`;
+    }
+    if ((o.nc ?? 0) + used > max) return `NC trop élevé — budget dépassé (${used}/${max})`;
+    return null;
+  };
+  const pendingReason = pending ? reasonFor(pending) : null;
+
+  return (
+    <Box sx={{ mt: 1 }}>
+      <Autocomplete
+        options={options}
+        getOptionLabel={(o) => o.name}
+        getOptionKey={(o) => o.id}
+        isOptionEqualToValue={(a, b) => a.id === b.id}
+        value={pending}
+        loading={bestiaryStatus === 'loading'}
+        onChange={(_, next) => setPendingId(next?.id ?? null)}
+        getOptionDisabled={(o) => !!reasonFor(o)}
+        renderOption={(props, option) => {
+          const { key, ...optionProps } = props as typeof props & { key?: string };
+          const reason = reasonFor(option);
+          return (
+            <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Typography
+                variant="body2"
+                sx={{ flex: '1 1 auto' }}
+                color={reason ? 'text.disabled' : 'text.primary'}
+              >
+                {option.name}{' '}
+                <Box component="span" sx={{ opacity: 0.7 }}>
+                  (NC {option.nc ?? '?'})
+                </Box>
+                {reason && (
+                  <Box component="span" sx={{ ml: 0.5, fontStyle: 'italic' }}>
+                    — {reason}
+                  </Box>
+                )}
+              </Typography>
+              {paidSourceIds.has(option.sourceId) && (
+                <AppTooltip title="Supplément Bestiaire (contenu payant)">
+                  <Box component="span" aria-label="Contenu payant" sx={{ display: 'inline-flex', color: 'text.secondary' }}>
+                    <PetsOutlinedIcon sx={{ fontSize: 14 }} />
+                  </Box>
+                </AppTooltip>
+              )}
+            </Box>
+          );
+        }}
+        renderInput={(params) => (
+          <TextField {...params} label="Animal à charmer" placeholder="choisir un animal" size="small" />
+        )}
+        sx={{ maxWidth: 340 }}
+      />
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mt: 1 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+          Budget NC : {used} / {max}
+        </Typography>
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={!pending || !!pendingReason || !onSummon}
+          onClick={() => {
+            if (!pending) return;
+            onSummon?.(feature.id, pending.id);
+            setPendingId(null);
+          }}
+        >
+          {roster.addLabel ?? 'Invoquer'}
+        </Button>
+      </Stack>
     </Box>
   );
 }
@@ -3276,6 +3377,7 @@ function PathBlock({
   onCreateElixir,
   onToggleCrystalActive,
   onSummonCompanionInstance,
+  onSummonOpenRosterCreature,
   onInvokeHawkHunter,
   onPoisonUpdate,
   onWeaponModificationUpdate,
@@ -3330,6 +3432,8 @@ function PathBlock({
   onCreateElixir?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /** Invoque un exemplaire d'un compagnon multi-instances (zombie, PER-235) — badge bleu « Invoquer ». */
   onSummonCompanionInstance?: (featureId: string) => void;
+  /** Charme un animal du bestiaire pour un roster ouvert (PER-378) — `WildAllyRosterPicker`. */
+  onSummonOpenRosterCreature?: (featureId: string, creatureId: string) => void;
   /** Le MJ invoque le Chasseur ailé au combat (PER-363, r7) — bouton dédié, MJ seulement. */
   onInvokeHawkHunter?: () => void;
   /** Applique un patch d'état de jeu « poison appliqué aux armes » (maître des poisons, PER-74). */
@@ -4817,6 +4921,15 @@ function PathBlock({
                     </Box>
                   ) : null;
                 })()}
+                {/* Roster ouvert (PER-378, Amitié animale) : capacité SANS `creatureProfile` propre —
+                    le bloc ci-dessus ne rend donc rien pour elle, le picker est la seule UI d'ajout. */}
+                {openFeature.openBestiaryRoster && character && (
+                  <WildAllyRosterPicker
+                    feature={openFeature}
+                    character={character}
+                    onSummon={onSummonOpenRosterCreature}
+                  />
+                )}
                 {hasChoices(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -5423,6 +5536,15 @@ function PathBlock({
                   </Box>
                 ) : null;
               })()}
+              {/* Roster ouvert (PER-378, Amitié animale) : capacité SANS `creatureProfile` propre —
+                  le bloc ci-dessus ne rend donc rien pour elle, le picker est la seule UI d'ajout. */}
+              {feature.openBestiaryRoster && character && (
+                <WildAllyRosterPicker
+                  feature={feature}
+                  character={character}
+                  onSummon={onSummonOpenRosterCreature}
+                />
+              )}
               {hasChoices(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
@@ -5777,6 +5899,7 @@ export function FeaturesByPath({
   onCreateElixir,
   onToggleCrystalActive,
   onSummonCompanionInstance,
+  onSummonOpenRosterCreature,
   onInvokeHawkHunter,
   onPoisonUpdate,
   onWeaponModificationUpdate,
@@ -5978,6 +6101,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onSummonOpenRosterCreature={onSummonOpenRosterCreature}
               onInvokeHawkHunter={onInvokeHawkHunter}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}
@@ -6021,6 +6145,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onSummonOpenRosterCreature={onSummonOpenRosterCreature}
               onInvokeHawkHunter={onInvokeHawkHunter}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}
@@ -6061,6 +6186,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onSummonOpenRosterCreature={onSummonOpenRosterCreature}
               onInvokeHawkHunter={onInvokeHawkHunter}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}

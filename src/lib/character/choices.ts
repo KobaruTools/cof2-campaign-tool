@@ -703,6 +703,37 @@ function resolvedGrants(character: Character): ResolvedGrant[] {
  * doublon : le livre prévoit alors un autre bénéfice). Ces capacités sont réellement acquises → leurs
  * `effects` comptent, comme les emprunts (mais le +1 PM d'un sort `noMana` est retiré, cf. `manaPoints`).
  */
+/**
+ * TOUTES les capacités EMPRUNTÉES par la capacité `feature` — choix `feature-from-path`
+ * résolus (PER-120, ex. Combattant aguerri) ET octrois fixes (`grantedFeatures`, PER-323,
+ * cambion « Enfant des ténèbres ») dont elle est l'hôte, empilées dans l'ordre (une capacité
+ * avec DEUX choix `feature-from-path`, PER-74 bâton magique de l'archimage r5, rend ses deux
+ * cartes). Déplacé depuis `FeaturesByPath.tsx` (comportement inchangé) pour être réutilisable
+ * hors de la fiche — ex. l'aperçu du wizard de montée de niveau (`LevelUpPathsGrid`).
+ */
+export function borrowedFeaturesOf(character: Character | undefined, feature: Feature): Feature[] {
+  if (!character) return [];
+  const out: Feature[] = [];
+  for (const grant of feature.grantedFeatures ?? []) {
+    if (grant.minLevel != null && character.level < grant.minLevel) continue;
+    if (character.featureIds.includes(grant.featureId)) continue;
+    const g = featureById.get(grant.featureId);
+    if (g) out.push(g);
+  }
+  const defs = feature.choices;
+  const sels = character.featureChoices?.[feature.id];
+  if (defs && sels) {
+    for (let i = 0; i < defs.length; i++) {
+      if (defs[i].kind !== 'feature-from-path') continue;
+      const sel = sels[i];
+      if (typeof sel !== 'string') continue;
+      const f = featureById.get(sel);
+      if (f) out.push(f);
+    }
+  }
+  return out;
+}
+
 export function grantedFeatureIds(character: Character): string[] {
   const owned = new Set(character.featureIds);
   const out: string[] = [];

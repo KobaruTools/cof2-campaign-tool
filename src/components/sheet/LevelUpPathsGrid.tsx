@@ -43,6 +43,7 @@ import Typography from '@mui/material/Typography';
 import { featureById, pathById, progression } from '@/data';
 import type { Feature } from '@/data/schema';
 import { canAcquireFeature, featureCost } from '@/lib/engine';
+import { borrowedFeaturesOf } from '@/lib/character/choices';
 import { rulesContext } from '@/lib/character/rulesContext';
 import type { Character } from '@/lib/character/types';
 import { AncestryIcon } from '@/components/AncestryIcon';
@@ -768,6 +769,64 @@ export function LevelUpPathsGrid({
                 abilities={character.abilities}
                 level={character.level}
               />
+              {/* Capacité(s) EMPRUNTÉE(s) par un choix `feature-from-path` déjà résolu (PER-120,
+                  ex. Combattant aguerri) ou un octroi fixe (PER-323, cambion) — une carte de plus
+                  par emprunt, sous la carte de la voie hôte, même patron de bandeau. Sans effet
+                  sur un rang pas encore acquis (le choix n'existe pas encore). */}
+              {borrowedFeaturesOf(character, feature).map((borrowed) => {
+                const borrowedPath = pathById.get(borrowed.pathId);
+                const borrowedVisuals = pathVisuals(borrowedPath, character.classId);
+                const borrowedBannerColor =
+                  borrowedPath?.type === 'prestige'
+                    ? prestigeCategoryColor(borrowedPath.category)
+                    : borrowedVisuals.color;
+                return (
+                  <Box key={borrowed.id} sx={{ width: '100%', mt: 1 }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.75}
+                      sx={{ alignItems: 'center', borderLeft: 3, borderColor: borrowedBannerColor ?? 'divider', pl: 1.5, mb: 0.75 }}
+                    >
+                      {borrowedVisuals.classId ? (
+                        <ClassIcon
+                          classId={borrowedVisuals.classId}
+                          size={18}
+                          sx={{ color: borrowedBannerColor ?? undefined, flexShrink: 0 }}
+                        />
+                      ) : (
+                        borrowedVisuals.ancestryId && (
+                          <AncestryIcon
+                            ancestryId={borrowedVisuals.ancestryId}
+                            size={18}
+                            sx={{ color: 'text.secondary', flexShrink: 0 }}
+                          />
+                        )
+                      )}
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: borrowedBannerColor ?? 'text.primary' }}>
+                        Capacité empruntée — {borrowedPath?.name ?? borrowed.pathId}
+                      </Typography>
+                    </Stack>
+                    <PathCard
+                      name={<DeclinedFeatureName feature={borrowed} />}
+                      term={borrowed.name}
+                      color={borrowedVisuals.color}
+                      classId={borrowedVisuals.classId}
+                      ancestryId={borrowedVisuals.ancestryId}
+                      prestige={borrowedVisuals.isPrestige}
+                      prestigeTint={borrowedVisuals.isPrestige ? borrowedVisuals.prestigeTint : undefined}
+                      checked
+                      selectable={false}
+                      defaultExpanded
+                      repeatFeatureName={false}
+                      rankLabel={`Rang ${borrowed.rank} de « ${borrowedPath?.name ?? borrowed.pathId} »`}
+                      sourcePage={borrowedPath?.sourcePage}
+                      feature={borrowed}
+                      abilities={character.abilities}
+                      level={character.level}
+                    />
+                  </Box>
+                );
+              })}
             </Box>
           );
         })()}
