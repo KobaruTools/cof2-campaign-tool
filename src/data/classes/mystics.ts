@@ -388,18 +388,21 @@ export const mysticFeatures: Feature[] = [
     // (`requiresFeatureId`), pas Forme animale seule.
     // `disablesProfileFeatures` (retour propriétaire 2026-08-19, RAW ci-dessus : « ne peut... utiliser
     // ses propres capacités sous cette forme ») — même primitive que Métamorphose de l'ours/formes
-    // élémentaires. `exceptPathIds: ['animaux']` s'impose ICI (contrairement à l'ours/aux élémentaires,
-    // toujours de type 'prestige' donc jamais auto-ciblés) : la voie des animaux ELLE-MÊME est de type
-    // 'class' — sans l'exception, la transformation se désactiverait elle-même (et Langage des animaux,
-    // r1) dès qu'active, un comportement absurde. Les AUTRES voies de profil du druide (fauve,
-    // protecteur…) restent bien désactivées.
+    // élémentaires, simple `true` (PAS d'exception de voie, bug corrigé le même jour : la voie des
+    // animaux ELLE-MÊME est de type 'class', mais `profileFeaturesDisabledByTransformation`
+    // (effects.ts) exempte désormais génériquement la capacité PORTEUSE de l'interrupteur — donc
+    // seule `animaux-r5` échappe, PAS les autres rangs (Langage des animaux r1, Petit compagnon r2…)
+    // qui doivent bien être grisés sous la forme). `disablesFeatures: ['prestige-changeforme-r4']` :
+    // Forme de voyage (une AUTRE transformation animale, voie de prestige) ne peut pas non plus être
+    // active en même temps — deux formes simultanées n'ont aucun sens RAW.
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: 'Forme animale active', activeWhenInputSet: 'animaux-r5' },
         healOnDeactivate: { dice: '3d4°', requiresFeatureId: 'prestige-changeforme-r5' },
-        disablesProfileFeatures: { exceptPathIds: ['animaux'] },
+        disablesProfileFeatures: true,
+        disablesFeatures: ['prestige-changeforme-r4'],
       },
     ],
     sourcePage: 114,

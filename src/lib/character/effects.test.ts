@@ -41,7 +41,9 @@ import {
   stackedDamageReductions,
   activeAbilityOverrideSources,
   activeDefenseOverride,
+  activeDefenseOverrideSource,
   activeInitiativeOverride,
+  activeInitiativeOverrideSource,
   activeFormAbilityBonuses,
   creatureBonusDiceForPath,
   acquiredTestDomainIds,
@@ -759,6 +761,74 @@ describe('DEF/Initiative imposées par Forme animale (retour propriétaire 2026-
     });
     expect(activeDefenseOverride(c)).toBeNull();
     expect(activeInitiativeOverride(c)).toBeNull();
+  });
+
+  it('*Source expose la capacité + la page, pour remplacer le breakdown normal (DerivedStatsGrid)', () => {
+    const c = druid({
+      effectInputs: { 'animaux-r5': 'loup' },
+      transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+    });
+    expect(activeDefenseOverrideSource(c)).toMatchObject({ featureId: 'animaux-r5', value: 16 });
+    expect(activeInitiativeOverrideSource(c)).toMatchObject({ featureId: 'animaux-r5', value: 8 });
+  });
+
+  describe('veto du rang 6 du changeforme (« Transformation puissante », p. 170) — DEF seule, jamais l’Initiative', () => {
+    it('sans prestige-changeforme-r6 → surcharge appliquée même si la DEF normale du personnage est plus haute', () => {
+      const c = druid({
+        effectInputs: { 'animaux-r5': 'loup' },
+        transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+      });
+      // DEF normale (20) > DEF du loup (16), mais sans r6 le personnage n'a pas la faculté de la garder.
+      expect(activeDefenseOverride(c, 20)).toBe(16);
+    });
+
+    it('avec r6, DEF normale STRICTEMENT supérieure à celle du profil → surcharge NON appliquée (garde sa DEF)', () => {
+      const c = druid({
+        featureIds: ['animaux-r1', 'animaux-r5', 'prestige-changeforme-r6'],
+        effectInputs: { 'animaux-r5': 'loup' },
+        transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+      });
+      expect(activeDefenseOverride(c, 20)).toBeNull();
+      expect(activeDefenseOverrideSource(c, 20)).toBeNull();
+      // L'Initiative n'est JAMAIS concernée par cette clause (RAW muette dessus) — reste imposée.
+      expect(activeInitiativeOverride(c)).toBe(8);
+    });
+
+    it('avec r6, DEF normale ÉGALE à celle du profil → surcharge encore appliquée (pas « supérieure »)', () => {
+      const c = druid({
+        featureIds: ['animaux-r1', 'animaux-r5', 'prestige-changeforme-r6'],
+        effectInputs: { 'animaux-r5': 'loup' },
+        transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+      });
+      expect(activeDefenseOverride(c, 16)).toBe(16);
+    });
+
+    it('avec r6, DEF normale INFÉRIEURE à celle du profil → surcharge appliquée (le profil reste meilleur)', () => {
+      const c = druid({
+        featureIds: ['animaux-r1', 'animaux-r5', 'prestige-changeforme-r6'],
+        effectInputs: { 'animaux-r5': 'loup' },
+        transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+      });
+      expect(activeDefenseOverride(c, 10)).toBe(16);
+    });
+
+    it('r7 hérite de la même faculté que r6 (rangs acquis dans l’ordre)', () => {
+      const c = druid({
+        featureIds: ['animaux-r1', 'animaux-r5', 'prestige-changeforme-r6', 'prestige-changeforme-r7'],
+        effectInputs: { 'animaux-r5': 'loup' },
+        transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+      });
+      expect(activeDefenseOverride(c, 20)).toBeNull();
+    });
+
+    it('sans `normalDefense` fourni par l’appelant → comportement historique, surcharge toujours appliquée', () => {
+      const c = druid({
+        featureIds: ['animaux-r1', 'animaux-r5', 'prestige-changeforme-r6'],
+        effectInputs: { 'animaux-r5': 'loup' },
+        transformationDerivedStats: { 'animaux-r5': { defense: 16, initiative: 8 } },
+      });
+      expect(activeDefenseOverride(c)).toBe(16);
+    });
   });
 });
 

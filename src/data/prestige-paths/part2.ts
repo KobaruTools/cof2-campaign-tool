@@ -4410,16 +4410,19 @@ export const prestigeFeatures2: Feature[] = [
     // (mystics.ts, voir sa doc — RAW p. 114 « ne peut... utiliser ses propres capacités sous cette
     // forme »), dupliquée ici pour le personnage qui n'a QUE le changeforme (pas druide) : l'octroi
     // n'ajoute jamais `animaux-r5` à `character.featureIds` (pas de doublon), donc SEUL cet effet-ci
-    // porte le drapeau pour lui. `exceptPathIds: ['animaux']` protège la voie des animaux d'une
-    // auto-désactivation quand le personnage EST AUSSI druide (les deux sources actives, natif +
-    // octroi, exceptent alors chacune la voie) ; `prestige-changeforme` lui-même n'a jamais besoin
-    // d'exception (voie de PRESTIGE, jamais ciblée par `disablesProfileFeatures`).
+    // porte le drapeau pour lui. Simple `true` (bug corrigé le même jour, voir mystics.ts) : plus
+    // d'`exceptPathIds`, `profileFeaturesDisabledByTransformation` (effects.ts) exempte désormais
+    // génériquement la clé `activeWhenInputSet` elle-même (`animaux-r5`) — les AUTRES rangs de la
+    // voie des animaux (natif, si le personnage est AUSSI druide) restent bien grisés.
+    // `disablesFeatures: ['prestige-changeforme-r4']` : Forme de voyage ne peut pas non plus être
+    // active pendant Forme animale — deux transformations simultanées n'ont aucun sens RAW.
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: 'Forme animale active', activeWhenInputSet: 'animaux-r5' },
-        disablesProfileFeatures: { exceptPathIds: ['animaux'] },
+        disablesProfileFeatures: true,
+        disablesFeatures: ['prestige-changeforme-r4'],
       },
     ],
     choices: [
@@ -4452,9 +4455,12 @@ export const prestigeFeatures2: Feature[] = [
       "Lorsqu'il prend une forme animale, le personnage peut conserver sa propre DEF et utiliser sa valeur d'attaque magique pour attaquer si ceux-ci sont supérieurs au profil de la forme choisie. Désormais, le personnage peut prendre la forme des animaux géants ou préhistoriques (mais toujours sans dépasser la taille M).",
     richText:
       "Lorsqu'il prend une forme animale, le personnage peut conserver sa propre DEF et utiliser sa valeur d'attaque magique pour attaquer si ceux-ci sont supérieurs au profil de la forme choisie. Désormais, le personnage peut prendre la forme des animaux géants ou préhistoriques (mais toujours sans dépasser la taille M).",
-    // La comparaison DEF/attaque contre le profil réellement choisi est calculée par le
-    // sélecteur de forme (`AnimalFormChangeformeExtras`, FeaturesByPath.tsx) dès que ce rang
-    // est détecté — pas un effet de schéma, la valeur dépend d'une créature choisie en jeu.
+    // Retour propriétaire 2026-08-19 : la comparaison DEF contre le profil réellement choisi est
+    // mécanisée dans `activeDefenseOverrideSource` (effects.ts, `hasChangeformeOwnDefenseAccess`) —
+    // PAS un effet de schéma, la valeur dépend d'une créature choisie en jeu (`transformationDerivedStats`).
+    // Seule la DEF est couverte pour l'instant ; « utiliser sa valeur d'attaque magique pour attaquer »
+    // reste HORS PÉRIMÈTRE (touche le remplacement de l'attaque de la forme, système distinct,
+    // `formAttack.ts` — TODO(extraction) si demandé).
     sourcePage: 170,
   },
   {

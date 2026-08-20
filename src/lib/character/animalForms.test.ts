@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type Character } from './types';
 import { animalFormCategories, communicableAnimalCategories, knownAnimalFormCategoryIds } from './animalForms';
-import { profileFeaturesDisabledByTransformation } from './effects';
+import { disabledFeatureIds, profileFeaturesDisabledByTransformation } from './effects';
 
 function makeCharacter(over: Partial<Character>): Character {
   return {
@@ -140,14 +140,16 @@ describe('Forme animale (animaux-r5/prestige-changeforme-r5) désactive les capa
     expect(disabled.has('fauve-r1')).toBe(true);
   });
 
-  it("druide natif, forme ACTIVE : la voie des animaux ELLE-MÊME reste utilisable (exceptPathIds, sinon la transformation se désactiverait elle-même)", () => {
+  it("druide natif, forme ACTIVE : Forme animale (animaux-r5) ELLE-MÊME reste utilisable (self-exemption), mais PAS les autres rangs de sa propre voie (retour propriétaire 2026-08-19, bug corrigé : exceptPathIds excluait TOUTE la voie)", () => {
     const c = makeCharacter({
       featureIds: ['animaux-r1', 'animaux-r5', 'fauve-r1'],
       effectInputs: { 'animaux-r5': 'chat' },
     });
     const disabled = profileFeaturesDisabledByTransformation(c);
-    expect(disabled.has('animaux-r1')).toBe(false);
     expect(disabled.has('animaux-r5')).toBe(false);
+    // RAW p. 114 : « ne peut... utiliser ses propres capacités sous cette forme » — Langage des
+    // animaux (r1) EST une capacité de profil comme une autre, elle doit être grisée.
+    expect(disabled.has('animaux-r1')).toBe(true);
   });
 
   it("changeforme SEUL (pas druide), transformation ACTIVE : les autres voies de profil sont désactivées", () => {
@@ -157,12 +159,15 @@ describe('Forme animale (animaux-r5/prestige-changeforme-r5) désactive les capa
     });
     const disabled = profileFeaturesDisabledByTransformation(c);
     expect(disabled.has('combat-r1')).toBe(true);
-    // La voie du changeforme (PRESTIGE) n'est jamais visée par sa propre désactivation.
+    // La voie du changeforme (PRESTIGE) n'est jamais visée par `disablesProfileFeatures` (réservé
+    // aux voies de PROFIL, `Path.type === 'class'`) — Forme de voyage (r4) est bien désactivée,
+    // mais par `disablesFeatures` (exclusion explicite), pas par ce mécanisme-ci.
     expect(disabled.has('prestige-changeforme-r4')).toBe(false);
     expect(disabled.has('prestige-changeforme-r5')).toBe(false);
+    expect(disabledFeatureIds(c).has('prestige-changeforme-r4')).toBe(true);
   });
 
-  it('druide ET changeforme (dédoublonné), forme ACTIVE : la voie des animaux et le changeforme restent tous deux utilisables', () => {
+  it('druide ET changeforme (dédoublonné), forme ACTIVE : le changeforme (voie de prestige) reste utilisable, la voie des animaux (sauf animaux-r5) et Forme de voyage sont désactivées', () => {
     const c = makeCharacter({
       featureIds: [
         'animaux-r1',
@@ -177,10 +182,14 @@ describe('Forme animale (animaux-r5/prestige-changeforme-r5) désactive les capa
     });
     const disabled = profileFeaturesDisabledByTransformation(c);
     expect(disabled.has('fauve-r1')).toBe(true);
-    expect(disabled.has('animaux-r1')).toBe(false);
+    expect(disabled.has('animaux-r1')).toBe(true);
     expect(disabled.has('animaux-r5')).toBe(false);
     // Les rangs 6/7/8 du changeforme (qui modifient l'usage de Forme animale) restent aussi utilisables
     // — voies de PRESTIGE, jamais ciblées par `disablesProfileFeatures`.
     expect(disabled.has('prestige-changeforme-r7')).toBe(false);
+    // Forme de voyage (r4) : deux transformations animales à la fois n'ont aucun sens RAW —
+    // désactivée par `disablesFeatures`, pas par `profileFeaturesDisabledByTransformation`.
+    expect(disabled.has('prestige-changeforme-r4')).toBe(false);
+    expect(disabledFeatureIds(c).has('prestige-changeforme-r4')).toBe(true);
   });
 });

@@ -25,6 +25,26 @@ export function hasGiantOrPrehistoricAnimalFormAccess(character: Character): boo
 }
 
 /**
+ * Le personnage garde-t-il sa propre DEF (et sa valeur d'attaque magique pour attaquer) plutôt que
+ * celles du profil pris, quand elles sont SUPÉRIEURES (« Transformation puissante », rang 6 du
+ * changeforme, p. 170 : « le personnage peut conserver sa propre DEF et utiliser sa valeur
+ * d'attaque magique pour attaquer si ceux-ci sont supérieurs au profil de la forme choisie ») ?
+ * Le rang 7 (« Grande forme animale », p. 170) redit la même faculté pour les formes GRANDES sans
+ * poser de condition supplémentaire — même règle, pas un choix distinct — et r7/r8 impliquent
+ * normalement r6 (rangs d'une même voie acquis dans l'ordre), vérifiés par sécurité comme
+ * `hasGiantOrPrehistoricAnimalFormAccess`. Consommé par `activeDefenseOverrideSource` (effects.ts),
+ * qui compare ensuite au cas par cas. RAW : ne s'applique QU'à la DEF (et l'attaque, hors périmètre
+ * pour l'instant) — jamais à l'Initiative, non mentionnée par ce rang.
+ */
+export function hasChangeformeOwnDefenseAccess(character: Character): boolean {
+  return (
+    character.featureIds.includes('prestige-changeforme-r6') ||
+    character.featureIds.includes('prestige-changeforme-r7') ||
+    character.featureIds.includes('prestige-changeforme-r8')
+  );
+}
+
+/**
  * Créatures du bestiaire à exclure de « Forme animale » malgré une taille/catégorie
  * compatibles : la « Nuée de bestioles » (p. 145) n'est PAS un individu mais un
  * regroupement (« les caractéristiques données ici correspondent à un groupe de

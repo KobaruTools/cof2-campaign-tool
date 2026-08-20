@@ -53,6 +53,7 @@ import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
+import { featureCodexHref } from '@/lib/ui/codex';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { ownedWeaponsForChoice } from '@/lib/character/boundWeapon';
 
@@ -757,8 +758,8 @@ export function ChoiceValueBadge({
   compact?: boolean;
   /** Rend le badge cliquable (ouvre l'éditeur du choix). */
   onClick?: () => void;
-  /** Infobulle facultative (ex. nom complet d'une caractéristique abrégée). */
-  title?: string;
+  /** Infobulle facultative (ex. nom complet d'une caractéristique abrégée, ou texte + `SourceRef`). */
+  title?: ReactNode;
 }) {
   const interactive = !!onClick;
   const badge = (
@@ -937,15 +938,20 @@ function RepeatOptionDisplay({
   // Uniquement sur `animaux-r1` (Langage des animaux) : la voie de prestige du changeforme
   // (`prestige-changeforme-r5`) n'accorde PAS ce bonus gratuit à un personnage sans druide natif
   // (`animalForms.ts`, `knownAnimalFormCategoryIds`).
-  const innateMammals =
-    featureId === 'animaux-r1' ? (
-      <ChoiceValueBadge
-        key="mammals-innate"
-        label="Mammifères"
-        compact={compact}
-        title="Communication et Forme animale offertes d'office au rang 1 (p. 114) — pas un choix"
-      />
-    ) : null;
+  const languageFeature = featureId === 'animaux-r1' ? featureById.get('animaux-r1') : undefined;
+  const innateMammals = languageFeature ? (
+    <ChoiceValueBadge
+      key="mammals-innate"
+      label="Mammifères"
+      compact={compact}
+      title={
+        <>
+          Communication et Forme animale offertes d'office au rang 1 — pas un choix.{' '}
+          <SourceRef page={languageFeature.sourcePage} term={languageFeature.name} codexHref={featureCodexHref(languageFeature)} />
+        </>
+      }
+    />
+  ) : null;
 
   if (entries.length === 0) {
     const badge = <ChoiceTodoBadge compact={compact} onClick={onEdit} />;

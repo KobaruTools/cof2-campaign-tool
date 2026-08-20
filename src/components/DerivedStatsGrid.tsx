@@ -12,7 +12,7 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { deriveStats, type DerivedInput } from '@/lib/engine';
-import type { EffectContext, RangedAttackElementView } from '@/lib/character/effects';
+import type { AbilityOverrideSource, EffectContext, RangedAttackElementView } from '@/lib/character/effects';
 import type { DerivedStatId as OverrideKey } from '@/lib/character/types';
 import type { FormAttackView } from '@/lib/character/formAttack';
 import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
@@ -21,6 +21,7 @@ import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DerivedStatBreakdownTooltip } from '@/components/DerivedStatBreakdownTooltip';
+import { BreakdownContent } from '@/components/BreakdownContent';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { DieIcon } from '@/components/DieIcon';
@@ -193,6 +194,15 @@ export interface DerivedStatsGridProps {
    */
   activeInitiativeOverride?: number | null;
   /**
+   * Source (capacité + page) de `activeDefenseOverride` — retour propriétaire 2026-08-19 : REMPLACE
+   * le breakdown normal (formule 10+AGI+équipement) par un détail cohérent quand la surcharge de
+   * forme s'applique, au lieu de continuer à montrer une formule qui ne s'applique plus. `null`/absent
+   * → breakdown normal (`DerivedStatBreakdownTooltip`) inchangé.
+   */
+  activeDefenseOverrideSource?: AbilityOverrideSource | null;
+  /** Source de `activeInitiativeOverride`, même usage que `activeDefenseOverrideSource`. */
+  activeInitiativeOverrideSource?: AbilityOverrideSource | null;
+  /**
    * PER-74 — dé bonus à TOUTES les attaques (contact/distance/magie), auto tant que PV < niveau
    * (flibustier r8 « Pas de quartier »). Affiche un badge double-d20 sur les cartes d'attaque. Vide
    * ou absent = aucun.
@@ -281,7 +291,9 @@ export function DerivedStatsGrid({
   rangedReplacingFormAttack,
   meleeReplacingFormAttack,
   activeDefenseOverride = null,
+  activeDefenseOverrideSource = null,
   activeInitiativeOverride = null,
+  activeInitiativeOverrideSource = null,
   attackBonusDie = [],
   boundWeaponAttackDie = null,
   attackMalusDie = [],
@@ -371,6 +383,13 @@ export function DerivedStatsGrid({
         const formForcedValue = id === 'defense' ? activeDefenseOverride : activeInitiativeOverride;
         const overrideValue = manualForced ? (overrides![key] ?? 0) : formForced ? formForcedValue : null;
         const display = forced ? overrideValue : computed;
+        // Source de la surcharge de FORME (capacité + page), pour remplacer le breakdown normal —
+        // jamais pour une surcharge MANUELLE (`overrides`, saisie libre sans formule à expliquer).
+        const formForcedSource = formForced
+          ? id === 'defense'
+            ? activeDefenseOverrideSource
+            : activeInitiativeOverrideSource
+          : null;
         // Vue compacte à 2 colonnes (mobile) réservée aux stats SIMPLES en lecture : titre
         // masqué et icône réduite pour gagner de la place. Les lignes d'attaque restent en
         // pleine largeur ; l'ÉDITION (champs + épingle) aussi, pour garder ses contrôles au large.
@@ -632,42 +651,78 @@ export function DerivedStatsGrid({
                           </AppTooltip>
                         </Stack>
                       ) : (
-                        <DerivedStatBreakdownTooltip {...breakdownProps}>
-                          <Typography
-                            variant="h5"
-                            sx={{
-                              fontWeight: 600,
-                              color: forced ? 'warning.main' : undefined,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 0.75,
-                              cursor: 'help',
-                              // Chiffre agrandi sur mobile — le libellé/l'icône/les badges autour gardent leur taille.
-                              fontSize: { xs: '1.75rem', sm: 'inherit' },
-                            }}
-                          >
-                            {display === null ? '—' : display}
-                            {suffix}
-                            {forced && (
-                              <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
-                                <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+                        (() => {
+                          const numberContent = (
+                            <Typography
+                              variant="h5"
+                              sx={{
+                                fontWeight: 600,
+                                color: forced ? 'warning.main' : undefined,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 0.75,
+                                cursor: 'help',
+                                // Chiffre agrandi sur mobile — le libellé/l'icône/les badges autour gardent leur taille.
+                                fontSize: { xs: '1.75rem', sm: 'inherit' },
+                              }}
+                            >
+                              {display === null ? '—' : display}
+                              {suffix}
+                              {forced && (
+                                <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
+                                  <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+                                </AppTooltip>
+                              )}
+                              {/* Dé bonus à toutes les attaques (flibustier r8, PV bas) — porté aussi par l'attaque MAGIQUE. */}
+                              {id === 'magicAttack' && attackBonusDie.length > 0 && (
+                                <BonusDieBadge
+                                  ability="attaque magique"
+                                  size={18}
+                                  noTooltip
+                                  tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
+                                />
+                              )}
+                              {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
+                              {id === 'magicAttack' && attackMalusDie.length > 0 && (
+                                <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} noTooltip />
+                              )}
+                            </Typography>
+                          );
+                          // Retour propriétaire 2026-08-19 — une surcharge de FORME REMPLACE le breakdown normal
+                          // (formule 10+AGI+équipement…) : celle-ci ne s'applique plus, la montrer serait faux.
+                          // Même langage visuel que la surcharge de caractéristique (`AbilitiesGrid`).
+                          if (formForcedSource) {
+                            return (
+                              <AppTooltip
+                                title={
+                                  <Box sx={{ py: 0.5 }}>
+                                    <BreakdownContent
+                                      title={DERIVED_STAT_NAMES[id]}
+                                      breakdown={{
+                                        total: formForcedSource.value,
+                                        terms: [
+                                          {
+                                            label: formForcedSource.name,
+                                            value: formForcedSource.value,
+                                            featureId: formForcedSource.featureId,
+                                          },
+                                        ],
+                                        note: `Valeur imposée par la transformation (${formForcedSource.name}).`,
+                                        page: formForcedSource.page,
+                                      }}
+                                      page={formForcedSource.page}
+                                    />
+                                  </Box>
+                                }
+                              >
+                                {numberContent}
                               </AppTooltip>
-                            )}
-                            {/* Dé bonus à toutes les attaques (flibustier r8, PV bas) — porté aussi par l'attaque MAGIQUE. */}
-                            {id === 'magicAttack' && attackBonusDie.length > 0 && (
-                              <BonusDieBadge
-                                ability="attaque magique"
-                                size={18}
-                                noTooltip
-                                tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
-                              />
-                            )}
-                            {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
-                            {id === 'magicAttack' && attackMalusDie.length > 0 && (
-                              <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} noTooltip />
-                            )}
-                          </Typography>
-                        </DerivedStatBreakdownTooltip>
+                            );
+                          }
+                          return (
+                            <DerivedStatBreakdownTooltip {...breakdownProps}>{numberContent}</DerivedStatBreakdownTooltip>
+                          );
+                        })()
                       )}
                     </Box>
                   </Box>

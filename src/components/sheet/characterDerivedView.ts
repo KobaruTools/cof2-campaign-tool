@@ -16,8 +16,8 @@ import { deriveStats, type DerivedInput } from '@/lib/engine';
 import { currentHp } from '@/lib/character/gauges';
 import { isCustomItem, type Character, type EquipmentRef } from '@/lib/character/types';
 import {
-  activeDefenseOverride,
-  activeInitiativeOverride,
+  activeDefenseOverrideSource,
+  activeInitiativeOverrideSource,
   activeFeatureIdsForMods,
   activeRangedTargetMalusDieSources,
   aggregateImmunities,
@@ -34,6 +34,7 @@ import {
   rangedAttackMagicalSourceId,
   scalingDieTierBonus,
   stackedDamageReductions,
+  type AbilityOverrideSource,
   type EffectContext,
 } from '@/lib/character/effects';
 import {
@@ -384,11 +385,20 @@ export interface CharacterDerivedView {
    */
   activeDefenseOverride: number | null;
   /**
+   * Source (capacité + page) de `activeDefenseOverride`, pour REMPLACER le breakdown normal de la
+   * carte Défense par un détail cohérent (retour propriétaire 2026-08-19 : avant ça le survol du
+   * chiffre continuait de montrer la formule 10+AGI+équipement même quand elle ne s'appliquait plus).
+   * `null` = pas de surcharge, breakdown normal inchangé. Voir `activeDefenseOverrideSource` (effects.ts).
+   */
+  activeDefenseOverrideSource: AbilityOverrideSource | null;
+  /**
    * Retour propriétaire 2026-08-19 — Initiative imposée par une transformation active (Forme
    * animale : Initiative IMPRIMÉE de la créature choisie), symétrique de `activeDefenseOverride`.
    * `null` = Initiative recalculée normalement.
    */
   activeInitiativeOverride: number | null;
+  /** Source de `activeInitiativeOverride`, même usage que `activeDefenseOverrideSource`. */
+  activeInitiativeOverrideSource: AbilityOverrideSource | null;
   /**
    * PER-226 — sous-termes de breakdown des bonus à la touche conditionnés à l'arme portée (maître
    * d'armes : +1 au contact / à distance avec une arme de prédilection). Le TOTAL est déjà FONDU dans
@@ -768,10 +778,6 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // élémentaires) : sous forme élémentaire, la carte « Attaque au contact » est remplacée par la
   // Frappe fixe de la créature (touche = attaque magique du personnage) tant que la forme est ON.
   const formAttackReplacingMelee = meleeReplacingFormAttack(character);
-  // DEF imposée par une transformation active (PER-374, formes élémentaires) — voir `activeDefenseOverride`.
-  const defenseOverride = activeDefenseOverride(character);
-  // Initiative imposée par une transformation active (retour propriétaire 2026-08-19, Forme animale).
-  const initiativeOverride = activeInitiativeOverride(character);
   // Bonus à la touche conditionnés à l'arme portée (PER-226) : maître d'armes +1 au contact avec une
   // arme de prédilection, +1 à distance avec une arme de jet de prédilection. Le total est FONDU dans
   // les mods (score) plus bas ; on garde le détail des sources pour l'infobulle de la touche.
@@ -888,8 +894,18 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
 
   // Bonus de DM situationnels (PER-115) — calculés ICI car certains dépendent du `maxHp` (gate « PV bas »
   // du flibustier r8, PER-74). `maxHp` vient de `deriveStats(derivedInput)` (undefined si profil incomplet
-  // → les bonus `requiresLowHp` restent inactifs, comportement sûr).
-  const maxHp = derivedInput ? deriveStats(derivedInput).maxHp : undefined;
+  // → les bonus `requiresLowHp` restent inactifs, comportement sûr). Réutilisé aussi pour les surcharges
+  // de DEF/Initiative ci-dessous (un seul calcul de la formule NORMALE, avant toute surcharge).
+  const preOverrideStats = derivedInput ? deriveStats(derivedInput) : undefined;
+  const maxHp = preOverrideStats?.maxHp;
+  // DEF/Initiative imposées par une transformation active — voir `activeDefenseOverrideSource`/
+  // `activeInitiativeOverrideSource` (effects.ts). Calculées ICI (après `derivedInput`) : le veto du
+  // rang 6 du changeforme (« garder sa propre DEF si supérieure », p. 170) a besoin de la DEF EFFECTIVE
+  // du personnage — `preOverrideStats.defense` — pour trancher.
+  const defenseOverrideSource = activeDefenseOverrideSource(character, preOverrideStats?.defense);
+  const initiativeOverrideSource = activeInitiativeOverrideSource(character);
+  const defenseOverride = defenseOverrideSource?.value ?? null;
+  const initiativeOverride = initiativeOverrideSource?.value ?? null;
   // PER-324 — décalage de cran du dé évolutif porté par le personnage, appliqué aux riders +1d4°
   // des armes magiques (défaut 0 = aucun décalage).
   const tierBonus = scalingDieTierBonus(character);
@@ -948,7 +964,9 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedReplacingFormAttack: formAttackReplacingRanged,
     meleeReplacingFormAttack: formAttackReplacingMelee,
     activeDefenseOverride: defenseOverride,
+    activeDefenseOverrideSource: defenseOverrideSource,
     activeInitiativeOverride: initiativeOverride,
+    activeInitiativeOverrideSource: initiativeOverrideSource,
     attackBonusModSources,
     itemDerivedModSources,
   };

@@ -57,6 +57,7 @@ import {
   weaponFamiliesMatchChoice,
 } from './choices';
 import { archmageStaffGrantedSpellIds } from './archmagePath';
+import { hasChangeformeOwnDefenseAccess } from './animalFormPicker';
 import { crystalAbilityBonuses } from './crystals';
 import { declineForFeature, resolveFeatureElement } from './dragonElement';
 import {
@@ -612,51 +613,88 @@ function isTransformationDerivedStatsInputActive(character: Character, inputKey:
 }
 
 /**
- * DEF imposée par une transformation ACTIVE : soit un nombre FIXE imprimé dans les données
- * (`Feature.effects[].defenseOverride`, PER-374, formes élémentaires : « Défense 25 »), soit la DEF
- * de la créature CHOISIE en jeu (`character.transformationDerivedStats`, Forme animale, retour
- * propriétaire 2026-08-19), indépendante de la formule habituelle 10 + AGI + équipement. `null` =
- * aucune surcharge active. Une seule forme peut être active à la fois (interrupteurs mutuellement
- * exclusifs) ; en cas de conflit la dernière rencontrée l'emporte, comme `activeAbilityOverrideSources`.
+ * Source (capacité + valeur + page) de la DEF imposée par une transformation ACTIVE, pour
+ * l'affichage (breakdown de la carte Défense, retour propriétaire 2026-08-19 — avant ça le
+ * breakdown au survol continuait de montrer la formule normale même quand elle ne s'appliquait
+ * plus). Soit un nombre FIXE imprimé dans les données (`Feature.effects[].defenseOverride`,
+ * PER-374, formes élémentaires : « Défense 25 »), soit la DEF de la créature CHOISIE en jeu
+ * (`character.transformationDerivedStats`, Forme animale, retour propriétaire 2026-08-19),
+ * indépendante de la formule habituelle 10 + AGI + équipement. `null` = aucune surcharge active.
+ * Une seule forme peut être active à la fois (interrupteurs mutuellement exclusifs) ; en cas de
+ * conflit la dernière rencontrée l'emporte, comme `activeAbilityOverrideSources`.
+ *
+ * `normalDefense`, quand fourni (DEF EFFECTIVE du personnage calculée par la formule normale, AVANT
+ * toute surcharge — `deriveStats`), déclenche le VETO du rang 6 du changeforme (« Transformation
+ * puissante », p. 170 : « le personnage peut conserver sa propre DEF... si [elle est] supérieur[e]
+ * au profil de la forme choisie ») : si le personnage a ce rang (ou r7/r8, `hasChangeformeOwnDefenseAccess`)
+ * ET que sa DEF normale est STRICTEMENT SUPÉRIEURE à celle du profil, la surcharge DYNAMIQUE (Forme animale) ne
+ * s'applique PAS — la DEF reste celle, normale, du personnage. Ce veto ne concerne QUE la surcharge
+ * dynamique d'une forme animale choisie ; la surcharge STATIQUE (`defenseOverride`, formes
+ * élémentaires PER-374) n'a pas cette clause au livre et reste inconditionnelle. Absent (appelant
+ * qui ne connaît pas encore la DEF normale) : comportement historique, surcharge toujours appliquée.
  */
-export function activeDefenseOverride(character: Character): number | null {
-  let out: number | null = null;
+export function activeDefenseOverrideSource(
+  character: Character,
+  normalDefense?: number,
+): AbilityOverrideSource | null {
+  let out: AbilityOverrideSource | null = null;
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
     feature?.effects?.forEach((e, index) => {
       if (e.kind !== 'conditional-stat-bonus' || e.defenseOverride === undefined) return;
       if (!isEffectActive(character, id, index)) return;
-      out = e.defenseOverride;
+      out = { featureId: id, name: feature.name, value: e.defenseOverride, page: feature.sourcePage };
     });
   }
+  const keepOwnIfHigher = hasChangeformeOwnDefenseAccess(character);
   for (const [inputKey, stats] of Object.entries(character.transformationDerivedStats ?? {})) {
     if (stats.defense === undefined || !isTransformationDerivedStatsInputActive(character, inputKey)) continue;
-    out = stats.defense;
+    // « si supérieurs » (p. 170) : STRICTEMENT supérieure — à égalité, le profil de la forme
+    // continue de s'appliquer (aucune différence de valeur affichée de toute façon).
+    if (keepOwnIfHigher && normalDefense !== undefined && normalDefense > stats.defense) continue;
+    const feature = featureById.get(inputKey);
+    if (!feature) continue;
+    out = { featureId: inputKey, name: feature.name, value: stats.defense, page: feature.sourcePage };
   }
   return out;
 }
 
+/** Valeur seule de `activeDefenseOverrideSource` — voir sa doc pour `normalDefense` (veto r6). */
+export function activeDefenseOverride(character: Character, normalDefense?: number): number | null {
+  return activeDefenseOverrideSource(character, normalDefense)?.value ?? null;
+}
+
 /**
- * Initiative imposée par une transformation ACTIVE : symétrique de `activeDefenseOverride`, soit un
- * nombre FIXE imprimé dans les données (`Feature.effects[].initiativeOverride`), soit l'Initiative de
- * la créature CHOISIE en jeu (`character.transformationDerivedStats`, Forme animale, retour
- * propriétaire 2026-08-19). `null` = aucune surcharge active.
+ * Source (capacité + valeur + page) de l'Initiative imposée par une transformation ACTIVE,
+ * symétrique de `activeDefenseOverrideSource` (même usage : breakdown de la carte Initiative).
+ * Soit un nombre FIXE imprimé dans les données (`Feature.effects[].initiativeOverride`), soit
+ * l'Initiative de la créature CHOISIE en jeu (`character.transformationDerivedStats`, Forme
+ * animale). `null` = aucune surcharge active. PAS de veto « garder la sienne si supérieure » ici :
+ * le rang 6 du changeforme (p. 170) ne mentionne que la DEF et l'attaque magique, jamais
+ * l'Initiative — elle s'applique donc TOUJOURS quand la forme est active.
  */
-export function activeInitiativeOverride(character: Character): number | null {
-  let out: number | null = null;
+export function activeInitiativeOverrideSource(character: Character): AbilityOverrideSource | null {
+  let out: AbilityOverrideSource | null = null;
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
     feature?.effects?.forEach((e, index) => {
       if (e.kind !== 'conditional-stat-bonus' || e.initiativeOverride === undefined) return;
       if (!isEffectActive(character, id, index)) return;
-      out = e.initiativeOverride;
+      out = { featureId: id, name: feature.name, value: e.initiativeOverride, page: feature.sourcePage };
     });
   }
   for (const [inputKey, stats] of Object.entries(character.transformationDerivedStats ?? {})) {
     if (stats.initiative === undefined || !isTransformationDerivedStatsInputActive(character, inputKey)) continue;
-    out = stats.initiative;
+    const feature = featureById.get(inputKey);
+    if (!feature) continue;
+    out = { featureId: inputKey, name: feature.name, value: stats.initiative, page: feature.sourcePage };
   }
   return out;
+}
+
+/** Valeur seule de `activeInitiativeOverrideSource`. */
+export function activeInitiativeOverride(character: Character): number | null {
+  return activeInitiativeOverrideSource(character)?.value ?? null;
 }
 
 /** Une capacité apportant un bonus de carac EN DELTA conditionné à une forme active (PER-74). */
@@ -1804,7 +1842,20 @@ export function profileFeaturesDisabledByTransformation(
   character: Character,
 ): Map<string, { byFeatureId: string; byFeatureName: string }> {
   const disabled = new Map<string, { byFeatureId: string; byFeatureName: string }>();
-  const sources: { byFeatureId: string; byFeatureName: string; exceptPathIds: Set<string> }[] = [];
+  const sources: {
+    byFeatureId: string;
+    byFeatureName: string;
+    exceptPathIds: Set<string>;
+    // Retour propriétaire 2026-08-19 (corrige Forme animale, animaux-r5/prestige-changeforme-r5) :
+    // la capacité qui PORTE l'interrupteur actif — et, pour un interrupteur DÉRIVÉ d'une saisie
+    // (`activation.activeWhenInputSet`), la clé de cette saisie — ne se désactivent JAMAIS
+    // elles-mêmes, quelle que soit la voie qui les héberge. Sans ça, une exception de voie ENTIÈRE
+    // (`exceptPathIds: ['animaux']`) était le seul moyen d'éviter l'auto-désactivation — mais elle
+    // épargnait AUSSI les autres rangs de la même voie (Langage des animaux, Petit compagnon…), qui
+    // DOIVENT pourtant être grisés sous la forme (RAW p. 114 : « ne peut... utiliser ses propres
+    // capacités sous cette forme »).
+    selfExemptIds: Set<string>;
+  }[] = [];
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
     feature?.effects?.forEach((effect, index) => {
@@ -1812,7 +1863,8 @@ export function profileFeaturesDisabledByTransformation(
       if (!isEffectActive(character, id, index)) return;
       const spec = effect.disablesProfileFeatures;
       const exceptPathIds = new Set(spec === true ? [] : spec.exceptPathIds);
-      sources.push({ byFeatureId: id, byFeatureName: feature?.name ?? id, exceptPathIds });
+      const selfExemptIds = new Set([id, ...(effect.activation.activeWhenInputSet ? [effect.activation.activeWhenInputSet] : [])]);
+      sources.push({ byFeatureId: id, byFeatureName: feature?.name ?? id, exceptPathIds, selfExemptIds });
     });
   }
   if (!sources.length) return disabled;
@@ -1821,8 +1873,9 @@ export function profileFeaturesDisabledByTransformation(
     if (!targetFeature) continue;
     if (pathById.get(targetFeature.pathId)?.type !== 'class') continue;
     // Une source dont la liste d'exceptions COUVRE la voie de la cible (Forme d'arbre : protecteur/
-    // végétaux) ne la désactive pas — on cherche la première source qui ne l'excepte PAS.
-    const source = sources.find((s) => !s.exceptPathIds.has(targetFeature.pathId));
+    // végétaux), ou dont la cible EST la capacité/l'interrupteur qui porte la transformation
+    // elle-même, ne la désactive pas — on cherche la première source qui ne l'excepte PAS.
+    const source = sources.find((s) => !s.exceptPathIds.has(targetFeature.pathId) && !s.selfExemptIds.has(targetId));
     if (source) disabled.set(targetId, { byFeatureId: source.byFeatureId, byFeatureName: source.byFeatureName });
   }
   return disabled;
