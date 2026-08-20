@@ -33,6 +33,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import LockIcon from '@mui/icons-material/Lock';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
 import Box from '@mui/material/Box';
 import GlobalStyles from '@mui/material/GlobalStyles';
@@ -41,9 +42,11 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { featureById, pathById, progression } from '@/data';
 import type { Feature } from '@/data/schema';
-import { featureCost } from '@/lib/engine';
+import { canAcquireFeature, featureCost } from '@/lib/engine';
+import { rulesContext } from '@/lib/character/rulesContext';
 import type { Character } from '@/lib/character/types';
 import { AncestryIcon } from '@/components/AncestryIcon';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { PathCard } from '@/components/PathCard';
 import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
@@ -129,6 +132,8 @@ export interface LevelUpPathsGridProps {
   newPathOptions: string[];
   /** Ordre de priorité (ids de voie) du popover — profil principal → engagés → hybrides par famille. */
   newPathOrder: string[];
+  /** Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185) — même valeur que celle qui a produit `available`, pour que le motif du cadenas reste cohérent avec la légalité réelle. */
+  firearmsAllowed: boolean;
   /** Achète le rang suivant d'une voie entamée, ou le rang 1 d'une voie nouvellement choisie. */
   onSelect: (featureId: string) => void;
 }
@@ -140,6 +145,7 @@ export function LevelUpPathsGrid({
   locked,
   newPathOptions,
   newPathOrder,
+  firearmsAllowed,
   onSelect,
 }: LevelUpPathsGridProps) {
   const columns = pathColumns(character);
@@ -381,6 +387,19 @@ export function LevelUpPathsGrid({
               const acquirable = isNextOpen && !!feature && availableIds.has(feature.id) && !locked;
               const cost = feature ? featureCost(feature, progression) : 0;
               const affordable = acquirable && cost <= remaining;
+              // Prochain rang illégal (pas seulement à court de points, cf. `affordable`
+              // ci-dessus) — ex. rang trop élevé pour le niveau courant (p. 39), voie de
+              // prestige pas encore accessible (p. 42) ou seconde voie de prestige (une
+              // seule sur la carrière). Calculé seulement pour la case « prochain rang »
+              // (une par colonne max) : jamais pour un rang déjà acquis ou hors de portée.
+              const blockedReasons =
+                isNextOpen && feature && !availableIds.has(feature.id)
+                  ? canAcquireFeature(character, feature.id, rulesContext, firearmsAllowed).reasons
+                  : [];
+              // Page source du motif : table « Rang / Niveau requis » (p. 39) en général,
+              // ou table dédiée « Voies de prestige – niveau requis » (p. 42, confirmée p. 128)
+              // quand le rang bloqué appartient lui-même à une voie de prestige.
+              const blockedReasonsPage = column?.path?.type === 'prestige' ? '42, 128' : 39;
               // Case du haut d'une colonne de profil VIDE : déclenche le popover de choix
               // de voie plutôt qu'un achat direct (plusieurs candidates possibles).
               const isNewPathSlot = !column && rowIndex === 0 && columnIndex === firstEmptyClassSlot;
@@ -544,6 +563,26 @@ export function LevelUpPathsGrid({
                         '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
                       }}
                     />
+                  )}
+                  {blockedReasons.length > 0 && (
+                    // Cadenas du prochain rang illégal (niveau/voie de prestige, cf.
+                    // `blockedReasons`) — toujours visible (même colonne réduite), au survol
+                    // l'infobulle cite le motif exact renvoyé par `canAcquireFeature`.
+                    <AppTooltip title={blockedReasons.join(' ')} page={blockedReasonsPage} enterDelay={150}>
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 2,
+                          right: 2,
+                          zIndex: 2,
+                          display: 'flex',
+                          color: 'rgba(255, 255, 255, 0.55)',
+                          cursor: 'help',
+                        }}
+                      >
+                        <LockIcon sx={{ fontSize: 16 }} />
+                      </Box>
+                    </AppTooltip>
                   )}
                   {isNewPathSlot && canPickNewPath && (
                     <AddIcon sx={{ position: 'relative', zIndex: 1, fontSize: 14, color: 'rgba(255, 255, 255, 0.5)' }} />

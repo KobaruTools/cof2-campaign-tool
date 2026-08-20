@@ -2129,6 +2129,7 @@ export function LevelUpDialog({
                 locked={divineLock}
                 newPathOptions={newPathOptions}
                 newPathOrder={newPathOrder}
+                firearmsAllowed={firearmsAllowed}
                 onSelect={add}
               />
             ) : !hasAnyAvailable ? (
