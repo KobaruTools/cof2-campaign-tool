@@ -32,3 +32,7 @@ Un graphe du code vit dans `graphify-out/` (~3600 nœuds, AST pur, périmètre f
 - **Exécution** — grep et Read restent la référence, et le graphe n'en dispense jamais : chaînes de caractères (libellés français, verbatim des règles, tokens `[INT]`, `(p. N)`, slugs d'`id`), tout ce qui est hors périmètre (`examples/`, `public/`, les PDF, les `.md`), et le code modifié dans la session. En cas de divergence, **le fichier a raison**.
 - **Fraîcheur** — le hook git `post-commit` reconstruit le graphe tout seul (AST, gratuit, détaché). Ne PAS lancer `graphify update .` après chaque édition : c'est une reconstruction complète (~14 s) qui fait en plus dériver les noms de communautés. En cas de doute, comparer `Built from commit:` dans `GRAPH_REPORT.md` à `git rev-parse HEAD`.
 - `graphify label .` (backend `claude-cli`, aucune clé API) pour renommer les communautés quand elles ont dérivé vers des noms de fichiers.
+
+## Glossaire projet
+
+`GLOSSARY.html` à la racine (gitignoré) : vocabulaire partagé composants UI / domaine CO2 / primitifs de code. Consulter si un terme est ambigu.
