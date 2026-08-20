@@ -188,9 +188,15 @@ export function pathColumns(character: Character): (PathColumn | undefined)[] {
     // rang mentait sur ce que le personnage a effectivement. Rang pas encore acquis :
     // repli sur la native de la voie (seule connue, sert à prévisualiser/acheter).
     const nativeFeatureIds = entry.path?.featureIds ?? [];
+    // Rang réel de la ligne `i` : celui de la capacité NATIVE à cette position, jamais
+    // `i + 1` — juste pour une voie de profil/peuple (rangs 1-5), mais FAUX pour une voie
+    // de prestige (rangs 4-8, familier fantastique 3-7, p. 132) : `i + 1` retombait alors
+    // sur un rang bas déjà acquis d'une AUTRE ligne (bug corrigé — la ligne dupliquait le
+    // nom et le statut « déjà acquise » d'un rang inférieur au lieu du sien).
     const features = Array.from({ length: PATH_RANK_COUNT }, (_, i) => {
-      const rank = i + 1;
-      return entry.features.get(rank) ?? featureById.get(nativeFeatureIds[i]);
+      const native = featureById.get(nativeFeatureIds[i]);
+      const rank = native?.rank ?? i + 1;
+      return entry.features.get(rank) ?? native;
     });
     return { path: entry.path, name: entry.path?.name, rankColors, features };
   };
