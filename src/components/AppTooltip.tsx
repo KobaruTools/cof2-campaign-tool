@@ -131,8 +131,9 @@ export function AppTooltip({
   // Le `Tooltip` MUI ne rend pas son propre nœud DOM (il se pose sur son enfant direct) :
   // le marqueur de capture (PER-443) est donc posé sur cet enfant, cloné une fois ici, plutôt
   // que sur le `Tooltip` lui-même.
-  const taggedChildren = React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
-    'data-glossary-shot': 'AppTooltip',
+  const childElement = children as React.ReactElement<Record<string, unknown>>;
+  const taggedChildren = React.cloneElement(childElement, {
+    'data-glossary-shot': childElement.props['data-glossary-shot'] ?? 'AppTooltip',
   });
   const childWithClickCapture = taggedChildren as React.ReactElement<{
     onClickCapture?: (event: React.MouseEvent) => void;
