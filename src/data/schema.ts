@@ -3762,6 +3762,17 @@ export interface CreatureProfile {
    */
   mountedFreeAttack?: { name: string; actionType?: ActionType; text: string };
   /**
+   * INVERSE de `mountedFreeAttack` (PER-378, Monture géante r7, p. 173) : « lorsque le personnage la
+   * monte, elle peut attaquer une fois par round sur son ordre » — SEULE l'attaque de BASE (`attack`)
+   * reste utilisable EN SELLE, ses `specialAbilities`/`extraAttacks` (le répertoire complet d'une
+   * vraie créature du bestiaire) sont masqués tant que l'interrupteur « en selle » est actif ; à
+   * PIED, elle redevient un compagnon libre à plein régime. `true` → `CompanionCard` masque
+   * `specialAbilities`/`extraAttacks` quand `companionMountEnSelle` renvoie `true` pour ce compagnon.
+   * Réservé aux montures (`companionType: 'mount'`). Absent = capacités toujours disponibles, monté
+   * ou non (cas historique : Fidèle monture/Monture fantastique n'ont pas de répertoire à restreindre).
+   */
+  abilitiesRequireDismount?: boolean;
+  /**
    * Description ENRICHIE d'une créature que le livre présente SANS bloc de stats (PER-235) :
    * une « force, pas une créature » (Serviteur invisible, invocation-r2, p. 96). Rendue en une
    * ligne `richText` (résolution des caractéristiques/formules du MAÎTRE, ex. `[CHA]`, `[=CHA]`)
@@ -4473,6 +4484,62 @@ export interface Feature {
    * n'invoque pas de créature.
    */
   creatureProfile?: CreatureProfile;
+  /**
+   * ROSTER OUVERT de créatures du BESTIAIRE (PER-378, Amitié animale, voie du maître de la nature
+   * r4, p. 172) : à la différence de `creatureProfile`/`instances` (une seule créature FIXE, N copies
+   * du MÊME profil), cette capacité laisse le joueur choisir PLUSIEURS créatures DIFFÉRENTES parmi
+   * TOUT le bestiaire (RLS-filtré, payant compris), sous un budget cumulé — la somme des NC des
+   * créatures actives ne peut dépasser le rang ATTEINT dans la voie hôte (verbatim du livre). Chaque
+   * créature choisie est une instance (même mécanique d'ajout/retrait/PV que `instances` :
+   * `Character.companionInstances` porte la liste d'ids, `Character.summonedCreatureIds` porte le
+   * SLUG de créature choisi par instance, clé composite `<featureId>#<instanceId>`). Résolu par
+   * `listCompanions` (companions.ts, second paramètre `bestiaryList`) — nécessite que l'appelant lui
+   * fournisse la liste RLS-filtrée courante (le module reste pur, aucun accès direct au store).
+   * Absent = pas de roster ouvert (cas historique : `creatureProfile`/`instances` couvrent tout le
+   * reste). Éligibilité de base : `category: 'animaux'` sans condition ; les paliers suivants
+   * l'ÉLARGISSENT :
+   */
+  openBestiaryRoster?: {
+    /**
+     * Rang ATTEINT dans la voie hôte à partir duquel les variantes GÉANTES/PRÉHISTORIQUES
+     * (`Creature.animalFormFlavor`) deviennent choisissables (Amitié animale : rang 6). Absent =
+     * jamais éligibles.
+     */
+    giantUnlockRank?: number;
+    /**
+     * Rang ATTEINT dans la voie hôte à partir duquel les animaux FANTASTIQUES
+     * (`Creature.isFantasticAnimal`) deviennent choisissables (Amitié animale : rang 8). Absent =
+     * jamais éligibles.
+     */
+    fantasticUnlockRank?: number;
+    /** Verbe du bouton d'ajout (ex. « Charmer un animal »). Défaut « Invoquer ». */
+    addLabel?: string;
+  };
+  /**
+   * MONTURE ouverte au BESTIAIRE (PER-378, Monture géante r7, p. 173) : à la différence
+   * d'`openBestiaryRoster` (plusieurs instances, budget NC cumulé), UNE SEULE créature, choisie une
+   * fois — même mécanique de choix RE-FAISABLE que Forme animale (`Character.effectInputs[featureId]`
+   * = slug bestiaire, PAS `companionInstances`/`summonedCreatureIds`). Éligibilité = `isAnimalLikeCreature`
+   * (même univers qu'`openBestiaryRoster`) RESTREINT à la taille « géante » (`isGiantSizedCreature`,
+   * `Creature.size` ≥ `grande` — retour proprio 2026-08-20, déduit des exemples « mammouth, dinosaure,
+   * aigle géant » ; SANS RAPPORT avec `animalFormFlavor`, qui marque une variante géante d'un animal
+   * ORDINAIRE plus petit, concept orthogonal), sous un PLAFOND de NC (pas un palier de rang comme
+   * `openBestiaryRoster`). Résolu par `listCompanions` (companions.ts) exactement comme
+   * `openBestiaryRoster`, en UNE seule `CompanionEntry` `companionType: 'mount'`, clé = `feature.id`
+   * (pas de clé composite — compagnon à instance unique, comme Fidèle monture). Absent = pas de
+   * monture ouverte.
+   */
+  openBestiaryMount?: {
+    /**
+     * Formule richText PLAFONNANT le NC de la monture choisissable (PER-378, p. 173 : « le NC de la
+     * créature ne peut pas être supérieur à [rang + PER] ») — AVEC ses crochets (convention `[...]`
+     * des formules de `CreatureProfile.attack.damage`), résolue par `resolveRichExprNumber` contre
+     * le rang ATTEINT dans la voie hôte, le niveau et les caractéristiques du personnage.
+     */
+    ncCapFormula: string;
+    /** Verbe du bouton d'ajout (ex. « Choisir une monture »). Défaut « Invoquer ». */
+    addLabel?: string;
+  };
   /**
    * Réduction de dégâts accordée par la capacité (« retranche 5 à tous les DM »,
    * « DM divisés par 2 »…), EN PLUS du `text` verbatim. PRÉPARATION : posée dans les
@@ -5241,6 +5308,19 @@ export interface Creature {
    * animale derrière ce rang, quelle que soit sa taille (une araignée géante peut être minuscule).
    */
   animalFormFlavor?: 'geant' | 'prehistorique';
+  /**
+   * Marque une créature de `category: 'creatures-fantastiques'` comme un ANIMAL fantastique — une
+   * bête (griffon, hippogriffe, licorne, chimère…), PAS un démon/mort-vivant/dragon/élémentaire/
+   * construct/humanoïde monstrueux, qui partagent la même `category` sans marqueur pour les isoler
+   * (PER-378, Amitié animale, voie du maître de la nature r4-r8, p. 172-173 : « à partir du rang 8,
+   * animaux fantastiques (griffon, ourhible, hippogriffe, etc.) »). Allowlist CURATÉE à la main
+   * (aucune règle déductible depuis `nature`/le nom) — absent = pas un animal fantastique (cas par
+   * défaut, y compris les animaux ORDINAIRES qui n'ont pas besoin de ce marqueur, `category: 'animaux'`
+   * suffit pour eux). Distinct d'`animalFormFlavor` (variante géante/préhistorique d'un animal
+   * ORDINAIRE, catégorie `animaux`) : les deux marqueurs gatent des paliers DIFFÉRENTS d'Amitié
+   * animale (rang 6 vs rang 8) et ne se recoupent jamais sur une même créature.
+   */
+  isFantasticAnimal?: boolean;
   /** Variante d'une créature de base : id de la créature de base (ex. 'lion' pour « Grand mâle »). */
   baseCreatureId?: string;
   /** Renvoi verbatim aux capacités de la base (« Voir ci-dessus ») quand la variante ne les réimprime pas. */

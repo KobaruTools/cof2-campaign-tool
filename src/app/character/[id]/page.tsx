@@ -84,6 +84,7 @@ import {
   pruneCompanionDepletion,
   pruneCompanionInstances,
   pruneTransformationDepletion,
+  referencedBestiaryCreatureSlugs,
 } from '@/lib/character/companions';
 import { isMountMounted, listOwnedMounts } from '@/lib/character/mounts';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
@@ -186,6 +187,7 @@ import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
 import { useBuffOptOutStore } from '@/stores/buffOptOut';
+import { useBestiaryStore } from '@/stores/bestiary';
 import { useHeaderContent } from '@/stores/headerContent';
 import { hrefFromIndex, useCampaignSlugIndex, useResolvedCharacter } from '@/lib/routing/slug';
 
@@ -303,6 +305,20 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const waivedBuffIds = useBuffOptOutStore((s) => s.idsByCharacter[id] ?? NO_WAIVED_BUFFS);
   const waiveBuff = useBuffOptOutStore((s) => s.waiveBuff);
   const syncWaivedBuffs = useBuffOptOutStore((s) => s.syncPosed);
+  // Roster/monture ouverts (PER-378, Amitié animale + Monture géante) : `listCompanions` a besoin du
+  // blob COMPLET (abilities/attaques/PV) de chaque créature RÉELLEMENT choisie pour l'afficher dans la
+  // section « Compagnons » — la liste légère (`useBestiaryStore().list`, filtrage/budget du picker)
+  // suffit à FeaturesByPath.tsx mais pas ici. `referencedBestiaryCreatureSlugs` couvre les DEUX canaux
+  // (`summonedCreatureIds` du roster ET `effectInputs` de la monture — un oubli du second faisait
+  // disparaître la monture de la section, bug constaté 2026-08-21) ; on charge donc seulement ces
+  // slugs (jamais tout le bestiaire).
+  const summonedCreatureBlobs = useBestiaryStore((s) => s.blobs);
+  const loadSummonedCreatureBlob = useBestiaryStore((s) => s.loadBlob);
+  const summonedCreatureSlugs = character ? referencedBestiaryCreatureSlugs(character) : [];
+  useEffect(() => {
+    for (const slug of summonedCreatureSlugs) loadSummonedCreatureBlob(slug);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(summonedCreatureSlugs), loadSummonedCreatureBlob]);
   // Le renoncement ne survit pas à la levée de l'effet : si le MJ relance le Chant des héros, c'est
   // une nouvelle incantation, elle s'applique à tout le monde. Clé de chaîne plutôt que le tableau
   // (recréé à chaque rendu), pour ne réveiller la purge qu'aux VRAIS changements d'état posé.
@@ -935,6 +951,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setCompanionHeal,
     setCompanionReset,
     summonCompanionInstance,
+    summonOpenRosterCreature,
     deleteCompanionInstance,
     setTransformationDamage,
     setTransformationHeal,
@@ -1951,7 +1968,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   statusDomainBonus={display.statusDomainBonus}
                   perAbilityTestBonus={display.perAbilityTestBonus}
                   magicTestBonuses={display.magicTestBonuses}
-                  bonusDice={display.bonusDieSources}
+                  // PER-378 : version DÉTAILLÉE (featureId + nom) pour que le badge rende chaque
+                  // source en `CapabilityChip` cliquable dans son info-bulle, pas un nom brut.
+                  bonusDice={display.bonusDieSourcesDetailed}
                   universalBonus={display.universalBonus}
                   testDice={display.testDice}
                   armorPenalty={display.armorPenalty}
@@ -2128,7 +2147,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               recopiées, résolution des PV). */}
           {masterDerived &&
             (() => {
-              const companions = listCompanions(character);
+              const companions = listCompanions(character, Object.values(summonedCreatureBlobs));
               const ownedMounts = listOwnedMounts(character.mounts);
               // Section MASQUÉE tant qu'aucun compagnon ni monture n'est acquis (plus de section vide
               // juste pour héberger un bouton) : l'ajout de monture a migré dans l'en-tête de l'inventaire.
@@ -2293,6 +2312,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Invoquer un zombie (badge bleu « Invoquer ») : crée une instance à PV propres, dans
               // la limite du profil — état de jeu, comme les interrupteurs/compteurs (PER-235).
               onSummonCompanionInstance={summonCompanionInstance}
+              // Charmer un animal du bestiaire (Amitié animale, PER-378) : ajoute une instance liée à
+              // un slug choisi dans le roster ouvert — état de jeu, comme l'invocation de zombie.
+              onSummonOpenRosterCreature={summonOpenRosterCreature}
               onInvokeHawkHunter={game.invokeHawkHunter}
               // Poison appliqué aux armes (maître des poisons, PER-74) : état de jeu, patch appliqué via update.
               onPoisonUpdate={update}

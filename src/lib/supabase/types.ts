@@ -255,6 +255,7 @@ export type Database = {
           created_at: string
           data: Json
           id: string
+          is_fantastic_animal: boolean
           name: string
           nature: string[]
           nc: number | null
@@ -273,6 +274,7 @@ export type Database = {
           created_at?: string
           data: Json
           id?: string
+          is_fantastic_animal?: boolean
           name: string
           nature?: string[]
           nc?: number | null
@@ -291,6 +293,7 @@ export type Database = {
           created_at?: string
           data?: Json
           id?: string
+          is_fantastic_animal?: boolean
           name?: string
           nature?: string[]
           nc?: number | null

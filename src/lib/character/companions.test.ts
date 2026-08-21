@@ -3,16 +3,25 @@ import { featureById } from '@/data';
 import { resolveCreatureAbilities } from '@/lib/ui/creature';
 import { createBlankCharacter } from './factory';
 import type { Character, Depletion } from './types';
+import type { Creature } from '@/data/schema';
 import {
   applyCreatureUpgrades,
+  companionInstanceKey,
   companionMountEnSelle,
   creatureDefenseBreakdown,
+  creatureToCompanionProfile,
   displayCreatureProfile,
   effectiveCreatureProfile,
+  isAnimalLikeCreature,
+  isCreatureEligibleForOpenRoster,
+  isGiantSizedCreature,
   listCompanions,
+  openBestiaryMountNcCap,
+  openBestiaryRosterBudget,
   preferredBestiaryCreatureSlug,
   pruneCompanionDepletion,
   pruneCompanionInstances,
+  referencedBestiaryCreatureSlugs,
   resolveCompanionInstanceLimit,
   resolveCreatureMaxHp,
 } from './companions';
@@ -840,5 +849,277 @@ describe('replacesCreatureFromPaths — améliorer, jamais ajouter (PER-74)', ()
     const companions = listCompanions(c);
     expect(companions).toHaveLength(1);
     expect(companions[0].profile.defense).toBe('22');
+  });
+});
+
+describe('PER-378 — roster ouvert de compagnons (Amitié animale)', () => {
+  const R4 = 'prestige-maitre-de-la-nature-r4';
+
+  const wolf: Creature = {
+    id: 'test-wolf',
+    name: 'Loup de test',
+    category: 'animaux',
+    nc: 1,
+    size: 'moyenne',
+    abilities: { AGI: 2, CON: 1, FOR: 1, PER: 2, CHA: 0, INT: -3, VOL: 0 },
+    defense: 13,
+    hitPoints: 15,
+    initiative: 12,
+    attacks: [{ name: 'Morsure', bonus: '+3', damage: '1d6+1' }],
+    sourcePage: 999,
+  };
+  const giantSpider: Creature = {
+    id: 'test-giant-spider',
+    name: 'Araignée de test',
+    category: 'animaux',
+    nc: 3,
+    animalFormFlavor: 'geant',
+    defense: 14,
+    hitPoints: 20,
+    sourcePage: 999,
+  };
+  const griffonLike: Creature = {
+    id: 'test-griffon',
+    name: 'Griffon de test',
+    category: 'creatures-fantastiques',
+    nc: 4,
+    isFantasticAnimal: true,
+    defense: 15,
+    hitPoints: 30,
+    initiative: 14,
+    attacks: [
+      { name: 'Griffes', bonus: '+6', damage: '1d6+3' },
+      { name: 'Morsure', bonus: '+6', damage: '1d8+3' },
+    ],
+    sourcePage: 999,
+  };
+  const nonAnimalFantastic: Creature = {
+    id: 'test-demon',
+    name: 'Démon de test',
+    category: 'creatures-fantastiques',
+    nc: 5,
+    sourcePage: 999,
+  };
+  const BESTIARY = [wolf, giantSpider, griffonLike, nonAnimalFantastic];
+
+  describe('isCreatureEligibleForOpenRoster', () => {
+    const roster = { giantUnlockRank: 6, fantasticUnlockRank: 8 };
+    it('animal ordinaire : toujours éligible', () => {
+      expect(isCreatureEligibleForOpenRoster(wolf, roster, 4)).toBe(true);
+    });
+    it('variante géante : inéligible avant le rang 6, éligible à partir de 6', () => {
+      expect(isCreatureEligibleForOpenRoster(giantSpider, roster, 5)).toBe(false);
+      expect(isCreatureEligibleForOpenRoster(giantSpider, roster, 6)).toBe(true);
+    });
+    it('animal fantastique : inéligible avant le rang 8, éligible à partir de 8', () => {
+      expect(isCreatureEligibleForOpenRoster(griffonLike, roster, 7)).toBe(false);
+      expect(isCreatureEligibleForOpenRoster(griffonLike, roster, 8)).toBe(true);
+    });
+    it('créature fantastique NON marquée animal : jamais éligible, quel que soit le rang', () => {
+      expect(isCreatureEligibleForOpenRoster(nonAnimalFantastic, roster, 8)).toBe(false);
+    });
+    it('palier absent de la voie hôte : jamais éligible', () => {
+      expect(isCreatureEligibleForOpenRoster(giantSpider, {}, 20)).toBe(false);
+      expect(isCreatureEligibleForOpenRoster(griffonLike, {}, 20)).toBe(false);
+    });
+  });
+
+  describe('openBestiaryRosterBudget', () => {
+    it('somme les NC des instances résolues, ignore un slug orphelin, max = rang atteint', () => {
+      const c = char({
+        classId: 'druide',
+        featureIds: [R4],
+        companionInstances: { [R4]: ['a', 'b', 'orphan'] },
+        summonedCreatureIds: {
+          [companionInstanceKey(R4, 'a')]: 'test-wolf',
+          [companionInstanceKey(R4, 'b')]: 'test-griffon',
+          [companionInstanceKey(R4, 'orphan')]: 'not-in-bestiary-list',
+        },
+      });
+      const feature = featureById.get(R4)!;
+      expect(openBestiaryRosterBudget(c, feature, BESTIARY)).toEqual({ used: 1 + 4, max: 4 });
+    });
+
+    it('aucune instance : used = 0', () => {
+      const c = char({ classId: 'druide', featureIds: [R4] });
+      const feature = featureById.get(R4)!;
+      expect(openBestiaryRosterBudget(c, feature, BESTIARY)).toEqual({ used: 0, max: 4 });
+    });
+  });
+
+  describe('creatureToCompanionProfile', () => {
+    it('mappe nom/taille/abilities/DEF/PV/Init en richText, 1re attaque + attaques supplémentaires', () => {
+      const profile = creatureToCompanionProfile(griffonLike);
+      expect(profile.name).toBe('Griffon de test');
+      expect(profile.companionType).toBe('animal');
+      expect(profile.defense).toBe('15');
+      expect(profile.hitPoints).toBe('30');
+      expect(profile.initiative).toBe('14');
+      expect(profile.attack).toEqual({ label: 'Griffes', value: '+6', damage: '[1d6+3]' });
+      expect(profile.extraAttacks).toEqual([{ label: 'Morsure', damage: '[1d8+3]' }]);
+    });
+
+    it('créature sans attaque : `attack`/`extraAttacks` absents', () => {
+      const profile = creatureToCompanionProfile(giantSpider);
+      expect(profile.attack).toBeUndefined();
+      expect(profile.extraAttacks).toBeUndefined();
+    });
+  });
+
+  describe('listCompanions — instances de roster ouvert', () => {
+    it('résout chaque instance en CompanionEntry via le slug + la liste bestiaire fournie', () => {
+      const c = char({
+        classId: 'druide',
+        featureIds: [R4],
+        companionInstances: { [R4]: ['a', 'b'] },
+        summonedCreatureIds: {
+          [companionInstanceKey(R4, 'a')]: 'test-wolf',
+          [companionInstanceKey(R4, 'b')]: 'test-griffon',
+        },
+      });
+      const companions = listCompanions(c, BESTIARY);
+      expect(companions).toHaveLength(2);
+      expect(companions[0]).toMatchObject({
+        key: companionInstanceKey(R4, 'a'),
+        companionType: 'animal',
+        instanceId: 'a',
+        instanceIndex: 0,
+      });
+      expect(companions[0].profile.name).toBe('Loup de test');
+      expect(companions[1].profile.name).toBe('Griffon de test');
+    });
+
+    it('sans bestiaryList (ou slug introuvable) : instance omise, pas d’erreur', () => {
+      const c = char({
+        classId: 'druide',
+        featureIds: [R4],
+        companionInstances: { [R4]: ['a'] },
+        summonedCreatureIds: { [companionInstanceKey(R4, 'a')]: 'test-wolf' },
+      });
+      expect(listCompanions(c)).toEqual([]);
+      expect(listCompanions(c, [])).toEqual([]);
+    });
+  });
+});
+
+describe('PER-378 — monture géante ouverte au bestiaire (r7)', () => {
+  const R7 = 'prestige-maitre-de-la-nature-r7';
+
+  const mammoth: Creature = {
+    id: 'test-mammoth',
+    name: 'Mammouth de test',
+    category: 'animaux',
+    nc: 6,
+    size: 'enorme',
+    abilities: { AGI: -1, CON: 4, FOR: 6, PER: 0, CHA: 0, INT: -4, VOL: 0 },
+    defense: 16,
+    hitPoints: 60,
+    initiative: 8,
+    attacks: [{ name: 'Piétinement', bonus: '+9', damage: '3d6+8' }],
+    specialAbilities: [{ name: 'Charge', text: 'Verbatim de test.' }],
+    sourcePage: 999,
+  };
+  const tooStrong: Creature = { ...mammoth, id: 'test-too-strong', nc: 30 };
+
+  describe('isAnimalLikeCreature', () => {
+    it('animal ordinaire ou fantastique-marqué : inclus', () => {
+      expect(isAnimalLikeCreature({ category: 'animaux' })).toBe(true);
+      expect(isAnimalLikeCreature({ category: 'creatures-fantastiques', isFantasticAnimal: true })).toBe(true);
+      expect(isAnimalLikeCreature({ category: 'creatures-fantastiques', animalFormFlavor: 'geant' })).toBe(true);
+    });
+    it('fantastique NON marqué animal, ou hors catégorie : exclu', () => {
+      expect(isAnimalLikeCreature({ category: 'creatures-fantastiques' })).toBe(false);
+      expect(isAnimalLikeCreature({ category: 'humanoides' })).toBe(false);
+    });
+  });
+
+  describe('isGiantSizedCreature (PER-378, retour proprio 2026-08-20 : filtre par TAILLE, pas par flavor)', () => {
+    it('grande/énorme/colossale : géante', () => {
+      expect(isGiantSizedCreature({ size: 'grande' })).toBe(true);
+      expect(isGiantSizedCreature({ size: 'enorme' })).toBe(true);
+      expect(isGiantSizedCreature({ size: 'colossale' })).toBe(true);
+    });
+    it('moyenne ou plus petite : pas géante', () => {
+      expect(isGiantSizedCreature({ size: 'moyenne' })).toBe(false);
+      expect(isGiantSizedCreature({ size: 'petite' })).toBe(false);
+    });
+    it('taille inconnue : exclue (jamais géante par défaut)', () => {
+      expect(isGiantSizedCreature({})).toBe(false);
+    });
+  });
+
+  describe('openBestiaryMountNcCap', () => {
+    it('résout [rang + PER] contre le rang atteint et la carac PER', () => {
+      const c = char({ classId: 'druide', level: 16, featureIds: [R7] });
+      const feature = featureById.get(R7)!;
+      // rang 7 + PER par défaut du personnage de test (0) = 7.
+      expect(openBestiaryMountNcCap(c, feature, { ...c.abilities, PER: 2 })).toBe(9);
+    });
+  });
+
+  describe('listCompanions — monture ouverte (choix unique via effectInputs)', () => {
+    it('résout la créature choisie en UN compagnon `companionType: mount`, capacités masquables', () => {
+      const c = char({
+        classId: 'druide',
+        featureIds: [R7],
+        effectInputs: { [R7]: 'test-mammoth' },
+      });
+      const companions = listCompanions(c, [mammoth, tooStrong]);
+      expect(companions).toHaveLength(1);
+      expect(companions[0]).toMatchObject({ key: R7, companionType: 'mount' });
+      expect(companions[0].profile.name).toBe('Mammouth de test');
+      expect(companions[0].profile.abilitiesRequireDismount).toBe(true);
+      expect(companions[0].instanceId).toBeUndefined(); // instance UNIQUE, pas de clé composite.
+    });
+
+    it('sans choix (effectInputs vide) : aucun compagnon', () => {
+      const c = char({ classId: 'druide', featureIds: [R7] });
+      expect(listCompanions(c, [mammoth])).toEqual([]);
+    });
+
+    it('slug orphelin/introuvable dans bestiaryList : omis, pas d’erreur', () => {
+      const c = char({ classId: 'druide', featureIds: [R7], effectInputs: { [R7]: 'test-mammoth' } });
+      expect(listCompanions(c, [])).toEqual([]);
+    });
+  });
+
+  describe('companionMountEnSelle reconnaît le toggle « en selle » de r7', () => {
+    it('renvoie true/false selon mountedKey, jamais null (companionType mount + effet condition)', () => {
+      const base = char({
+        classId: 'druide',
+        featureIds: [R7],
+        effectInputs: { [R7]: 'test-mammoth' },
+      });
+      const entry = listCompanions(base, [mammoth])[0];
+      expect(companionMountEnSelle(base, entry)).toBe(false);
+      const mounted = { ...base, mountedKey: R7 };
+      expect(companionMountEnSelle(mounted, entry)).toBe(true);
+    });
+  });
+});
+
+describe('referencedBestiaryCreatureSlugs (PER-378) — bug constaté : la monture (r7) ne remontait jamais', () => {
+  const R4 = 'prestige-maitre-de-la-nature-r4';
+  const R7 = 'prestige-maitre-de-la-nature-r7';
+
+  it('collecte les slugs du roster (summonedCreatureIds) ET de la monture (effectInputs)', () => {
+    const c = char({
+      classId: 'druide',
+      featureIds: [R4, R7],
+      companionInstances: { [R4]: ['a1'] },
+      summonedCreatureIds: { [companionInstanceKey(R4, 'a1')]: 'griffon' },
+      effectInputs: { [R7]: 'mammouth' },
+    });
+    expect(referencedBestiaryCreatureSlugs(c).sort()).toEqual(['griffon', 'mammouth']);
+  });
+
+  it('monture seule (pas de roster) : le slug de effectInputs est bien remonté', () => {
+    const c = char({ classId: 'druide', featureIds: [R7], effectInputs: { [R7]: 'ourhible' } });
+    expect(referencedBestiaryCreatureSlugs(c)).toEqual(['ourhible']);
+  });
+
+  it('aucun canal ouvert acquis, ou choix vide : liste vide', () => {
+    expect(referencedBestiaryCreatureSlugs(char({ classId: 'druide', featureIds: [R4, R7] }))).toEqual([]);
+    expect(referencedBestiaryCreatureSlugs(char())).toEqual([]);
   });
 });

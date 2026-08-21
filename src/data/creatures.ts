@@ -980,6 +980,7 @@ const fantasticCreatures: Creature[] = [
     id: 'basilic',
     name: 'Basilic',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 3,
     size: 'grande',
     description:
@@ -1010,6 +1011,7 @@ const fantasticCreatures: Creature[] = [
     id: 'chimere',
     name: 'Chimère',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 7,
     size: 'grande',
     description:
@@ -1045,6 +1047,7 @@ const fantasticCreatures: Creature[] = [
     id: 'chimere-draconique',
     name: 'Chimère draconique',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 7,
     size: 'grande',
     baseCreatureId: 'chimere',
@@ -1293,6 +1296,7 @@ const fantasticCreatures: Creature[] = [
     id: 'geoselachis',
     name: 'Geoselachis',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 7,
     size: 'grande',
     description:
@@ -1638,6 +1642,7 @@ const fantasticCreatures: Creature[] = [
     id: 'griffon',
     name: 'Griffon',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 4,
     size: 'grande',
     description:
@@ -1668,6 +1673,7 @@ const fantasticCreatures: Creature[] = [
     id: 'hydre-cinq-tetes',
     name: 'Hydre à cinq têtes',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 5,
     size: 'enorme',
     description:
@@ -1699,6 +1705,7 @@ const fantasticCreatures: Creature[] = [
     id: 'cryohydre-dix-tetes',
     name: 'Cryohydre à dix têtes',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 11,
     size: 'enorme',
     baseCreatureId: 'hydre-cinq-tetes',
@@ -1805,6 +1812,7 @@ const fantasticCreatures: Creature[] = [
     id: 'licorne',
     name: 'Licorne',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 3,
     size: 'grande',
     description:
@@ -2142,6 +2150,7 @@ const fantasticCreatures: Creature[] = [
     id: 'ourhible',
     name: 'Ourhible',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 5,
     size: 'grande',
     description:
@@ -2494,6 +2503,7 @@ const fantasticCreatures: Creature[] = [
     id: 'worg',
     name: 'Worg',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     nc: 3,
     size: 'moyenne',
     description:
@@ -2521,6 +2531,7 @@ const fantasticCreatures: Creature[] = [
     id: 'worg-en-meute',
     name: 'Worg en meute',
     category: 'creatures-fantastiques',
+    isFantasticAnimal: true,
     // NC = 8 (valeur de l'en-tête « NC 8+ »), validé par le propriétaire (2026-07-23). Le texte
     // mentionne aussi « leur NC augmente de +1 » (worg NC 3 → 4) et « rencontre de niveau 8 ».
     nc: 8,

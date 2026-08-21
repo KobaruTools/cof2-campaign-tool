@@ -12,10 +12,13 @@
  * jeu au même titre que la barre de vie du personnage.
  */
 import { featureById, pathById, progression } from '@/data';
+import { CREATURE_SIZES } from '@/data/schema';
 import type {
   AbilityId,
   CompanionType,
+  Creature,
   CreatureProfile,
+  CreatureSize,
   CreatureSpecialAbility,
   CreatureUpgrade,
   DamageReduction,
@@ -520,8 +523,13 @@ export interface CompanionEntry {
  *    son propre `companionSlot` pour sortir du dédoublonnage partagé.
  *
  * Ordre = ordre d'acquisition (premier rang porteur rencontré par slot).
+ *
+ * `bestiaryList` (PER-378) : liste bestiaire RLS-filtrée COURANTE, fournie par l'appelant — ce
+ * module reste pur (aucun accès direct au store). Sert UNIQUEMENT à résoudre les instances d'un
+ * ROSTER OUVERT (`Feature.openBestiaryRoster`, ex. Amitié animale) ; absente/vide → ces instances
+ * sont simplement omises (aucune erreur), les compagnons à profil fixe ne sont jamais concernés.
  */
-export function listCompanions(character: Character): CompanionEntry[] {
+export function listCompanions(character: Character, bestiaryList: Creature[] = []): CompanionEntry[] {
   const disabled = disabledFeatureIds(character);
   // Ids porteurs de compagnon : les rangs ACQUIS + les capacités EMPRUNTÉES (PER-73, ex. Enfant de la
   // forêt qui emprunte « Le loup », compagnon-animal-r1) — sans quoi un compagnon emprunté n'apparaît
@@ -621,7 +629,235 @@ export function listCompanions(character: Character): CompanionEntry[] {
       });
     }
   }
+  // ROSTER OUVERT (PER-378, Amitié animale) : capacités SANS `creatureProfile` propre — le joueur
+  // choisit CHAQUE instance dans le bestiaire. Hors du dédoublonnage par slot (`bySlot`) ci-dessus :
+  // chaque instance est une créature INDÉPENDANTE (un griffon ET un loup peuvent coexister), jamais
+  // « la même qui monte en gamme ».
+  for (const id of allIds) {
+    if (disabled.has(id)) continue;
+    const feature = featureById.get(id);
+    if (!feature?.openBestiaryRoster) continue;
+    const pathRank = maxRankByPath.get(feature.pathId) ?? feature.rank;
+    const ids = character.companionInstances?.[feature.id] ?? [];
+    ids.forEach((instanceId, instanceIndex) => {
+      const slug = character.summonedCreatureIds?.[companionInstanceKey(feature.id, instanceId)];
+      const creature = slug ? bestiaryList.find((c) => c.id === slug) : undefined;
+      // Créature inconnue (slug orphelin) ou pas encore chargée (bestiaire RLS pas résolu côté
+      // appelant) : on omet l'entrée plutôt que d'afficher un bloc vide — jamais une erreur.
+      if (!creature) return;
+      out.push({
+        key: companionInstanceKey(feature.id, instanceId),
+        feature,
+        profile: creatureToCompanionProfile(creature),
+        companionType: 'animal',
+        pathRank,
+        bonusDieAbilities: new Set(),
+        defenseAltActive: false,
+        instanceId,
+        instanceIndex,
+      });
+    });
+  }
+  // MONTURE OUVERTE (PER-378, Monture géante r7) : UNE créature choisie une fois, comme Forme
+  // animale (`Character.effectInputs[featureId]`), PAS `companionInstances` — pas d'instances à
+  // dédoublonner, une seule clé (`feature.id`, comme un compagnon classique).
+  for (const id of allIds) {
+    if (disabled.has(id)) continue;
+    const feature = featureById.get(id);
+    if (!feature?.openBestiaryMount) continue;
+    const slug = character.effectInputs?.[feature.id];
+    const creature = slug ? bestiaryList.find((c) => c.id === slug) : undefined;
+    if (!creature) continue;
+    const pathRank = maxRankByPath.get(feature.pathId) ?? feature.rank;
+    out.push({
+      key: feature.id,
+      feature,
+      profile: { ...creatureToCompanionProfile(creature), companionType: 'mount', abilitiesRequireDismount: true },
+      companionType: 'mount',
+      pathRank,
+      bonusDieAbilities: new Set(),
+      defenseAltActive: false,
+    });
+  }
   return out;
+}
+
+/**
+ * SLUGS de créatures du bestiaire référencés par CE personnage, tous canaux OUVERTS confondus (PER-378) :
+ * `Feature.openBestiaryRoster` → `Character.summonedCreatureIds` (une entrée par instance) ;
+ * `Feature.openBestiaryMount` → `Character.effectInputs[featureId]` (choix unique). Sert aux appelants
+ * (page.tsx, GmSheetDrawer.tsx, useGmScreenCombat.ts) à savoir QUELS blobs charger
+ * (`useBestiaryStore().loadBlob`) AVANT d'appeler `listCompanions(character, bestiaryList)` — sans le
+ * blob chargé, l'entrée est omise en SILENCE (jamais une erreur, cf. `listCompanions`), donc un oubli
+ * ici ne plante rien mais fait disparaître le compagnon de la section « Compagnons » (bug constaté :
+ * la monture géante r7 ne remontait jamais, son slug vivant dans `effectInputs` et non
+ * `summonedCreatureIds`, le seul champ que les appelants pensaient à surveiller).
+ */
+export function referencedBestiaryCreatureSlugs(character: Character): string[] {
+  const slugs = new Set<string>();
+  const allIds = [...new Set([...character.featureIds, ...borrowedFeatureIds(character)])];
+  for (const id of allIds) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    if (feature.openBestiaryRoster) {
+      for (const instanceId of character.companionInstances?.[feature.id] ?? []) {
+        const slug = character.summonedCreatureIds?.[companionInstanceKey(feature.id, instanceId)];
+        if (slug) slugs.add(slug);
+      }
+    }
+    if (feature.openBestiaryMount) {
+      const slug = character.effectInputs?.[feature.id];
+      if (slug) slugs.add(slug);
+    }
+  }
+  return [...slugs];
+}
+
+/**
+ * Convertit une créature du BESTIAIRE (chiffres bruts, PER-378) en `CreatureProfile` d'AFFICHAGE
+ * (chaînes `richText`) pour une instance de ROSTER OUVERT (`Feature.openBestiaryRoster`, ex. Amitié
+ * animale) — même rendu (`CreatureStatBlock`) que les profils rédigés à la main. Perte de fidélité
+ * ASSUMÉE, cohérente avec les limites déjà connues de `CreatureProfile` : `extraAttacks` n'a pas de
+ * bonus d'attaque propre (seule la PREMIÈRE attaque, `attack`, en porte un) ; les immunités d'état du
+ * bestiaire (`statusImmunities`) n'ont pas d'équivalent ici (jamais affichées sur un compagnon, comme
+ * les autres profils existants).
+ */
+export function creatureToCompanionProfile(creature: Creature): CreatureProfile {
+  const [firstAttack, ...restAttacks] = creature.attacks ?? [];
+  // `Creature.attacks[].damage` est verbatim NU (« 1d10+5 », p. 260) ; `CreatureProfile.attack.damage`
+  // attend une FORMULE richText entre CROCHETS (« [2d6 + 6] », cf. les profils rédigés à la main de
+  // ce fichier) pour que le dé se rende en icône cliquable — retour proprio 2026-08-20 (PER-378,
+  // r4 Amitié animale : sans les crochets, les DM restent un nombre inerte sur la carte du roster).
+  const richDamage = (damage?: string) => (damage ? `[${damage}]` : undefined);
+  const noteParts = [
+    creature.defenseNote,
+    creature.hitPointsNote,
+    creature.initiativeNote,
+    firstAttack?.rider ? `Attaque ${firstAttack.rider}` : undefined,
+  ].filter((v): v is string => !!v);
+  return {
+    name: creature.name,
+    companionType: 'animal',
+    size: creature.size,
+    abilities: creature.abilities,
+    bonusDieAbilities: creature.bonusDieAbilities,
+    defense: creature.defense != null ? String(creature.defense) : undefined,
+    hitPoints: creature.hitPoints != null ? String(creature.hitPoints) : undefined,
+    initiative: creature.initiative != null ? String(creature.initiative) : undefined,
+    attack: firstAttack
+      ? { label: firstAttack.name, value: firstAttack.bonus, damage: richDamage(firstAttack.damage) }
+      : undefined,
+    extraAttacks: restAttacks.length
+      ? restAttacks.map((a) => ({ label: a.name, damage: richDamage(a.damage) ?? '' }))
+      : undefined,
+    damageReduction: creature.damageReduction,
+    specialAbilities: creature.specialAbilities,
+    note: noteParts.length ? noteParts.join(' · ') : undefined,
+    verbatimSource: creature.description
+      ? { text: creature.description, sourcePage: creature.sourcePage }
+      : undefined,
+  };
+}
+
+/**
+ * Budget NC d'un roster ouvert (PER-378, Amitié animale, p. 172 : « la somme des NC … ne peut à
+ * aucun moment dépasser le rang atteint dans la voie »). `used` = somme des NC des créatures
+ * ACTUELLEMENT choisies (créature introuvable dans `bestiaryList` → NC 0, ignorée sans faire planter
+ * le calcul — ex. contenu payant pas encore chargé) ; `max` = rang ATTEINT dans la voie hôte.
+ */
+export function openBestiaryRosterBudget(
+  character: Character,
+  feature: Feature,
+  // `Pick` plutôt que `Creature` entier (PER-378) : le picker n'a que la liste LÉGÈRE
+  // (`CreatureListItem`, sans abilities/attaques) — les deux formes portent `id`/`nc`, donc les deux
+  // satisfont ce type sans conversion. `listCompanions`, lui, appelle avec des blobs `Creature` complets.
+  bestiaryList: Pick<Creature, 'id' | 'nc'>[],
+): { used: number; max: number } {
+  const ids = character.companionInstances?.[feature.id] ?? [];
+  const used = ids.reduce((sum, instanceId) => {
+    const slug = character.summonedCreatureIds?.[companionInstanceKey(feature.id, instanceId)];
+    const creature = slug ? bestiaryList.find((c) => c.id === slug) : undefined;
+    return sum + (creature?.nc ?? 0);
+  }, 0);
+  const max = pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? feature.rank;
+  return { used, max };
+}
+
+/**
+ * Une créature du bestiaire est-elle choisissable pour CE roster ouvert au rang de voie ATTEINT
+ * `pathRank` (PER-378) ? Base : `category: 'animaux'` sans variante géante/préhistorique, toujours
+ * éligible (le budget NC, vérifié À PART, reste la seule limite). Paliers du livre (p. 172) :
+ * `animalFormFlavor` (géant/préhistorique) → `giantUnlockRank` ; `isFantasticAnimal` →
+ * `fantasticUnlockRank`. Palier ABSENT sur cette voie → jamais éligible, quel que soit le rang.
+ * `Pick` (même raison qu'`openBestiaryRosterBudget`) : `CreatureListItem` porte tous ces champs.
+ */
+export function isCreatureEligibleForOpenRoster(
+  creature: Pick<Creature, 'category' | 'animalFormFlavor' | 'isFantasticAnimal'>,
+  roster: NonNullable<Feature['openBestiaryRoster']>,
+  pathRank: number,
+): boolean {
+  if (creature.isFantasticAnimal) {
+    return roster.fantasticUnlockRank != null && pathRank >= roster.fantasticUnlockRank;
+  }
+  if (creature.category !== 'animaux') return false;
+  if (creature.animalFormFlavor) {
+    return roster.giantUnlockRank != null && pathRank >= roster.giantUnlockRank;
+  }
+  return true;
+}
+
+/**
+ * Univers de base « créature de type ANIMAL » (PER-378) pour un roster/monture ouverts au bestiaire
+ * (Amitié animale r4, Monture géante r7) : `category: 'animaux'` (variante géante/préhistorique
+ * incluse), PLUS les animaux FANTASTIQUES marqués `isFantasticAnimal` (rangés ailleurs au
+ * bestiaire, cf. `Creature.isFantasticAnimal`). Ne dit RIEN sur l'éligibilité par rang/NC — juste
+ * « est-ce le genre de créature que ces capacités visent du tout ? ». Voir
+ * `isCreatureEligibleForOpenRoster` (paliers de rang) et `openBestiaryMountNcCap` (plafond de NC).
+ */
+export function isAnimalLikeCreature(
+  creature: Pick<Creature, 'category' | 'animalFormFlavor' | 'isFantasticAnimal'>,
+): boolean {
+  return (
+    creature.category === 'animaux' ||
+    (creature.category === 'creatures-fantastiques' && (!!creature.animalFormFlavor || !!creature.isFantasticAnimal))
+  );
+}
+
+/** Seuil de TAILLE à partir duquel une créature est « géante » (PER-378, Monture géante r7, p. 173). */
+const GIANT_MOUNT_MIN_SIZE: CreatureSize = 'grande';
+
+/**
+ * Une créature est-elle de taille « GÉANTE » (PER-378, Monture géante r7, p. 173) ? Filtre de TAILLE
+ * (`Creature.size` ≥ `grande` sur l'échelle `CREATURE_SIZES`) déduit des exemples du livre
+ * (« mammouth, dinosaure, aigle géant, etc. » — mammouth `enorme`, aigle géant `grande`, dinosaures
+ * `enorme`/`colossale`) — retour proprio 2026-08-20 : SANS RAPPORT avec `Creature.animalFormFlavor`
+ * (qui marque une VARIANTE géante d'un animal ORDINAIRE plus petit, ex. araignée géante, rat géant —
+ * concept orthogonal, une créature peut être `flavor: 'geant'` sans être de taille géante, ou l'inverse).
+ * PERMISSIF à dessein (retour proprio) : aucune exclusion par nature (aquatique, arthropode…) même si
+ * certaines créatures de taille suffisante font des montures peu orthodoxes (kraken, crabe géant…) —
+ * laissé au jugement du joueur/MJ à la table, comme le reste de la fiche. Créature sans `size` connue
+ * → exclue (impossible de vérifier le seuil).
+ */
+export function isGiantSizedCreature(creature: Pick<Creature, 'size'>): boolean {
+  if (!creature.size) return false;
+  return CREATURE_SIZES.indexOf(creature.size) >= CREATURE_SIZES.indexOf(GIANT_MOUNT_MIN_SIZE);
+}
+
+/**
+ * Plafond de NC choisissable pour une MONTURE OUVERTE au bestiaire (PER-378, Monture géante r7,
+ * p. 173 : « le NC de la créature ne peut pas être supérieur à [rang + PER] »), résolu contre le
+ * rang ATTEINT dans la voie hôte. `null` si `feature` ne porte pas `openBestiaryMount`, ou si la
+ * formule contient un dé (jamais le cas en pratique — garde défensive comme `resolveRichExprNumber`).
+ */
+export function openBestiaryMountNcCap(
+  character: Character,
+  feature: Feature,
+  abilities: Abilities,
+): number | null {
+  const mount = feature.openBestiaryMount;
+  if (!mount) return null;
+  const pathRank = pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? feature.rank;
+  return resolveRichExprNumber(mount.ncCapFormula, abilities, character.level, pathRank);
 }
 
 /** Une FORME active du personnage lui-même (PER-374) qui déclare ses propres PV. */
@@ -708,8 +944,9 @@ export function resolveCompanionInstanceLimit(profile: CreatureProfile, characte
  * de voie atteint. `null` si non résoluble en nombre (segment contenant un dé, ou aucune
  * expression) — factorisé entre `resolveCreatureMaxHp` et les résolveurs DEF/attaque de l'écran
  * de MJ (PER-280, mêmes contraintes : un dé n'a pas de valeur affichable en pastille ajustable).
+ * Exportée pour `openBestiaryMountNcCap` (PER-378, plafond de NC de Monture géante r7).
  */
-function resolveRichExprNumber(
+export function resolveRichExprNumber(
   rich: string,
   abilities: Abilities,
   level: number,

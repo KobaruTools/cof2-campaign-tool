@@ -181,6 +181,8 @@ export interface CharacterGameState {
   setCompanionHeal: (key: string, amount: number) => void;
   setCompanionReset: (key: string) => void;
   summonCompanionInstance: (featureId: string) => void;
+  /** Roster ouvert (PER-378, Amitié animale) : ajoute une instance liée à CE slug de créature. */
+  summonOpenRosterCreature: (featureId: string, creatureId: string) => void;
   deleteCompanionInstance: (key: string) => void;
 
   // --- PV de la forme active du personnage lui-même (PER-374, formes élémentaires) ---------
@@ -454,6 +456,8 @@ export function useCharacterGameState(
     setCompanionHeal: bind(actions.healCompanion),
     setCompanionReset: bind(actions.resetCompanionHp),
     summonCompanionInstance: (featureId) => update(actions.summonCompanionInstance(target, featureId)),
+    summonOpenRosterCreature: (featureId, creatureId) =>
+      update(actions.summonCompanionInstance(target, featureId, undefined, creatureId)),
     deleteCompanionInstance: bind(actions.removeCompanionInstance),
 
     setTransformationDamage: bind(actions.damageTransformation),

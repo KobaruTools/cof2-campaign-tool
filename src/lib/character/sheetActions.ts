@@ -91,6 +91,7 @@ import {
 import { elixirItemName, isElixirItemName } from './elixirs';
 import {
   activeTransformationWithHp,
+  companionInstanceKey,
   companionMountEnSelle,
   effectiveCreatureProfile,
   listCompanions,
@@ -1060,19 +1061,39 @@ export function spendTransformationRecoveryDie(character: Character, featureId: 
 }
 
 /**
- * Invocation d'un nouvel exemplaire d'un compagnon multi-instances (zombie, PER-235) : ajoute un id
- * d'instance frais dans la limite du profil (garde-fou redondant avec le badge désactivé). Capacité
- * non multi-instances ou limite atteinte → patch VIDE.
+ * Invocation d'un nouvel exemplaire d'un compagnon multi-instances (zombie, PER-235 ; roster ouvert,
+ * PER-378) : ajoute un id d'instance frais. Capacité non multi-instances/roster ouvert → patch VIDE.
  *
  * `instanceId` est injectable pour rendre l'action déterministe en test ; en production, l'id frais
  * par défaut suffit.
+ *
+ * `creatureId` (PER-378) : slug bestiaire choisi, UNIQUEMENT pour un ROSTER OUVERT
+ * (`Feature.openBestiaryRoster`, ex. Amitié animale) — absent → patch VIDE pour cette capacité (rien
+ * à afficher sans savoir QUELLE créature). Le budget NC/l'éligibilité par rang ne sont PAS revalidés
+ * ici (module pur, sans accès au bestiaire) : l'appelant (le picker, qui a la liste RLS-filtrée en
+ * main) est la SEULE barrière — désactive son bouton d'ajout hors budget/palier, comme documenté sur
+ * `openBestiaryRosterBudget`/`isCreatureEligibleForOpenRoster` (companions.ts). Pour un compagnon
+ * multi-instances CLASSIQUE (zombie), `creatureId` est ignoré : la limite du profil reste le
+ * garde-fou (redondant avec le badge désactivé), comme avant PER-378.
  */
 export function summonCompanionInstance(
   character: Character,
   featureId: string,
   instanceId: string = newId(),
+  creatureId?: string,
 ): Partial<Character> {
   const feature = featureById.get(featureId);
+  if (feature?.openBestiaryRoster) {
+    if (!creatureId) return {};
+    const list = character.companionInstances[featureId] ?? [];
+    return {
+      companionInstances: { ...character.companionInstances, [featureId]: [...list, instanceId] },
+      summonedCreatureIds: {
+        ...character.summonedCreatureIds,
+        [companionInstanceKey(featureId, instanceId)]: creatureId,
+      },
+    };
+  }
   const profile = feature ? effectiveCreatureProfile(feature, character) : undefined;
   if (!profile?.instances) return {};
   const list = character.companionInstances[featureId] ?? [];
@@ -1084,8 +1105,9 @@ export function summonCompanionInstance(
 
 /**
  * Suppression d'une instance (corbeille manuelle OU auto-suppression à 0 PV) : retire l'id de
- * `companionInstances` et purge ses PV (`companionDepletion`) sous la clé composite (PER-235).
- * Clé non composite (compagnon classique) → patch VIDE.
+ * `companionInstances`, purge ses PV (`companionDepletion`, PER-235) et son slug de créature choisie
+ * (`summonedCreatureIds`, PER-378 — no-op pour un compagnon multi-instances classique, qui n'en pose
+ * jamais) sous la même clé composite. Clé non composite (compagnon classique) → patch VIDE.
  */
 export function removeCompanionInstance(character: Character, key: string): Partial<Character> {
   const { featureId, instanceId } = parseCompanionKey(key);
@@ -1096,7 +1118,9 @@ export function removeCompanionInstance(character: Character, key: string): Part
   else delete companionInstances[featureId];
   const companionDepletion = { ...character.companionDepletion };
   delete companionDepletion[key];
-  return { companionInstances, companionDepletion };
+  const summonedCreatureIds = { ...character.summonedCreatureIds };
+  delete summonedCreatureIds[key];
+  return { companionInstances, companionDepletion, summonedCreatureIds };
 }
 
 // ---------------------------------------------------------------------------

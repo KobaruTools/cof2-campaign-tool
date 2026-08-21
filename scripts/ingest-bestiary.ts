@@ -287,6 +287,7 @@ async function ingestSource(
     nature: c.nature ?? [],
     animal_form_category: c.animalFormCategory ?? null,
     animal_form_flavor: c.animalFormFlavor ?? null,
+    is_fantastic_animal: c.isFantasticAnimal ?? false,
     base_creature_id: c.baseCreatureId ?? null,
     sort_order: index,
     data: c as unknown as Database['public']['Tables']['creatures']['Insert']['data'],

@@ -1142,6 +1142,17 @@ export interface Character {
   companionInstances: Record<string, string[]>;
 
   /**
+   * SLUG de créature du bestiaire choisi pour une instance de compagnon à ROSTER OUVERT
+   * (`Feature.openBestiaryRoster`, PER-378, Amitié animale) — clé composite `<featureId>#<instanceId>`
+   * (même format que `companionDepletion`), valeur = `Creature.id` (ex. `'griffon'`). Un compagnon
+   * classique multi-instances (zombie) n'y figure jamais : toutes ses instances partagent le MÊME
+   * `CreatureProfile` fixe de la capacité, donc aucun slug à retenir. Champ additif optionnel
+   * absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`). `listCompanions`
+   * (companions.ts) résout chaque entrée contre la liste bestiaire RLS-filtrée fournie par l'appelant.
+   */
+  summonedCreatureIds?: Record<string, string>;
+
+  /**
    * Argent possédé (PER-152). État de jeu transitoire (modifiable hors mode
    * « Modifier »), non affecté par un repos. Voir `Purse` et
    * `src/lib/character/purse.ts`.

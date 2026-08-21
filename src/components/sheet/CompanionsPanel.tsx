@@ -76,6 +76,13 @@ interface CompanionCardProps {
  */
 function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDamage, onHeal, onReset, onDelete, mounted, onSetMounted, passengerSelect }: CompanionCardProps) {
   const { profile, pathRank, bonusDieAbilities, defenseAltActive, instanceId, instanceIndex } = entry;
+  // Monture géante EN SELLE (PER-378, `CreatureProfile.abilitiesRequireDismount`, r7 p. 173) : seule
+  // l'attaque de BASE reste utilisable — capacités spéciales et attaques supplémentaires masquées
+  // tant que le personnage est monté ; redeviennent pleines à pied (`mounted === false`/`null`).
+  const displayProfile =
+    mounted === true && profile.abilitiesRequireDismount
+      ? { ...profile, specialAbilities: undefined, extraAttacks: undefined }
+      : profile;
   const maxHp = resolveCreatureMaxHp(profile, abilities, level, pathRank);
   const hasAbilities = !!resolveCreatureAbilities(profile, abilities);
   // La colonne DROITE (carac + stats dérivées) n'existe que si le profil porte des caracs OU au
@@ -87,7 +94,7 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
     profile.initiative ||
     profile.attack ||
     (maxHp === null && profile.hitPoints) ||
-    profile.extraAttacks?.length
+    displayProfile.extraAttacks?.length
   );
   const hasRight = hasAbilities || hasDerived;
   // Compagnon multi-instances (zombie) : numéroter les exemplaires (« ZOMBIE 1, 2… ») pour les
@@ -140,11 +147,11 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
               iconLabel={`Points de vigueur — ${profile.name}`}
             />
           )}
-          <CreatureDescriptionRich profile={profile} abilities={abilities} level={level} rank={pathRank} />
+          <CreatureDescriptionRich profile={displayProfile} abilities={abilities} level={level} rank={pathRank} />
           {/* Le `note` du profil (déplacement, lore, régénération, variantes de peuple…) reste sur la
               mini-fiche de la carte de VOIE (verbatim de la capacité) ; la carte compagnon reste
               centrée sur le jeu (PV + stats + capacités) et ne le duplique pas (PER-216). */}
-          <CreatureSpecialAbilityBlocks profile={profile} abilities={abilities} level={level} rank={pathRank} />
+          <CreatureSpecialAbilityBlocks profile={displayProfile} abilities={abilities} level={level} rank={pathRank} />
           {/* Capacité d'attaque GRATUITE disponible seulement EN SELLE (PER-331, morsure du worg) : carte de
               capacité dédiée (même gabarit NEUTRE que les capacités de créature), avec un hexagone de
               marqueur d'action (G) à côté du titre ; affichée quand l'interrupteur « en selle » est actif. */}
@@ -172,14 +179,14 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
           <Stack spacing={0.75} sx={{ minWidth: 0 }}>
             {hasAbilities && (
               <CreatureAbilitiesGrid
-                profile={profile}
+                profile={displayProfile}
                 masterAbilities={abilities}
                 bonusDieAbilities={bonusDieAbilities}
                 mobileEnlarge
               />
             )}
             <CreatureDerivedStats
-              profile={profile}
+              profile={displayProfile}
               abilities={abilities}
               level={level}
               rank={pathRank}

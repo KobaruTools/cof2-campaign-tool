@@ -72,6 +72,7 @@ import { withReceivedCrystals } from '@/lib/character/crystals';
 import {
   companionMountEnSelle,
   listCompanions,
+  referencedBestiaryCreatureSlugs,
   resolveCreatureAttackBonus,
   resolveCreatureDefenseNumber,
   resolveCreatureMaxHp,
@@ -489,6 +490,18 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     [characters, cid],
   );
 
+  // Roster/monture ouverts (PER-378, Amitié animale + Monture géante) : charge le blob de chaque
+  // créature choisie par N'IMPORTE quel personnage réclamé, pour que `listCompanions` (companionRoster
+  // ET companionRows ci-dessous) puisse la résoudre en `CompanionEntry` affichable.
+  // `referencedBestiaryCreatureSlugs` couvre les DEUX canaux (roster ET monture, cf. companions.ts).
+  const summonedCreatureSlugs = useMemo(
+    () => new Set(claimed.flatMap((c) => referencedBestiaryCreatureSlugs(c))),
+    [claimed],
+  );
+  useEffect(() => {
+    for (const slug of summonedCreatureSlugs) void loadBlob(slug);
+  }, [summonedCreatureSlugs, loadBlob]);
+
   // Compagnons de TOUS les personnages réclamés (nouvelle section « Compagnons » du roster, retour
   // propriétaire 2026-08-10) : `masterDerived` et `abilities` sont PLAIN (comme la fiche — repris de
   // `buildCharacterDerivedView(character)` SANS `withReceivedCrystals`), pour que la carte corresponde
@@ -501,7 +514,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
       const abilities = effectContext(character).abilities;
       const view = buildCharacterDerivedView(character);
       const masterDerived = view.derivedInput ? deriveStats(view.derivedInput) : undefined;
-      for (const entry of listCompanions(character)) {
+      for (const entry of listCompanions(character, Object.values(blobs))) {
         const mounted = companionMountEnSelle(character, entry);
         out.push({
           key: `companion:${character.id}:${entry.key}`,
@@ -663,7 +676,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         // `resolveCreatureAttackBonus`), absentes quand le profil n'a ni DEF ni attaque (« force, pas
         // une créature », ex. Serviteur invisible) plutôt qu'un faux 0.
         const abilities = effectContext(character).abilities;
-        const companionRows: InitiativeRow[] = listCompanions(character).map((entry) => {
+        const companionRows: InitiativeRow[] = listCompanions(character, Object.values(blobs)).map((entry) => {
           const rowKey = `companion:${character.id}:${entry.key}`;
           const companionMaxHp = resolveCreatureMaxHp(entry.profile, abilities, character.level, entry.pathRank) ?? 0;
           const companionDepletion = character.companionDepletion[entry.key] ?? {};

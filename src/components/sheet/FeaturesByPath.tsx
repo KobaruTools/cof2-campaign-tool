@@ -88,7 +88,10 @@ import { CrystalAssignmentSelect } from './CrystalAssignmentSelect';
 import {
   creatureDefenseAltActive,
   displayCreatureProfile,
+  isAnimalLikeCreature,
   isCreatureEligibleForOpenRoster,
+  isGiantSizedCreature,
+  openBestiaryMountNcCap,
   openBestiaryRosterBudget,
   preferredBestiaryCreatureSlug,
   resolveCompanionInstanceLimit,
@@ -1960,11 +1963,7 @@ function WildAllyRosterPicker({
   // les animaux fantastiques (rangées ailleurs au bestiaire) — le palier de rang décide ensuite si
   // l'option est RETENABLE (`reasonFor`), pas si elle apparaît.
   const options = (list ?? [])
-    .filter(
-      (c) =>
-        c.category === 'animaux' ||
-        (c.category === 'creatures-fantastiques' && (!!c.animalFormFlavor || !!c.isFantasticAnimal)),
-    )
+    .filter(isAnimalLikeCreature)
     .sort((a, b) => (a.nc ?? 0) - (b.nc ?? 0) || a.sortOrder - b.sortOrder);
   const pending = options.find((o) => o.id === pendingId) ?? null;
 
@@ -2041,6 +2040,198 @@ function WildAllyRosterPicker({
         >
           {roster.addLabel ?? 'Invoquer'}
         </Button>
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * MONTURE OUVERTE au bestiaire (PER-378, Monture géante r7, `Feature.openBestiaryMount`) : choix
+ * UNIQUE re-faisable (`Character.effectInputs[featureId]`, même patron que Forme animale, PAS un
+ * roster à instances) parmi les créatures « animal » du bestiaire (RLS-filtré, payant compris),
+ * plafonné par `openBestiaryMountNcCap` (« rang + PER », p. 173) — pas de palier géant/fantastique à
+ * débloquer ici, contrairement à `WildAllyRosterPicker`. Options hors plafond restent VISIBLES mais
+ * désactivées + suffixe (même patron que le roster). Le toggle « en selle / à pied » et la
+ * suppression des capacités montées (`CreatureProfile.abilitiesRequireDismount`) sont rendus par
+ * `CompanionsPanel`/`CompanionCard`, pas ici — ce composant ne fait QUE le choix de la créature.
+ */
+function GiantMountSelector({
+  feature,
+  character,
+  abilities,
+  level,
+  onSetInput,
+}: {
+  feature: Feature;
+  character: Character;
+  abilities: Abilities;
+  level: number;
+  onSetInput?: (featureId: string, value: string) => void;
+}) {
+  const mount = feature.openBestiaryMount;
+  const list = useBestiaryStore((s) => s.list);
+  const bestiaryStatus = useBestiaryStore((s) => s.status);
+  const loadBestiaryList = useBestiaryStore((s) => s.loadList);
+  const paidSourceIds = useBestiaryStore((s) => s.paidSourceIds);
+  useEffect(() => {
+    loadBestiaryList();
+  }, [loadBestiaryList]);
+
+  if (!mount) return null;
+  const ncCap = openBestiaryMountNcCap(character, feature, abilities);
+  const value = character.effectInputs?.[feature.id] ?? '';
+  // Univers RESTREINT à la taille « géante » (retour proprio 2026-08-20, p. 173 : « mammouth,
+  // dinosaure, aigle géant, etc. » — PAS le tag `animalFormFlavor` d'`isAnimalLikeCreature`, un concept
+  // orthogonal). `isAnimalLikeCreature` reste le premier filtre (exclut démons/morts-vivants/dragons…).
+  const options = (list ?? [])
+    .filter(isAnimalLikeCreature)
+    .filter(isGiantSizedCreature)
+    .sort((a, b) => (a.nc ?? 0) - (b.nc ?? 0) || a.sortOrder - b.sortOrder);
+  const selected = options.find((o) => o.id === value) ?? null;
+
+  const reasonFor = (o: CreatureListItem): string | null =>
+    ncCap != null && (o.nc ?? 0) > ncCap ? `NC trop élevé — plafond ${ncCap}` : null;
+
+  return (
+    <Box sx={{ mt: 1 }}>
+      <Autocomplete
+        options={options}
+        getOptionLabel={(o) => o.name}
+        getOptionKey={(o) => o.id}
+        isOptionEqualToValue={(a, b) => a.id === b.id}
+        value={selected}
+        loading={bestiaryStatus === 'loading'}
+        onChange={(_, next) => onSetInput?.(feature.id, next?.id ?? '')}
+        getOptionDisabled={(o) => !!reasonFor(o)}
+        renderOption={(props, option) => {
+          const { key, ...optionProps } = props as typeof props & { key?: string };
+          const reason = reasonFor(option);
+          return (
+            <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Typography
+                variant="body2"
+                sx={{ flex: '1 1 auto' }}
+                color={reason ? 'text.disabled' : 'text.primary'}
+              >
+                {option.name}{' '}
+                <Box component="span" sx={{ opacity: 0.7 }}>
+                  (NC {option.nc ?? '?'})
+                </Box>
+                {reason && (
+                  <Box component="span" sx={{ ml: 0.5, fontStyle: 'italic' }}>
+                    — {reason}
+                  </Box>
+                )}
+              </Typography>
+              {paidSourceIds.has(option.sourceId) && (
+                <AppTooltip title="Supplément Bestiaire (contenu payant)">
+                  <Box component="span" aria-label="Contenu payant" sx={{ display: 'inline-flex', color: 'text.secondary' }}>
+                    <PetsOutlinedIcon sx={{ fontSize: 14 }} />
+                  </Box>
+                </AppTooltip>
+              )}
+            </Box>
+          );
+        }}
+        renderInput={(params) => (
+          <TextField {...params} label={mount.addLabel ?? 'Invoquer'} placeholder="choisir une monture" size="small" />
+        )}
+        sx={{ maxWidth: 340 }}
+      />
+      {ncCap != null && (
+        <Typography
+          variant="caption"
+          component="div"
+          sx={{ mt: 0.5, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
+        >
+          NC maximum accessible : {ncCap}.
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+/**
+ * Carte INFORMATIVE d'un sort de druide, à titre de référence (PER-378, Magie druidique innée r8,
+ * p. 173 : « n'importe quel sort de druide de son choix »). PAS un emprunt réel — aucun coût en mana
+ * ni compteur d'usage wiré ici (le sort effectivement lancé passe par le compteur 3×/jour de r8
+ * lui-même). Réutilise `FeatureText` (même rendu richText qu'une carte normale) mais avec un habillage
+ * NEUTRE — contrairement à `BorrowedFeatureBlock`, qui affiche « Capacité empruntée » (chrome erroné
+ * ici : le sort n'est jamais réellement emprunté par r8, juste montré à titre de référence).
+ */
+function SpellReferenceCard({
+  feature,
+  abilities,
+  level,
+}: {
+  feature: Feature;
+  abilities: Abilities;
+  level: number;
+}) {
+  return (
+    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, px: 1, py: 0.75 }}>
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 0.25, flexWrap: 'wrap' }}>
+        <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+          {feature.name}
+        </Typography>
+        {feature.actionTypes.map((a) => (
+          <ActionMarkerHex key={a} marker={a} size={16} />
+        ))}
+      </Stack>
+      <Typography variant="caption" color="text.secondary" component="div" sx={{ lineHeight: 1.5 }}>
+        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
+      </Typography>
+    </Box>
+  );
+}
+
+/**
+ * Sorts de druide, à titre INFORMATIF (PER-378, Magie druidique innée r8, p. 173, retour proprio
+ * 2026-08-20 : « comme l'artefact étrange du forgesort, mais sans la complexité d'utilisation ») — un
+ * ACCORDÉON par voie DU PROFIL druide (`classById.get('druide').pathIds` — pas les voies de
+ * prestige/peuple, le livre dit « sort de druide »), FERMÉ par défaut, listant les capacités `isSpell`
+ * de la voie triées par rang. Aucun état de jeu : purement des cartes de référence.
+ */
+function DruidSpellReference({ abilities, level }: { abilities: Abilities; level: number }) {
+  const druidClass = classById.get('druide');
+  if (!druidClass) return null;
+  const color = classColor('druide');
+  return (
+    <Box sx={{ mt: 1 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+        Sorts de druide, à titre informatif
+      </Typography>
+      <Stack spacing={0.5}>
+        {druidClass.pathIds.map((pathId) => {
+          const path = pathById.get(pathId);
+          const spells = featureCatalog
+            .filter((f) => f.pathId === pathId && f.isSpell)
+            .sort((a, b) => a.rank - b.rank);
+          if (!path || spells.length === 0) return null;
+          return (
+            <Accordion
+              key={pathId}
+              disableGutters
+              sx={{ bgcolor: 'transparent', border: 1, borderColor: 'divider', '&::before': { display: 'none' } }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { my: 0.5 } }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 700, color }}>
+                  {path.name}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Stack spacing={0.75}>
+                  {spells.map((spell) => (
+                    <SpellReferenceCard key={spell.id} feature={spell} abilities={abilities} level={level} />
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          );
+        })}
       </Stack>
     </Box>
   );
@@ -4930,6 +5121,21 @@ function PathBlock({
                     onSummon={onSummonOpenRosterCreature}
                   />
                 )}
+                {/* Monture ouverte (PER-378, Monture géante r7) : même raison que le roster ouvert
+                    ci-dessus — capacité SANS `creatureProfile` propre. */}
+                {openFeature.openBestiaryMount && character && abilities && level != null && (
+                  <GiantMountSelector
+                    feature={openFeature}
+                    character={character}
+                    abilities={abilities}
+                    level={level}
+                    onSetInput={onSetEffectInput}
+                  />
+                )}
+                {/* Cartes de sorts de druide à titre informatif (PER-378, Magie druidique innée r8). */}
+                {openFeature.id === 'prestige-maitre-de-la-nature-r8' && abilities && level != null && (
+                  <DruidSpellReference abilities={abilities} level={level} />
+                )}
                 {hasChoices(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -5544,6 +5750,20 @@ function PathBlock({
                   character={character}
                   onSummon={onSummonOpenRosterCreature}
                 />
+              )}
+              {/* Monture ouverte (PER-378, Monture géante r7) : même raison que le roster ci-dessus. */}
+              {feature.openBestiaryMount && character && abilities && level != null && (
+                <GiantMountSelector
+                  feature={feature}
+                  character={character}
+                  abilities={abilities}
+                  level={level}
+                  onSetInput={onSetEffectInput}
+                />
+              )}
+              {/* Cartes de sorts de druide à titre informatif (PER-378, Magie druidique innée r8). */}
+              {feature.id === 'prestige-maitre-de-la-nature-r8' && abilities && level != null && (
+                <DruidSpellReference abilities={abilities} level={level} />
               )}
               {hasChoices(feature) && (
                 <>

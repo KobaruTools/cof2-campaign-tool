@@ -31,7 +31,7 @@
  * Absents volontairement : identité, notes, historique des niveaux, conformité, montée de
  * niveau — accessibles via « Fiche complète ».
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { hrefFromIndex, useCharacterSlugIndex } from '@/lib/routing/slug';
 import CloseIcon from '@mui/icons-material/Close';
@@ -52,7 +52,12 @@ import { isCustomItem, type Character, type EquipmentLine } from '@/lib/characte
 import type { Campaign } from '@/lib/campaign/types';
 import type { Player } from '@/lib/player/types';
 import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
-import { activeTransformationWithHp, companionMountEnSelle, listCompanions } from '@/lib/character/companions';
+import {
+  activeTransformationWithHp,
+  companionMountEnSelle,
+  listCompanions,
+  referencedBestiaryCreatureSlugs,
+} from '@/lib/character/companions';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
 import { manualFeatureIds } from '@/lib/character/levelUp';
@@ -99,6 +104,7 @@ import { effectiveStatuses, statusSheetImpact, type AppliedStatus } from '@/lib/
 import { passiveAuraStatusesFor } from '@/lib/character/partyAuras';
 import { mergeMods } from '@/lib/character/orphanPoints';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
+import { useBestiaryStore } from '@/stores/bestiary';
 
 /**
  * Liste d'états vide partagée : un sélecteur zustand doit renvoyer une référence STABLE quand il n'y
@@ -403,7 +409,18 @@ function GmSheetDrawerContent({
     onChoiceIndexChange(null);
   };
 
-  const companions = listCompanions(character);
+  // Roster/monture ouverts (PER-378, Amitié animale + Monture géante) : `listCompanions` a besoin du
+  // blob COMPLET de chaque créature réellement choisie (même patron que la fiche joueur, page.tsx).
+  // `referencedBestiaryCreatureSlugs` couvre les DEUX canaux (roster ET monture, cf. companions.ts).
+  const summonedCreatureBlobs = useBestiaryStore((s) => s.blobs);
+  const loadSummonedCreatureBlob = useBestiaryStore((s) => s.loadBlob);
+  const summonedCreatureSlugs = referencedBestiaryCreatureSlugs(character);
+  useEffect(() => {
+    for (const slug of summonedCreatureSlugs) loadSummonedCreatureBlob(slug);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(summonedCreatureSlugs), loadSummonedCreatureBlob]);
+
+  const companions = listCompanions(character, Object.values(summonedCreatureBlobs));
   const ownedMounts = listOwnedMounts(character.mounts);
 
   // Édition de l'inventaire : état LOCAL au corps du panneau, donc remis à zéro à chaque
@@ -527,7 +544,8 @@ function GmSheetDrawerContent({
                 statusDomainBonus={display.statusDomainBonus}
                 perAbilityTestBonus={display.perAbilityTestBonus}
                 magicTestBonuses={display.magicTestBonuses}
-                bonusDice={display.bonusDieSources}
+                // PER-378 : version DÉTAILLÉE (featureId + nom), même raison que page.tsx.
+                bonusDice={display.bonusDieSourcesDetailed}
                 universalBonus={display.universalBonus}
                 testDice={display.testDice}
                 armorPenalty={display.armorPenalty}

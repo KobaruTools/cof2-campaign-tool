@@ -966,6 +966,40 @@ describe('compagnons — PV et instances', () => {
   it('removeCompanionInstance ignore une clé non composite (compagnon classique)', () => {
     expect(removeCompanionInstance(necromancer(), 'outre-tombe-r3')).toEqual({});
   });
+
+  describe('summonCompanionInstance / removeCompanionInstance — roster ouvert (PER-378)', () => {
+    const R4 = 'prestige-maitre-de-la-nature-r4';
+
+    it('avec creatureId : ajoute l’instance ET son slug, sans revalider le budget (module pur)', () => {
+      const c = char({ classId: 'druide', featureIds: [R4] });
+      const patch = summonCompanionInstance(c, R4, 'a1', 'griffon');
+      expect(patch.companionInstances).toEqual({ [R4]: ['a1'] });
+      expect(patch.summonedCreatureIds).toEqual({ [companionInstanceKey(R4, 'a1')]: 'griffon' });
+    });
+
+    it('sans creatureId sur un roster ouvert : patch VIDE (rien à afficher sans savoir quelle créature)', () => {
+      const c = char({ classId: 'druide', featureIds: [R4] });
+      expect(summonCompanionInstance(c, R4, 'a1')).toEqual({});
+    });
+
+    it('creatureId sur une capacité NON roster ouvert : ignoré (comportement classique inchangé)', () => {
+      const c = char({ classId: 'forgesort', featureIds: ['golem-r1', 'golem-r2'] });
+      expect(summonCompanionInstance(c, 'golem-r2', 'x1', 'griffon')).toEqual({});
+    });
+
+    it('removeCompanionInstance purge aussi le slug de créature choisie', () => {
+      const key = companionInstanceKey(R4, 'a1');
+      const c = char({
+        classId: 'druide',
+        featureIds: [R4],
+        companionInstances: { [R4]: ['a1'] },
+        summonedCreatureIds: { [key]: 'griffon' },
+      });
+      const patch = removeCompanionInstance(c, key);
+      expect(patch.companionInstances).toEqual({});
+      expect(patch.summonedCreatureIds).toEqual({});
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

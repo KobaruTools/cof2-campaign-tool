@@ -2,6 +2,8 @@ import Box from '@mui/material/Box';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DieIcon } from '@/components/DieIcon';
+import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import type { BonusDieSource } from '@/lib/character/effects';
 
 export interface BonusDieBadgeProps {
   /**
@@ -10,10 +12,14 @@ export interface BonusDieBadgeProps {
    */
   ability: string;
   /**
-   * Capacité(s) source(s) du dé bonus (français) — listées dans l'info-bulle. Vide
-   * pour une créature dont la source est l'option choisie (libellé générique alors).
+   * Capacité(s) source(s) du dé bonus — listées dans l'info-bulle. Vide pour une créature dont la
+   * source est l'option choisie (libellé générique alors). Deux formes acceptées :
+   *  - `BonusDieSource` (`{ featureId, name }`, PER-378) : rendu en `CapabilityChip` cliquable (puce
+   *    couleur de voie + icône) — utilisée quand l'appelant a l'id de la capacité sous la main.
+   *  - `string` (nom seul) : repli en texte simple, pour les appelants qui n'ont pas encore été
+   *    convertis, ou en mode `noTooltip` (attribut `title` natif, plain-text uniquement).
    */
-  sources?: string[];
+  sources?: (string | BonusDieSource)[];
   /** Taille en pixels d'un dé (les deux dés sont légèrement décalés). Défaut 16. */
   size?: number;
   /**
@@ -39,16 +45,19 @@ export interface BonusDieBadgeProps {
  * de créatures).
  */
 export function BonusDieBadge({ ability, sources = [], size = 16, noTooltip, tooltipTitle, sx }: BonusDieBadgeProps) {
-  const title =
+  const sourceName = (s: string | BonusDieSource) => (typeof s === 'string' ? s : s.name);
+  // Titre PLAIN-TEXT — seule forme possible pour `aria-label`/l'attribut `title` natif (mode
+  // `noTooltip`, PER-378) : jamais de JSX ici, même quand des `BonusDieSource` sont fournies.
+  const plainTitle =
     tooltipTitle ??
     (sources.length > 0
-      ? `Dé bonus aux tests de ${ability} — ${sources.join(', ')}`
+      ? `Dé bonus aux tests de ${ability} — ${sources.map(sourceName).join(', ')}`
       : `Dé bonus aux tests de ${ability}`);
   const badge = (
     <Box
       component="span"
-      aria-label={title}
-      title={noTooltip ? title : undefined}
+      aria-label={plainTitle}
+      title={noTooltip ? plainTitle : undefined}
       sx={{
         position: 'relative',
         display: 'inline-flex',
@@ -65,5 +74,25 @@ export function BonusDieBadge({ ability, sources = [], size = 16, noTooltip, too
       <DieIcon die="d20" size={size} noTooltip sx={{ position: 'absolute', left: size * 0.4 }} />
     </Box>
   );
-  return noTooltip ? badge : <AppTooltip title={title}>{badge}</AppTooltip>;
+  if (noTooltip) return badge;
+  // Info-bulle RICHE (PER-378) : chaque source qui porte un `featureId` devient une `CapabilityChip`
+  // cliquable (puce couleur de voie + icône) plutôt qu'un nom brut — même patron que le reste de la
+  // fiche (DefenseBadge, FeatureEffectBadge…) pour expliquer D'OÙ vient le dé bonus.
+  const richTitle = tooltipTitle ?? (
+    <>
+      Dé bonus aux tests de {ability}
+      {sources.length > 0 && (
+        <>
+          {' — '}
+          {sources.map((s, i) => (
+            <span key={typeof s === 'string' ? s : s.featureId}>
+              {i > 0 && ', '}
+              {typeof s === 'string' ? s : <CapabilityChip featureId={s.featureId} label={null} />}
+            </span>
+          ))}
+        </>
+      )}
+    </>
+  );
+  return <AppTooltip title={richTitle}>{badge}</AppTooltip>;
 }

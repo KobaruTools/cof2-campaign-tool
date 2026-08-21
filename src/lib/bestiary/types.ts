@@ -28,6 +28,8 @@ export interface CreatureListItem {
   animalFormCategory?: AnimalFormCategory;
   /** Variante géante/préhistorique — cf. `Creature.animalFormFlavor`. */
   animalFormFlavor?: 'geant' | 'prehistorique';
+  /** Animal fantastique (griffon, hippogriffe…) — cf. `Creature.isFantasticAnimal`. */
+  isFantasticAnimal?: boolean;
   baseCreatureId?: string;
   /** Ordre d'impression du livre — reproduit le tri « par catégorie ». */
   sortOrder: number;

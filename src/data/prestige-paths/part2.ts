@@ -4698,6 +4698,17 @@ export const prestigeFeatures2: Feature[] = [
     // peut dépasser le rang atteint dans la voie » → terme nommé [#rang] (précédent identique :
     // fighters.ts Botte secrète / adventurers.ts Tir explosif, « NC inférieur au [#rang] atteint dans
     // la voie »). NC des animaux et la portée « 10 m » restent auto-glosés/littéraux (pas de token dédié).
+    // Mécanisation FORTE (retour proprio 2026-08-20) : `openBestiaryRoster` — roster ouvert au
+    // BESTIAIRE réel (RLS-filtré, payant compris), budget NC cumulé, PATRON `WildAllyRosterPicker`
+    // (FeaturesByPath.tsx) plutôt que le hard-filter d'`AnimalFormSelector` (options hors budget/palier
+    // restent VISIBLES, désactivées + suffixe). Rang 6 = variantes géantes/préhistoriques
+    // (`Creature.animalFormFlavor`) ; rang 8 = animaux fantastiques (`Creature.isFantasticAnimal`,
+    // allowlist curatée — griffon/ourhible/hippogriffe/pégase/licorne/manticore/etc., cf. schema.ts).
+    openBestiaryRoster: {
+      giantUnlockRank: 6,
+      fantasticUnlockRank: 8,
+      addLabel: 'Charmer un animal',
+    },
     richText:
       "Le personnage cible un animal à une distance maximale de 10 m et doit faire un test opposé d'attaque magique. En cas de réussite, l'animal se met au service du personnage et le défend pendant [=PER] heures. À la fin du sort, l'animal s'enfuit. La somme des NC des animaux que le personnage garde sous contrôle ne peut à aucun moment dépasser le [#rang] atteint dans la voie. À partir du rang 6, le personnage peut cibler les animaux géants et à partir du rang 8 les animaux fantastiques (griffon, ourhible, hippogriffe, etc.). Si le personnage essaie d'emmener un animal en milieu urbain, le sort prend immédiatement fin.",
     sourcePage: 172,
@@ -4802,10 +4813,26 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage obtient une monture géante de son choix (mammouth, dinosaure, aigle géant, etc.). Elle doit être adaptée à un de ses milieux de prédilection et le NC de la créature ne peut pas être supérieur à [rang + PER]. Si le cadre de jeu ne le permet pas, le meneur de jeu peut décider d'interdire les dinosaures de la liste. La monture géante est parfaitement sous contrôle et lorsque le personnage la monte, elle peut attaquer une fois par round sur son ordre (action d'attaque pour la monture, l'ordre est une action gratuite pour le cavalier).",
-    // PER-378 : la créature reste un choix NARRATIF ouvert (« de son choix », toute créature adaptée au
-    // milieu, arbitrée par le MJ), à la différence des montures FIXES de cavalier-r5 (Monture
-    // fantastique, liste close de `creatureProfile`) — aucun profil de créature dédié n'est donc posé
-    // ici. Seule la formule du plafond de NC est mécanisée (`[rang + PER]`, formule de MODIFICATEUR).
+    // PER-378, retour proprio 2026-08-20 : mécanisation FORTE — `openBestiaryMount` (choix OUVERT au
+    // bestiaire réel, RLS-filtré payant compris, plafonné par [rang + PER], patron `GiantMountSelector`
+    // identique à Amitié animale/r4 mais SANS palier géant/fantastique à débloquer, une seule créature
+    // choisie via `effectInputs` comme Forme animale). Interrupteur « en selle » standard (patron
+    // `companionMountEnSelle`, cavalier-r1/r5) → toggle « En selle / À pied » généré automatiquement sur
+    // la carte compagnon. `abilitiesRequireDismount: true` posé dans `listCompanions` (companions.ts,
+    // PAS ici — propriété du PROFIL affiché, pas de la capacité) : en selle, seule l'attaque de base
+    // reste utilisable (« elle peut attaquer une fois par round sur son ordre ») — capacités spéciales/
+    // attaques supplémentaires masquées tant que montée, pleines à pied (`CompanionCard`).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'en selle', activeByDefault: false },
+      },
+    ],
+    openBestiaryMount: {
+      ncCapFormula: '[rang + PER]',
+      addLabel: 'Choisir une monture géante',
+    },
     richText:
       "Le personnage obtient une monture géante de son choix (mammouth, dinosaure, aigle géant, etc.). Elle doit être adaptée à un de ses milieux de prédilection et le NC de la créature ne peut pas être supérieur à [rang + PER]. Si le cadre de jeu ne le permet pas, le meneur de jeu peut décider d'interdire les dinosaures de la liste. La monture géante est parfaitement sous contrôle et lorsque le personnage la monte, elle peut attaquer une fois par round sur son ordre (action d'attaque pour la monture, l'ordre est une action gratuite pour le cavalier).",
     sourcePage: 173,

@@ -16,6 +16,7 @@ import {
   freelyStackingAbilityTestBonuses,
   resolveTestBonus,
   type AbilityTestBonusSource,
+  type BonusDieSource,
   type MagicTestSource,
   type TestDomainBonus,
   type UniversalTestBonus,
@@ -82,9 +83,11 @@ export interface TestDomainsPanelProps {
   magicTestBonuses?: MagicTestSource[];
   /**
    * Caractéristiques bénéficiant d'un DÉ BONUS permanent (badge double-d20), avec la/les
-   * capacité(s) source(s) — affiché à droite de la ligne « test de [CARAC] ».
+   * capacité(s) source(s) — affiché à droite de la ligne « test de [CARAC] ». `BonusDieSource`
+   * (`{ featureId, name }`, PER-378) plutôt qu'un nom brut : l'info-bulle du badge rend chaque
+   * source en `CapabilityChip` cliquable (cf. `display.bonusDieSourcesDetailed`, sheetDisplayView.ts).
    */
-  bonusDice?: Partial<Record<AbilityId, string[]>>;
+  bonusDice?: Partial<Record<AbilityId, BonusDieSource[]>>;
   /**
    * Bonus de compétence UNIVERSEL en PLANCHER (ex. Éclectique, PER-102) : s'applique à
    * TOUS les tests de domaine sans autre bonus de profil/prestige. Les domaines déjà
