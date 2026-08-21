@@ -1046,7 +1046,12 @@ export function EquipmentList({
 
   if (equipment.length === 0 && !onChange) {
     return (
-      <Typography variant="body2" color="text.secondary" data-tour={dataTour}>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        data-tour={dataTour}
+        data-glossary-shot="EquipmentList"
+      >
         Aucun équipement.
       </Typography>
     );
@@ -1073,6 +1078,12 @@ export function EquipmentList({
     // Résolveur de variante (PER-211) : l'objet effectif porte les surcharges
     // d'instance (nom via `equipmentLabel`, DM/DEF/plafond AGI via `itemDetail`).
     const item = custom ? null : effectiveItem(line);
+    // Bouton codex (suite bouton codex, PER-72) : absent sur un objet CUSTOM (`item` null), sans
+    // entrée catalogue vers laquelle pointer. Calculé une fois — posé en HAUT À DROITE de la carte
+    // (mode colonnes, retour propriétaire) ou inline à côté du titre (mode ligne, rendu historique).
+    const sourceRefBadge = item ? (
+      <SourceRef page={item.sourcePage} term={item.name} codexHref={equipmentCodexHref(item.id)} />
+    ) : null;
     // Dose d'élixir (objet custom nommé par `elixirItemName`) : on met en avant la CAPACITÉ
     // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
     const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;
@@ -1211,9 +1222,9 @@ export function EquipmentList({
             {equipmentLabel(line, characterClass)}
           </Typography>
         )}
-        {/* Bouton codex (suite bouton codex, PER-72) : absent sur un objet CUSTOM (`item` null),
-            sans entrée catalogue vers laquelle pointer. */}
-        {item && <SourceRef page={item.sourcePage} term={item.name} codexHref={equipmentCodexHref(item.id)} />}
+        {/* En carte (mode colonnes), le bouton codex migre en haut à droite de la carte
+            (`sourceRefBadge` posé plus bas, hors du fil du titre) — inline ici uniquement en ligne. */}
+        {!asCard && sourceRefBadge}
         {structuredDetail && (
           <Typography variant="caption" color="text.secondary" component="span">
             {structuredDetail}
@@ -1635,6 +1646,7 @@ export function EquipmentList({
           // cliquable en combat à deux armes) : une seule ligne peut occuper `mainHand`/`offHand`.
           id={weaponInHand ? `equipment-line-${line.worn!.slot}` : undefined}
           sx={{
+            position: 'relative',
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
@@ -1646,7 +1658,12 @@ export function EquipmentList({
             ...(line.worn && { bgcolor: (theme) => alpha(theme.palette.success.main, 0.06) }),
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+          {/* Bouton codex (PER-72) en HAUT À DROITE de la carte (retour propriétaire) — hors du
+              fil du titre, qui peut sinon passer à la ligne sur un nom d'objet un peu long. */}
+          {sourceRefBadge && (
+            <Box sx={{ position: 'absolute', top: 6, right: 6 }}>{sourceRefBadge}</Box>
+          )}
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, pr: sourceRefBadge ? 4.5 : 0 }}>
             {opts?.dragHandle}
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>{titleContent}</Box>
           </Box>
@@ -1723,7 +1740,7 @@ export function EquipmentList({
   };
 
   return (
-    <Stack spacing={onChange ? 1.5 : 0}>
+    <Stack spacing={onChange ? 1.5 : 0} data-glossary-shot="EquipmentList">
       {/* Conflits de port DURS (bouclier + arme à 2 mains, >1 armure/bouclier) — non bloquant (PER-77). */}
       <EquipConflictsAlert equipment={equipment} oneHandableFamilies={oneHandableFamilies} smallSize={isSmallSize} />
       {/* PER-330 — armes inadaptées à une créature de taille petite (halfelin, frouïn) — non bloquant. */}

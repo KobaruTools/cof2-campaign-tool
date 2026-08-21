@@ -6,8 +6,30 @@ import Box from '@mui/material/Box';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { SectionIcon } from '@/components/SectionIcon';
+import { CodexSubpageIcon } from '@/components/codex/CodexSubpageIcon';
 import { BOOKS, DEFAULT_BOOK_ID, rulesHref, type BookId } from '@/lib/ui/books';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
+
+/**
+ * Résout l'icône du bouton « Voir dans le Codex » d'après la SOUS-PAGE ciblée par `codexHref`
+ * (préfixe de route), pour que le bouton reflète la bonne sous-page (Équipement, Familiers…) au
+ * lieu de toujours montrer l'icône « Voies » — bug repéré sur les objets d'équipement, dont le
+ * bouton codex montrait l'icône des Voies alors qu'il ouvre `/codex/equipement`. Même source de
+ * vérité que le sélecteur du Codex (`CodexSubpageIcon`), juste indexée par route plutôt que libellé.
+ */
+const CODEX_HREF_PREFIX_LABELS: readonly { prefix: string; label: string }[] = [
+  { prefix: '/codex/voies', label: 'Voies' },
+  { prefix: '/codex/objets-magiques', label: 'Objets magiques' },
+  { prefix: '/codex/dieux', label: 'Dieux' },
+  { prefix: '/codex/familiers', label: 'Familiers fantastiques' },
+  { prefix: '/codex/montures', label: 'Montures & véhicules' },
+  { prefix: '/codex/equipement', label: 'Équipement' },
+];
+
+function codexHrefIcon(href: string, size: number) {
+  const match = CODEX_HREF_PREFIX_LABELS.find((entry) => href.startsWith(entry.prefix));
+  return <CodexSubpageIcon label={match?.label ?? 'Voies'} size={size} />;
+}
 
 export interface SourceRefProps {
   /**
@@ -118,9 +140,9 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
       title: 'Voir dans le Codex',
       onClick: goToCodex,
       onAux: goToCodexAux,
-      // Même icône que l'entrée « Voies » du Codex (`CodexSubpageIcon`) — cohérence visuelle
-      // avec l'en-tête plutôt qu'une icône MUI générique sans rapport.
-      icon: <SectionIcon name="paths" size={16} />,
+      // Icône de la SOUS-PAGE réellement ciblée par `codexHref` (Voies, Équipement…) — cohérence
+      // visuelle avec l'en-tête plutôt qu'une icône figée sans rapport avec la destination.
+      icon: codexHrefIcon(codexHref, 16),
     });
   }
   if (bestiaryHref) {
@@ -141,6 +163,7 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
     // (bords adjacents carrés + `-1px` de chevauchement) mais chacun sa propre zone de clic/clavier.
     <Box
       component="span"
+      data-glossary-shot="SourceRef"
       sx={[
         {
           display: 'inline-flex',
