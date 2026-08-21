@@ -10,8 +10,9 @@ import { PageRefText } from '@/components/SourceRef';
 import { AttackQualifierBadge } from '@/components/sheet/AttackQualifierBadge';
 import { CapabilityChip, GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { buildColossusWeightBreakdown, formatWeightKg } from '@/lib/character/colossusWeight';
+import { buildSeasonalAgeBreakdown } from '@/lib/character/season';
 import { characterSizeCategory } from '@/lib/character/size';
-import type { Identity } from '@/lib/character/types';
+import type { Identity, Season } from '@/lib/character/types';
 import { CREATURE_SIZE_LABELS } from '@/lib/ui/creature';
 
 const SEX_LABELS: Record<string, string> = { male: 'Homme', female: 'Femme' };
@@ -37,13 +38,18 @@ export interface IdentityFieldsProps {
   ancestryId: string;
   /** Capacités acquises — dérive le rang atteint dans la Voie du colosse (poids et taille ajustés). */
   featureIds: string[];
+  /** Saison choisie (voie des saisons, PER-379) — pilote l'âge apparent ajusté ci-dessous. */
+  season?: Season;
 }
 
 /** Champs d'identité libres en lecture seule (sexe, âge, taille, poids, description). */
-export function IdentityFields({ identity, ancestryId, featureIds }: IdentityFieldsProps) {
+export function IdentityFields({ identity, ancestryId, featureIds, season }: IdentityFieldsProps) {
   // Voie du colosse (p. 149) : « +10 kg par rang atteint dans la voie, tout en muscle » — pur
   // fluff, affiché uniquement ici (jamais en édition, où le champ reste la saisie du joueur).
   const weightBreakdown = buildColossusWeightBreakdown(identity.weight, featureIds);
+  // Voie des saisons (p. 173, PER-379) : « semble plus jeune/vieux » — mécanisé UNIQUEMENT si un
+  // âge a été saisi (rien à ajuster sinon), même patron d'affichage que le poids du colosse.
+  const ageBreakdown = buildSeasonalAgeBreakdown(identity.age, ancestryId, featureIds, season);
   // Catégorie de taille (table p. 260) : affichée que la taille en cm soit renseignée ou non, elle
   // ne dépend que du peuple + Stature de géant (arbitrage propriétaire, cf. `size.ts`).
   const boostedByColossus = featureIds.includes('prestige-colosse-r4');
@@ -66,7 +72,15 @@ export function IdentityFields({ identity, ancestryId, featureIds }: IdentityFie
         <Field label="Genre" value={identity.sex ? SEX_LABELS[identity.sex] : undefined} />
       </Grid>
       <Grid size={{ xs: 6, sm: 3 }}>
-        <Field label="Âge" value={identity.age} />
+        {ageBreakdown ? (
+          <AppTooltip title={<BreakdownContent title="Âge apparent" breakdown={ageBreakdown} />}>
+            <Box sx={{ cursor: 'help', width: 'fit-content' }}>
+              <Field label="Âge apparent" value={String(ageBreakdown.total ?? 0)} unit=" ans" />
+            </Box>
+          </AppTooltip>
+        ) : (
+          <Field label="Âge" value={identity.age} />
+        )}
       </Grid>
       <Grid size={{ xs: 6, sm: 3 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>

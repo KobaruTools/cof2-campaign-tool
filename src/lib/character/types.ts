@@ -112,6 +112,9 @@ export const SCHEMA_VERSION = 25;
  */
 export type CharacterStatus = 'active' | 'dead' | 'retired';
 
+/** Saison choisie (voie des saisons, p. 173, PER-379). Voir `Character.season`. */
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+
 /**
  * Manque de PV, décomposé selon la nature des dégâts (p. 218/220) :
  *  - `lethal` : dégâts normaux (létaux) subis ;
@@ -1184,6 +1187,15 @@ export interface Character {
    * additif (aucune migration). Voir `src/lib/character/mounts.ts`.
    */
   mountedKey?: string;
+
+  /**
+   * Saison choisie (voie des saisons, prestige mystique, p. 173, PER-379) : RP pur (l'apparence du
+   * personnage change avec les cycles naturels), et base de la règle mécanisée « il semble plus
+   * jeune/vieux » (cf. `src/lib/character/season.ts`). État de jeu DYNAMIQUE, comme `mountedKey` /
+   * `activeCrystalIds` — modifiable hors mode « Modifier ». Absent = saison non choisie (aucun effet
+   * d'âge apparent affiché, même avec la voie et un âge saisis).
+   */
+  season?: Season;
 
   /**
    * Cristaux ACTIVÉS (voie des cristaux, prestige mage, p. 156, PER-74). État de jeu DYNAMIQUE

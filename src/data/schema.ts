@@ -1648,6 +1648,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'hypnotized',
   'petrified',
   'whirling-winds',
+  'whirling-leaves',
   'concentrating',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
@@ -1847,6 +1848,17 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Tant que la cible reste dans la zone du cyclone, elle subit 2d4° DM par round et doit réussir un test de FOR difficulté 15 à chaque round ou être renversée. Sort la zone pour être libérée de cet effet.",
     sourcePage: 169,
+  },
+  // Même patron que « Vents tourbillonnants » (Cyclone, élémentaire de l'air r7, p. 169) : zone
+  // invoquée MOBILE (déplaçable par action de mouvement) → suivi MJ tant qu'une cible y reste, sans
+  // coller à elle après sa sortie (Tourbillon d'automne, voie des saisons r6, PER-379, p. 173). Le
+  // sort lui-même dure PER rounds au maximum (indépendant de la présence dans la zone). Libellé/id
+  // repris du nom de la capacité spéciale posée sur le compagnon « Tourbillon d'automne » (part2.ts).
+  'whirling-leaves': {
+    label: 'Tourbillon de feuilles',
+    effect:
+      "Tant que la cible reste dans la zone du tourbillon, elle subit 3d4°+PER DM par round, ou la moitié sur un test de CON difficulté 10 réussi. Sort la zone pour être libérée de cet effet (le tourbillon dure PER rounds au maximum).",
+    sourcePage: 173,
   },
   // « Frappe concentrée » (combat mystique r5, p. 171, PER-440). PUREMENT comportemental ici (aucun
   // `modifiers`) : la RD 5 est DÉJÀ chiffrée côté fiche joueur via l'interrupteur `conditional-stat-bonus`
@@ -2950,6 +2962,18 @@ interface FeatureChoiceBase {
    * proposé (comportement historique).
    */
   unlockedAtHostPathRank?: number;
+  /**
+   * Choix PROPOSÉ UNIQUEMENT si le personnage possède DÉJÀ la capacité désignée (PER-333, lutin
+   * farfadet). Sert au patron « octroi FIXE avec repli » : une capacité octroie une cible via
+   * `grantedFeatures` (supprimée d'office si déjà possédée) ET porte un choix de REMPLACEMENT qui ne
+   * s'active que dans ce cas d'exception. Ex. « Langage des animaux » (farfadet r2) : octroie
+   * `animaux-r1` ; « s'il possède déjà cette capacité, il obtient une capacité de rôdeur ou de druide de
+   * rang 1 de son choix ». Ex. « Invisibilité » (farfadet r3) : octroie `magie-universelle-r3` ; sinon,
+   * au choix Télékinésie (`air-r3`) ou Confusion (`envouteur-r3`). Masqué (et ne compte pas comme choix
+   * à faire) tant que la capacité n'est pas possédée. Résolu par `isChoiceActionable` (choices.ts).
+   * Absent = toujours proposé (comportement historique).
+   */
+  onlyIfOwnsFeature?: string;
 }
 
 /** Choix d'une caractéristique parmi un domaine autorisé. */
@@ -3068,6 +3092,16 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * `borrowedNoManaFeatureIds` (choices.ts) → agrégé au set noMana de `spellCount`. Absent = +1 PM normal.
    */
   noManaCost?: boolean;
+  /**
+   * Le sort emprunté est TOUJOURS gratuit à lancer — 0 PM, même pour un LANCEUR (PER-333, lutin fée
+   * « Poudre de fée » : « Ce sort ne lui rapporte aucun point de mana (mais ne lui en coûte pas non
+   * plus) »). Différence avec `noManaCost` (demi-elfe « Sang féerique ») : ce dernier n'efface le coût
+   * d'incantation QUE pour un non-lanceur (un lanceur peut payer le sort en PM). `borrowFreeCast`
+   * IMPOSE la gratuité de lancement dans tous les cas, ET retire le +1 PM d'un sort connu du réservoir
+   * (comme `noManaCost`). Consommé par `freeCastBorrowedFeatureIds` (choices.ts) → goutte de PM masquée
+   * inconditionnellement au rendu + exclusion du réservoir. Absent = coût normal / règle `noManaCost`.
+   */
+  borrowFreeCast?: boolean;
   /**
    * Restreint le domaine du choix selon l'ASCENDANCE ELFE du demi-elfe « version Le Compagnon »
    * (PER-324, « Sang féerique » : « selon son ascendance ») : elfe haut → sorts d'ensorceleur seuls,

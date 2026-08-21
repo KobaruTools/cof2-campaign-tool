@@ -41,8 +41,9 @@ import {
   withReceivedCrystals,
 } from '@/lib/character/crystals';
 import { hawkHunterCustomCreature } from '@/lib/character/majorSummoningPath';
+import { setSeason as computeSeasonPatch } from '@/lib/character/season';
 import { RAGE_RESOURCE_KEY } from '@/lib/character/restorableResources';
-import { isCustomItem, type Character, type LoadedAmmunitionKind, type Purse, type WornState } from '@/lib/character/types';
+import { isCustomItem, type Character, type LoadedAmmunitionKind, type Purse, type Season, type WornState } from '@/lib/character/types';
 import { loadingContext, type LoadingContext } from '@/lib/character/weaponLoading';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
 import { deriveStats, type DerivedStats } from '@/lib/engine';
@@ -98,6 +99,8 @@ export interface CharacterGameState {
   createElixir: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156) — état de jeu, hors mode édition. */
   setActiveCrystal: (crystalId: string, active: boolean) => void;
+  /** Choix de saison (voie des saisons, PER-379, p. 173) — état de jeu, `null` efface le choix. */
+  setSeason: (season: Season | null) => void;
   /**
    * Le personnage REND un cristal qu'on lui avait confié (PER-360) : la puce quitte sa fiche et le
    * cristal retourne, éteint, chez le mage qui l'a fabriqué. Sans effet en lecture seule.
@@ -373,6 +376,12 @@ export function useCharacterGameState(
           .assign(target.campaignId, target.id, crystalId, null, !isPlayer);
       }
       update(toggleCrystalActive(target, crystalId, active));
+    },
+    // Choix de saison (voie des saisons, PER-379) : RP + base de l'âge apparent mécanisé — état de
+    // jeu, modifiable hors édition (comme `setActiveCrystal`).
+    setSeason: (season: Season | null) => {
+      if (readOnly) return;
+      update(computeSeasonPatch(target, season));
     },
     // Le PORTEUR rend un cristal qu'on lui avait confié (PER-360) : il ne lui appartient pas, il
     // repart chez son propriétaire — éteint, la remise en service coûtant une action limitée (p. 156).

@@ -919,6 +919,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     liftShortRestLock,
     createElixir,
     setActiveCrystal,
+    setSeason,
     applyItemUse,
     openCoinPouch,
     openPotion,
@@ -2303,6 +2304,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Activation d'un cristal appris (voie des cristaux, PER-74) : état de jeu, comme les
               // interrupteurs, donc modifiable hors édition.
               onToggleCrystalActive={setActiveCrystal}
+              // Choix de saison (voie des saisons, PER-379) : RP + base de l'âge apparent mécanisé,
+              // état de jeu comme les interrupteurs.
+              onSetSeason={setSeason}
               // Compteur d'usages limités (Les sept vies du chat) : état de jeu.
               onSetUsageCounter={setUsageCounterValue}
               // Débloquer sans repos (cadenas) : lève le verrou « repos court requis » d'une capacité.
@@ -2609,6 +2613,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                     identity={character.identity}
                     ancestryId={character.ancestryId}
                     featureIds={character.featureIds}
+                    season={character.season}
                   />
                 )}
               </Box>

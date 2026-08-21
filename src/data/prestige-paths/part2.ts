@@ -4874,6 +4874,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage gagne 2 DR supplémentaires. De plus, lorsqu'il utilise des DR, il relance tous les 1 obtenus.",
+    // Le +2 DR se mécanise (`stat-bonus recoveryDiceCount`). La relance des 1 est HORS PORTÉE du
+    // moteur : le résultat d'un DR est un dé lancé À LA TABLE et saisi comme total dans la modale
+    // de repos (`ShortRestDialog`/`restRecoveryDieHealBonuses`) — l'appli ne voit jamais les faces
+    // individuelles, donc rien à recalculer ; la relance reste une règle appliquée par le joueur
+    // avant saisie, décrite dans le verbatim seul.
+    effects: [{ kind: 'stat-bonus', stat: 'recoveryDiceCount', value: 2 }],
     sourcePage: 173,
   },
   {
@@ -4885,6 +4891,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "S'il a accès à une flamme (une torche suffit), le personnage peut lancer un projectile de feu qui inflige [2d4° + PER] DM de feu à une cible à moins de 30 m sur un test d'attaque magique réussi. De plus, le personnage divise par deux tous les DM de feu subis.",
+    richText:
+      "S'il a accès à une flamme (une torche suffit), le personnage peut lancer un projectile de feu qui inflige [2d4° + PER] DM de feu à une cible à moins de 30 m sur un test d'attaque magique réussi. De plus, le personnage divise par deux tous les DM de feu subis.",
+    damageReduction: { kind: 'divide', value: 2, scopes: ['fire'] },
     sourcePage: 173,
   },
   {
@@ -4896,6 +4905,37 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage souffle un tourbillon de feuilles mortes aux bords tranchants de 5 m de diamètre à une portée de 10 m. À chaque round, toutes les créatures dans la zone subissent [3d4° + PER] DM ou la moitié sur un test de CON difficulté 10 réussi (durée PER rounds). Le personnage peut le déplacer à chaque round de 10 m par action de mouvement.",
+    richText:
+      "Le personnage souffle un tourbillon de feuilles mortes aux bords tranchants de 5 m de diamètre à une portée de 10 m. À chaque round, toutes les créatures dans la zone subissent [3d4° + PER] DM ou la moitié sur un test de CON difficulté 10 réussi (durée [=PER] rounds). Le personnage peut le déplacer à chaque round de 10 m par action de mouvement.",
+    // Même patron que Cyclone (élémentaire de l'air r7, p. 169) : zone invoquée MOBILE, avec
+    // interrupteur de suivi (`conditional-stat-bonus`) — `companionPresent` le détecte sans gating
+    // dédié — + tag `situationalEffectIds` pour le suivi MJ des cibles dans la zone + compagnon
+    // MINIMAL (ni DEF/PV/attaque : le DM/round est automatique, sans jet).
+    situationalEffectIds: ['whirling-leaves'],
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Tourbillon actif', activeByDefault: false },
+      },
+    ],
+    creatureProfile: {
+      name: "Tourbillon d'automne",
+      companionType: 'summon',
+      specialAbilities: [
+        {
+          name: 'Tourbillon de feuilles',
+          text: 'Toute créature présente dans la zone subit 3d4°+PER DM par round, ou la moitié sur un test de CON difficulté 10 réussi.',
+          richText:
+            'Toute créature présente dans la zone subit [3d4° + PER] DM par round, ou la moitié sur un test de CON difficulté 10 réussi.',
+        },
+        {
+          name: 'Déplacement',
+          text: 'Le personnage peut déplacer le tourbillon de 10 m par round en action de mouvement.',
+        },
+      ],
+      note: 'Le personnage peut déplacer le tourbillon de 10 m par round en action de mouvement.',
+    },
     sourcePage: 173,
   },
   {
@@ -4907,6 +4947,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "S'il a accès à de l'eau, il peut lancer un projectile de glace qui inflige [4d4° + PER] DM de froid à une cible à moins de 30 m sur un test d'attaque magique réussi. Si la victime rate un test de CON difficulté [10 + PER], elle est ralentie à son prochain tour. De plus, le personnage divise par deux tous les DM de froid subis.",
+    richText:
+      "S'il a accès à de l'eau, il peut lancer un projectile de glace qui inflige [4d4° + PER] DM de froid à une cible à moins de 30 m sur un test d'attaque magique réussi. Si la victime rate un test de CON difficulté [10 + PER], elle est [!slowed] à son prochain tour. De plus, le personnage divise par deux tous les DM de froid subis.",
+    damageReduction: { kind: 'divide', value: 2, scopes: ['cold'] },
     sourcePage: 173,
   },
   {
@@ -4918,6 +4961,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut influer sur la météo. Il lui faut 1 min de concentration pour faire varier les conditions météorologiques d'un palier dans l'échelle suivante et il ne peut la faire varier que d'un nombre de paliers maximal égal à sa PER. La modification climatique a une durée de [1d6 + INT] heures et couvre un rayon égal au niveau du personnage exprimé en kilomètres (éventuellement moins). À la fin du sort, la météo reprend son cours normal.\n1 Ciel bleu\n2 Nuageux\n3 Pluie fine et vent faible\n4 Pluie dense et vent moyen\n5 Pluie intense et vent fort\n6 Tempête (trombes d'eau et vent violent)\nAu dernier palier, le personnage peut appeler la foudre sur une cible en vue par une action gratuite une fois par round. L'éclair inflige 4d4° DM.",
+    richText:
+      "Le personnage peut influer sur la météo. Il lui faut 1 min de concentration pour faire varier les conditions météorologiques d'un palier dans l'échelle suivante et il ne peut la faire varier que d'un nombre de paliers maximal égal à [#PER]. La modification climatique a une durée de [1d6 + INT] heures et couvre un rayon égal au [#niveau] exprimé en kilomètres (éventuellement moins). À la fin du sort, la météo reprend son cours normal.\n1 Ciel bleu\n2 Nuageux\n3 Pluie fine et vent faible\n4 Pluie dense et vent moyen\n5 Pluie intense et vent fort\n6 Tempête (trombes d'eau et vent violent)\nAu dernier palier, le personnage peut appeler la foudre sur une cible en vue par une action gratuite une fois par round. L'éclair inflige {4d4°} DM.",
     sourcePage: 174,
   },
 

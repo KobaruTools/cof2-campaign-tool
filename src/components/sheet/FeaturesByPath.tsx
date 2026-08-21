@@ -35,6 +35,8 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
 import Slider from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
@@ -48,7 +50,7 @@ import { features as featureCatalog, featureById, pathById, classById, priestGod
 import type { AbilityId, AbilitySubstitution, ActionType, CreatureProfile, CreatureSize, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import { CREATURE_SIZES, FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
-import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
+import type { Character, FeatureChoiceSelection, Season } from '@/lib/character/types';
 import {
   featureChoiceDefs,
   getSelection,
@@ -86,6 +88,7 @@ import {
 } from '@/lib/character/crystals';
 import { crystalLabel, type Crystal } from '@/data/crystals';
 import { CrystalAssignmentSelect } from './CrystalAssignmentSelect';
+import { SEASON_LABELS } from '@/lib/character/season';
 import {
   creatureDefenseAltActive,
   displayCreatureProfile,
@@ -1456,6 +1459,8 @@ export interface FeaturesByPathProps {
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
   /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156). État de jeu, hors édition. */
   onToggleCrystalActive?: (crystalId: string, active: boolean) => void;
+  /** Choix de saison (voie des saisons, PER-379, p. 173). État de jeu, `null` efface le choix. */
+  onSetSeason?: (season: Season | null) => void;
   /**
    * Lève le verrou « repos court requis » d'une capacité (PER-160/161) SANS forcer un vrai repos :
    * applique l'effet d'un repos court À CETTE SEULE capacité (lève le verrou `oncePerShortRest` et
@@ -2613,6 +2618,63 @@ function CrystalActivationPanel({
 }
 
 /**
+ * Choix de saison (voie des saisons, p. 173, PER-379) : RP pur (l'apparence change avec les cycles
+ * naturels) — la mécanisation de la règle d'âge apparent qu'il pilote vit à part
+ * (`buildSeasonalAgeBreakdown`, rendue dans `IdentityFields`), ce panneau ne fait QUE choisir/
+ * afficher la saison. Même patron que `CrystalActivationPanel` (badge sous le titre → modale).
+ */
+function SeasonPanel({
+  character,
+  onSetSeason,
+}: {
+  character: Character;
+  onSetSeason?: (season: Season | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const season = character.season;
+  return (
+    <Box sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
+      {season ? (
+        <ChoiceValueBadge label={`Saison : ${SEASON_LABELS[season]}`} onClick={() => setOpen(true)} />
+      ) : (
+        <ChoiceTodoBadge label="Saison" onClick={() => setOpen(true)} />
+      )}
+      <Dialog open={open} onClose={() => setOpen(false)} onClick={(e) => e.stopPropagation()} maxWidth="xs" fullWidth>
+        <DialogTitle>Saison</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            <PageRefText>
+              L'apparence du personnage change avec les cycles naturels (p. 173).
+            </PageRefText>
+          </Typography>
+          <RadioGroup
+            value={season ?? ''}
+            onChange={(e) => onSetSeason?.(e.target.value ? (e.target.value as Season) : null)}
+          >
+            {(Object.keys(SEASON_LABELS) as Season[]).map((s) => (
+              <FormControlLabel
+                key={s}
+                value={s}
+                control={<Radio disabled={!onSetSeason} />}
+                label={SEASON_LABELS[s]}
+              />
+            ))}
+          </RadioGroup>
+        </DialogContent>
+        <DialogActions>
+          {season && (
+            <Button onClick={() => onSetSeason?.(null)} disabled={!onSetSeason} color="inherit">
+              Effacer
+            </Button>
+          )}
+          <Button onClick={() => setOpen(false)}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
+
+/**
  * Carte d'un cristal, dans la modale d'activation. Reprend le style des cartes de voie/rang
  * à cocher du wizard de création (`PathCard` de `wizard/steps.tsx`) : bordure colorée + fond
  * teinté quand cochée, sinon contour neutre — plutôt que d'en importer une copie couplée aux
@@ -3574,6 +3636,7 @@ function PathBlock({
   onLiftShortRestLock,
   onCreateElixir,
   onToggleCrystalActive,
+  onSetSeason,
   onSummonCompanionInstance,
   onSummonOpenRosterCreature,
   onInvokeHawkHunter,
@@ -3624,6 +3687,8 @@ function PathBlock({
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
   /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156). État de jeu, hors édition. */
   onToggleCrystalActive?: (crystalId: string, active: boolean) => void;
+  /** Choix de saison (voie des saisons, PER-379, p. 173). État de jeu, `null` efface le choix. */
+  onSetSeason?: (season: Season | null) => void;
   /** Lève le verrou « repos court requis » d'une capacité sans forcer un repos (PER-160/161). */
   onLiftShortRestLock?: (featureId: string) => void;
   /** Produit un élixir : consomme la réserve + matérialise la dose dans l'équipement (forgesort). */
@@ -4170,6 +4235,9 @@ function PathBlock({
       {path?.id === 'prestige-cristaux' && character && (
         <CrystalActivationPanel character={character} onToggle={onToggleCrystalActive} />
       )}
+      {path?.id === 'prestige-saisons' && character && (
+        <SeasonPanel character={character} onSetSeason={onSetSeason} />
+      )}
       {grantsAnimalForm && character && (
         <AnimalFormDialog
           character={character}
@@ -4416,6 +4484,9 @@ function PathBlock({
               borrowed &&
               (feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
                 staffGrantedPrimary ||
+                // Octroi fixe sans mana (cambion) ou emprunt TOUJOURS gratuit (lutin fée « Poudre de fée »,
+                // `borrowFreeCast`, PER-333) : goutte de PM masquée dans TOUS les cas (lanceur inclus).
+                !!grantForBorrowed(feature, borrowed.id)?.noMana ||
                 // PER-324 : « Sang féerique » — goutte de PM masquée seulement pour un NON-lanceur
                 // (incantations gratuites sans PM) ; un LANCEUR voit le coût (rang du sort) pour payer.
                 (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)))
@@ -4739,7 +4810,18 @@ function PathBlock({
                   const itemClassId = itemPath?.type === 'class' ? itemPath.classIds[0] : undefined;
                   const itemColor = itemClassId ? classColor(itemClassId) : undefined;
                   const itemStaffGranted = !!character && archmageStaffSpellGranted(character, item);
-                  const itemNoMana = feature.id === FAMILIAR_LEARNED_SPELL_HOST || itemStaffGranted;
+                  // Même logique de gratuité que les cartes empruntées (BorrowedFeatureBlock) : octroi
+                  // `noMana` (cambion), emprunt TOUJOURS gratuit `borrowFreeCast` (lutin fée « Poudre de
+                  // fée », PER-333), ou `noManaCost` demi-elfe pour un NON-lanceur. Sinon la goutte de PM
+                  // s'afficherait sur l'aperçu de grille alors que la carte, elle, la masque.
+                  const itemGrant = grantForBorrowed(feature, item.id);
+                  const itemCaster = !!character && isSpellcaster(character);
+                  const itemBorrowedNoMana = !!character && borrowedNoManaFeatureIds(character).has(item.id);
+                  const itemNoMana =
+                    feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
+                    itemStaffGranted ||
+                    !!itemGrant?.noMana ||
+                    (itemBorrowedNoMana && !itemCaster);
                   return (
                     <Box
                       key={`${i}-${item.id}`}
@@ -6137,6 +6219,7 @@ export function FeaturesByPath({
   onLiftShortRestLock,
   onCreateElixir,
   onToggleCrystalActive,
+  onSetSeason,
   onSummonCompanionInstance,
   onSummonOpenRosterCreature,
   onInvokeHawkHunter,
@@ -6339,6 +6422,7 @@ export function FeaturesByPath({
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
+              onSetSeason={onSetSeason}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onSummonOpenRosterCreature={onSummonOpenRosterCreature}
               onInvokeHawkHunter={onInvokeHawkHunter}
@@ -6383,6 +6467,7 @@ export function FeaturesByPath({
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
+              onSetSeason={onSetSeason}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onSummonOpenRosterCreature={onSummonOpenRosterCreature}
               onInvokeHawkHunter={onInvokeHawkHunter}
@@ -6424,6 +6509,7 @@ export function FeaturesByPath({
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               onToggleCrystalActive={onToggleCrystalActive}
+              onSetSeason={onSetSeason}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onSummonOpenRosterCreature={onSummonOpenRosterCreature}
               onInvokeHawkHunter={onInvokeHawkHunter}
