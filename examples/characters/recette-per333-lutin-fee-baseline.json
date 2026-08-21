@@ -4,7 +4,7 @@
   "name": "Recette PER-333 — Lutin (Voie de la fée)",
   "identity": {
     "gender": "female",
-    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Lutin » (taille TRÈS PETITE) + « Voie de la fée » (rangs 1-5). Caracs de peuple : +1 AGI, +1 CHA (choix), -1 CON, -2 FOR. Créature très petite : +2 DEF, +5 discrétion, DM d’arme plafonnés à 1d4 (une main : épée courte ICI) / 1d6 (deux mains : arc court ICI). r1 Née d’une fleur → vol 10 m + vision 20 m (verbatim) + RD 5 contre armes non-fer-froid (rang 5). r2 Pirouette → verbatim (annule les DM d’une attaque 1×/combat + lumière). r3 Poudre de fée → emprunt d’un sort de rang 1 magicien/ensorceleur (sans mana, en armure, 3/jour ; choix à faire). r4 Fée révérée → INTERRUPTEUR forme humaine (ICI ACTIVÉ : +3 FOR, plafond DM levé), 3/jour. r5 Lady fée → +1 PER et +1 CHA."
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Lutin » (taille TRÈS PETITE) + « Voie de la fée » (rangs 1-5). Caracs de peuple : +1 AGI, +1 CHA (choix), -1 CON, -2 FOR. Créature très petite : +2 DEF, +5 discrétion, DM d’arme plafonnés à 1d4 (une main : épée courte ICI) / 1d6 (deux mains : arc court ICI). r1 Née d’une fleur → vol 10 m + vision 20 m (verbatim) + RD 5 contre armes non-fer-froid (rang 5). r2 Pirouette → verbatim (annule les DM d’une attaque 1×/combat + lumière). r3 Poudre de fée → emprunt d’un sort de rang 1 OU 2 magicien/ensorceleur (gratuit sans mana même pour un lanceur, en armure, 3/jour verbatim ; choix à faire, sans barre). r4 Fée révérée → INTERRUPTEUR forme humaine (ICI ACTIVÉ : +3 FOR, plafond DM levé), 3/jour. r5 Lady fée → +1 PER et +1 CHA."
   },
   "campaignId": null,
   "playerId": null,

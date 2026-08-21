@@ -319,6 +319,10 @@ export function isChoiceActionable(
     const needIds = Array.isArray(need) ? need : [need];
     if (!needIds.some((id) => ids.includes(id))) return false;
   }
+  // Choix de REMPLACEMENT proposé seulement si la capacité octroyée est DÉJÀ possédée (PER-333, lutin
+  // farfadet r2/r3 : « s'il possède déjà cette capacité, il obtient … au choix »). Sinon l'octroi FIXE
+  // (`grantedFeatures`) s'applique et ce choix reste masqué (aucun choix à faire à signaler).
+  if (choice.onlyIfOwnsFeature && !character.featureIds.includes(choice.onlyIfOwnsFeature)) return false;
   if (choice.kind === 'option' && choice.repeat) return repeatableChoiceCount(character, choice) > 0;
   // Choix masqué tant qu'un palier de la voie HÔTE n'est pas atteint (PER-74, archimage r5 « Bâton
   // magique », p. 154, retour proprio 2026-08-10 : `unlockedAtHostPathRank`, générique à tout `kind`
@@ -665,6 +669,29 @@ export function borrowedNoManaFeatureIds(character: Character): Set<string> {
     selections.forEach((sel, i) => {
       const def = defs[i];
       if (def?.kind === 'feature-from-path' && def.noManaCost && typeof sel === 'string') {
+        out.add(sel);
+      }
+    });
+  }
+  return out;
+}
+
+/**
+ * Ids de SORTS empruntés via un choix `feature-from-path` marqué `borrowFreeCast` (PER-333, lutin fée
+ * « Poudre de fée ») : ils sont TOUJOURS gratuits à lancer (0 PM), même pour un lanceur, ET ne donnent
+ * pas le +1 PM d'un sort connu. Distinct de `borrowedNoManaFeatureIds` (`noManaCost`, demi-elfe : un
+ * lanceur paie) : ici la gratuité est INCONDITIONNELLE. Consommé par le pool de PM (union avec les
+ * octrois/emprunts `noMana`) ET par le rendu de la carte empruntée (goutte de PM masquée sans condition).
+ */
+export function freeCastBorrowedFeatureIds(character: Character): Set<string> {
+  const owned = new Set(character.featureIds);
+  const out = new Set<string>();
+  for (const [hostId, selections] of Object.entries(character.featureChoices ?? {})) {
+    if (!owned.has(hostId)) continue;
+    const defs = featureChoiceDefs(hostId);
+    selections.forEach((sel, i) => {
+      const def = defs[i];
+      if (def?.kind === 'feature-from-path' && def.borrowFreeCast && typeof sel === 'string') {
         out.add(sel);
       }
     });

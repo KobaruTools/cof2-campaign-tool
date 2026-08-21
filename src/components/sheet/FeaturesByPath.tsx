@@ -4487,6 +4487,7 @@ function PathBlock({
                 // Octroi fixe sans mana (cambion) ou emprunt TOUJOURS gratuit (lutin fée « Poudre de fée »,
                 // `borrowFreeCast`, PER-333) : goutte de PM masquée dans TOUS les cas (lanceur inclus).
                 !!grantForBorrowed(feature, borrowed.id)?.noMana ||
+                (!!character && freeCastBorrowedFeatureIds(character).has(borrowed.id)) ||
                 // PER-324 : « Sang féerique » — goutte de PM masquée seulement pour un NON-lanceur
                 // (incantations gratuites sans PM) ; un LANCEUR voit le coût (rang du sort) pour payer.
                 (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)))
@@ -4817,10 +4818,12 @@ function PathBlock({
                   const itemGrant = grantForBorrowed(feature, item.id);
                   const itemCaster = !!character && isSpellcaster(character);
                   const itemBorrowedNoMana = !!character && borrowedNoManaFeatureIds(character).has(item.id);
+                  const itemFreeCast = !!character && freeCastBorrowedFeatureIds(character).has(item.id);
                   const itemNoMana =
                     feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
                     itemStaffGranted ||
                     !!itemGrant?.noMana ||
+                    itemFreeCast ||
                     (itemBorrowedNoMana && !itemCaster);
                   return (
                     <Box

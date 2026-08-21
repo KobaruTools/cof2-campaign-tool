@@ -4,7 +4,7 @@
   "name": "Recette PER-333 — Lutin (Voie du farfadet)",
   "identity": {
     "gender": "male",
-    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Lutin » (taille TRÈS PETITE) + « Voie du farfadet » (rangs 1-5). Caracs de peuple : +1 AGI, +1 PER (choix), -1 CON, -2 FOR. Créature très petite : +2 DEF, +5 discrétion, DM d’arme plafonnés (arc court ICI → 1d6). r1 Né d’un chou → vision 20 m + téléport 10 m (verbatim) + RD 5 contre armes non-fer-froid (rang 5). r2 Langage des animaux → octroi de Langage des animaux (druide). r3 Invisibilité (L) → octroi d’Invisibilité (magicien) sans mana, 3/jour. r4 Monture féerique → monture (bloc MONTURE : DEF 16, Init 16, PV niveau×4, attaque magique du perso 1d4°+2). r5 Seigneur féerique → +1 CHA et +1 VOL."
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Lutin » (taille TRÈS PETITE) + « Voie du farfadet » (rangs 1-5). Caracs de peuple : +1 AGI, +1 PER (choix), -1 CON, -2 FOR. Créature très petite : +2 DEF, +5 discrétion, DM d’arme plafonnés (arc court ICI → 1d6). r1 Né d’un chou → vision 20 m + téléport 10 m (verbatim) + RD 5 contre armes non-fer-froid (rang 5). r2 Langage des animaux → octroi de Langage des animaux (druide) ; si déjà connu, choix d’une capacité rôdeur/druide r1. r3 Invisibilité (L) → octroi d’Invisibilité (magicien) sans mana, 3/jour verbatim (sans barre) ; si déjà connue, choix Télékinésie/Confusion. r4 Monture féerique → monture (bloc MONTURE : DEF 16, Init 16, PV niveau×4, attaque magique du perso 1d4°+2). r5 Seigneur féerique → +1 CHA et +1 VOL."
   },
   "campaignId": null,
   "playerId": null,

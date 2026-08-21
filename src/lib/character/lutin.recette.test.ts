@@ -30,11 +30,15 @@ import {
   testBonusSources,
   effectContext,
   damageReductionSources,
+  isSpellcaster,
 } from '@/lib/character/effects';
 import {
   effectiveFeatureIdsForMods,
   grantedFeatureIds,
   grantedNoManaFeatureIds,
+  borrowedNoManaFeatureIds,
+  freeCastBorrowedFeatureIds,
+  isChoiceActionable,
 } from '@/lib/character/choices';
 import { characterSizeCategory } from '@/lib/character/size';
 import { deriveStats } from '@/lib/engine/derived';
@@ -151,20 +155,39 @@ describe('PER-333 — Voie de la fée', () => {
     expect(rdOf(fee(['lutin-fee-r1']), 'lutin-fee-r1')?.value).toBe(1);
   });
 
-  it('r2 Pirouette : verbatim (aucun effet mécanisé)', () => {
-    expect(featureById.get('lutin-fee-r2')?.effects ?? []).toHaveLength(0);
+  it('r2 Pirouette : interrupteur lumière ON/OFF + compteur 1× rechargé en récup. rapide', () => {
+    const f = featureById.get('lutin-fee-r2')!;
+    expect(f.effects?.[0]).toMatchObject({
+      kind: 'conditional-stat-bonus',
+      bonuses: [],
+      activation: { kind: 'condition', activeByDefault: false },
+    });
+    expect(f.usageCounter).toMatchObject({ max: 1, resetOn: 'short-rest' });
   });
 
-  it('r3 Poudre de fée : emprunt rang 1 magicien/ensorceleur, sans DEF/mana, armure libre, 3/jour', () => {
+  it('r3 Poudre de fée : emprunt rang 1 ou 2 magicien/ensorceleur, sans DEF, gratuit inconditionnel, pas de barre', () => {
     const f = featureById.get('lutin-fee-r3')!;
     const choice = f.choices?.[0] as PathFeatureChoice;
     expect(choice.kind).toBe('feature-from-path');
-    expect(choice.allowedRanks).toEqual([1]);
+    expect(choice.allowedRanks).toEqual([1, 2]);
     expect(choice.classIds).toEqual(['magicien', 'ensorceleur']);
     expect(choice.excludeDefBonus).toBe(true);
-    expect(choice.noManaCost).toBe(true);
-    expect(choice.borrowArmorMax).toBe('plaque-complete');
-    expect(f.usageCounter).toMatchObject({ max: 3, resetOn: 'day' });
+    expect(choice.borrowFreeCast).toBe(true);
+    // « ne lui en coûte pas non plus » = free-cast inconditionnel (pas le noManaCost demi-elfe gaté lanceur).
+    expect(choice.noManaCost).toBeUndefined();
+    // Pas de barre d'énergie (usageCounter retiré, retour proprio).
+    expect(f.usageCounter).toBeUndefined();
+  });
+
+  it('r3 : le sort emprunté est gratuit MÊME pour une fée lanceuse (borrowFreeCast)', () => {
+    const borrow = 'air-r1'; // sort d'ensorceleur rang 1 éligible
+    const caster = fee(['lutin-fee-r1', 'lutin-fee-r2', 'lutin-fee-r3', 'air-r2'], {
+      featureChoices: { 'lutin-fee-r3': [borrow] },
+    });
+    expect(isSpellcaster(caster)).toBe(true); // lanceuse (air-r2 donne des PM)
+    expect(freeCastBorrowedFeatureIds(caster).has(borrow)).toBe(true);
+    // Non compté comme un emprunt « demi-elfe » (noManaCost) : pas de note demi-elfe, gratuité inconditionnelle.
+    expect(borrowedNoManaFeatureIds(caster).has(borrow)).toBe(false);
   });
 
   it('r4 Fée révérée : +3 FOR sous forme humaine (interrupteur), 3/jour', () => {
@@ -189,15 +212,32 @@ describe('PER-333 — Voie du farfadet', () => {
     expect(rdOf(far, 'lutin-farfadet-r1')).toMatchObject({ value: 5, scopes: ['non-cold-iron-weapon'] });
   });
 
-  it('r2 : octroie Langage des animaux (druide, animaux-r1)', () => {
+  it('r2 : octroie Langage des animaux (druide, animaux-r1) tant qu’elle n’est pas déjà connue', () => {
     expect(grantedFeatureIds(far)).toContain('animaux-r1');
+    // Repli caché tant que Langage des animaux n’est pas possédé…
+    const r2Choice = featureById.get('lutin-farfadet-r2')!.choices![0] as PathFeatureChoice;
+    expect(r2Choice.onlyIfOwnsFeature).toBe('animaux-r1');
+    expect(isChoiceActionable(far, 'lutin-farfadet-r2', r2Choice)).toBe(false);
+    // …et proposé (rôdeur/druide r1) dès que le farfadet possède déjà Langage des animaux (druide animaux).
+    const farDruide = farfadet([...FAR, 'animaux-r1']);
+    expect(grantedFeatureIds(farDruide)).not.toContain('animaux-r1'); // octroi supprimé (déjà possédé)
+    expect(isChoiceActionable(farDruide, 'lutin-farfadet-r2', r2Choice)).toBe(true);
   });
 
-  it('r3 Invisibilité (L) : octroie Invisibilité (magie-universelle-r3) sans mana, 3/jour, action limitée', () => {
+  it('r3 Invisibilité (L) : octroie Invisibilité (magie-universelle-r3) sans mana, sans barre, repli gaté', () => {
     expect(grantedFeatureIds(far)).toContain('magie-universelle-r3');
     expect(grantedNoManaFeatureIds(far).has('magie-universelle-r3')).toBe(true);
-    expect(featureById.get('lutin-farfadet-r3')?.usageCounter?.max).toBe(3);
+    expect(featureById.get('lutin-farfadet-r3')?.usageCounter).toBeUndefined(); // barre retirée (retour proprio)
     expect(featureById.get('lutin-farfadet-r3')?.actionTypes).toEqual(['L']);
+    // Repli : Télékinésie (air-r3) / Confusion (envouteur-r3), gaté sur la possession d’Invisibilité, free-cast.
+    const r3Choice = featureById.get('lutin-farfadet-r3')!.choices![0] as PathFeatureChoice;
+    expect(r3Choice.featureIds).toEqual(['air-r3', 'envouteur-r3']);
+    expect(r3Choice.onlyIfOwnsFeature).toBe('magie-universelle-r3');
+    expect(r3Choice.borrowFreeCast).toBe(true);
+    expect(isChoiceActionable(far, 'lutin-farfadet-r3', r3Choice)).toBe(false);
+    const farInvis = farfadet([...FAR, 'magie-universelle-r3']);
+    expect(grantedFeatureIds(farInvis)).not.toContain('magie-universelle-r3');
+    expect(isChoiceActionable(farInvis, 'lutin-farfadet-r3', r3Choice)).toBe(true);
   });
 
   it('r4 Monture féerique : profil de monture (DEF 16, Init 16, PV niveau×4, attaque magique du perso)', () => {

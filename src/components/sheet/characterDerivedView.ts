@@ -40,6 +40,7 @@ import {
 import {
   grantedNoManaFeatureIds,
   borrowedNoManaFeatureIds,
+  freeCastBorrowedFeatureIds,
   effectiveFeatureIdsForMods,
 } from '@/lib/character/choices';
 import { mergeMods, orphanMods } from '@/lib/character/orphanPoints';
@@ -451,6 +452,9 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const noManaFeatureIds = new Set([
     ...grantedNoManaFeatureIds(character),
     ...borrowedNoManaFeatureIds(character),
+    // PER-333 — emprunts TOUJOURS gratuits (lutin fée « Poudre de fée », `borrowFreeCast`) : eux aussi
+    // exclus du +1 PM par sort connu, sans condition de statut de lanceur.
+    ...freeCastBorrowedFeatureIds(character),
   ]);
   // Contexte d'effets (PER-67) : résout les valeurs scalantes et n'inclut que les
   // effets conditionnels dont l'interrupteur est actif.

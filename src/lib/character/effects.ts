@@ -50,6 +50,7 @@ import {
   borrowedHostPathByFeatureId,
   borrowedNoManaFeatureIds,
   effectiveFeatureIdsForMods,
+  freeCastBorrowedFeatureIds,
   getOptionSelections,
   grantedFeatureIds,
   grantedNoManaFeatureIds,
@@ -1247,6 +1248,7 @@ export function isSpellcaster(character: Character): boolean {
   const noMana = new Set<string>([
     ...grantedNoManaFeatureIds(character),
     ...borrowedNoManaFeatureIds(character),
+    ...freeCastBorrowedFeatureIds(character),
   ]);
   const ids = [
     ...character.featureIds,

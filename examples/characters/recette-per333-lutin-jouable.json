@@ -4,7 +4,7 @@
   "name": "Mélissine Pétale-de-rose, fée ensorceleuse",
   "identity": {
     "gender": "female",
-    "description": "Fiche JOUABLE réaliste : fée (lutin) ensorceleuse niveau 6. Points dépensés : Voie de la fée r1-r3 (Née d’une fleur, Pirouette, Poudre de fée) + Voie de l’air (ensorceleur) r1-r2. Poudre de fée emprunte un sort de rang 1 (« Injonction »), utilisable 3 fois par jour sans mana et en armure. Caracs de peuple appliquées (+1 AGI, +1 CHA, -1 CON, -2 FOR — CHA retenue). Créature très petite : +2 DEF, +5 discrétion, DM d’arme plafonnés à 1d4 (une main) / 1d6 (deux mains). RD 3 contre les armes qui ne sont pas en fer froid (rang 3). Équipement : dague, arc court, robe de mage, bourse de départ."
+    "description": "Fiche JOUABLE réaliste : fée (lutin) ensorceleuse niveau 6. Points dépensés : Voie de la fée r1-r3 (Née d’une fleur, Pirouette, Poudre de fée) + Voie de l’air (ensorceleur) r1-r2. Poudre de fée emprunte un sort de rang 1 (« Détection de l’invisible »), utilisable 3 fois par jour sans mana et en armure. Caracs de peuple appliquées (+1 AGI, +1 CHA, -1 CON, -2 FOR — CHA retenue). Créature très petite : +2 DEF, +5 discrétion, DM d’arme plafonnés à 1d4 (une main) / 1d6 (deux mains). RD 3 contre les armes qui ne sont pas en fer froid (rang 3). Équipement : dague, arc court, robe de mage, bourse de départ."
   },
   "campaignId": null,
   "playerId": null,
@@ -44,7 +44,7 @@
   ],
   "featureChoices": {
     "lutin-fee-r3": [
-      "envouteur-r1"
+      "divination-r2"
     ]
   },
   "effectToggles": {},
