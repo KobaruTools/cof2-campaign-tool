@@ -3,7 +3,7 @@
   "id": "recette-per378-druide-maitre-de-la-nature",
   "name": "Recette PER-378 — Druide, voie du maître de la nature",
   "identity": {
-    "description": "ATTENDU (PER-378, p.172-173) : r4 Amitié animale — richText calcule [=PER] heures et terme nommé rang. r5 Seigneur de la nature — 2 choix de milieu (forêt/jungle puis montagnes/collines débloqué au rang 7), interrupteur « En milieu de prédilection » actif → dé bonus à TOUS les tests + soin {1d4°} PV automatique en récupération rapide (sans dépense de DR). r6 Invisibilité aux animaux — interrupteur PROPRE actif (indépendant de r5). r7 Monture géante — richText calcule [rang + PER], pas de creatureProfile (créature ouverte). r8 Magie druidique innée — usageCounter 3/jour + interrupteur PROPRE actif."
+    "description": "ATTENDU (PER-378, p.172-173, retours proprio 2026-08-20 sur recette navigateur) : r4 Amitié animale — roster ouvert du bestiaire (loup NC1 + griffon NC4, budget 5/8 au rang 8), dés d'attaque des compagnons ajoutés PARSÉS ({damage} entre crochets). r5 Seigneur de la nature — 2 choix de milieu (rang 7 débloque le 2e), interrupteur « En milieu de prédilection » actif → dé bonus à TOUS les tests (tooltip = CapabilityChip cliquable) + soin {1d4°} PV automatique sans dépense de DR. r6 Invisibilité aux animaux — interrupteur PROPRE actif. r7 Monture géante — ourhible (NC5) choisi via le picker bestiaire, plafond NC = rang atteint + PER, toggle « en selle/à pied » généré automatiquement (companionType mount), capacités spéciales masquées EN SELLE (abilitiesRequireDismount). r8 Magie druidique innée — usageCounter 3/jour + interrupteur PROPRE actif + cartes de sorts de druide informatives (accordéon par voie) dans la description."
   },
   "campaignId": null,
   "playerId": null,
@@ -59,14 +59,21 @@
       true
     ]
   },
-  "effectInputs": {},
+  "effectInputs": {
+    "prestige-maitre-de-la-nature-r7": "ourhible"
+  },
   "usageCounters": {},
   "depletion": {},
   "companionDepletion": {},
   "transformationDepletion": {},
   "transformationAbilities": {},
   "transformationDerivedStats": {},
-  "companionInstances": {},
+  "companionInstances": {
+    "prestige-maitre-de-la-nature-r4": [
+      "loup1",
+      "griffon1"
+    ]
+  },
   "purse": {
     "platinum": 0,
     "gold": 0,
@@ -80,5 +87,9 @@
   "overrides": {},
   "notes": "PER-378 — voie du maître de la nature, p.172-173. Recette moteur pur, pas de vérification navigateur (headless).",
   "createdAt": "2026-01-01T00:00:00.000Z",
-  "updatedAt": "2026-01-01T00:00:00.000Z"
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "summonedCreatureIds": {
+    "prestige-maitre-de-la-nature-r4#loup1": "loup",
+    "prestige-maitre-de-la-nature-r4#griffon1": "griffon"
+  }
 }
