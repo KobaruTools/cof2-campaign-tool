@@ -77,7 +77,7 @@ function slugify(name: string): string {
 const captured = new Map<string, string>(); // name -> chemin relatif du fichier
 
 /**
- * Filtre de scènes (`GLOSSARY_SHOTS_ONLY=accueil,wizard,fiche,fiche-druide,bestiaire,pdf,mj`),
+ * Filtre de scènes (`GLOSSARY_SHOTS_ONLY=accueil,wizard,fiche,fiche-druide,fiche-niveau,fiche-demi-elfe,fiche-drakonide,bestiaire,pdf,mj`),
  * pour relancer le script en plusieurs passages courts plutôt qu'un seul très long. Vide =
  * toutes les scènes. Chaque relance recharge le manifeste existant (ci-dessous) : les captures
  * déjà obtenues ne sont jamais refaites, et `GLOSSARY.html` se met à jour de façon cumulative.
@@ -158,6 +158,14 @@ async function captureTaggedOnPage(page: Page, label: string): Promise<void> {
           locator = candidate;
           break;
         }
+      }
+      // `display: contents` (ex. `RulesBookSplitButton` sans livre payant débloqué) : le
+      // marqueur ne génère AUCUNE boîte propre (Playwright refuse de le capturer, quel que
+      // soit son contenu), même si son unique enfant, lui, en a une. On retombe alors sur cet
+      // enfant — le rendu visuel capturé reste identique, `display: contents` n'affichant rien
+      // de plus que ses enfants.
+      if (await locator.evaluate((el) => getComputedStyle(el).display === 'contents').catch(() => false)) {
+        locator = locator.locator(':scope > *').first();
       }
       const png = await locator.screenshot({ type: 'png', timeout: 8000 });
       const filename = await writeWebp(png, slugify(name));
@@ -338,6 +346,53 @@ async function captureSheet(browser: Browser, fixture: string, label: string): P
     await captureTaggedOnPage(page, `${label}-transformation`);
   }
 
+  if (await tryClick(page, /^modifier : inventaire$/i, 'BlockEditButton (inventaire)')) {
+    if (await tryClick(page, /^objet personnalisé$/i, 'ItemDialog')) {
+      await captureTaggedOnPage(page, `${label}-objet`);
+      await closeDialog(page);
+    }
+  }
+
+  // Le bouton est désactivé au niveau maximum (20) : sans effet sur `test-rodeur-humain`
+  // (niveau 20). N'est réellement utile que sur un personnage de niveau < 20 (cf. la scène
+  // dédiée `fiche-niveau` dans `main()`, sur une fixture de bas niveau) ; laissé ici aussi
+  // pour les fixtures de bas niveau passées à `captureSheet` directement.
+  if (await tryClick(page, /^monter au niveau suivant$/i, 'LevelUpDialog')) {
+    await captureTaggedOnPage(page, `${label}-niveau`);
+    await closeDialog(page);
+  }
+
+  await context.close();
+}
+
+/** Modales d'identité réservées à certains peuples (demi-elfe, drakonide…) : n'apparaissent
+ * qu'en mode édition du bloc Identité, sur un personnage du peuple concerné. `trigger` est le
+ * libellé exact du bouton qui les ouvre (vérifié dans le code, jamais deviné). */
+async function captureIdentityDialog(
+  browser: Browser,
+  fixture: string,
+  label: string,
+  trigger: RegExp,
+  dialogName: string,
+): Promise<void> {
+  const raw = JSON.parse(readFileSync(join(process.cwd(), 'examples', 'characters', fixture), 'utf8'));
+  const id = String(raw.id);
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1200 } });
+  await context.addInitScript(
+    ([key, payload]) => window.localStorage.setItem(key as string, payload as string),
+    [CHARACTERS_STORAGE_KEY, JSON.stringify({ state: { characters: [raw], cloudBackedIds: [] }, version: 0 })],
+  );
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(`${BASE_URL}/character/${id}`, { waitUntil: 'networkidle', timeout: 60_000 });
+  await page.waitForSelector('h1', { timeout: 30_000 });
+  await settle(page, 1000);
+  if (await tryClick(page, /^modifier : identité$/i, 'BlockEditButton (identité)')) {
+    if (await tryClick(page, trigger, dialogName)) {
+      await captureTaggedOnPage(page, label);
+      await closeDialog(page);
+    }
+  }
   await context.close();
 }
 
@@ -515,6 +570,35 @@ async function main(): Promise<void> {
   ) {
     await runScene('fiche-druide', () =>
       captureSheet(browser, 'recette-per378-druide-maitre-de-la-nature.json', 'fiche-druide'),
+    );
+  }
+  if (wanted('fiche-niveau')) {
+    // Fixture de bas niveau (5/20) : le bouton « Monter au niveau suivant » (désactivé au
+    // niveau max, cf. `test-rodeur-humain` dans la scène `fiche`) y est réellement cliquable.
+    await runScene('fiche-niveau', () =>
+      captureSheet(browser, 'test-guerrier-point-orphelin-force.json', 'fiche-niveau'),
+    );
+  }
+  if (wanted('fiche-demi-elfe')) {
+    await runScene('fiche-demi-elfe', () =>
+      captureIdentityDialog(
+        browser,
+        'recette-per324-demi-elfe-voie.json',
+        'fiche-demi-elfe',
+        /^voie de peuple du demi-elfe…$/i,
+        'DemiElfeAncestryDialog',
+      ),
+    );
+  }
+  if (wanted('fiche-drakonide')) {
+    await runScene('fiche-drakonide', () =>
+      captureIdentityDialog(
+        browser,
+        'recette-per326-drakonide-feu.json',
+        'fiche-drakonide',
+        /^choix du peuple…$/i,
+        'AncestryChoicesDialog',
+      ),
     );
   }
   if (wanted('bestiaire')) await runScene('bestiaire', () => captureBestiary(browser));
