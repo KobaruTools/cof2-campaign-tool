@@ -108,11 +108,32 @@ async function writeWebp(png: Buffer, slug: string): Promise<string> {
 }
 
 /**
+ * Coupe toute transition/animation CSS et masque l'indicateur de dev Next.js. Playwright
+ * attend qu'un élément soit visuellement STABLE avant tout clic/capture ; or plusieurs
+ * éléments animent en continu (badge de session « qui respire », révélation au scroll de
+ * `SheetSection` via IntersectionObserver — non coupée par `reducedMotion: 'reduce'` émulé,
+ * MUI ne lit pas cette préférence, seul du CSS le ferait) et l'indicateur Next.js se redessine
+ * sans cesse en dev. Sans cette coupe, la moindre action (clic sur « Déplier » compris, pas
+ * seulement les captures) attend une stabilité qui n'arrive jamais et finit en timeout.
+ * Idempotent : à appeler tôt sur chaque scène (avant tout clic), et re-vérifié dans
+ * `captureTaggedOnPage` au cas où une scène l'aurait omis.
+ */
+async function stabilizePage(page: Page): Promise<void> {
+  await page.addStyleTag({
+    content:
+      'nextjs-portal { display: none !important; } ' +
+      '*, *::before, *::after { transition: none !important; animation: none !important; }',
+  });
+}
+
+/**
  * Capture chaque composant taggué visible sur `page`, jamais rencontré jusqu'ici.
  * `label` sert uniquement aux messages de progression.
  */
 async function captureTaggedOnPage(page: Page, label: string): Promise<void> {
-  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+  await stabilizePage(page);
+  await expandAllCollapsedSections(page);
+  await scrollThroughPage(page);
   const names: string[] = await page.evaluate(() =>
     Array.from(new Set(
       Array.from(document.querySelectorAll('[data-glossary-shot]')).map(
@@ -123,16 +144,30 @@ async function captureTaggedOnPage(page: Page, label: string): Promise<void> {
   for (const name of names) {
     if (captured.has(name)) continue;
     try {
-      const locator = page.locator(`[data-glossary-shot="${cssEscape(name)}"]`).first();
+      // Plusieurs éléments peuvent porter le même nom (variantes responsive via container
+      // query, ex. `PurseField` qui rend deux fois son en-tête et masque l'une des deux
+      // copies en CSS) : `.first()` tombait parfois sur la copie masquée (taille nulle) alors
+      // qu'une copie visible existait. On prend la première dont la boîte a une taille réelle.
+      const candidates = page.locator(`[data-glossary-shot="${cssEscape(name)}"]`);
+      const count = await candidates.count();
+      let locator = candidates.first();
+      for (let i = 0; i < count; i += 1) {
+        const candidate = candidates.nth(i);
+        const box = await candidate.boundingBox();
+        if (box && box.width > 0 && box.height > 0) {
+          locator = candidate;
+          break;
+        }
+      }
       const png = await locator.screenshot({ type: 'png', timeout: 8000 });
       const filename = await writeWebp(png, slugify(name));
       captured.set(name, filename);
       process.stdout.write(`  + ${name} (${label})\n`);
-    } catch {
+    } catch (error) {
       // Élément présent dans le DOM mais non capturable (taille nulle, hors-écran figé,
       // détaché avant la capture) : on retente à une scène suivante si l'occasion se
       // présente, jamais une erreur fatale pour le reste de la scène.
-      process.stdout.write(`  ! ${name} : capture échouée sur cette scène (${label})\n`);
+      process.stdout.write(`  ! ${name} : capture échouée sur cette scène (${label}) — ${String(error).replace(/\n/g, ' | ')}\n`);
     }
   }
 }
@@ -144,6 +179,21 @@ function cssEscape(value: string): string {
 
 async function settle(page: Page, ms: number): Promise<void> {
   await page.waitForTimeout(ms);
+}
+
+/** Défile toute la hauteur de page par petits pas : déclenche les `IntersectionObserver`
+ * de révélation au scroll (`SheetSection` et consorts) — sans ce passage, tout ce qui est
+ * sous le pli reste à `opacity: 0` (invisible pour Playwright, jamais capturable), même une
+ * fois scrollé dans la vue par `locator.screenshot()` lui-même (l'observer ne s'est jamais
+ * déclenché puisqu'on n'était jamais réellement passé par ce point de défilement avant). */
+async function scrollThroughPage(page: Page): Promise<void> {
+  const height = await page.evaluate(() => document.body.scrollHeight);
+  for (let y = 0; y < height; y += 350) {
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), y);
+    await settle(page, 90);
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await settle(page, 300);
 }
 
 /** Scène « accueil » (visiteur, sans session) : défile jusqu'en bas pour déclencher les
@@ -212,17 +262,46 @@ async function captureWizardSteps(browser: Browser): Promise<void> {
   await context.close();
 }
 
-/** Clique le premier bouton dont le nom accessible correspond à `pattern`, sans échouer si absent. */
+/** Clique le premier bouton dont le nom accessible correspond à `pattern`, sans échouer si absent.
+ * Clic DOM natif (cf. `expandAllCollapsedSections`) : l'attente d'actionabilité standard de
+ * Playwright (`stable`) peut ne jamais se résoudre sur cette page (cause non isolée). */
 async function tryClick(page: Page, pattern: RegExp, label: string): Promise<boolean> {
   try {
     const button = page.getByRole('button', { name: pattern }).first();
-    await button.waitFor({ state: 'visible', timeout: 3000 });
-    await button.click();
+    await button.waitFor({ state: 'attached', timeout: 3000 });
+    const clicked = await button.evaluate((el) => {
+      (el as HTMLElement).click();
+      return true;
+    });
     await settle(page, 800);
-    return true;
+    return clicked;
   } catch {
     process.stdout.write(`  ! interaction non déclenchée : ${label}\n`);
     return false;
+  }
+}
+
+/** Déplie toutes les `SheetSection` repliées (`SheetSection.tsx`, bouton « Déplier » en bas de
+ * bloc) : plusieurs composants tagués (Inventaire, Voies & capacités, Historique…) vivent DANS
+ * un `Collapse` fermé par défaut/persisté, donc absents visuellement malgré un DOM présent. */
+async function expandAllCollapsedSections(page: Page): Promise<void> {
+  for (let round = 0; round < 8; round += 1) {
+    const count = await page.locator('[aria-label="Déplier"]').count();
+    if (count === 0) break;
+    // Un clic normal (même `force`) attend parfois une stabilité qui n'arrive jamais sur
+    // cette page (cause non isolée) : on déclenche le state React directement via un clic DOM
+    // natif, en contournant entièrement l'attente d'actionabilité de Playwright.
+    const toggled = await page
+      .locator('[aria-label="Déplier"]')
+      .first()
+      .evaluate((el) => {
+        (el as HTMLElement).click();
+        return true;
+      })
+      .catch(() => false);
+    if (!toggled) break;
+    await settle(page, 500);
+    if ((await page.locator('[aria-label="Déplier"]').count()) === count) break;
   }
 }
 
