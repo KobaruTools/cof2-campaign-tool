@@ -28,6 +28,7 @@ export function ScrollToTopButton({ visible }: ScrollToTopButtonProps) {
     <Zoom in={visible} unmountOnExit>
       <AppTooltip title="Haut de page">
         <Fab
+          data-glossary-shot="ScrollToTopButton"
           color="primary"
           size="medium"
           aria-label="Remonter en haut de la page"

@@ -173,7 +173,13 @@ export function RestProposalDialog({
     // Jamais répondu (fenêtre écartée, joueur absent) : rien ne s'est appliqué, rien à dire.
     if (!myOutcome) return null;
     return (
-      <Dialog open={!dismissed} onClose={() => dismiss()} maxWidth="xs" fullWidth>
+      <Dialog
+        open={!dismissed}
+        onClose={() => dismiss()}
+        maxWidth="xs"
+        fullWidth
+        data-glossary-shot="RestProposalDialog"
+      >
         <DialogTitle>
           {REST_KIND_LABEL[proposal.kind].replace(/^./, (c) => c.toUpperCase())} — c’est fait
         </DialogTitle>
@@ -205,6 +211,7 @@ export function RestProposalDialog({
           onClose={() => dismiss()}
           maxWidth="xs"
           fullWidth
+          data-glossary-shot="RestProposalDialog"
         >
           <DialogTitle>En attente de la table</DialogTitle>
           <DialogContent>
@@ -247,6 +254,7 @@ export function RestProposalDialog({
         onClose={() => dismiss()}
         maxWidth="xs"
         fullWidth
+        data-glossary-shot="RestProposalDialog"
       >
         <DialogTitle>{restProposalHeadline(proposal)}</DialogTitle>
         <DialogContent>

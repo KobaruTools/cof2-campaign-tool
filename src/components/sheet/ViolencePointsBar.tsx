@@ -97,7 +97,7 @@ export function ViolencePointsBar({ value, onChange, label, color }: ViolencePoi
   );
 
   return (
-    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }} data-glossary-shot="ViolencePointsBar">
       <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
         {/* Cap gauche INERTE à la place du chevron des autres barres : même teinte assombrie + coins
             gauches arrondis, pour que la zone colorée démarre au même x et ait la même largeur. */}

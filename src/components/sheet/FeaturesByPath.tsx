@@ -56,6 +56,7 @@ import {
   hasIncompleteCustomSkill,
   hasUnmadeChoice,
   borrowedNoManaFeatureIds,
+  freeCastBorrowedFeatureIds,
   borrowedFeaturesOf,
 } from '@/lib/character/choices';
 import { animalFormCategories, knownAnimalFormCategoryIds } from '@/lib/character/animalForms';
@@ -570,6 +571,12 @@ function grantForBorrowed(host: Feature, borrowedId: string) {
 /** Notice « sans coût en mana » d'un sort octroyé `noMana` (cambion « La belle et la bête », PER-323). */
 const CAMBION_NO_MANA_NOTE = (
   <>Sort octroyé : utilisé sans dépenser de mana et sans limitation d’armure (<SourceRef page={10} />).</>
+);
+
+// Notice de « Poudre de fée » (lutin fée r3, emprunt `borrowFreeCast`, PER-333) : le sort choisi est
+// TOUJOURS gratuit à lancer (aucun point de mana), 3 fois par jour, quelle que soit l’armure portée.
+const LUTIN_POUDRE_DE_FEE_NO_MANA_NOTE = (
+  <>Poudre de fée : sort lancé sans coût de mana, 3 fois par jour, quelle que soit l’armure portée.</>
 );
 
 /**
@@ -5180,12 +5187,15 @@ function PathBlock({
                   const borrowedList = borrowedFeaturesOf(character, openFeature);
                   // Sorts empruntés `noManaCost` (demi-elfe « Sang féerique », PER-324) : connus sans +1 PM.
                   const noManaBorrowed = character ? borrowedNoManaFeatureIds(character) : new Set<string>();
+                  // PER-333 — emprunts TOUJOURS gratuits (lutin fée « Poudre de fée », `borrowFreeCast`).
+                  const freeCastBorrowed = character ? freeCastBorrowedFeatureIds(character) : new Set<string>();
                   return borrowedList.length ? (
                     <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                       {borrowedList.map((borrowed, i) => {
                         const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
                         const grant = grantForBorrowed(openFeature, borrowed.id);
                         const borrowedNoMana = noManaBorrowed.has(borrowed.id);
+                        const borrowedFreeCast = freeCastBorrowed.has(borrowed.id);
                         // PER-324 — « Sang féerique » : un LANCEUR peut payer le sort en PM → on garde la
                         // goutte de PM (noMana={false}) ; un non-lanceur ne l'incante que gratuitement.
                         const caster = !!character && isSpellcaster(character);
@@ -5207,6 +5217,7 @@ function PathBlock({
                               openFeature.id === FAMILIAR_LEARNED_SPELL_HOST ||
                               staffGranted ||
                               !!grant?.noMana ||
+                              borrowedFreeCast ||
                               (borrowedNoMana && !caster)
                             }
                             noManaNote={
@@ -5217,6 +5228,8 @@ function PathBlock({
                                 </>
                               ) : grant?.noMana ? (
                                 CAMBION_NO_MANA_NOTE
+                              ) : borrowedFreeCast ? (
+                                LUTIN_POUDRE_DE_FEE_NO_MANA_NOTE
                               ) : undefined
                             }
                             spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
@@ -5790,12 +5803,15 @@ function PathBlock({
                 // PER-74 : Bâton magique (archimage r5) porte DEUX choix → deux cartes EMPILÉES.
                 const borrowedList = borrowedFeaturesOf(character, feature);
                 const noManaBorrowed = character ? borrowedNoManaFeatureIds(character) : new Set<string>();
+                // PER-333 — emprunts TOUJOURS gratuits (lutin fée « Poudre de fée », `borrowFreeCast`).
+                const freeCastBorrowed = character ? freeCastBorrowedFeatureIds(character) : new Set<string>();
                 return borrowedList.length ? (
                   <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                     {borrowedList.map((borrowed, i) => {
                       const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
                       const grant = grantForBorrowed(feature, borrowed.id);
                       const borrowedNoMana = noManaBorrowed.has(borrowed.id);
+                      const borrowedFreeCast = freeCastBorrowed.has(borrowed.id);
                       // PER-324 — « Sang féerique » : goutte de PM conservée pour un LANCEUR (paiement en PM
                       // possible), masquée pour un non-lanceur (incantations gratuites seules).
                       const caster = !!character && isSpellcaster(character);
@@ -5817,6 +5833,7 @@ function PathBlock({
                             feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
                             staffGranted ||
                             !!grant?.noMana ||
+                            borrowedFreeCast ||
                             (borrowedNoMana && !caster)
                           }
                           noManaNote={
@@ -5827,6 +5844,8 @@ function PathBlock({
                               </>
                             ) : grant?.noMana ? (
                               CAMBION_NO_MANA_NOTE
+                            ) : borrowedFreeCast ? (
+                              LUTIN_POUDRE_DE_FEE_NO_MANA_NOTE
                             ) : undefined
                           }
                           spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
@@ -6270,7 +6289,7 @@ export function FeaturesByPath({
     // ici, les points d'affichage (noms, `richText`, libellés d'interrupteurs) déclinent via les hooks.
     <FeatureDeclensionContext.Provider value={character ?? null}>
     <FeatureVerbatimContext.Provider value={verbatim}>
-    <Stack spacing={2.5}>
+    <Stack spacing={2.5} data-glossary-shot="FeaturesByPath">
       {displayGroups.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           Aucune capacité acquise.

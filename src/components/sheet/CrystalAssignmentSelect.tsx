@@ -75,6 +75,7 @@ export function CrystalAssignmentSelect({
       select
       size="small"
       fullWidth
+      data-glossary-shot="CrystalAssignmentSelect"
       label="Porté par"
       value={value}
       disabled={disabled || candidates.length === 0}

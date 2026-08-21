@@ -1088,7 +1088,7 @@ export function FeatureChoiceField({
 
   if (mode === 'display') {
     return (
-      <Stack spacing={0.5}>
+      <Stack spacing={0.5} data-glossary-shot="FeatureChoiceField">
         {visible.map(({ choice, index: i }) => {
           // Choix `option` RÉPÉTABLE : plusieurs badges (un par option retenue) + compteur.
           if (choice.kind === 'option' && choice.repeat) {
@@ -1212,7 +1212,7 @@ export function FeatureChoiceField({
   }
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} data-glossary-shot="FeatureChoiceField">
       {visible.map(({ choice, index: i }) => (
         <ChoiceControl
           key={i}

@@ -59,6 +59,7 @@ export function DamageValue({ damage, size = 18, sx }: DamageValueProps) {
   return (
     <Box
       component="span"
+      data-glossary-shot="DamageValue"
       sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, verticalAlign: 'middle', ...sx }}
     >
       {nodes}

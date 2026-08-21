@@ -87,6 +87,7 @@ export function AbilityRadar({ character }: { character: Character }) {
   return (
     <Box
       component="svg"
+      data-glossary-shot="AbilityRadar"
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       role="img"
       aria-label="Toile des caractéristiques"

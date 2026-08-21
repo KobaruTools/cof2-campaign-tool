@@ -98,7 +98,11 @@ export function WeaponDamageExpr({
   const flatTotal = flatBonuses.reduce((sum, b) => sum + b.value, 0);
   const diceValue = <DamageValue damage={dice} size={22} />;
   return (
-    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap' }}>
+    <Box
+      component="span"
+      data-glossary-shot="WeaponDamageExpr"
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap' }}
+    >
       {diceNote ? (
         <AppTooltip title={<PageRefText>{diceNote}</PageRefText>}>
           <Box component="span" sx={{ display: 'inline-flex', cursor: 'help' }}>

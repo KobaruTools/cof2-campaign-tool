@@ -3124,7 +3124,13 @@ export function InitiativeTracker({
   const showCondensedOrder = collapsed && currentTurnKey !== null;
 
   return (
-    <Stack spacing={2} ref={rootRef} data-tour={dataTour} sx={sticky ? STICKY_BAR_SX : undefined}>
+    <Stack
+      spacing={2}
+      ref={rootRef}
+      data-tour={dataTour}
+      data-glossary-shot="InitiativeTracker"
+      sx={sticky ? STICKY_BAR_SX : undefined}
+    >
       {/* En-tête (titre + actions + « Tour suivant ») : tout se pilote depuis l'écran de
           MJ, donc rien de tout ça en mode projection. */}
       {!projection && (

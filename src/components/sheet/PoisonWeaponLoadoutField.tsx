@@ -66,7 +66,7 @@ export function PoisonWeaponLoadoutField({
   };
 
   return (
-    <Box>
+    <Box data-glossary-shot="PoisonWeaponLoadoutField">
       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
         Poisons appliqués ({applied.length}/{loadout.maxWeapons})
         {canWeaken ? ' — rapide ou affaiblissant' : ' — poison rapide'}

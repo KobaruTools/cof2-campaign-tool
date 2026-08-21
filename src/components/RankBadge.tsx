@@ -20,6 +20,7 @@ export function RankBadge({ rank, color, prestige = false }: { rank: number; col
   const gradient = gemLight && gemDark ? `linear-gradient(135deg, ${alpha(gemLight, 0.16)}, ${alpha(gemDark, 0.16)})` : undefined;
   return (
     <Box
+      data-glossary-shot="RankBadge"
       sx={(theme) => ({
         display: 'inline-flex',
         alignItems: 'center',

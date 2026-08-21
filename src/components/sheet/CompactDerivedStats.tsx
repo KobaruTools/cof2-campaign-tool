@@ -72,6 +72,7 @@ export function CompactDerivedStats({
 
   return (
     <Box
+      data-glossary-shot="CompactDerivedStats"
       sx={{
         display: 'grid',
         // Blocs alignés en haut (une stat avec puces est plus haute, elle ne doit pas

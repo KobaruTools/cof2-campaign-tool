@@ -335,7 +335,7 @@ export function OwnedMountsPanel({
   onReset,
 }: OwnedMountsPanelProps) {
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} data-glossary-shot="OwnedMountsPanel">
       {mounts.map((resolved) => (
         <MountCard
           key={resolved.owned.id}

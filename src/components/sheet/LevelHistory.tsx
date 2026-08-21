@@ -183,14 +183,14 @@ export function LevelHistory({ character }: LevelHistoryProps) {
 
   if (entries.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" data-glossary-shot="LevelHistory">
         Aucune montée de niveau enregistrée.
       </Typography>
     );
   }
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="LevelHistory">
       {entries.map((entry) => (
         <Box key={entry.level}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>

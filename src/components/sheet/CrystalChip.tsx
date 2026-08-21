@@ -59,6 +59,7 @@ export function CrystalChip({
     <AppTooltip title={title}>
       <Box
         component="span"
+        data-glossary-shot="CrystalChip"
         sx={[
           {
             position: 'relative',

@@ -59,6 +59,7 @@ export function GmNpcDrawer({ campaign, open, onClose }: GmNpcDrawerProps) {
       open={open}
       onClose={onClose}
       keepMounted
+      data-glossary-shot="GmNpcDrawerHost"
       slotProps={{
         paper: {
           sx: {
@@ -71,6 +72,7 @@ export function GmNpcDrawer({ campaign, open, onClose }: GmNpcDrawerProps) {
       }}
     >
       <Box
+        data-glossary-shot="GmNpcDrawer"
         sx={(theme) => ({
           height: '100%',
           overflowY: 'auto',

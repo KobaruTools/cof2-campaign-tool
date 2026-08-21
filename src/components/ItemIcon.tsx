@@ -32,6 +32,7 @@ export function ItemIcon({ id, size = 16, color = 'currentColor', labelled, sx }
   return (
     <Box
       component="svg"
+      data-glossary-shot="ItemIcon"
       viewBox="0 0 512 512"
       role={label ? 'img' : undefined}
       aria-label={label}

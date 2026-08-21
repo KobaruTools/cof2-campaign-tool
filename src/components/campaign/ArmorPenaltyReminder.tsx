@@ -83,6 +83,7 @@ export function ArmorPenaltyReminder({ penalty, armorLabel }: ArmorPenaltyRemind
           bgcolor: alpha(theme.palette.warning.main, 0.12),
           border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
         })}
+        data-glossary-shot="ArmorPenaltyReminder"
       >
         <ItemTypeIcon type="armor" size={15} />
         <Box component="span">Malus d’armure −{penalty}</Box>

@@ -44,6 +44,7 @@ export function TextureBackground() {
     <Box
       ref={ref}
       aria-hidden
+      data-glossary-shot="TextureBackground"
       sx={{
         position: 'fixed',
         // Surdimensionné + centré (au lieu d'un simple `inset: 0`) : la rotation à

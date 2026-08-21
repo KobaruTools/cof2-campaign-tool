@@ -232,7 +232,7 @@ export function MagicItemGeneratorDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth data-glossary-shot="MagicItemGeneratorDialog">
       <DialogTitle>Générer un objet magique</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>

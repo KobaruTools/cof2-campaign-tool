@@ -1664,6 +1664,7 @@ export function FeatureText({
         variant="body2"
         color="text.secondary"
         component="div"
+        data-glossary-shot="FeatureRichText"
         sx={{ whiteSpace: 'pre-line', fontSize: dense ? '0.9rem' : '1rem' }}
       >
         {feature.text}
@@ -1756,6 +1757,7 @@ export function FeatureText({
       variant="body2"
       color="text.secondary"
       component="div"
+      data-glossary-shot="FeatureRichText"
       sx={{
         whiteSpace: 'pre-line',
         // Compact (`dense`) : ~−10 % sur la taille et l'interligne pour les blocs encadrés (PER-163).

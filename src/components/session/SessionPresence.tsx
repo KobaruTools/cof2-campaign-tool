@@ -44,7 +44,10 @@ export function SessionPresence({ present, selfKey, playerById }: SessionPresenc
   if (present.length === 0) return null;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', rowGap: 0.75 }}>
+    <Box
+      data-glossary-shot="SessionPresence"
+      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', rowGap: 0.75 }}
+    >
       <Typography
         variant="caption"
         sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.5 }}

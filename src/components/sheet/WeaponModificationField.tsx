@@ -63,7 +63,7 @@ export function WeaponModificationField({
   });
 
   return (
-    <Box>
+    <Box data-glossary-shot="WeaponModificationField">
       <Typography
         variant="caption"
         color="text.secondary"

@@ -48,6 +48,7 @@ export function GmBestiaryDrawer({ open, onClose }: GmBestiaryDrawerProps) {
       // EXACTEMENT où il en était (filtres, sélection, défilement) en rouvrant le tiroir dans la
       // même session — comme le tiroir d'aide-mémoire.
       keepMounted
+      data-glossary-shot="GmBestiaryDrawerHost"
       slotProps={{
         paper: {
           sx: {
@@ -65,6 +66,7 @@ export function GmBestiaryDrawer({ open, onClose }: GmBestiaryDrawerProps) {
           masquer le contenu qui défile dessous, comme les autres tiroirs. Hauteur figée =
           `HEADER_HEIGHT`. */}
       <Box
+        data-glossary-shot="GmBestiaryDrawer"
         sx={(theme) => ({
           position: 'sticky',
           top: 0,

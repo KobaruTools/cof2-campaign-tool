@@ -141,7 +141,7 @@ export function CombatLootBatchDialog({
   };
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={close} maxWidth="sm" fullWidth data-glossary-shot="CombatLootBatchDialog">
       <DialogTitle>Butin de combat</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>

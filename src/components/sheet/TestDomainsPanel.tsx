@@ -430,7 +430,7 @@ export function TestDomainsPanel({
     statusSources.reduce((sum, s) => sum + s.value, 0);
 
   return (
-    <>
+    <Box sx={{ display: 'contents' }} data-glossary-shot="TestDomainsPanel">
       {/* Bascules en haut à DROITE du bloc, sur la même ligne que le rappel de règle : l'en-tête
           de la `SheetSection` hôte n'a plus la place (bandeau d'onglets), cf. son action vide. */}
       <Stack
@@ -960,6 +960,6 @@ export function TestDomainsPanel({
           </Box>
         </AppTooltip>
       )}
-    </>
+    </Box>
   );
 }

@@ -83,26 +83,28 @@ export function FeatureEffectBadge({
 }) {
   const sourceFeature = featureById.get(note.featureId);
   return (
-    <AttackQualifierBadge
-      color={note.color}
-      icon={ICONS[note.icon]}
-      label={note.label}
-      tooltip={
-        <Box sx={{ minWidth: 180, maxWidth: 260 }}>
-          <Typography variant="body2" sx={{ mb: 0.75 }}>
-            <RichInline text={note.reminder} abilities={abilities} level={level} rank={0} />
-          </Typography>
-          {note.sourcePage != null && (
-            <Box sx={{ mb: 0.75 }}>
-              <SourceRef
-                page={note.sourcePage}
-                codexHref={sourceFeature ? featureCodexHref(sourceFeature) : undefined}
-              />
-            </Box>
-          )}
-          <CapabilityChip featureId={note.featureId} label={null} />
-        </Box>
-      }
-    />
+    <span style={{ display: 'inline-flex' }} data-glossary-shot="FeatureEffectBadge">
+      <AttackQualifierBadge
+        color={note.color}
+        icon={ICONS[note.icon]}
+        label={note.label}
+        tooltip={
+          <Box sx={{ minWidth: 180, maxWidth: 260 }}>
+            <Typography variant="body2" sx={{ mb: 0.75 }}>
+              <RichInline text={note.reminder} abilities={abilities} level={level} rank={0} />
+            </Typography>
+            {note.sourcePage != null && (
+              <Box sx={{ mb: 0.75 }}>
+                <SourceRef
+                  page={note.sourcePage}
+                  codexHref={sourceFeature ? featureCodexHref(sourceFeature) : undefined}
+                />
+              </Box>
+            )}
+            <CapabilityChip featureId={note.featureId} label={null} />
+          </Box>
+        }
+      />
+    </span>
   );
 }

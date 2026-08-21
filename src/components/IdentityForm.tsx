@@ -87,7 +87,7 @@ export function IdentityForm({
   const warnings = identityWarnings(identity, ancestry);
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="IdentityForm">
       <TextField
         label="Nom"
         required

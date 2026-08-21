@@ -68,6 +68,7 @@ export function BuffRequestsControl({ campaignId, onAdopt, buttonSx }: BuffReque
   return (
     <>
       <Button
+        data-glossary-shot="BuffRequestsControl"
         variant="outlined"
         size="small"
         startIcon={<AutoAwesomeIcon />}

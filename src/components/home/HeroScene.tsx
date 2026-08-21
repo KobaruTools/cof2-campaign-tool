@@ -168,6 +168,7 @@ export function HeroBackdrop() {
     // horizontal (deux masques ne s'intersectent pas sur un même élément, cf. plus haut).
     <Box
       aria-hidden
+      data-glossary-shot="HeroScene / HeroBackdrop"
       sx={{
         display: { xs: 'none', md: 'block' },
         position: 'absolute',
@@ -221,6 +222,7 @@ export function HeroScene() {
   return (
     <Box
       aria-hidden
+      data-glossary-shot="HeroScene / HeroBackdrop"
       sx={{
         display: { xs: 'none', md: 'block' },
         position: 'relative',

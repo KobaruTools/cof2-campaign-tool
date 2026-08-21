@@ -36,6 +36,7 @@ export function ToolbarActionButton({ icon, label, onClick, disabled, color, ico
           onClick={onClick}
           disabled={disabled}
           sx={{ border: 1, borderColor: 'divider' }}
+          data-glossary-shot="ToolbarActionButton"
         >
           {icon}
         </IconButton>
@@ -43,7 +44,15 @@ export function ToolbarActionButton({ icon, label, onClick, disabled, color, ico
     );
   }
   return (
-    <Button variant="outlined" size="small" color={color} startIcon={icon} onClick={onClick} disabled={disabled}>
+    <Button
+      variant="outlined"
+      size="small"
+      color={color}
+      startIcon={icon}
+      onClick={onClick}
+      disabled={disabled}
+      data-glossary-shot="ToolbarActionButton"
+    >
       {label}
     </Button>
   );

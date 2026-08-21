@@ -66,6 +66,7 @@ export function CampaignBadge({ name, campaignId }: CampaignBadgeProps) {
         component={Link}
         href={hrefFromIndex('/campaign', campaignSlugIndex, campaignId)}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        data-glossary-shot="CampaignBadge"
         sx={badgeSx}
       >
         {name}
@@ -74,7 +75,7 @@ export function CampaignBadge({ name, campaignId }: CampaignBadgeProps) {
   }
 
   return (
-    <Box component="span" sx={badgeSx}>
+    <Box component="span" data-glossary-shot="CampaignBadge" sx={badgeSx}>
       {assigned ? name : 'Non attribué'}
     </Box>
   );

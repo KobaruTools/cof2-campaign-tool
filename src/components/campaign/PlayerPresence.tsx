@@ -48,7 +48,7 @@ export function PlayerPresence({
 
   return (
     <AppTooltip title={tooltip}>
-      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }} data-glossary-shot="PlayerPresence">
         <Box
           component="span"
           sx={{

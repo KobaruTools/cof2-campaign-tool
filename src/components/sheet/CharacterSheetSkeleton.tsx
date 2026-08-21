@@ -99,7 +99,7 @@ export function CharacterSheetSkeleton() {
   });
   return (
     <>
-      <Container maxWidth="md" sx={{ py: 4 }} aria-hidden>
+      <Container maxWidth="md" sx={{ py: 4 }} aria-hidden data-glossary-shot="CharacterSheetSkeleton">
         <Stack spacing={3}>
           {/* En-tête de fiche : campagne, nom, peuple · profil · niveau, bouton de montée. */}
           <Box>

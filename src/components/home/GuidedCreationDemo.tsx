@@ -107,6 +107,7 @@ export function GuidedCreationDemo({ accent }: { accent: string }) {
   return (
     <Stack
       spacing={1}
+      data-glossary-shot="GuidedCreationDemo"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}

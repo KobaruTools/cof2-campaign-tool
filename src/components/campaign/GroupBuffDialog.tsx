@@ -104,7 +104,13 @@ export interface GroupBuffDialogProps {
  */
 export function GroupBuffDialog({ open, onClose, buffId, ...rest }: GroupBuffDialogProps) {
   return (
-    <Dialog open={open && buffId !== null} onClose={onClose} fullWidth maxWidth="xs">
+    <Dialog
+      open={open && buffId !== null}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      data-glossary-shot="GroupBuffDialog"
+    >
       {buffId !== null && <GroupBuffForm buffId={buffId} onClose={onClose} {...rest} />}
     </Dialog>
   );

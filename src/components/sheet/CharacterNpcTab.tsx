@@ -126,7 +126,10 @@ export function CharacterNpcTab({
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', py: 2 }}
+        data-glossary-shot="CharacterNpcTab"
+      >
         <CircularProgress size={24} />
       </Box>
     );
@@ -134,14 +137,14 @@ export function CharacterNpcTab({
 
   if (error) {
     return (
-      <Typography variant="body2" color="error">
+      <Typography variant="body2" color="error" data-glossary-shot="CharacterNpcTab">
         Chargement des PNJ impossible : {error}
       </Typography>
     );
   }
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} data-glossary-shot="CharacterNpcTab">
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
         <TextField
           size="small"

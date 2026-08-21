@@ -58,6 +58,7 @@ export function CharacterIdentityLine({
       ref={ref}
       direction="row"
       spacing={dense ? 0.5 : 0.75}
+      data-glossary-shot="CharacterIdentityLine"
       sx={[{ alignItems: 'center', color: 'text.secondary' }, ...(Array.isArray(sx) ? sx : [sx])]}
     >
       <Typography variant={textVariant} component="span">

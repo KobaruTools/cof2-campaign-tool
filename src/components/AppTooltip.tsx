@@ -128,7 +128,13 @@ export function AppTooltip({
     } as never,
   };
 
-  const childWithClickCapture = children as React.ReactElement<{
+  // Le `Tooltip` MUI ne rend pas son propre nœud DOM (il se pose sur son enfant direct) :
+  // le marqueur de capture (PER-443) est donc posé sur cet enfant, cloné une fois ici, plutôt
+  // que sur le `Tooltip` lui-même.
+  const taggedChildren = React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
+    'data-glossary-shot': 'AppTooltip',
+  });
+  const childWithClickCapture = taggedChildren as React.ReactElement<{
     onClickCapture?: (event: React.MouseEvent) => void;
   }>;
   const touchTrigger = isTouch
@@ -143,7 +149,7 @@ export function AppTooltip({
           childWithClickCapture.props.onClickCapture?.(event);
         },
       })
-    : children;
+    : taggedChildren;
 
   return (
     <>

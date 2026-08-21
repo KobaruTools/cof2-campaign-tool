@@ -79,6 +79,7 @@ export function CreatureCatalogAutocomplete({
     <Autocomplete
       size="small"
       sx={sx}
+      data-glossary-shot="CreatureCatalogAutocomplete"
       options={sorted}
       value={selectedItem}
       openOnFocus

@@ -1,5 +1,6 @@
 'use client';
 
+import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import type { Feature } from '@/data/schema';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -60,9 +61,9 @@ export interface PathFeatureCardProps extends FeatureTextProps {
  */
 export function PathFeatureCard({ hideSourcePage, ...props }: PathFeatureCardProps) {
   return (
-    <>
+    <Box data-glossary-shot="PathFeatureCard">
       <FeatureText {...props} />
       {!hideSourcePage && <FeatureSourcePage feature={props.feature} />}
-    </>
+    </Box>
   );
 }

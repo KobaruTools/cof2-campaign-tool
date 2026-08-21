@@ -32,6 +32,7 @@ export function InfoHint({ children, page, section, fontSize = 'small', classNam
   return (
     <AppTooltip title={children} page={page} section={section} enterDelay={enterDelay}>
       <InfoOutlinedIcon
+        data-glossary-shot="InfoHint"
         fontSize={fontSize}
         className={className}
         sx={{ color: 'text.secondary', cursor: 'help', ...sx }}

@@ -189,6 +189,7 @@ export function GmSheetDrawer({
       anchor="right"
       open={open}
       onClose={onClose}
+      data-glossary-shot="GmSheetDrawerHost"
       slotProps={{
         paper: {
           sx: {
@@ -240,7 +241,7 @@ export function GmSheetDrawer({
 /** Squelette affiché tant que les personnages ne sont pas chargés (lien direct `?sheet=`). */
 function GmSheetDrawerSkeleton({ onClose }: { onClose: () => void }) {
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }} data-glossary-shot="GmSheetDrawer">
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 3 }}>
         <Skeleton animation="wave" variant="rounded" width={96} height={24} />
         <Box sx={{ flexGrow: 1 }} />
@@ -431,6 +432,10 @@ function GmSheetDrawerContent({
 
   return (
     <FirearmsAllowedProvider value={firearmsAllowed}>
+      {/* Boîte englobante (bloc normal, comme les deux enfants directs qu'elle remplace dans le
+          flux) : sert d'ancre DOM pour le crop du glossaire (PER-443) — le `Paper` du `Drawer`
+          n'accepte pas d'attribut `data-*` inconnu en typage strict MUI. */}
+      <Box data-glossary-shot="GmSheetDrawer">
       {/* En-tête collé : reste visible pendant le défilement du panneau. Teinté à la
           couleur du profil, comme l'en-tête de la fiche. */}
       <Box
@@ -820,6 +825,7 @@ function GmSheetDrawerContent({
             />
           </SheetSection>
         </Stack>
+      </Box>
       </Box>
 
       <CoinPouchDialog

@@ -134,7 +134,7 @@ export function AccountUnlockSection() {
   if (!allowed) return null;
 
   return (
-    <Paper elevation={0} sx={SECTION_SX}>
+    <Paper elevation={0} sx={SECTION_SX} data-glossary-shot="AccountUnlockSection">
       <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
         Débloquer du contenu
       </Typography>

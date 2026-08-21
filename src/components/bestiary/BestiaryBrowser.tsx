@@ -169,6 +169,7 @@ export function BestiaryBrowser({ variant = "page", stickyTop = 0 }: BestiaryBro
             Réessayer
           </Button>
         }
+        data-glossary-shot="BestiaryBrowser"
       >
         Une erreur est survenue en chargeant les créatures.
       </AppAlert>
@@ -177,7 +178,7 @@ export function BestiaryBrowser({ variant = "page", stickyTop = 0 }: BestiaryBro
 
   if (status === "unconfigured") {
     return (
-      <AppAlert severity="info" title="Bestiaire indisponible">
+      <AppAlert severity="info" title="Bestiaire indisponible" data-glossary-shot="BestiaryBrowser">
         Le bestiaire est servi depuis la base de données, qui n&apos;est pas
         configurée dans cet environnement.
       </AppAlert>
@@ -190,7 +191,9 @@ export function BestiaryBrowser({ variant = "page", stickyTop = 0 }: BestiaryBro
 
   if (list.length === 0) {
     return (
-      <AppAlert severity="info">Aucune créature disponible pour le moment.</AppAlert>
+      <AppAlert severity="info" data-glossary-shot="BestiaryBrowser">
+        Aucune créature disponible pour le moment.
+      </AppAlert>
     );
   }
 
@@ -200,7 +203,7 @@ export function BestiaryBrowser({ variant = "page", stickyTop = 0 }: BestiaryBro
 /** Squelette de chargement de l'étage 1 (mime la disposition maître-détail). */
 function BestiaryLoadingSkeleton() {
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="BestiaryBrowser">
       <Skeleton variant="rounded" height={112} />
       <Box
         sx={{
@@ -644,7 +647,7 @@ function BestiaryBrowserView({
   }, [detailId]);
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="BestiaryBrowser">
       {/* Barre de recherche + filtres. */}
       <Box
         ref={filterBarRef}

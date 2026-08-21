@@ -100,7 +100,7 @@ export function GiveItemButton({
       >
         {/* `span` intercalé : un bouton DÉSACTIVÉ ne reçoit aucun événement de survol, l'infobulle
             ne s'afficherait pas — or c'est justement là qu'elle explique le grisage. */}
-        <span style={{ display: 'inline-flex' }}>
+        <span style={{ display: 'inline-flex' }} data-glossary-shot="GiveItemButton">
           <IconButton
             size="small"
             onClick={handleOpen}

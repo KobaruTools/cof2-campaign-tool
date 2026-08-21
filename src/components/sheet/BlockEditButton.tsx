@@ -27,6 +27,7 @@ export function BlockEditButton({ editing, onToggle, label }: BlockEditButtonPro
         color={editing ? 'primary' : 'default'}
         onClick={onToggle}
         aria-label={editing ? `Terminer la modification : ${label}` : `Modifier : ${label}`}
+        data-glossary-shot="BlockEditButton"
       >
         {editing ? <DoneIcon fontSize="small" /> : <EditIcon fontSize="small" />}
       </IconButton>

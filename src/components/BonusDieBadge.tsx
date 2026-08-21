@@ -56,6 +56,7 @@ export function BonusDieBadge({ ability, sources = [], size = 16, noTooltip, too
   const badge = (
     <Box
       component="span"
+      data-glossary-shot="BonusDieBadge"
       aria-label={plainTitle}
       title={noTooltip ? plainTitle : undefined}
       sx={{

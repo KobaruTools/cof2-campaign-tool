@@ -198,6 +198,7 @@ export function SpellManaBadge({ feature, concentration = false, surcharge = 0, 
     <AppTooltip title={fullTooltip} maxWidth={300} enterDelay={tooltipEnterDelay}>
       <Box
         role="img"
+        data-glossary-shot="SpellManaBadge"
         aria-label={
           hasDetail
             ? `Coût actuel : ${displayCost} points de mana (dont ${extras.join(' et ')})`

@@ -29,6 +29,7 @@ export function RulesBookDrawerItems({ onNavigate }: { onNavigate: () => void })
             component={Link}
             href={rulesHref(book.id, 1)}
             onClick={onNavigate}
+            data-glossary-shot="RulesBookDrawerItems"
           >
             <ListItemIcon>
               <Icon />

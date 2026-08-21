@@ -40,7 +40,10 @@ export function ItemIconPicker({ value, defaultIcon, onChange }: ItemIconPickerP
   };
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+    <Box
+      data-glossary-shot="ItemIconPicker"
+      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+    >
       <Typography variant="caption" color="text.secondary">
         Icône
       </Typography>

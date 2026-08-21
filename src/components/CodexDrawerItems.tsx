@@ -16,7 +16,7 @@ import { CODEX_SUBPAGES } from '@/lib/ui/codex';
 export function CodexDrawerItems({ onNavigate }: { onNavigate: () => void }) {
   return (
     <>
-      <ListItemButton component={Link} href="/codex" onClick={onNavigate}>
+      <ListItemButton component={Link} href="/codex" onClick={onNavigate} data-glossary-shot="CodexDrawerItems">
         <ListItemIcon>
           <ItemIcon id="spellbook" size={24} />
         </ListItemIcon>
@@ -29,6 +29,7 @@ export function CodexDrawerItems({ onNavigate }: { onNavigate: () => void }) {
           href={entry.href}
           onClick={onNavigate}
           sx={{ pl: 3 }}
+          data-glossary-shot="CodexDrawerItems"
         >
           <ListItemIcon>
             <CodexSubpageIcon label={entry.label} size={20} />

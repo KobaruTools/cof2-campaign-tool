@@ -93,6 +93,7 @@ export function GmScreenCompanionCard({
     instanceId !== undefined ? `${profile.name.toUpperCase()} ${(instanceIndex ?? 0) + 1}` : profile.name.toUpperCase();
   return (
     <Paper
+      data-glossary-shot="GmScreenCompanionCard"
       sx={{
         position: 'relative',
         p: 2,

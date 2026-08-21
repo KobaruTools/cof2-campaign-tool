@@ -74,6 +74,7 @@ export function GmScreenCard({ character, player, href, panelHref, dataTour }: G
   return (
     <Paper
       data-tour={dataTour}
+      data-glossary-shot="GmScreenCard"
       sx={{
         position: 'relative',
         p: 2,

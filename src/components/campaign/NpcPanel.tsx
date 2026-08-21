@@ -657,7 +657,7 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
       onDragEnd={onDragEnd}
       onDragCancel={() => setActiveDragNpc(null)}
     >
-      <Stack spacing={2}>
+      <Stack spacing={2} data-glossary-shot="NpcPanel">
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
           <TextField
             size="small"

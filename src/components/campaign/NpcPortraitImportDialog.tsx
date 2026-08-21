@@ -85,7 +85,13 @@ export function NpcPortraitImportDialog({ file, onCancel, onConfirm }: NpcPortra
   };
 
   return (
-    <Dialog open={file !== null} onClose={onCancel} maxWidth="xs" fullWidth>
+    <Dialog
+      open={file !== null}
+      onClose={onCancel}
+      maxWidth="xs"
+      fullWidth
+      data-glossary-shot="NpcPortraitImportDialog"
+    >
       <DialogTitle>Importer une illustration de PNJ</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

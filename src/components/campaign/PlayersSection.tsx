@@ -389,10 +389,10 @@ export function PlayersSection({
   // Mode « bare » : le conteneur extérieur fournit l'en-tête (section repliable).
   if (bare) {
     return (
-      <>
+      <Box sx={{ display: 'contents' }} data-glossary-shot="PlayersSection">
         {content}
         {overlays}
-      </>
+      </Box>
     );
   }
 
@@ -407,6 +407,7 @@ export function PlayersSection({
         WebkitBackdropFilter: 'blur(6px)',
         borderColor: 'rgba(255, 255, 255, 0.10)',
       }}
+      data-glossary-shot="PlayersSection"
     >
       <Typography variant="h6" sx={{ mb: 0.5 }}>
         Joueurs

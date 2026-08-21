@@ -80,7 +80,7 @@ export function PotionDialog({ open, potion, level, onClose, onConfirm }: Potion
   };
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth data-glossary-shot="PotionDialog">
       <DialogTitle>Boire la potion</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

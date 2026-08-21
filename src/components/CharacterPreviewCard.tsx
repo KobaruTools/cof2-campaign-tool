@@ -49,6 +49,7 @@ export function CharacterPreviewCard({ character, tinted = true }: CharacterPrev
     // l'aperçu un « bloc résumé » cohérent (survol, import, succès).
     <Stack
       spacing={2}
+      data-glossary-shot="CharacterPreviewCard"
       sx={{
         minWidth: { xs: 0, sm: 264 },
         ...(tinted && {

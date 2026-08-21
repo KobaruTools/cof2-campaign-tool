@@ -65,7 +65,7 @@ export function CompactGauges({ depletion, maxHp, manaMax, luckMax }: CompactGau
   ];
 
   return (
-    <Stack sx={{ rowGap: `${COMPACT_GAUGE_ROW_GAP}px` }}>
+    <Stack data-glossary-shot="CompactGauges" sx={{ rowGap: `${COMPACT_GAUGE_ROW_GAP}px` }}>
       {maxHp > 0 && <GaugeBar max={maxHp} segments={hpSegments} height={COMPACT_GAUGE_HEIGHT} flush />}
       {manaMax !== null && manaMax > 0 && (
         <GaugeBar

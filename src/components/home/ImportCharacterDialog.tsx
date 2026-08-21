@@ -56,6 +56,15 @@ import { useCharactersStore } from '@/stores/characters';
 /** Durée minimale d'affichage du loader : évite un clignotement sur import rapide. */
 const MIN_LOADER_MS = 450;
 
+/**
+ * Repère de capture pour le glossaire (PER-443), posé sur la `Paper` visible de la
+ * modale. Passé via une constante (pas un littéral en ligne) : `slotProps.paper` est
+ * typé sans index de signature `data-*`, un littéral inline déclenchait donc une
+ * vérification stricte des propriétés en excès (TS2353) alors qu'une variable est
+ * simplement vérifiée par structure.
+ */
+const GLOSSARY_SHOT_PAPER_PROPS = { 'data-glossary-shot': 'ImportCharacterDialog' };
+
 /** Un fichier lu et validé, prêt à l'import. */
 type ParsedItem = { raw: unknown; context: TransferContext | null; preview: Character };
 /** Un fichier illisible / invalide, écarté du lot mais signalé à l'utilisateur. */
@@ -350,7 +359,10 @@ export function ImportCharacterDialog({
       fullWidth
       maxWidth="xs"
       // Réinitialise sur la zone de dépôt une fois l'animation de fermeture finie.
-      slotProps={{ transition: { onExited: resetToIdle } }}
+      slotProps={{
+        transition: { onExited: resetToIdle },
+        paper: GLOSSARY_SHOT_PAPER_PROPS,
+      }}
     >
       <DialogTitle>Importer des personnages</DialogTitle>
       <DialogContent>

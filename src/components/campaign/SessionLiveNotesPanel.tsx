@@ -66,7 +66,7 @@ export function SessionLiveNotesPanel({ campaignId }: { campaignId: string }) {
 
   if (!sessionId) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" data-glossary-shot="SessionLiveNotesPanel">
         Aucune partie en cours — démarrez une session depuis l’en-tête pour prendre des notes.
       </Typography>
     );
@@ -84,7 +84,7 @@ export function SessionLiveNotesPanel({ campaignId }: { campaignId: string }) {
   };
 
   return (
-    <Box>
+    <Box data-glossary-shot="SessionLiveNotesPanel">
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
         Notes privées, visibles par vous seul — utile comme brouillon avant de rédiger le
         résumé de la partie.

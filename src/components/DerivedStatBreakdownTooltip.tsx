@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactElement } from 'react';
+import { cloneElement, type ReactElement } from 'react';
 import type { DerivedInput } from '@/lib/engine';
 import { featureModSources, type EffectContext } from '@/lib/character/effects';
 import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
@@ -78,7 +78,7 @@ export function DerivedStatBreakdownTooltip({
       title={<BreakdownContent title={DERIVED_STAT_NAMES[statId]} breakdown={bd} page={bd.page} />}
       enterDelay={enterDelay}
     >
-      {children}
+      {cloneElement(children, { 'data-glossary-shot': 'DerivedStatBreakdownTooltip' } as Partial<unknown>)}
     </AppTooltip>
   );
 }

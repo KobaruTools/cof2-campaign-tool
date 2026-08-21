@@ -484,6 +484,7 @@ export function RichTextEditor({
 
   return (
     <Box
+      data-glossary-shot="RichTextEditor"
       sx={{
         border: 1,
         borderColor: 'divider',

@@ -37,12 +37,13 @@ export function LevelUndoButton({ level, onUndo }: LevelUndoButtonProps) {
         size="small"
         startIcon={<UndoIcon />}
         onClick={() => setConfirmOpen(true)}
+        data-glossary-shot="LevelUndoButton"
       >
         Annuler le niveau {level}
       </Button>
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <DialogTitle>Annuler le niveau {level} ?</DialogTitle>
+        <DialogTitle data-glossary-shot="LevelUndoButton">Annuler le niveau {level} ?</DialogTitle>
         <DialogContent>
           <DialogContentText>
             Les capacités acquises au niveau {level} seront retirées et le personnage

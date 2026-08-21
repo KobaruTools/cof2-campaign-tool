@@ -31,6 +31,7 @@ export function RuleBlock({ title, description, page, section, control }: RuleBl
         border: '1px solid rgba(255, 255, 255, 0.08)',
         bgcolor: 'rgba(255, 255, 255, 0.03)',
       }}
+      data-glossary-shot="RuleBlock"
     >
       <Stack
         direction="row"

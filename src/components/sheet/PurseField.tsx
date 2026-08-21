@@ -742,7 +742,7 @@ export function PurseField({
     const breakpoint = 800;
     const vertQuery = `@container (max-width: ${breakpoint}px)`;
     return (
-      <Box sx={{ containerType: 'inline-size' }}>
+      <Box sx={{ containerType: 'inline-size' }} data-glossary-shot="PurseField">
         <Stack
           direction="row"
           sx={{

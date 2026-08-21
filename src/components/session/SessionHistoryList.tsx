@@ -496,7 +496,7 @@ export function SessionHistoryList({
 
   if (error) {
     return (
-      <AppAlert severity="error" sx={{ mb: 3 }}>
+      <AppAlert severity="error" sx={{ mb: 3 }} data-glossary-shot="SessionHistoryList">
         Impossible de charger l&apos;historique : {error}
       </AppAlert>
     );
@@ -504,7 +504,7 @@ export function SessionHistoryList({
 
   if (entries === null) {
     return (
-      <Stack spacing={2}>
+      <Stack spacing={2} data-glossary-shot="SessionHistoryList">
         <Skeleton variant="rounded" height={120} />
         <Skeleton variant="rounded" height={120} />
       </Stack>
@@ -513,7 +513,11 @@ export function SessionHistoryList({
 
   if (entries.length === 0) {
     return (
-      <Paper variant="outlined" sx={{ ...glassPaper, textAlign: 'center', py: 6 }}>
+      <Paper
+        variant="outlined"
+        sx={{ ...glassPaper, textAlign: 'center', py: 6 }}
+        data-glossary-shot="SessionHistoryList"
+      >
         <EventBusyIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
         <Typography variant="h6" sx={{ mb: 1 }}>
           Aucune partie terminée
@@ -527,7 +531,7 @@ export function SessionHistoryList({
   }
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="SessionHistoryList">
       {entries.map((entry, index) => (
         <SessionCard
           key={entry.id}

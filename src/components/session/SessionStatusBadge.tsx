@@ -25,5 +25,12 @@ export function SessionStatusBadge({ campaignId }: SessionStatusBadgeProps) {
   // Discret : hors session (ou tant que non résolu), on n'affiche rien.
   if (!isActive) return null;
 
-  return <SessionActiveBadge />;
+  // Span porteur du marqueur de glossaire : `SessionActiveBadge` porte déjà le sien,
+  // ce wrapper neutre (aucun style) donne à CE composant son propre repère DOM sans
+  // toucher au rendu du badge qu'il délègue.
+  return (
+    <span data-glossary-shot="SessionStatusBadge">
+      <SessionActiveBadge />
+    </span>
+  );
 }

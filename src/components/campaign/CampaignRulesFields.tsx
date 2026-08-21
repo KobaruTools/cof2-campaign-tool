@@ -21,7 +21,7 @@ export interface CampaignRulesFieldsProps {
 
 export function CampaignRulesFields({ rules, onChange }: CampaignRulesFieldsProps) {
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="CampaignRulesFields">
       <RuleBlock
         title="Armes à feu autorisées"
         description="Autorise la poudre dans l’univers de la campagne. Désactivée, l’arquebusier combat à l’arbalète et devient « Arbalétrier »."

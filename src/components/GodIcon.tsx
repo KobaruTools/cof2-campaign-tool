@@ -15,14 +15,39 @@ import { ItemIcon } from '@/components/ItemIcon';
  */
 export function GodIcon({ godId, color, size = 26 }: { godId: string; color: string; size?: number }) {
   const localIconId = DOMAIN_ICON_BY_GOD_ID[godId];
-  if (localIconId) return <ItemIcon id={localIconId} size={size} color={color} />;
-  if (GOD_DOMAIN_ICON_PATHS[godId]) return <GodDomainIcon godId={godId} size={size} color={color} />;
+  if (localIconId)
+    return (
+      <span data-glossary-shot="GodIcon">
+        <ItemIcon id={localIconId} size={size} color={color} />
+      </span>
+    );
+  if (GOD_DOMAIN_ICON_PATHS[godId])
+    return (
+      <span data-glossary-shot="GodIcon">
+        <GodDomainIcon godId={godId} size={size} color={color} />
+      </span>
+    );
   // Aurilla, déesse de la chance et des aventuriers : aucun thème « dé » assez littéral dans
   // item-icons.ts/game-icons.net à ce jour — on réutilise directement notre propre jeu d'icônes
   // de dés (`DieIcon`, déjà vendored) plutôt que d'en aller chercher un nouveau pour un seul cas.
-  if (godId === 'aurilla') return <DieIcon die="d20" size={size} color={color} noTooltip />;
+  if (godId === 'aurilla')
+    return (
+      <span data-glossary-shot="GodIcon">
+        <DieIcon die="d20" size={size} color={color} noTooltip />
+      </span>
+    );
   const origin = godOrigin(godId);
-  if (origin?.kind === 'class' && origin.classId) return <ClassIcon classId={origin.classId} size={size} color={color} />;
-  if (origin?.kind === 'mage') return <AncestryIcon ancestryId="mage" size={size} color={color} />;
+  if (origin?.kind === 'class' && origin.classId)
+    return (
+      <span data-glossary-shot="GodIcon">
+        <ClassIcon classId={origin.classId} size={size} color={color} />
+      </span>
+    );
+  if (origin?.kind === 'mage')
+    return (
+      <span data-glossary-shot="GodIcon">
+        <AncestryIcon ancestryId="mage" size={size} color={color} />
+      </span>
+    );
   return null;
 }

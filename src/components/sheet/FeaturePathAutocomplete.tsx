@@ -264,6 +264,7 @@ export function FeaturePathAutocomplete({
       fullWidth
       sx={sx}
       disabled={disabled}
+      data-glossary-shot="FeaturePathAutocomplete"
       options={sorted}
       value={value}
       blurOnSelect={clearOnSelect}

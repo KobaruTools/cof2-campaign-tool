@@ -67,7 +67,7 @@ export function GaugeBar({ max, segments, height = 24, roundedLeft = true, overl
     // Conteneur NON écrêté : porte l'overlay, qui peut déborder verticalement de la
     // barre (effet de style d'un gros chiffre). Seule la piste interne écrête le
     // remplissage à ses coins arrondis.
-    <Box sx={{ position: 'relative', width: '100%', height }}>
+    <Box sx={{ position: 'relative', width: '100%', height }} data-glossary-shot="GaugeBar">
       <Box
         sx={(theme) => ({
           display: 'flex',

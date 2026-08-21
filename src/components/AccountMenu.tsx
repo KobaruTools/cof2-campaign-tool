@@ -82,6 +82,7 @@ export function AccountMenu({
           color="inherit"
           onClick={(e) => setAnchorEl(e.currentTarget)}
           aria-label={isPlayer ? 'Session joueur' : 'Compte'}
+          data-glossary-shot="AccountMenu"
           sx={(theme) => ({
             // Voile blanc de survol en fondu doux (aligné sur les boutons nav de l'en-tête).
             transition: theme.transitions.create('background-color', {

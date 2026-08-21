@@ -275,7 +275,7 @@ export function CharacterSessionHistoryDrawer({
       onClose={onClose}
       slotProps={{ paper: { sx: { width: { xs: '100vw', sm: 'min(960px, 100vw)' }, maxWidth: '100vw' } } }}
     >
-      <Box sx={{ p: { xs: 2, sm: 3 } }}>
+      <Box sx={{ p: { xs: 2, sm: 3 } }} data-glossary-shot="CharacterSessionHistoryDrawer">
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 2 }}>
           <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
             Historique — {characterName}

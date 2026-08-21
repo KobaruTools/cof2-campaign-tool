@@ -55,7 +55,7 @@ export function CoinPouchCreateDialog({ open, onClose, onConfirm }: CoinPouchCre
   };
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth data-glossary-shot="CoinPouchCreateDialog">
       <DialogTitle>Créer une bourse de pièces</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

@@ -155,6 +155,7 @@ export function CharacterListSkeleton({
           ...LIST_PAPER_SX,
           ...(attachedTop && { borderTopLeftRadius: 0, borderTopRightRadius: 0 }),
         }}
+        data-glossary-shot="CharacterListSkeleton"
       >
         <Table sx={{ tableLayout: 'fixed' }}>
           {renderColgroup()}
@@ -172,7 +173,12 @@ export function CharacterListSkeleton({
       </TableContainer>
 
       {/* Mobile : cartes empilées. */}
-      <Stack spacing={1.5} aria-hidden sx={{ display: { xs: 'flex', md: 'none' } }}>
+      <Stack
+        spacing={1.5}
+        aria-hidden
+        sx={{ display: { xs: 'flex', md: 'none' } }}
+        data-glossary-shot="CharacterListSkeleton"
+      >
         {Array.from({ length: rows }, (_, i) => skeletonCard(i))}
       </Stack>
     </>

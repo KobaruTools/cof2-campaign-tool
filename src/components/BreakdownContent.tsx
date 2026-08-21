@@ -36,7 +36,7 @@ const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
 export function BreakdownContent({ title, breakdown, page, section }: BreakdownContentProps) {
   const hasSource = page != null || section != null;
   return (
-    <Box sx={{ minWidth: 180 }}>
+    <Box sx={{ minWidth: 180 }} data-glossary-shot="BreakdownContent">
       {/* Ligne du titre : nom de la stat à gauche, puce de source poussée à l'extrême droite. */}
       <Box
         sx={{

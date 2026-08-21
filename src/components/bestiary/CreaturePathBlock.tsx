@@ -67,6 +67,7 @@ export function CreaturePathBlock({ paths, abilities, nc, dense = false, twoColu
         gridTemplateColumns: twoColumns ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } : '1fr',
         gap: 1.25,
       }}
+      data-glossary-shot="CreaturePathBlock"
     >
       {resolved.map(({ ref, name, classId, sourcePage, features }) => {
         // Couleur de profil dérivée au RENDU (le module de résolution reste sans UI).

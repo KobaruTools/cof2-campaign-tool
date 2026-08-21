@@ -51,6 +51,7 @@ export function MagicDefBadge({ value }: { value: number }) {
     >
       <Box
         component="span"
+        data-glossary-shot="MagicItemBadges"
         sx={(theme) => ({
           display: 'inline-block',
           verticalAlign: 'baseline',
@@ -87,6 +88,7 @@ export function MagicWeaponBonusBadge({ value }: { value: number }) {
     >
       <Box
         component="span"
+        data-glossary-shot="MagicItemBadges"
         sx={(theme) => ({
           display: 'inline-block',
           verticalAlign: 'baseline',
@@ -128,6 +130,7 @@ export function MagicPropertyBadges({ properties }: { properties: MagicProperty[
           >
             <Box
               component="span"
+              data-glossary-shot="MagicItemBadges"
               sx={(theme) => ({
                 display: 'inline-block',
                 verticalAlign: 'baseline',
@@ -176,6 +179,7 @@ export function ItemBonusBadge({
     <AppTooltip title={tooltip}>
       <Box
         component="span"
+        data-glossary-shot="MagicItemBadges"
         sx={(theme) => {
           const color = positive ? theme.palette.secondary.main : theme.palette.warning.main;
           return {

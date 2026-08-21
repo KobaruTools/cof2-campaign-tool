@@ -34,6 +34,7 @@ export function GaugeIconCap({ color, label, height = 24, roundedLeft = false, c
   return (
     <AppTooltip title={label}>
       <Box
+        data-glossary-shot="GaugeIconCap"
         sx={(theme) => ({
           display: 'inline-flex',
           alignItems: 'center',

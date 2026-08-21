@@ -30,6 +30,15 @@ import { summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
 
+/**
+ * Repère de capture pour le glossaire (PER-443), posé sur la `Paper` visible de la
+ * modale. Passé via une constante (pas un littéral en ligne) : `slotProps.paper` est
+ * typé sans index de signature `data-*`, un littéral inline déclenchait donc une
+ * vérification stricte des propriétés en excès (TS2353) alors qu'une variable est
+ * simplement vérifiée par structure.
+ */
+const GLOSSARY_SHOT_PAPER_PROPS = { 'data-glossary-shot': 'AttachCharacterDialog' };
+
 export interface AttachCharacterDialogProps {
   open: boolean;
   /** Campagne cible : les personnages choisis y sont rattachés (FK `campaignId`). */
@@ -65,7 +74,13 @@ export function AttachCharacterDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      slotProps={{ paper: GLOSSARY_SHOT_PAPER_PROPS }}
+    >
       <DialogTitle>Rattacher un personnage</DialogTitle>
       <DialogContent>
         {unassigned.length === 0 ? (

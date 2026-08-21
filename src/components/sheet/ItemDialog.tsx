@@ -1442,6 +1442,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
       maxWidth="md"
       fullWidth
       fullScreen={fullScreen}
+      data-glossary-shot="ItemDialog"
     >
       <DialogTitle sx={{ position: 'relative', pr: 9 }}>
         {editing ? 'Modifier l’objet' : 'Ajouter un objet'}

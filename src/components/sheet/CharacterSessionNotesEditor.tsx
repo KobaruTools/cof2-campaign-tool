@@ -67,22 +67,28 @@ export function CharacterSessionNotesEditor({
     }
   };
 
-  if (!loaded) return <Skeleton variant="rounded" height={80} />;
+  if (!loaded)
+    return <Skeleton variant="rounded" height={80} data-glossary-shot="CharacterSessionNotesEditor" />;
 
   if (readOnly) {
     return content.trim() === '' ? (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" data-glossary-shot="CharacterSessionNotesEditor">
         Aucune note pour cette partie…
       </Typography>
     ) : (
-      <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
+      <Typography
+        variant="body2"
+        component="div"
+        sx={{ whiteSpace: 'pre-line' }}
+        data-glossary-shot="CharacterSessionNotesEditor"
+      >
         <GlossaryRichText>{content}</GlossaryRichText>
       </Typography>
     );
   }
 
   return (
-    <Box onBlur={() => void save(content)}>
+    <Box onBlur={() => void save(content)} data-glossary-shot="CharacterSessionNotesEditor">
       <RichTextEditor value={content} onChange={setContent} placeholder="Aucune note pour cette partie…" />
       {error && (
         <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>

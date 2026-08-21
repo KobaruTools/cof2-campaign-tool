@@ -175,6 +175,7 @@ export function GroupRestControl({
   const button = (
     <Button
       data-tour={dataTour}
+      data-glossary-shot="GroupRestControl"
       variant="outlined"
       size="small"
       startIcon={<HotelIcon />}

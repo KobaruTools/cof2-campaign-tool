@@ -39,6 +39,7 @@ export function CollapsibleLabelButton({
   return (
     <Button
       startIcon={icon}
+      data-glossary-shot="CollapsibleLabelButton"
       aria-label={label}
       title={title ?? label}
       sx={[

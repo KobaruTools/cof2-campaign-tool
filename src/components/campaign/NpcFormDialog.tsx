@@ -367,7 +367,7 @@ export function NpcFormDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth data-glossary-shot="NpcFormDialog">
       <DialogTitle>{npc ? `Modifier « ${npc.name} »` : 'Nouveau PNJ'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>

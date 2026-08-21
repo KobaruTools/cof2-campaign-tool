@@ -88,10 +88,17 @@ export function RulesBookSplitButton() {
   );
 
   // Aucun livre payant débloqué : bouton simple, strictement identique à avant.
-  if (unlockedBooks.length === 0) return body;
+  // `display: contents` : le wrapper de tag ne doit rien changer au layout du bouton seul.
+  if (unlockedBooks.length === 0) {
+    return (
+      <Box sx={{ display: 'contents' }} data-glossary-shot="RulesBookSplitButton">
+        {body}
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+    <Box sx={{ display: 'inline-flex', alignItems: 'center' }} data-glossary-shot="RulesBookSplitButton">
       {body}
       <Button
         ref={chevronRef}

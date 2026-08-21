@@ -104,6 +104,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           pointerEvents: 'none',
           maxWidth: 'min(420px, calc(100vw - 48px))',
         })}
+        data-glossary-shot="ToastProvider"
       >
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={() => remove(toast.id)} />

@@ -39,6 +39,7 @@ export function CharacterSyncNotifier() {
 
   return (
     <Snackbar
+      data-glossary-shot="CharacterSyncNotifier"
       open={conflictId !== null}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
     >

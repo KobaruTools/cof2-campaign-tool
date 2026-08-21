@@ -222,7 +222,7 @@ export function FeatureMarkerHexes({
     ? Array.from(new Set(feature.actionTypes.map((a) => (a === 'L' ? 'A' : a))))
     : feature.actionTypes;
   return (
-    <Stack direction="row" spacing={0.25} sx={sx}>
+    <Stack direction="row" spacing={0.25} sx={sx} data-glossary-shot="FeatureMarkerHex">
       {feature.isSpell && (
         <Hex fill={fill} gradient={gradient} size={size} label="Sort">
           <EmergencyIcon sx={{ fontSize: { xs: size * MOBILE_HEX_SCALE * 0.6, sm: size * 0.6 }, color: 'inherit' }} />

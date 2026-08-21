@@ -314,7 +314,7 @@ export function CompanionsPanel({
   renderPassengerSelect,
 }: CompanionsPanelProps) {
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} data-glossary-shot="CompanionsPanel">
       {companions.map((entry) => {
         const mounted = enSelleFor ? enSelleFor(entry) : null;
         return (

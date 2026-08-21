@@ -84,6 +84,7 @@ export function ClassIcon({ classId, firearmsAllowed, size = 24, color, title, s
   return (
     <Box
       component="svg"
+      data-glossary-shot="ClassIcon"
       viewBox="0 0 512 512"
       role={title ? 'img' : undefined}
       aria-label={title}

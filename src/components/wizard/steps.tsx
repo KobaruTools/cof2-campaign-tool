@@ -384,7 +384,7 @@ export function ClassStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
   };
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} data-glossary-shot="ClassStep">
       <FormControl>
         <FormLabel>Profil</FormLabel>
         <RadioGroup value={draft.classId} onChange={(e) => chooseClass(e.target.value)}>
@@ -663,7 +663,13 @@ function pathFeatureAtRank(pathId: string, rank: number): Feature | undefined {
  */
 export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
   const characterClass = classById.get(draft.classId);
-  if (!characterClass) return <AppAlert severity="warning">Choisissez d’abord un profil.</AppAlert>;
+  if (!characterClass) {
+    return (
+      <AppAlert severity="warning" data-glossary-shot="PathsStep">
+        Choisissez d’abord un profil.
+      </AppAlert>
+    );
+  }
   // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix brouillon, PER-185) :
   // l'arbalétrier se voit proposer le maître des arbalètes à la place des explosifs.
   // Absent = « Non attribué » → pas de contrainte de campagne (fallback historique).
@@ -772,7 +778,7 @@ export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
   const mageRank2Paths = draft.chosenPaths.filter((p) => pathFamilyId(p) === 'mages');
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} data-glossary-shot="PathsStep">
       <Box>
         <Typography variant="subtitle2" gutterBottom>
           Choisissez 2 voies de profil ({draft.chosenPaths.length}/2)
@@ -1115,7 +1121,7 @@ export function IdentityStep({
         );
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} data-glossary-shot="IdentityStep">
       {characterClass && (
         <Stack spacing={1}>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>

@@ -47,6 +47,7 @@ export function ItemTypeIcon({
   return (
     <Box
       component="svg"
+      data-glossary-shot="ItemTypeIcon"
       viewBox="0 0 512 512"
       role={title ? 'img' : undefined}
       aria-label={title}

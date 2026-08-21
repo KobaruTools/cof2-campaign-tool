@@ -35,6 +35,7 @@ export function WeldedBarPinButton({ pinned, onToggle, label }: WeldedBarPinButt
       <IconButton
         size="small"
         onClick={onToggle}
+        data-glossary-shot="WeldedBarPinButton"
         aria-label={pinned ? `Retirer de la barre condensée : ${label}` : `Ajouter à la barre condensée : ${label}`}
         sx={(theme) => ({
           width: WELDED_BUTTON_HEIGHT,

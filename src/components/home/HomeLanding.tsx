@@ -207,7 +207,7 @@ export function HomeLanding({ role }: { role: SessionRole }) {
   const BookIcon = BOOKS[DEFAULT_BOOK_ID].Icon;
 
   return (
-    <Box sx={{ position: 'relative', minHeight: '100%' }}>
+    <Box data-glossary-shot="HomeLanding" sx={{ position: 'relative', minHeight: '100%' }}>
       {/* Fond de PAGE : les deux moitiés de la couverture ancrées au PIED de page, comme
           sur le reste de l'app. Deux fonds distincts cohabitent sur cette page et ne
           jouent pas le même rôle — celui-ci referme le bas de la page, tandis que

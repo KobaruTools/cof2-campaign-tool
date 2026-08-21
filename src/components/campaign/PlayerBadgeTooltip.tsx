@@ -22,12 +22,17 @@ export interface PlayerBadgeTooltipProps {
 
 export function PlayerBadgeTooltip({ player }: PlayerBadgeTooltipProps) {
   // Aucun joueur attribué : badge nu, rien à survoler.
-  if (!player) return <PlayerBadge name={null} />;
+  if (!player)
+    return (
+      <Box component="span" data-glossary-shot="PlayerBadgeTooltip" sx={{ display: 'inline-flex' }}>
+        <PlayerBadge name={null} />
+      </Box>
+    );
 
   return (
     <PlayerInfoTooltip player={player}>
       {/* Box porteur de ref/handlers pour le Tooltip (le badge est un composant simple). */}
-      <Box component="span" sx={{ display: 'inline-flex' }}>
+      <Box component="span" data-glossary-shot="PlayerBadgeTooltip" sx={{ display: 'inline-flex' }}>
         <PlayerBadge name={player.name} />
       </Box>
     </PlayerInfoTooltip>

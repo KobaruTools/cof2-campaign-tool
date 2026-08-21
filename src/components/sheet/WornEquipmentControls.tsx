@@ -159,6 +159,7 @@ export function WornControls({
         color="success"
         size="small"
         onChange={() => onWear(worn ? undefined : { slot })}
+        data-glossary-shot="WornEquipmentControls"
         sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}
       >
         {slotIcon(slot)}
@@ -208,7 +209,12 @@ export function WornControls({
     };
 
     return (
-      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.75 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ flexWrap: 'wrap', gap: 0.75 }}
+        data-glossary-shot="WornEquipmentControls"
+      >
         <ToggleButtonGroup
           exclusive
           size="small"
@@ -257,6 +263,7 @@ export function WornControls({
         onChange={(_, next: 'mainHand' | 'offHand' | null) =>
           onWear(next ? { slot: next } : undefined)
         }
+        data-glossary-shot="WornEquipmentControls"
       >
         <ToggleButton value="mainHand" sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}>
           {slotIcon('mainHand')}
@@ -282,6 +289,7 @@ export function WornControls({
       color="success"
       size="small"
       onChange={() => onWear(accessoryWorn ? undefined : { slot: 'accessory' })}
+      data-glossary-shot="WornEquipmentControls"
       sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}
     >
       {accessoryIcon(line)}

@@ -54,6 +54,7 @@ export function CharacterListSearchBar({
         borderBottom: { md: 'none' },
         mb: { xs: 2, md: 0 },
       }}
+      data-glossary-shot="CharacterListSearchBar"
     >
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
         {showSearch && (

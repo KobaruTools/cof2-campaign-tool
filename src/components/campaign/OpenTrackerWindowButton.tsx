@@ -46,6 +46,7 @@ export function OpenTrackerWindowButton({ cid }: { cid: string }) {
       // replie donc sur la seule icône (cf. `CollapsibleLabelButton`). Le `display` reste le repli
       // mobile d'origine : masqué en dessous de `md`.
       sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+      data-glossary-shot="OpenTrackerWindowButton"
     />
   );
 }

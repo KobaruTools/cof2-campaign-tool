@@ -28,7 +28,7 @@ export interface RecoveryDicePipsProps {
  */
 export function RecoveryDicePips({ max, current, die, onSet }: RecoveryDicePipsProps) {
   return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+    <Stack direction="row" spacing={1} data-glossary-shot="RecoveryDicePips" sx={{ alignItems: 'center' }}>
       <AppTooltip title={`Dés de récupération : ${current} / ${max}`}>
         <Box
           sx={{

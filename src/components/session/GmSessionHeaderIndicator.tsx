@@ -97,6 +97,7 @@ export function GmSessionHeaderIndicator({ campaignId }: GmSessionHeaderIndicato
         onClick={() => void handleStart()}
         disabled={busy || loading}
         startIcon={busy ? <CircularProgress size={14} color="inherit" /> : <PlayArrowIcon />}
+        data-glossary-shot="GmSessionHeaderIndicator"
         sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
       >
         Démarrer la session
@@ -129,7 +130,11 @@ export function GmSessionHeaderIndicator({ campaignId }: GmSessionHeaderIndicato
   return (
     <AppTooltip title={detail}>
       {/* Box porteur de ref/handlers pour le Tooltip (le badge est un composant simple). */}
-      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+      <Box
+        component="span"
+        data-glossary-shot="GmSessionHeaderIndicator"
+        sx={{ display: 'inline-flex', alignItems: 'center' }}
+      >
         <SessionConnectionBadge state={state} showLabel />
       </Box>
     </AppTooltip>

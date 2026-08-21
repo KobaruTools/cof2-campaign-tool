@@ -1,5 +1,6 @@
 'use client';
 
+import Box from '@mui/material/Box';
 import { IdentityForm } from '@/components/IdentityForm';
 import type { Ancestry } from '@/data/schema';
 import type { Identity } from '@/lib/character/types';
@@ -21,12 +22,14 @@ export interface IdentityEditorProps {
  */
 export function IdentityEditor({ name, identity, ancestry, onName, onIdentity }: IdentityEditorProps) {
   return (
-    <IdentityForm
-      name={name}
-      identity={identity}
-      ancestry={ancestry}
-      onName={onName}
-      onIdentity={onIdentity}
-    />
+    <Box data-glossary-shot="IdentityEditor">
+      <IdentityForm
+        name={name}
+        identity={identity}
+        ancestry={ancestry}
+        onName={onName}
+        onIdentity={onIdentity}
+      />
+    </Box>
   );
 }

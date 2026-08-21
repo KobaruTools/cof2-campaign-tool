@@ -219,8 +219,16 @@ export default function PdfBookViewer({
   const pageInputFocusedRef = useRef(false);
   // Dernière version de `goTo` (définie plus bas, elle dépend de la géométrie), pour l'appeler
   // depuis un effet sans l'y déclarer en dépendance — sinon un changement de zoom relancerait
-  // la recherche débattue et remettrait le curseur d'occurrence à zéro.
+  // la recherche débattue et remettrait le curseur d'occurrence à zéro. Sert aussi de passerelle
+  // stable vers `onItemClick` du <Document> (cf. `handleInternalLinkClick`) : react-pdf fige son
+  // gestionnaire de liens internes dans un `useRef` calculé au tout premier rendu, donc lui passer
+  // une fonction inline la condamnerait à ne jamais voir un `goTo` autre que celui du montage
+  // (état encore vide : `numPages` null, `continuous` false) — d'où la nécessité d'une identité
+  // STABLE qui redirige vers l'état courant via la ref plutôt que de fermer sur lui directement.
   const goToRef = useRef<(page: number) => void>(() => {});
+  const handleInternalLinkClick = useCallback(({ pageNumber }: { pageNumber: number }) => {
+    goToRef.current(pageNumber);
+  }, []);
 
   // --- Recherche plein-texte (PER-58) ---------------------------------------------------------
   // Le document pdf.js chargé, capté à `onLoadSuccess` : c'est la source des couches texte à
@@ -944,6 +952,7 @@ export default function PdfBookViewer({
                 setPdfDoc(pdf);
               }}
               onLoadError={() => setLoadError(true)}
+              onItemClick={handleInternalLinkClick}
               loading={
                 <Box sx={{ py: 8, textAlign: 'center' }}>
                   <CircularProgress />
@@ -1042,7 +1051,13 @@ export default function PdfBookViewer({
   // Modale superposée (route interceptée) : ferme au clic sur le fond / Échap via `onClose`.
   if (chrome === 'dialog') {
     return (
-      <Dialog open onClose={onClose} maxWidth="lg" fullWidth>
+      <Dialog
+        open
+        onClose={onClose}
+        maxWidth="lg"
+        fullWidth
+        data-glossary-shot="PdfBookViewer"
+      >
         {content}
       </Dialog>
     );
@@ -1050,7 +1065,10 @@ export default function PdfBookViewer({
 
   // Plein écran (route réelle) : colonne pleine hauteur, la zone de page prend l'espace restant.
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', bgcolor: 'background.paper' }}>
+    <Box
+      sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', bgcolor: 'background.paper' }}
+      data-glossary-shot="PdfBookViewer"
+    >
       {content}
     </Box>
   );

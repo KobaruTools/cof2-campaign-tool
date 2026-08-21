@@ -75,11 +75,13 @@ export function CreatureBlobView({
     );
   if (blobStatus === 'error') {
     return (
-      <AppAlert severity="error">Impossible de charger le détail de cette créature.</AppAlert>
+      <AppAlert severity="error" data-glossary-shot="CreatureBlobView">
+        Impossible de charger le détail de cette créature.
+      </AppAlert>
     );
   }
   return (
-    <Stack spacing={1.5} sx={{ p: 1 }}>
+    <Stack spacing={1.5} sx={{ p: 1 }} data-glossary-shot="CreatureBlobView">
       <Skeleton variant="text" width="45%" height={40} />
       <Skeleton variant="rounded" height={72} />
       <Skeleton variant="rounded" height={180} />

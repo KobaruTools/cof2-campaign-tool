@@ -93,6 +93,7 @@ export function EquipmentCatalogAutocomplete({
     <Autocomplete
       size="small"
       sx={sx}
+      data-glossary-shot="EquipmentCatalogAutocomplete"
       options={sorted}
       value={null}
       blurOnSelect

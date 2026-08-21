@@ -50,7 +50,7 @@ export function PlayerInfoTooltip({ player, children }: PlayerInfoTooltipProps) 
   };
 
   const detail = (
-    <Stack spacing={0.75} sx={{ py: 0.25 }}>
+    <Stack spacing={0.75} sx={{ py: 0.25 }} data-glossary-shot="PlayerInfoTooltip">
       <Typography variant="body2">{lastSeenLabel}</Typography>
       <Link
         component="button"

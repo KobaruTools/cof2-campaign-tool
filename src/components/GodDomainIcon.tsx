@@ -23,6 +23,7 @@ export function GodDomainIcon({ godId, size = 24, color = 'currentColor', sx }: 
   return (
     <Box
       component="svg"
+      data-glossary-shot="GodDomainIcon"
       viewBox="0 0 512 512"
       aria-hidden
       sx={{

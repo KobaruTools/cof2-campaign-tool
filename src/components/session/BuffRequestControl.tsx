@@ -118,6 +118,7 @@ export function BuffRequestControl({
         color={declined ? 'warning' : 'success'}
         startIcon={<AutoAwesomeIcon />}
         onClick={() => setOpen(true)}
+        data-glossary-shot="BuffRequestControl"
       >
         {declined ? 'Effet refusé' : pending ? 'Annonce envoyée' : 'Annoncer un effet au groupe'}
       </Button>

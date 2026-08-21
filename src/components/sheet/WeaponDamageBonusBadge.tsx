@@ -48,6 +48,7 @@ export function WeaponDamageBonusBadge({ bonus }: { bonus: SituationalDamageBonu
   return (
     <AppTooltip title={tooltip}>
       <Box
+        data-glossary-shot="WeaponDamageBonusBadge"
         sx={(theme) => ({
           display: 'inline-flex',
           alignItems: 'center',

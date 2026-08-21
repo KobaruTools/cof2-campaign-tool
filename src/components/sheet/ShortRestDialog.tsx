@@ -138,7 +138,7 @@ export function ShortRestDialog({
   };
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth data-glossary-shot="ShortRestDialog">
       <DialogTitle>Repos court</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

@@ -32,6 +32,7 @@ export function MalusDieBadge({ label, size = 16, noTooltip, sx }: MalusDieBadge
   const badge = (
     <Box
       component="span"
+      data-glossary-shot="MalusDieBadge"
       aria-label={title}
       title={noTooltip ? title : undefined}
       sx={{

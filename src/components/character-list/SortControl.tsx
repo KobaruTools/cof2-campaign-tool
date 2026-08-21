@@ -32,6 +32,7 @@ export function SortControl({ sort, keys, onPickSort, onToggleDir, sx }: SortCon
       direction="row"
       spacing={1}
       sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', ...sx }}
+      data-glossary-shot="SortControl"
     >
       <Typography variant="body2" color="text.secondary">
         Trier :

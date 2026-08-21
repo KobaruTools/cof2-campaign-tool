@@ -203,6 +203,7 @@ export function DefenseBadge({
   return (
     <AppTooltip title={tooltip}>
       <Box
+        data-glossary-shot="DefenseBadge"
         sx={(theme) => ({
           display: 'inline-flex',
           alignItems: 'center',

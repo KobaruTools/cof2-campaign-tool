@@ -682,6 +682,7 @@ export function StickySheetStatusBar({
   return (
     <Collapse in={visible} timeout={200}>
       <Box
+        data-glossary-shot="StickySheetStatusBar"
         sx={{
           borderTop: `1px solid ${visible ? 'rgba(255, 255, 255, 0.18)' : 'transparent'}`,
           transition: 'border-color 0.15s ease',

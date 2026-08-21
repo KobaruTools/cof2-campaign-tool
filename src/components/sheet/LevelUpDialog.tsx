@@ -1484,6 +1484,7 @@ export function LevelUpDialog({
         maxWidth="sm"
         fullWidth
         fullScreen={fullScreen}
+        data-glossary-shot="LevelUpDialog"
         slotProps={{
           paper: {
             sx: {

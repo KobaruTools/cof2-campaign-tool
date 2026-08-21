@@ -860,6 +860,7 @@ export function CreatureStatBlock({
 }: CreatureStatBlockProps) {
   return (
     <Box
+      data-glossary-shot="CreatureStatBlock"
       sx={{
         border: 1,
         borderColor: 'divider',

@@ -61,7 +61,7 @@ export function IdentityFields({ identity, ancestryId, featureIds }: IdentityFie
     </Box>
   );
   return (
-    <Grid container spacing={2}>
+    <Grid container spacing={2} data-glossary-shot="IdentityFields">
       <Grid size={{ xs: 6, sm: 3 }}>
         <Field label="Genre" value={identity.sex ? SEX_LABELS[identity.sex] : undefined} />
       </Grid>

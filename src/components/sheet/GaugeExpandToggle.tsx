@@ -30,6 +30,7 @@ export function GaugeExpandToggle({ expanded, onToggle, color, height = 24 }: Ga
         onClick={onToggle}
         aria-label={expanded ? 'Masquer les options' : 'Plus d’options'}
         aria-expanded={expanded}
+        data-glossary-shot="GaugeExpandToggle"
         sx={(theme) => ({
           display: 'inline-flex',
           alignItems: 'center',

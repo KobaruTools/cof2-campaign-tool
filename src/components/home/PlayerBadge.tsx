@@ -22,6 +22,7 @@ export function PlayerBadge({ name }: PlayerBadgeProps) {
   return (
     <Box
       component="span"
+      data-glossary-shot="PlayerBadge"
       sx={{
         display: 'inline-block',
         px: 1,

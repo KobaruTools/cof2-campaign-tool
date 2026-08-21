@@ -95,6 +95,7 @@ export function RestRequestControl({
         color={declined ? 'warning' : 'primary'}
         startIcon={<GroupsIcon />}
         onClick={() => setOpen(true)}
+        data-glossary-shot="RestRequestControl"
       >
         {declined ? 'Demande refusée' : mine ? 'Demande envoyée' : 'Proposer une pause'}
       </Button>

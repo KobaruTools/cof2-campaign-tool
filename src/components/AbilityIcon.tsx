@@ -37,6 +37,7 @@ export function AbilityIcon({ ability, size = 24, color, title, sx }: AbilityIco
   return (
     <Box
       component="svg"
+      data-glossary-shot="AbilityIcon"
       viewBox="0 0 512 512"
       role={label ? 'img' : undefined}
       aria-label={label}

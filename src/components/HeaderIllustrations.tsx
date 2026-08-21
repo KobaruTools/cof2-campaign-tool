@@ -104,6 +104,7 @@ export function HeaderIllustrations({
         <Box
           component="img"
           ref={ancestryImgRef}
+          data-glossary-shot="HeaderIllustrations"
           src={`/ancestries/${ancestryId}-vitruve.webp`}
           alt=""
           aria-hidden
@@ -133,6 +134,7 @@ export function HeaderIllustrations({
         <Box
           component="img"
           ref={classImgRef}
+          data-glossary-shot="HeaderIllustrations"
           src={classSrc}
           alt=""
           aria-hidden
@@ -166,6 +168,7 @@ export function HeaderIllustrations({
         // joueur (PER-394, cf. `croppedClassSrc`).
         <Paper
           variant="outlined"
+          data-glossary-shot="HeaderIllustrations"
           sx={{
             display: 'block',
             position: 'absolute',

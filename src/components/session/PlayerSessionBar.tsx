@@ -16,10 +16,15 @@ export interface PlayerSessionBarProps {
 }
 
 export function PlayerSessionBar({ campaignId, playerId, playerName }: PlayerSessionBarProps) {
+  // Span porteur du marqueur de glossaire : `SessionLiveBar` porte déjà le sien, ce
+  // wrapper neutre (aucun style) donne à CE composant son propre repère DOM sans
+  // toucher au rendu de la barre qu'il délègue.
   return (
-    <SessionLiveBar
-      campaignId={campaignId}
-      identity={{ kind: 'player', playerId, name: playerName }}
-    />
+    <span data-glossary-shot="PlayerSessionBar">
+      <SessionLiveBar
+        campaignId={campaignId}
+        identity={{ kind: 'player', playerId, name: playerName }}
+      />
+    </span>
   );
 }

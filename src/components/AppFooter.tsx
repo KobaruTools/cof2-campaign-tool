@@ -40,6 +40,7 @@ export function AppFooter() {
   return (
     <Box
       component="footer"
+      data-glossary-shot="AppFooter"
       sx={{
         // AUCUNE marge haute (arbitrage proprio) : le pied de page vient au contact du
         // contenu, sur toutes les routes. Il en portait une (`mt: 6`), assortie d'une

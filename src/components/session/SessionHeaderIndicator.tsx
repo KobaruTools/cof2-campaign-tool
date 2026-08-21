@@ -86,7 +86,11 @@ export function SessionHeaderIndicator({ campaignId, identity }: SessionHeaderIn
   return (
     <AppTooltip title={detail}>
       {/* Box porteur de ref/handlers pour le Tooltip (le badge est un composant simple). */}
-      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+      <Box
+        component="span"
+        data-glossary-shot="SessionHeaderIndicator"
+        sx={{ display: 'inline-flex', alignItems: 'center' }}
+      >
         <SessionConnectionBadge state={state} showLabel />
       </Box>
     </AppTooltip>

@@ -369,7 +369,7 @@ export function DerivedStatsGrid({
   ];
 
   return (
-    <Grid container spacing={1}>
+    <Grid container spacing={1} data-glossary-shot="DerivedStatsGrid">
       {statLines.map(({ id, computed, suffix }) => {
         const key = OVERRIDE_KEY[id];
         const manualForced = overrides ? key in overrides : false;

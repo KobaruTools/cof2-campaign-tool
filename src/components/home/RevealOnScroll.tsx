@@ -82,5 +82,9 @@ export function RevealOnScroll({
     };
   }, [animateBackground, delay]);
 
-  return <Box ref={ref}>{children}</Box>;
+  return (
+    <Box ref={ref} data-glossary-shot="RevealOnScroll">
+      {children}
+    </Box>
+  );
 }

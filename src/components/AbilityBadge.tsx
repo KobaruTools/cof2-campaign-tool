@@ -41,6 +41,7 @@ export function AbilityBadge({ ability, size = 'sm', color, sx }: AbilityBadgePr
     <AppTooltip title={ABILITY_NAMES[ability]}>
       <Box
         component="span"
+        data-glossary-shot="AbilityBadge"
         sx={{
           display: 'inline-flex',
           alignItems: 'center',

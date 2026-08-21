@@ -136,7 +136,7 @@ function ManeuverCard({ entry, ctx }: { entry: ReferenceTextEntry; ctx: Characte
 export function ManeuversPanel({ abilities, level }: { abilities: Abilities; level: number }) {
   const ctx: CharacterContext = { abilities, level };
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} data-glossary-shot="ManeuversPanel">
       {/* Contexte minimal : ce qu'est une manœuvre, en une ligne. La règle générale complète
           (modificateur de taille, rendements décroissants) reste sur la page d'aide-mémoire. */}
       <Typography variant="body2" color="text.secondary" component="div">

@@ -668,6 +668,7 @@ export function MeleeAttackCard({
 
   return (
     <Box
+      data-glossary-shot="MeleeAttackCard"
       sx={{
         position: 'relative',
         // Comme les cartes génériques : s'étire à la hauteur de la ligne de grille (toutes les cartes

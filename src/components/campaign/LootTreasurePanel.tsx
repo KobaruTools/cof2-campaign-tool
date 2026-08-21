@@ -530,7 +530,7 @@ export function LootTreasurePanel({
   };
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="LootTreasurePanel">
       {/* Bloc de tirage : bouton principal + compteur + réinitialisation à épuisement. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
         <AppTooltip title="Piocher un objet">

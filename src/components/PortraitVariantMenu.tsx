@@ -83,7 +83,11 @@ export function PortraitVariantMenu({
   return (
     <>
       <AppTooltip title="Changer l’illustration du profil">
-        <IconButton size="small" onClick={(e) => setAnchor(e.currentTarget)}>
+        <IconButton
+          size="small"
+          onClick={(e) => setAnchor(e.currentTarget)}
+          data-glossary-shot="PortraitVariantMenu"
+        >
           {busy ? <CircularProgress size={18} /> : <AddPhotoAlternateIcon />}
         </IconButton>
       </AppTooltip>

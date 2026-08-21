@@ -91,7 +91,7 @@ export function LongRestDialog({
   };
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth data-glossary-shot="LongRestDialog">
       <DialogTitle>Repos long</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

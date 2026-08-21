@@ -66,11 +66,24 @@ export function HeaderNavButton({
   );
   // Bouton-lien (navigation interne) OU bouton d'action (onClick) selon la prop fournie.
   return href ? (
-    <Button color="inherit" startIcon={icon} component={Link} href={href} sx={buttonSx}>
+    <Button
+      color="inherit"
+      startIcon={icon}
+      component={Link}
+      href={href}
+      sx={buttonSx}
+      data-glossary-shot="HeaderNavButton"
+    >
       {labelSpan}
     </Button>
   ) : (
-    <Button color="inherit" startIcon={icon} onClick={onClick} sx={buttonSx}>
+    <Button
+      color="inherit"
+      startIcon={icon}
+      onClick={onClick}
+      sx={buttonSx}
+      data-glossary-shot="HeaderNavButton"
+    >
       {labelSpan}
     </Button>
   );

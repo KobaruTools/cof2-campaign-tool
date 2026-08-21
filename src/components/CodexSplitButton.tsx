@@ -59,7 +59,7 @@ export function CodexSplitButton() {
   useEffect(() => cancelClose, []);
 
   return (
-    <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+    <Box sx={{ display: 'inline-flex', alignItems: 'center' }} data-glossary-shot="CodexSplitButton">
       <HeaderNavButton href="/codex" icon={<ItemIcon id="spellbook" size={20} />} label="Codex" />
       <Button
         ref={chevronRef}

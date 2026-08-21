@@ -134,6 +134,7 @@ export function AppHeaderShell() {
       // sur un élément de la barre condensée de la fiche, pour caler le défilement sous elle plutôt
       // que sous son bord haut (cf. `scrollToSection` de la page personnage).
       id="app-header"
+      data-glossary-shot="AppHeader"
       position="sticky"
       // Verre dépoli, plus sombre que les sections de la fiche : gris quasi-noir à
       // peine transparent + le même flou d'arrière-plan (blur 10px) que les sections

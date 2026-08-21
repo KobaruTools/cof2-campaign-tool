@@ -64,7 +64,7 @@ export function FeatureLabel({
     ? Array.from(new Set(feature.actionTypes.map((a) => (a === 'L' ? 'A' : a))))
     : feature.actionTypes;
   return (
-    <Box component="span">
+    <Box component="span" data-glossary-shot="FeatureLabel">
       {/* Nom décliné par élément draconique le cas échéant (PER-74) — source UNIQUE du nom affiché,
           donc le seul endroit à traiter pour la modale de détail, le wizard et la montée de niveau. */}
       {declinedName}

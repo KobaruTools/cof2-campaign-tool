@@ -43,6 +43,7 @@ export function GmNotesDrawer({ campaignId, open, onClose }: GmNotesDrawerProps)
       open={open}
       onClose={onClose}
       keepMounted
+      data-glossary-shot="GmNotesDrawerHost"
       slotProps={{
         paper: {
           sx: {
@@ -54,6 +55,10 @@ export function GmNotesDrawer({ campaignId, open, onClose }: GmNotesDrawerProps)
         },
       }}
     >
+      {/* Boîte englobante (bloc normal, comme les deux enfants directs qu'elle remplace dans le
+          flux) : sert d'ancre DOM pour le crop du glossaire (PER-443) — le `Paper` du `Drawer`
+          n'accepte pas d'attribut `data-*` inconnu en typage strict MUI. */}
+      <Box data-glossary-shot="GmNotesDrawer">
       <Box
         sx={(theme) => ({
           position: 'sticky',
@@ -83,6 +88,7 @@ export function GmNotesDrawer({ campaignId, open, onClose }: GmNotesDrawerProps)
 
       <Box sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
         <SessionLiveNotesPanel campaignId={campaignId} />
+      </Box>
       </Box>
     </Drawer>
   );

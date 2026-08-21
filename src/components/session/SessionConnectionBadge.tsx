@@ -72,6 +72,7 @@ export function SessionConnectionBadge({ state, showLabel = false }: SessionConn
       component="span"
       role="status"
       aria-label={`Session : ${label}`}
+      data-glossary-shot="SessionConnectionBadge"
       sx={{
         display: 'inline-flex',
         alignItems: 'center',

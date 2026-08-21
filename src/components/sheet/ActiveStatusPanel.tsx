@@ -72,7 +72,7 @@ export function ActiveStatusPanel({
   if (statuses.length === 0) return null;
 
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }} data-glossary-shot="ActiveStatusPanel">
         {statuses.map((s) => {
           const remaining = statusRemainingRounds(s, roundNumber);
           // Croix de renoncement : sur les seuls buffs de groupe, et seulement sur SA fiche. Soudée à

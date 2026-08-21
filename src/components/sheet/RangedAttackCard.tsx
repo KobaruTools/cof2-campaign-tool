@@ -85,6 +85,7 @@ export function RangedAttackCard({
   return (
     <Card
       variant="outlined"
+      data-glossary-shot="RangedAttackCard"
       sx={{
         position: 'relative',
         height: '100%',

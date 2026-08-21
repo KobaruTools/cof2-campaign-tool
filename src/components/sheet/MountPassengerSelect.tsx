@@ -71,6 +71,7 @@ export function MountPassengerSelect({
       select
       size="small"
       fullWidth
+      data-glossary-shot="MountPassengerSelect"
       label="En selle avec"
       value={value}
       disabled={disabled || candidates.length === 0}

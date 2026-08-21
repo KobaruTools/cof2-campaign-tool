@@ -89,7 +89,10 @@ export function AbilityValueBadge({
     </Typography>
   );
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, ...sx }}>
+    <Box
+      data-glossary-shot="AbilityValueBadge"
+      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25, ...sx }}
+    >
       <AbilityIcon ability={ability} size={iconSize} title sx={iconSx} />
       {showCode && (
         <Typography variant={codeVariant} color="text.secondary" sx={{ fontWeight: 'bold', lineHeight: 1, ...codeSx }}>

@@ -86,13 +86,13 @@ function TallyRow({
 export function RestTallyList({ proposal, ownCharacterId }: RestTallyListProps) {
   if (proposal.participants.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" data-glossary-shot="RestTallyList">
         Aucun personnage réclamé à relever.
       </Typography>
     );
   }
   return (
-    <Stack spacing={0.75}>
+    <Stack spacing={0.75} data-glossary-shot="RestTallyList">
       {proposal.participants.map((p) => (
         <TallyRow
           key={p.characterId}

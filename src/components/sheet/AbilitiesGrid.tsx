@@ -117,6 +117,7 @@ export function AbilitiesGrid({
     // les colonnes égales recréent l'espacement maximal d'origine. En ÉDITION (champs
     // larges) on bascule sur un `auto-fit` qui, lui, s'autorise le retour à la ligne.
     <Box
+      data-glossary-shot="AbilitiesGrid"
       sx={{
         display: 'grid',
         gridTemplateColumns: onChange

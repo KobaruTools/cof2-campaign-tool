@@ -28,6 +28,7 @@ export function PinSectionButton({ pinned, onToggle, label }: PinSectionButtonPr
         size="small"
         color={pinned ? 'primary' : 'default'}
         onClick={onToggle}
+        data-glossary-shot="PinSectionButton"
         aria-label={pinned ? `Désépingler : ${label}` : `Épingler en haut d'écran : ${label}`}
       >
         {pinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}

@@ -226,7 +226,7 @@ export function PlayerStatusPanel({
   );
 
   return (
-    <Stack spacing={1.25}>
+    <Stack spacing={1.25} data-glossary-shot="PlayerStatusPanel">
       {/* Jauge de PV DÉDIÉE à la forme active (PER-374, formes élémentaires), EN PREMIER (retour
           propriétaire) : PV propres, distincts de ceux du personnage (barre normale, gelée juste en
           dessous). Titre = nom de la capacité ; remplissage en DÉGRADÉ « métal précieux » de la

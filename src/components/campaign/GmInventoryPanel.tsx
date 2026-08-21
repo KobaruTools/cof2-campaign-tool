@@ -660,6 +660,7 @@ export function GmInventoryPanel({ campaign, pendingCategoryId, onBackToTools }:
 
   return (
     <Box
+      data-glossary-shot="GmInventoryPanel"
       sx={{
         // Remplit TOUJOURS la largeur reçue de `GmLootDrawer` (jamais figée à `GM_INVENTORY_
         // PANEL_WIDTH`, qui n'est que le maximum souhaité) — entre `md` et ~1480px de viewport, ce

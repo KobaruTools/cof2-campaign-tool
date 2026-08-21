@@ -71,6 +71,7 @@ export function AppHeaderBrand() {
       component={Link}
       href="/"
       aria-label="Accueil"
+      data-glossary-shot="AppHeaderBrand"
       onMouseEnter={() => setShining(true)}
       sx={{
         position: 'relative',

@@ -127,7 +127,7 @@ export function GaugeRow({
   );
 
   return (
-    <Stack spacing={1.25}>
+    <Stack spacing={1.25} data-glossary-shot="GaugeRow">
       {/* Cap d'expansion + icône (libellé en tooltip) + barre (chiffres intégrés) +
           ajustement fin (±1, reset) accolés à sa droite (ou en dessous). */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>

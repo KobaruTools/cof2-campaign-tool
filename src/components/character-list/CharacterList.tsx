@@ -498,6 +498,7 @@ export function CharacterList({
           ...LIST_PAPER_SX,
           ...(attachedTop && { borderTopLeftRadius: 0, borderTopRightRadius: 0 }),
         }}
+        data-glossary-shot="CharacterList"
       >
         <Table sx={{ tableLayout: 'fixed' }}>
           {renderColgroup()}
@@ -561,7 +562,11 @@ export function CharacterList({
       </TableContainer>
 
       {/* Mobile : une carte empilée par personnage (PER-51). */}
-      <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+      <Stack
+        spacing={1.5}
+        sx={{ display: { xs: 'flex', md: 'none' } }}
+        data-glossary-shot="CharacterList"
+      >
         {groups
           ? groups.map((g) => {
               const isCollapsed = collapsed.has(g.key);

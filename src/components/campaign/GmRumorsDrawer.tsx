@@ -44,6 +44,7 @@ export function GmRumorsDrawer({ campaign, open, onClose }: GmRumorsDrawerProps)
       open={open}
       onClose={onClose}
       keepMounted
+      data-glossary-shot="GmRumorsDrawerHost"
       slotProps={{
         paper: {
           sx: {
@@ -56,6 +57,7 @@ export function GmRumorsDrawer({ campaign, open, onClose }: GmRumorsDrawerProps)
       }}
     >
       <Box
+        data-glossary-shot="GmRumorsDrawer"
         sx={(theme) => ({
           position: 'sticky',
           top: 0,

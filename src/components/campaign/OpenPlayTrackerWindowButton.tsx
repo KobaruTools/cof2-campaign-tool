@@ -38,6 +38,7 @@ export function OpenPlayTrackerWindowButton() {
       startIcon={<OpenInNewIcon />}
       onClick={open}
       sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+      data-glossary-shot="OpenPlayTrackerWindowButton"
     >
       Nouvelle fenêtre
     </Button>

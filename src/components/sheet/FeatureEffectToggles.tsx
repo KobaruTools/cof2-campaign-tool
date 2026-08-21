@@ -209,7 +209,13 @@ export function FeatureEffectToggles({
     // Vue colonne : interrupteur seul. `stopPropagation` pour ne pas ouvrir la
     // modale de détail de la carte en basculant l'état.
     return (
-      <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{ flexWrap: 'wrap' }}
+        onClick={(e) => e.stopPropagation()}
+        data-glossary-shot="FeatureEffectToggles"
+      >
         {entries.map(({ index, effect }) => (
           <AppTooltip key={index} title={label(index, effect)}>
             <Switch
@@ -231,7 +237,7 @@ export function FeatureEffectToggles({
   }
 
   return (
-    <Stack spacing={0.5}>
+    <Stack spacing={0.5} data-glossary-shot="FeatureEffectToggles">
       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
         Effets conditionnels (à activer selon la situation)
       </Typography>

@@ -21,6 +21,7 @@ export function PurseIcon({ size = 18, color = 'currentColor', title, sx }: Purs
   return (
     <Box
       component="svg"
+      data-glossary-shot="PurseIcon"
       viewBox="0 0 512 512"
       role={title ? 'img' : undefined}
       aria-label={title}

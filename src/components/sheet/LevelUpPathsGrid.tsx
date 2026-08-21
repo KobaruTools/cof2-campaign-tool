@@ -267,7 +267,7 @@ export function LevelUpPathsGrid({
   }, []);
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%' }} data-glossary-shot="LevelUpPathsGrid">
       <GlobalStyles styles={PATH_GRID_ANIMATIONS} />
       <Box
         ref={gridRef}

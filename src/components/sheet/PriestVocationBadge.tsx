@@ -38,6 +38,7 @@ export function PriestVocationBadge({ vocation }: { vocation?: PriestVocation | 
     >
       <Box
         component="span"
+        data-glossary-shot="PriestVocationBadge"
         sx={{
           display: 'inline-flex',
           alignItems: 'center',

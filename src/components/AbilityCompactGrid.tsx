@@ -25,7 +25,10 @@ export interface AbilityCompactGridProps {
 
 export function AbilityCompactGrid({ abilities, bonusDieAbilities }: AbilityCompactGridProps) {
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.75 }}>
+    <Box
+      sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.75 }}
+      data-glossary-shot="AbilityCompactGrid"
+    >
       {ABILITY_IDS.map((id) => (
         <AppTooltip key={id} title={ABILITY_NAMES[id]}>
           <AbilityValueBadge

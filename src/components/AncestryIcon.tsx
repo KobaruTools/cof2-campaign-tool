@@ -62,6 +62,7 @@ export const AncestryIcon = forwardRef<SVGSVGElement, AncestryIconProps>(functio
     <Box
       ref={ref}
       component="svg"
+      data-glossary-shot="AncestryIcon"
       viewBox="0 0 512 512"
       role={title ? 'img' : undefined}
       aria-label={title}

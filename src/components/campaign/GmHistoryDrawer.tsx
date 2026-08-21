@@ -28,7 +28,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { SessionHistoryList } from '@/components/session/SessionHistoryList';
 
 /** Largeur (px, ≥ `sm`) du tiroir — même gabarit que le tiroir « Outils du MJ » (contenu simple). */
-const HISTORY_WIDTH = 560;
+const HISTORY_WIDTH = 1120;
 
 /** Hauteur (px) de l'en-tête collé du tiroir — même valeur que les autres tiroirs de l'écran de MJ. */
 const HEADER_HEIGHT = 52;
@@ -51,6 +51,7 @@ export function GmHistoryDrawer({ campaignId, open, onClose }: GmHistoryDrawerPr
       // `keepMounted` : le contenu reste monté quand le tiroir est fermé, comme les autres tiroirs
       // de l'écran de MJ (état des cartes repliées/dépliées conservé le temps de la session).
       keepMounted
+      data-glossary-shot="GmHistoryDrawerHost"
       slotProps={{
         paper: {
           sx: {
@@ -62,6 +63,10 @@ export function GmHistoryDrawer({ campaignId, open, onClose }: GmHistoryDrawerPr
         },
       }}
     >
+      {/* Boîte englobante (bloc normal, comme les deux enfants directs qu'elle remplace dans le
+          flux) : sert d'ancre DOM pour le crop du glossaire (PER-443) — le `Paper` du `Drawer`
+          n'accepte pas d'attribut `data-*` inconnu en typage strict MUI. */}
+      <Box data-glossary-shot="GmHistoryDrawer">
       <Box
         sx={(theme) => ({
           position: 'sticky',
@@ -96,6 +101,7 @@ export function GmHistoryDrawer({ campaignId, open, onClose }: GmHistoryDrawerPr
           highlightMostRecent
           isGm
         />
+      </Box>
       </Box>
     </Drawer>
   );

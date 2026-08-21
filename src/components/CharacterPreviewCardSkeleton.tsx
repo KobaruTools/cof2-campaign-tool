@@ -19,7 +19,12 @@ const PATH_CELL_SIZE = 6;
 
 export function CharacterPreviewCardSkeleton() {
   return (
-    <Stack spacing={2} sx={{ minWidth: { xs: 0, sm: 264 } }} aria-hidden>
+    <Stack
+      data-glossary-shot="CharacterPreviewCardSkeleton"
+      spacing={2}
+      sx={{ minWidth: { xs: 0, sm: 264 } }}
+      aria-hidden
+    >
       <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
         {/* Portrait 72×72 (borderRadius 2). */}
         <Skeleton

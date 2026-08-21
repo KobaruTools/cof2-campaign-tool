@@ -122,7 +122,7 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
     );
 
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }} data-glossary-shot="UnarmedStrikeBadges">
       {lethalityBadge}
       {view.magical && (
         <QualifierBadge

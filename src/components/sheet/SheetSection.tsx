@@ -211,6 +211,7 @@ export function SheetSection({
       id={id}
       ref={paperRef}
       variant="outlined"
+      data-glossary-shot="SheetSection"
       // Replié : un clic n'importe où dans le bloc le rouvre (meilleure UX). Déplié : seul le
       // bouton en bas peut le replier (pas de clic sur le corps, qui contient du contenu interactif).
       onClick={isCollapsed ? toggle : undefined}

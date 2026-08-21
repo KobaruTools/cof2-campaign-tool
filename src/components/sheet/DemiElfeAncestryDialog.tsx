@@ -76,7 +76,7 @@ export function DemiElfeAncestryDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth data-glossary-shot="DemiElfeAncestryDialog">
       <DialogTitle>Voie de peuple du demi-elfe</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

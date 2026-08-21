@@ -191,6 +191,7 @@ export function HomeBackground({ variant = 'full' }: { variant?: HomeBackgroundV
   return (
     <Box
       aria-hidden
+      data-glossary-shot="HomeBackground"
       sx={{
         // Footer : illustration ancrée au BAS DE LA PAGE via `position: absolute`
         //   calée sur la colonne relative pleine hauteur du layout racine (donc

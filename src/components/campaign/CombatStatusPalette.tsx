@@ -407,7 +407,7 @@ export function CombatStatusPalette({
     // ne faisaient que voler de la hauteur à une palette logée dans le tracker, juste au-dessus de la
     // bande d'initiative. Chaque groupe garde en revanche sa propre ligne : c'est ce qui rend les
     // familles lisibles sans les nommer.
-    <Stack spacing={1}>
+    <Stack spacing={1} data-glossary-shot="CombatStatusPalette">
       {buildStatusGroups(situationalIds, groupBuffIds).map((group) => (
         <PaletteRow
           key={group.title}

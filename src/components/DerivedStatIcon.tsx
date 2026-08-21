@@ -34,6 +34,7 @@ export function DerivedStatIcon({ statId, size = 40, color, title, sx }: Derived
   const label = title === true ? DERIVED_STAT_NAMES[statId] : title;
   return (
     <Box
+      data-glossary-shot="DerivedStatIcon"
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}

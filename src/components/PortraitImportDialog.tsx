@@ -108,7 +108,13 @@ export function PortraitImportDialog({ file, onCancel, onConfirm }: PortraitImpo
   };
 
   return (
-    <Dialog open={file !== null} onClose={onCancel} maxWidth="xs" fullWidth>
+    <Dialog
+      open={file !== null}
+      onClose={onCancel}
+      maxWidth="xs"
+      fullWidth
+      data-glossary-shot="PortraitImportDialog"
+    >
       <DialogTitle>Importer une image personnalisée</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

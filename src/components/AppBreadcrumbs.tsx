@@ -78,6 +78,7 @@ export function AppBreadcrumbs({
 
   return (
     <Box
+      data-glossary-shot="AppBreadcrumbs"
       sx={{
         display: 'flex',
         alignItems: 'center',

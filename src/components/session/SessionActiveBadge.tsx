@@ -30,6 +30,7 @@ export function SessionActiveBadge() {
   return (
     <Box
       component="span"
+      data-glossary-shot="SessionActiveBadge"
       sx={{
         display: 'inline-flex',
         alignItems: 'center',

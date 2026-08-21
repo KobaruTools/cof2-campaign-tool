@@ -52,7 +52,7 @@ export function CoinPouchDialog({ open, info, onClose, onConfirm }: CoinPouchDia
   };
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={close} maxWidth="xs" fullWidth data-glossary-shot="CoinPouchDialog">
       <DialogTitle>Ouvrir la bourse</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

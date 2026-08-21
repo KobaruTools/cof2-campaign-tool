@@ -101,6 +101,7 @@ export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, vi
         border: `1px solid ${alpha(accent, 0.28)}`,
         borderRadius: 3,
       }}
+      data-glossary-shot="GmScreenCreatureCard"
     >
       <Stack spacing={1.5}>
         {/* Ligne d'en-tête : badge « adversaire » à gauche, retrait poussé à droite —

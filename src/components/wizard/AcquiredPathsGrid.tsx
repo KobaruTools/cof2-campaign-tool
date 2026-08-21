@@ -47,7 +47,7 @@ export function AcquiredPathsGrid({ character }: AcquiredPathsGridProps) {
   const [preview, setPreview] = useState<{ featureId: string; color?: string; gradient: boolean } | null>(null);
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%' }} data-glossary-shot="AcquiredPathsGrid">
       <Box sx={{ display: 'flex', gap: `${CELL_GAP}px`, width: '100%' }}>
         {Array.from({ length: LEVEL1_COLUMN_COUNT }, (_, columnIndex) => {
           const column = columns[columnIndex];

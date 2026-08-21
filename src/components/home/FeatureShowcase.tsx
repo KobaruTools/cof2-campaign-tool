@@ -502,6 +502,7 @@ export function FeatureShowcase() {
 
   return (
     <Box
+      data-glossary-shot="FeatureShowcase"
       sx={{
         display: 'grid',
         gap: { xs: 2, sm: 2.5 },

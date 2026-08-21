@@ -234,7 +234,11 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
   // contrôle un par un : la jauge entière devient un simple AFFICHAGE (dernière valeur connue
   // avant le gel) tant qu'une forme à PV propres est active. `AppTooltip` porte la raison.
   const content = (
-    <Stack spacing={1.25} sx={disabled ? { opacity: 0.5, pointerEvents: 'none' } : undefined}>
+    <Stack
+      spacing={1.25}
+      data-glossary-shot="HpGauge"
+      sx={disabled ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+    >
       {/* Cap d'expansion + icône cœur (libellé en tooltip) + barre (courant/max intégré +
           badge d'état) + ajustement fin (±1, reset) accolés à sa droite (ou en dessous). */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>

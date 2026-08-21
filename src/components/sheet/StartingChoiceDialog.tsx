@@ -60,7 +60,7 @@ export function StartingChoiceDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth data-glossary-shot="StartingChoiceDialog">
       <DialogTitle>Choisir l’équipement</DialogTitle>
       <DialogContent>
         <Stack spacing={1.5} sx={{ mt: 0.5 }}>

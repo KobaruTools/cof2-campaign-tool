@@ -71,7 +71,11 @@ export function SummaryStep({
   const characterClass = classById.get(draft.classId);
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   if (!ancestry || !characterClass || !family) {
-    return <AppAlert severity="warning">Récapitulatif indisponible : étapes incomplètes.</AppAlert>;
+    return (
+      <AppAlert severity="warning" data-glossary-shot="SummaryStep">
+        Récapitulatif indisponible : étapes incomplètes.
+      </AppAlert>
+    );
   }
   // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix brouillon, PER-185) :
   // nom affiché, voies effectives et conformité suivent l'effectif, pas le seul choix.
@@ -110,6 +114,7 @@ export function SummaryStep({
     // {xs:2, sm:3}) : les marges négatives annulent ce padding, `overflow: hidden` clippe le filigrane au
     // cadre, et le padding est réappliqué sur le contenu (`Stack` intérieur).
     <Box
+      data-glossary-shot="SummaryStep"
       sx={{
         position: 'relative',
         overflow: 'hidden',

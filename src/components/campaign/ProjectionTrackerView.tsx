@@ -62,7 +62,7 @@ export function ProjectionTrackerView({ cid }: { cid: string }) {
           ? `Tracker — ${campaign.name} — Éditeur de personnage CO2`
           : 'Tracker de combat — Éditeur de personnage CO2'}
       </title>
-      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }} data-glossary-shot="ProjectionTrackerView">
         {loading ? (
           <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
             Chargement du combat…

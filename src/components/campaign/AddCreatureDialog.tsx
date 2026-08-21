@@ -200,6 +200,7 @@ export function AddCreatureDialog(props: AddCreatureDialogProps) {
       fullWidth
       maxWidth="md"
       slotProps={{ transition: { onExited: props.onExited } }}
+      data-glossary-shot="AddCreatureDialog"
     >
       <CreatureDialogBody {...props} />
     </Dialog>

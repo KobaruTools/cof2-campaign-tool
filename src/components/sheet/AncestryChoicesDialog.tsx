@@ -38,7 +38,7 @@ export function AncestryChoicesDialog({
   const known = featureIds.filter((id) => featureById.has(id));
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth data-glossary-shot="AncestryChoicesDialog">
       <DialogTitle>Choix du peuple</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

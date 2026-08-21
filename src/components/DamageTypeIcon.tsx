@@ -26,6 +26,7 @@ export function DamageTypeIcon({ type, size = 16, color = 'currentColor', title,
   return (
     <Box
       component="svg"
+      data-glossary-shot="DamageTypeIcon"
       viewBox="0 0 512 512"
       role={title ? 'img' : undefined}
       aria-label={title}

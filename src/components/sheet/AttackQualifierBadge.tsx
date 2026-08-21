@@ -35,6 +35,7 @@ export function AttackQualifierBadge({
   return (
     <AppTooltip title={tooltip}>
       <Box
+        data-glossary-shot="AttackQualifierBadge"
         sx={(theme) => ({
           display: 'inline-flex',
           alignItems: 'center',

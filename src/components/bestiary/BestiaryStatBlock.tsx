@@ -718,6 +718,7 @@ export function BestiaryStatBlock({
         backdropFilter: 'blur(6px)',
         WebkitBackdropFilter: 'blur(6px)',
       }}
+      data-glossary-shot="BestiaryStatBlock"
     >
       {/* Illustration de la créature (extraite du livre, détourée) en FILIGRANE : ancrée en haut à
           droite, dans une ENVELOPPE de taille FIXE (indépendante de la hauteur du bloc → rendu

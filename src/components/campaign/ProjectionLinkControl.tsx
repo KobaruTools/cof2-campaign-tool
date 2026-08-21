@@ -131,7 +131,7 @@ export function ProjectionLinkControl({ campaignId }: { campaignId: string }) {
   };
 
   return (
-    <>
+    <Box sx={{ display: 'contents' }} data-glossary-shot="ProjectionLinkControl">
       {/* Libellé replié sur la seule icône sous `xl` : à deux boutons à libellé long, l'en-tête du
           tracker passait à la ligne (cf. `CollapsibleLabelButton`). */}
       <CollapsibleLabelButton
@@ -259,6 +259,6 @@ export function ProjectionLinkControl({ campaignId }: { campaignId: string }) {
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+    </Box>
   );
 }

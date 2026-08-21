@@ -45,6 +45,7 @@ export function GmReferenceDrawer({ open, onClose }: GmReferenceDrawerProps) {
       anchor="right"
       open={open}
       onClose={onClose}
+      data-glossary-shot="GmReferenceDrawerHost"
       // `keepMounted` : le contenu reste monté quand le tiroir est fermé. Le MJ retrouve donc EXACTEMENT
       // où il en était (section, recherche ET défilement) en rouvrant le tiroir dans la même session —
       // la section survit en plus au rechargement, persistée par `ReferenceBrowser` (`reference:section`).
@@ -62,6 +63,10 @@ export function GmReferenceDrawer({ open, onClose }: GmReferenceDrawerProps) {
         },
       }}
     >
+      {/* Boîte englobante (bloc normal, comme les deux enfants directs qu'elle remplace dans le
+          flux) : sert d'ancre DOM pour le crop du glossaire (PER-443) — le `Paper` du `Drawer`
+          n'accepte pas d'attribut `data-*` inconnu en typage strict MUI. */}
+      <Box data-glossary-shot="GmReferenceDrawer">
       {/* En-tête collé : titre + fermeture, visibles pendant le défilement. Opaque + flou pour masquer
           le contenu qui défile dessous, comme le tiroir d'outils. Hauteur figée = `HEADER_HEIGHT`. */}
       <Box
@@ -93,6 +98,7 @@ export function GmReferenceDrawer({ open, onClose }: GmReferenceDrawerProps) {
 
       <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 3 }}>
         <ReferenceBrowser variant="drawer" stickyTop={HEADER_HEIGHT} />
+      </Box>
       </Box>
     </Drawer>
   );

@@ -94,7 +94,7 @@ export function SignedNumberField({
 
   if (layout === 'stacked') {
     return (
-      <Stack spacing={0.5} sx={{ alignItems: 'center', ...containerSx }}>
+      <Stack data-glossary-shot="SignedNumberField" spacing={0.5} sx={{ alignItems: 'center', ...containerSx }}>
         {field}
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
           {decrementButton}
@@ -105,7 +105,12 @@ export function SignedNumberField({
   }
 
   return (
-    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', ...containerSx }}>
+    <Stack
+      data-glossary-shot="SignedNumberField"
+      direction="row"
+      spacing={0.5}
+      sx={{ alignItems: 'center', ...containerSx }}
+    >
       {decrementButton}
       {field}
       {incrementButton}

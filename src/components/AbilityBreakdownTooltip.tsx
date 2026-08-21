@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactElement } from 'react';
+import { cloneElement, type ReactElement } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -70,5 +70,9 @@ export function AbilityBreakdownTooltip({
       )}
     </Box>
   );
-  return <AppTooltip title={title}>{children}</AppTooltip>;
+  return (
+    <AppTooltip title={title}>
+      {cloneElement(children, { 'data-glossary-shot': 'AbilityBreakdownTooltip' } as Partial<unknown>)}
+    </AppTooltip>
+  );
 }

@@ -134,7 +134,7 @@ export function TavernRumorsPanel({ campaign }: { campaign: Campaign }) {
   };
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="TavernRumorsPanel">
       {/* Bloc de tirage : bouton principal + compteur + réinitialisation à épuisement. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
         <Button

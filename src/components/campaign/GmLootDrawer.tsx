@@ -64,6 +64,7 @@ export function GmLootDrawer({ campaign, open, onClose, pendingTarget }: GmLootD
       anchor="right"
       open={open}
       onClose={onClose}
+      data-glossary-shot="GmLootDrawerHost"
       slotProps={{
         paper: {
           sx: {
@@ -77,6 +78,11 @@ export function GmLootDrawer({ campaign, open, onClose, pendingTarget }: GmLootD
         },
       }}
     >
+      {/* Boîte englobante (position relative + pleine hauteur, pour ne rien changer au calage
+          ABSOLU des deux colonnes qu'elle contient) : sert d'ancre DOM pour le crop du glossaire
+          (PER-443) — le `Paper` du `Drawer` n'accepte pas d'attribut `data-*` inconnu en typage
+          strict MUI. */}
+      <Box data-glossary-shot="GmLootDrawer" sx={{ position: 'relative', height: '100%' }}>
       {/* Extension révélée à GAUCHE — masquée sous `md` (pas la place pour les deux colonnes
           côte à côte ; ce tiroir y reste utilisable seul, cf. le commutateur mobile). */}
       <Box
@@ -157,6 +163,7 @@ export function GmLootDrawer({ campaign, open, onClose, pendingTarget }: GmLootD
         <Box sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
           <LootTreasurePanel campaign={campaign} pending={pendingTarget?.pool === 'random'} />
         </Box>
+      </Box>
       </Box>
     </Drawer>
   );

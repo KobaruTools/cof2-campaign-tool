@@ -57,7 +57,7 @@ export function ComplianceWarnings({ warnings, paidContentPending = false }: Com
   const infos = visibleWarnings.filter((w) => w.severity === 'info');
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="ComplianceWarnings">
       {pendingUnknownFeatures && (
         <AppAlert
           severity="info"

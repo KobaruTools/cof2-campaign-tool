@@ -7,6 +7,7 @@
  * même langage visuel, info-bulle en « breakdown » comprise (chaque contributeur : l'arme et/ou les
  * capacités actives).
  */
+import Box from '@mui/material/Box';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import type { WeaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
 import { formatCriticalRange } from '@/lib/ui/criticalRange';
@@ -19,12 +20,16 @@ import { formatCriticalRange } from '@/lib/ui/criticalRange';
 export function WeaponCriticalRangeBadge({ info }: { info: WeaponLineCriticalRange }) {
   const f = formatCriticalRange(info.scope, info.total);
   return (
-    <DefenseBadge
-      variant="critical"
-      text={f.short}
-      title={`Critique ${f.short}`}
-      sources={info.sources.map((s) => ({ name: s.name, value: `+${s.value}`, featureId: s.featureId }))}
-      fullWidth={false}
-    />
+    // DefenseBadge ne retransmet pas les props inconnues au DOM : on l'entoure d'un span
+    // porteur de l'attribut de capture (PER-443), sans toucher au badge partagé lui-même.
+    <Box component="span" data-glossary-shot="WeaponCriticalRangeBadge">
+      <DefenseBadge
+        variant="critical"
+        text={f.short}
+        title={`Critique ${f.short}`}
+        sources={info.sources.map((s) => ({ name: s.name, value: `+${s.value}`, featureId: s.featureId }))}
+        fullWidth={false}
+      />
+    </Box>
   );
 }

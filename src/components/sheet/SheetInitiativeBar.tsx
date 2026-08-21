@@ -163,7 +163,7 @@ export function SheetInitiativeBar({
   const visibleRows = initiativeRows.filter((r) => !r.hidden);
 
   return (
-    <Box ref={barRef} sx={STICKY_SX}>
+    <Box ref={barRef} sx={STICKY_SX} data-glossary-shot="SheetInitiativeBar">
       {/* Bandeau ENTIÈREMENT cliquable (de « Ordre d'initiative » à l'extrême droite, au-delà même
           de la flèche) : un seul élément interactif, plus simple et plus généreux au clic/toucher
           qu'un bouton confiné à la seule icône. Pas d'effet de survol (`cursor: pointer` suffit à

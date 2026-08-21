@@ -44,6 +44,7 @@ export function JoinCodeField() {
       onSubmit={submit}
       direction={{ xs: 'column', sm: 'row' }}
       spacing={1.5}
+      data-glossary-shot="JoinCodeField"
       sx={{ alignItems: { sm: 'flex-start' } }}
     >
       <TextField

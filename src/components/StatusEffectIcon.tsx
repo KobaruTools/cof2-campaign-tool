@@ -32,6 +32,7 @@ export function StatusEffectIcon({ effect, size = 16, color = 'currentColor', ti
   return (
     <Box
       component="svg"
+      data-glossary-shot="StatusEffectIcon"
       viewBox="0 0 512 512"
       role={title ? 'img' : undefined}
       aria-label={title}

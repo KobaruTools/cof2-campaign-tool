@@ -24,7 +24,7 @@ const cardSx = {
 
 export function CampaignListSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <Stack spacing={1.5} aria-hidden>
+    <Stack spacing={1.5} aria-hidden data-glossary-shot="CampaignListSkeleton">
       {Array.from({ length: rows }, (_, i) => (
         <Paper key={i} variant="outlined" sx={cardSx}>
           <Stack

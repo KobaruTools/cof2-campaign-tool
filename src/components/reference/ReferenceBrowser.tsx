@@ -424,7 +424,7 @@ export function ReferenceBrowser({ variant = 'page', stickyTop = 0 }: ReferenceB
 
   return (
    <ReferenceVerbatimContext.Provider value={verbatim}>
-    <Stack spacing={2}>
+    <Stack spacing={2} data-glossary-shot="ReferenceBrowser">
       {/* BARRE COLLÉE (PER-311, 2ᵉ passe) : recherche + onglets restent accessibles pendant tout le
           défilement — sur une page longue, devoir remonter pour changer d'onglet est le geste qui
           casse la consultation en pleine partie. Elle se cale SOUS l'en-tête global, lui aussi collé.

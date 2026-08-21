@@ -15,6 +15,7 @@ export function MetaPill({ label, children }: { label?: string; children: ReactN
   return (
     <Box
       component="span"
+      data-glossary-shot="MetaPill"
       sx={(theme) => ({
         display: 'inline-flex',
         alignItems: 'center',

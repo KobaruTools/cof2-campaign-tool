@@ -64,6 +64,7 @@ export function DieIcon({
   const svg = (
     <Box
       component="svg"
+      data-glossary-shot={evolving ? undefined : 'DieIcon'}
       viewBox="0 0 512 512"
       role="img"
       aria-label={label}
@@ -80,7 +81,11 @@ export function DieIcon({
   );
 
   const inner = evolving ? (
-    <Box component="span" sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...sx }}>
+    <Box
+      component="span"
+      data-glossary-shot="DieIcon"
+      sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...sx }}
+    >
       {svg}
       <Box
         component="span"

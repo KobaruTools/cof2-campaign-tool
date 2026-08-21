@@ -51,7 +51,7 @@ export function AppAlert({
     ...(Array.isArray(sx) ? sx : [sx]),
   ].filter(Boolean) as SxProps<Theme>;
   return (
-    <Alert severity={severity} variant={variant} sx={mergedSx} {...rest}>
+    <Alert data-glossary-shot="AppAlert" severity={severity} variant={variant} sx={mergedSx} {...rest}>
       {title != null && <AlertTitle>{title}</AlertTitle>}
       {children}
     </Alert>

@@ -524,7 +524,7 @@ export function LevelUpGridDemo() {
   );
 
   return (
-    <Stack spacing={0.75} sx={{ alignItems: 'center' }}>
+    <Stack spacing={0.75} data-glossary-shot="LevelUpGridDemo" sx={{ alignItems: 'center' }}>
       {/* La grille ne porte AUCUNE hauteur : elle découle des cases, qui sont carrées
           (`aspectRatio`) sur une largeur partagée en parts égales. Une hauteur en dur (ou
           un côté de case en dur) débordait de la réserve de la carte dès que celle-ci

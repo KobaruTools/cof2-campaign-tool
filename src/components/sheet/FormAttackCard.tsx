@@ -125,6 +125,7 @@ export function FormAttackCard({ attack, touch, forced, wrapTouch, abilities, at
   return (
     <Card
       variant="outlined"
+      data-glossary-shot="FormAttackCard"
       sx={{
         position: 'relative',
         height: '100%',

@@ -21,6 +21,7 @@ export function BackgroundMotionToggle() {
 
   return (
     <FormControlLabel
+      data-glossary-shot="BackgroundMotionToggle"
       control={
         <Switch
           size="small"

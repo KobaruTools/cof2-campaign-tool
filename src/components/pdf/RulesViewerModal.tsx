@@ -24,7 +24,10 @@ import type { BookId } from '@/lib/ui/books';
 const PdfBookViewer = dynamic(() => import('./PdfBookViewer'), {
   ssr: false,
   loading: () => (
-    <Box sx={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', zIndex: 1300 }}>
+    <Box
+      sx={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', zIndex: 1300 }}
+      data-glossary-shot="RulesViewerModal"
+    >
       <CircularProgress />
     </Box>
   ),

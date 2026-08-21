@@ -53,7 +53,7 @@ export function NpcPortraitMenu({
   return (
     <>
       <AppTooltip title={disabled && disabledReason ? disabledReason : "Changer l'illustration du PNJ"}>
-        <span>{button}</span>
+        <span data-glossary-shot="NpcPortraitMenu">{button}</span>
       </AppTooltip>
       <Menu anchorEl={anchor} open={anchor !== null} onClose={close}>
         <MenuItem

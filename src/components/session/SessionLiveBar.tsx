@@ -36,7 +36,10 @@ export function SessionLiveBar({ campaignId, identity }: SessionLiveBarProps) {
   if (!isActive) return null;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', rowGap: 1 }}>
+    <Box
+      data-glossary-shot="SessionLiveBar"
+      sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', rowGap: 1 }}
+    >
       <SessionConnectionBadge state={sessionConnectionState(status, online)} showLabel />
       <SessionPresence
         present={present}

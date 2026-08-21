@@ -11,6 +11,7 @@
  * `AppHeader` (`showContentLinks`, `showCharacterLink`, `showOwnerLinks`, `isPlayer`),
  * pour rester la seule source de vérité sur qui voit quoi.
  */
+import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import List from '@mui/material/List';
@@ -59,25 +60,29 @@ export function AppHeaderNavDrawer({
         },
       }}
     >
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={(theme) => ({
-          alignItems: 'center',
-          px: 2,
-          py: 1.5,
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-        })}
-      >
-        <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
-          Menu
-        </Typography>
-        <IconButton onClick={onClose} aria-label="Fermer le menu">
-          <CloseIcon />
-        </IconButton>
-      </Stack>
+      {/* Boîte englobante (bloc normal, comme les deux enfants directs qu'elle remplace dans le
+          flux du `Paper` du `Drawer`) : sert d'ancre DOM pour le crop du glossaire (PER-443) — le
+          `Paper` lui-même n'accepte pas d'attribut `data-*` inconnu en typage strict MUI. */}
+      <Box data-glossary-shot="AppHeaderNavDrawer">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={(theme) => ({
+            alignItems: 'center',
+            px: 2,
+            py: 1.5,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+          })}
+        >
+          <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
+            Menu
+          </Typography>
+          <IconButton onClick={onClose} aria-label="Fermer le menu">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
 
-      <List sx={{ width: '100%', py: 0 }}>
+        <List sx={{ width: '100%', py: 0 }}>
         {isPlayer && (
           <ListItemButton component={Link} href="/play" onClick={onClose}>
             <ListItemIcon>
@@ -138,6 +143,7 @@ export function AppHeaderNavDrawer({
           </>
         )}
       </List>
+      </Box>
     </Drawer>
   );
 }

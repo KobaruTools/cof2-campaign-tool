@@ -31,6 +31,7 @@ export function SectionIcon({ name, size = 22, color, title, sx }: SectionIconPr
   return (
     <Box
       component="svg"
+      data-glossary-shot="SectionIcon"
       viewBox="0 0 512 512"
       role={title ? 'img' : undefined}
       aria-label={title}

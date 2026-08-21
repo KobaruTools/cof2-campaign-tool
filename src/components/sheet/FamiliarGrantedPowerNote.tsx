@@ -116,6 +116,7 @@ function FamiliarPowerCard({
 
   return (
     <Box
+      data-glossary-shot="FamiliarGrantedPowerNote"
       sx={{
         mt: 1.5,
         p: 1,
@@ -351,6 +352,7 @@ export function FamiliarGrantedPowerNote({
           </>
         }
         sx={{ mt: 1.5 }}
+        data-glossary-shot="FamiliarGrantedPowerNote"
       >
         {`Un ou deux sorts (rang 1 ou 2) du profil : ${spellProfileLabel(familiar.spellProfile)}.`}
       </AppAlert>
@@ -390,6 +392,7 @@ export function FamiliarGrantedPowerNote({
         </>
       }
       sx={{ mt: 1.5 }}
+      data-glossary-shot="FamiliarGrantedPowerNote"
     >
       {power.text}
     </AppAlert>

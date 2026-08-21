@@ -90,7 +90,7 @@ export function AppShowcase() {
   const aspect = active.aspect ?? SHOT_ASPECT;
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} data-glossary-shot="AppShowcase">
       <Tabs
         value={index}
         onChange={(_, next: number) => setIndex(next)}

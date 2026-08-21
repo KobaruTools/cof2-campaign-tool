@@ -44,7 +44,13 @@ function abilityTotalLabel(total: number): string {
 export function AbilitiesStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
-  if (!ancestry) return <AppAlert severity="warning">Choisissez d’abord un peuple.</AppAlert>;
+  if (!ancestry) {
+    return (
+      <AppAlert severity="warning" data-glossary-shot="AbilitiesStep">
+        Choisissez d’abord un peuple.
+      </AppAlert>
+    );
+  }
 
   const deltas = modifierDeltas(ancestry, draft.ancestryChoices);
   const lowest = lowestAbilities(draft.baseAbilities);
@@ -64,7 +70,7 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
   };
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} data-glossary-shot="AbilitiesStep">
       <Box>
         <Typography variant="body2" color="text.secondary" gutterBottom>
           Reportez les valeurs déterminées à la table (saisie libre). Les séries du livre sont

@@ -13,14 +13,22 @@ export function CharacterStatusMarker({ status }: { status: CharacterStatus }) {
   if (status === 'dead') {
     return (
       <AppTooltip title="Mort">
-        <TombstoneIcon fontSize="small" sx={{ color: 'text.secondary', flexShrink: 0 }} />
+        <TombstoneIcon
+          fontSize="small"
+          sx={{ color: 'text.secondary', flexShrink: 0 }}
+          data-glossary-shot="CharacterStatusMarker"
+        />
       </AppTooltip>
     );
   }
   if (status === 'retired') {
     return (
       <AppTooltip title="Retraité">
-        <Inventory2Icon fontSize="small" sx={{ color: 'text.secondary', flexShrink: 0 }} />
+        <Inventory2Icon
+          fontSize="small"
+          sx={{ color: 'text.secondary', flexShrink: 0 }}
+          data-glossary-shot="CharacterStatusMarker"
+        />
       </AppTooltip>
     );
   }

@@ -35,6 +35,15 @@ import { useCharactersStore } from '@/stores/characters';
 /** Valeur du menu « Non attribué » (correspond à `campaignId` null). */
 const UNASSIGNED = '';
 
+/**
+ * Repère de capture pour le glossaire (PER-443), posé sur la `Paper` visible de la
+ * modale. Passé via une constante (pas un littéral en ligne) : `slotProps.paper` est
+ * typé sans index de signature `data-*`, un littéral inline déclenchait donc une
+ * vérification stricte des propriétés en excès (TS2353) alors qu'une variable est
+ * simplement vérifiée par structure.
+ */
+const GLOSSARY_SHOT_PAPER_PROPS = { 'data-glossary-shot': 'UploadCharacterDialog' };
+
 export interface UploadCharacterDialogProps {
   /** Personnage local à téléverser, ou `null` (modale fermée). */
   character: Character | null;
@@ -49,7 +58,13 @@ export function UploadCharacterDialog({
   onUploaded,
 }: UploadCharacterDialogProps) {
   return (
-    <Dialog open={character !== null} onClose={onClose} fullWidth maxWidth="xs">
+    <Dialog
+      open={character !== null}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      slotProps={{ paper: GLOSSARY_SHOT_PAPER_PROPS }}
+    >
       {character && (
         <UploadForm
           key={character.id}

@@ -162,6 +162,7 @@ export function PathCard({
   const [prestigeLight, prestigeDark] = prestigeGemStops(prestigeTint);
   return (
     <Box
+      data-glossary-shot="PathCard"
       onClick={() => {
         if (disabled) return;
         if (hasDetail) setExpanded((v) => !v);

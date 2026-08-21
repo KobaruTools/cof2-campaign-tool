@@ -33,6 +33,7 @@ export function BoundWeaponBadge({
     >
       <Box
         component="span"
+        data-glossary-shot="BoundWeaponBadge"
         sx={{
           display: 'inline-flex',
           alignItems: 'center',

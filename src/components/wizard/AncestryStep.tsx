@@ -24,6 +24,7 @@ import { ancestryById, ancestries, pathById } from '@/data';
 import type { AbilityModifier } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { initialChoices } from '@/lib/character/ancestry';
+import { useContentVersion } from '@/lib/content/useContentVersion';
 import { materializeDraft } from '@/lib/character/wizard';
 import { setFeatureChoice } from '@/lib/character/choices';
 import { AbilityBadge } from '@/components/AbilityBadge';
@@ -196,6 +197,11 @@ function AncestryModifier({ mod }: { mod: AbilityModifier }) {
 
 
 export function AncestryStep({ draft, patch }: StepProps) {
+  // Abonnement à la version de contenu payant : la liste `ancestries` est mutée en place quand
+  // `loadPaidContent()` fusionne les peuples gatés APRÈS le premier rendu. Sans cette dépendance,
+  // les peuples payants (frouïn, cambion…) restaient invisibles tant qu'aucune interaction ne
+  // forçait un re-rendu (PER-330).
+  useContentVersion();
   const ancestry = ancestryById.get(draft.ancestryId);
   const desc = ancestry ? splitDescription(ancestry.description) : null;
   // Personnage de travail pour résoudre/afficher les choix d'identité du peuple (PER-401), au même
@@ -223,7 +229,7 @@ export function AncestryStep({ draft, patch }: StepProps) {
   const companionPathActive = companionDemiElfe && draft.ancestryPathId === 'demi-elfe';
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} data-glossary-shot="AncestryStep">
       <FormControl>
         <FormLabel>Peuple</FormLabel>
         <RadioGroup value={draft.ancestryId} onChange={(e) => chooseAncestry(e.target.value)}>
