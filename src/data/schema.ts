@@ -3093,15 +3093,25 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    */
   noManaCost?: boolean;
   /**
-   * Le sort emprunté est TOUJOURS gratuit à lancer — 0 PM, même pour un LANCEUR (PER-333, lutin fée
-   * « Poudre de fée » : « Ce sort ne lui rapporte aucun point de mana (mais ne lui en coûte pas non
-   * plus) »). Différence avec `noManaCost` (demi-elfe « Sang féerique ») : ce dernier n'efface le coût
-   * d'incantation QUE pour un non-lanceur (un lanceur peut payer le sort en PM). `borrowFreeCast`
-   * IMPOSE la gratuité de lancement dans tous les cas, ET retire le +1 PM d'un sort connu du réservoir
-   * (comme `noManaCost`). Consommé par `freeCastBorrowedFeatureIds` (choices.ts) → goutte de PM masquée
-   * inconditionnellement au rendu + exclusion du réservoir. Absent = coût normal / règle `noManaCost`.
+   * Le sort emprunté est TOUJOURS gratuit à lancer — 0 PM, même pour un LANCEUR (PER-333, lutin farfadet
+   * r3 repli « Télékinésie/Confusion » : « dans les mêmes conditions » que Invisibilité, gratuit quel que
+   * soit le rang). Différence avec `noManaCost` (demi-elfe « Sang féerique ») : ce dernier n'efface le
+   * coût d'incantation QUE pour un non-lanceur (un lanceur peut payer le sort en PM). `borrowFreeCast`
+   * IMPOSE la gratuité de lancement, ET retire le +1 PM d'un sort connu du réservoir (comme `noManaCost`).
+   * Voir `borrowFreeCastMinRank` pour restreindre cette gratuité à un rang emprunté minimal. Consommé par
+   * `freeCastBorrowedFeatureIds` (choices.ts) → goutte de PM masquée inconditionnellement au rendu +
+   * exclusion du réservoir. Absent = coût normal / règle `noManaCost`.
    */
   borrowFreeCast?: boolean;
+  /**
+   * Restreint `borrowFreeCast` à l'emprunt d'un rang MINIMAL donné (PER-333, lutin fée « Poudre de fée »,
+   * p. 27 : verbatim, seule la variante de rang 2 « ne lui rapporte aucun point de mana [...] ne lui en
+   * coûte pas non plus » — un emprunt de rang 1 suit le coût normal d'un sort emprunté). `borrowFreeCastMinRank:
+   * 2` exclut donc du réservoir gratuit tout emprunt de rang < 2 fait via ce choix. Sans effet si
+   * `borrowFreeCast` est absent/`false`. Absent = `borrowFreeCast` s'applique à TOUT rang emprunté (cas
+   * par défaut, ex. farfadet r3 repli). Résolu par `freeCastBorrowedFeatureIds` (choices.ts).
+   */
+  borrowFreeCastMinRank?: number;
   /**
    * Restreint le domaine du choix selon l'ASCENDANCE ELFE du demi-elfe « version Le Compagnon »
    * (PER-324, « Sang féerique » : « selon son ascendance ») : elfe haut → sorts d'ensorceleur seuls,

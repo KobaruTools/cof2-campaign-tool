@@ -11,8 +11,9 @@
  *    1d4 (une main) / 1d6 (deux mains), au contact comme à distance, LEVÉ sous « Fée révérée » ;
  *  - fée r1 / farfadet r1 : RD contre les armes non-fer-froid = rang atteint dans la voie ;
  *  - fée r2 Pirouette : verbatim (aucun effet) ;
- *  - fée r3 Poudre de fée : emprunt feature-from-path rang 1 magicien/ensorceleur (sans DEF, sans mana,
- *    armure libre) + 3 usages/jour ;
+ *  - fée r3 Poudre de fée : emprunt feature-from-path rang 1 ou 2 magicien/ensorceleur (sans DEF) + 3
+ *    usages/jour ; rang 1 = coût normal, armure libre ; rang 2 = gratuit (0 PM), mais non lançable en
+ *    armure (avertissement) ;
  *  - fée r4 Fée révérée : +3 FOR sous forme humaine (interrupteur) + 3 usages/jour ;
  *  - fée r5 : +1 PER, +1 CHA ;
  *  - farfadet r2 : octroi de Langage des animaux (druide, animaux-r1) ;
@@ -40,6 +41,7 @@ import {
   freeCastBorrowedFeatureIds,
   isChoiceActionable,
 } from '@/lib/character/choices';
+import { poudreDeFeeSpellBlockedByArmor } from '@/lib/character/armorRestrictions';
 import { characterSizeCategory } from '@/lib/character/size';
 import { deriveStats } from '@/lib/engine/derived';
 import type { PathFeatureChoice } from '@/data/schema';
@@ -165,7 +167,7 @@ describe('PER-333 — Voie de la fée', () => {
     expect(f.usageCounter).toMatchObject({ max: 1, resetOn: 'short-rest' });
   });
 
-  it('r3 Poudre de fée : emprunt rang 1 ou 2 magicien/ensorceleur, sans DEF, gratuit inconditionnel, pas de barre', () => {
+  it('r3 Poudre de fée : emprunt rang 1 ou 2 magicien/ensorceleur, sans DEF, gratuit dès rang 2, 3 usages/jour', () => {
     const f = featureById.get('lutin-fee-r3')!;
     const choice = f.choices?.[0] as PathFeatureChoice;
     expect(choice.kind).toBe('feature-from-path');
@@ -173,21 +175,51 @@ describe('PER-333 — Voie de la fée', () => {
     expect(choice.classIds).toEqual(['magicien', 'ensorceleur']);
     expect(choice.excludeDefBonus).toBe(true);
     expect(choice.borrowFreeCast).toBe(true);
-    // « ne lui en coûte pas non plus » = free-cast inconditionnel (pas le noManaCost demi-elfe gaté lanceur).
+    // « ne lui en coûte pas non plus » = free-cast, mais SEULEMENT pour l'emprunt de rang 2 (verbatim p. 27).
+    expect(choice.borrowFreeCastMinRank).toBe(2);
     expect(choice.noManaCost).toBeUndefined();
-    // Pas de barre d'énergie (usageCounter retiré, retour proprio).
-    expect(f.usageCounter).toBeUndefined();
+    // « 3 fois par jour » = vraie ressource journalière (p. 27).
+    expect(f.usageCounter).toMatchObject({ max: 3, resetOn: 'day' });
   });
 
-  it('r3 : le sort emprunté est gratuit MÊME pour une fée lanceuse (borrowFreeCast)', () => {
+  it('r3 : un emprunt de RANG 2 est gratuit MÊME pour une fée lanceuse (borrowFreeCast + borrowFreeCastMinRank)', () => {
+    const borrow = 'air-r2'; // sort d'ensorceleur rang 2 éligible
+    const caster = fee(['lutin-fee-r1', 'lutin-fee-r2', 'lutin-fee-r3'], {
+      featureChoices: { 'lutin-fee-r3': [borrow] },
+    });
+    expect(freeCastBorrowedFeatureIds(caster).has(borrow)).toBe(true);
+    // Non compté comme un emprunt « demi-elfe » (noManaCost) : pas de note demi-elfe, gratuité inconditionnelle.
+    expect(borrowedNoManaFeatureIds(caster).has(borrow)).toBe(false);
+  });
+
+  it('r3 : un emprunt de RANG 1 suit le coût normal — PAS de gratuité (verbatim p. 27, seul le rang 2 l’est)', () => {
     const borrow = 'air-r1'; // sort d'ensorceleur rang 1 éligible
     const caster = fee(['lutin-fee-r1', 'lutin-fee-r2', 'lutin-fee-r3', 'air-r2'], {
       featureChoices: { 'lutin-fee-r3': [borrow] },
     });
     expect(isSpellcaster(caster)).toBe(true); // lanceuse (air-r2 donne des PM)
-    expect(freeCastBorrowedFeatureIds(caster).has(borrow)).toBe(true);
-    // Non compté comme un emprunt « demi-elfe » (noManaCost) : pas de note demi-elfe, gratuité inconditionnelle.
+    expect(freeCastBorrowedFeatureIds(caster).has(borrow)).toBe(false);
     expect(borrowedNoManaFeatureIds(caster).has(borrow)).toBe(false);
+  });
+
+  it('r3 : un emprunt de rang 2 est non lançable EN ARMURE (avertissement non bloquant, p. 27) ; rang 1 libre', () => {
+    const armor: EquipmentLine = { custom: true, name: 'Armure de fortune', quantity: 1, worn: { slot: 'armor' } };
+    const r2 = fee(['lutin-fee-r1', 'lutin-fee-r2', 'lutin-fee-r3'], {
+      featureChoices: { 'lutin-fee-r3': ['air-r2'] },
+      equipment: [armor],
+    });
+    expect(poudreDeFeeSpellBlockedByArmor(r2)).toEqual(new Set(['air-r2']));
+
+    const r1 = fee(['lutin-fee-r1', 'lutin-fee-r2', 'lutin-fee-r3'], {
+      featureChoices: { 'lutin-fee-r3': ['air-r1'] },
+      equipment: [armor],
+    });
+    expect(poudreDeFeeSpellBlockedByArmor(r1)).toEqual(new Set());
+
+    const r2NoArmor = fee(['lutin-fee-r1', 'lutin-fee-r2', 'lutin-fee-r3'], {
+      featureChoices: { 'lutin-fee-r3': ['air-r2'] },
+    });
+    expect(poudreDeFeeSpellBlockedByArmor(r2NoArmor)).toEqual(new Set());
   });
 
   it('r4 Fée révérée : +3 FOR sous forme humaine (interrupteur), 3/jour', () => {

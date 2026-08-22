@@ -133,6 +133,55 @@ export function magicTalentArmorBlockMessage(): string {
 }
 
 /**
+ * PER-333 — capacité de rang 3 de la voie de la fée (« Poudre de fée », p. 27) : le joueur EMPRUNTE une
+ * capacité de rang 1 ou 2 de magicien/ensorceleur. Id de contenu persisté (slug figé).
+ */
+const POUDRE_DE_FEE_ID = 'lutin-fee-r3';
+
+/**
+ * PER-333 — id de la capacité EMPRUNTÉE via « Poudre de fée » (lutin-fee-r3, p. 27), ou `null` si la
+ * capacité n'est pas acquise ou si aucun emprunt n'est encore retenu. Miroir de `donEtrangeBorrowedFeatureId`
+ * (choix unique, indexé) : la voie de la fée n'offre qu'un unique emprunt.
+ */
+export function poudreDeFeeBorrowedFeatureId(character: Character): string | null {
+  if (!character.featureIds.includes(POUDRE_DE_FEE_ID)) return null;
+  const defs = featureChoiceDefs(POUDRE_DE_FEE_ID);
+  const selections = character.featureChoices?.[POUDRE_DE_FEE_ID] ?? [];
+  for (let i = 0; i < defs.length; i++) {
+    if (defs[i]?.kind !== 'feature-from-path') continue;
+    const sel = selections[i];
+    if (typeof sel === 'string' && featureById.has(sel)) return sel;
+  }
+  return null;
+}
+
+/**
+ * PER-333 — ids des SORTS empruntés via « Poudre de fée » (lutin-fee-r3, p. 27) qui NE PEUVENT PAS être
+ * lancés tant qu'une armure est portée. Verbatim p. 27 : un emprunt de rang 1 se lance « quelle que soit
+ * l'armure portée » ; « à la place, il peut choisir une capacité de rang 2, mais ne doit alors pas porter
+ * d'armure pour lancer le sort ». Seul un emprunt de RANG 2 est donc concerné, et UNIQUEMENT tant qu'une
+ * armure est portée — même mécanique que `magicTalentSpellsBlockedByArmor` (elfe haut, PER-144, p. 50).
+ * Avertissement non bloquant (fiche permissive) : la capacité reste acquise, la fée peut lancer le sort en
+ * retirant son armure. Ensemble vide sans armure, sans la capacité, ou pour un emprunt de rang 1.
+ */
+export function poudreDeFeeSpellBlockedByArmor(character: Character): Set<string> {
+  const result = new Set<string>();
+  if (!isArmorWorn(character.equipment)) return result;
+  const id = poudreDeFeeBorrowedFeatureId(character);
+  if (id !== null && featureById.get(id)?.rank === 2) result.add(id);
+  return result;
+}
+
+/**
+ * Message français prêt à afficher (notice) pour un sort emprunté de rang 2 via « Poudre de fée » non
+ * lançable en armure (PER-333, p. 27). « (p. 27) » en parenthèse AUTONOME → parsé par
+ * `PageRefText`/`SourceRef` côté UI.
+ */
+export function poudreDeFeeArmorBlockMessage(): string {
+  return "Sort emprunté de rang 2 : ne peut pas être lancé tant qu'une armure est portée — retirez votre armure pour le lancer (p. 27).";
+}
+
+/**
  * PER-146 — capacité de rang 1 de la voie du gnome (« Don étrange », p. 53) : le gnome EMPRUNTE une
  * capacité de rang 1 d'ensorceleur. Id de contenu persisté (slug figé).
  */

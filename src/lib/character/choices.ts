@@ -677,11 +677,17 @@ export function borrowedNoManaFeatureIds(character: Character): Set<string> {
 }
 
 /**
- * Ids de SORTS empruntés via un choix `feature-from-path` marqué `borrowFreeCast` (PER-333, lutin fée
- * « Poudre de fée ») : ils sont TOUJOURS gratuits à lancer (0 PM), même pour un lanceur, ET ne donnent
- * pas le +1 PM d'un sort connu. Distinct de `borrowedNoManaFeatureIds` (`noManaCost`, demi-elfe : un
- * lanceur paie) : ici la gratuité est INCONDITIONNELLE. Consommé par le pool de PM (union avec les
- * octrois/emprunts `noMana`) ET par le rendu de la carte empruntée (goutte de PM masquée sans condition).
+ * Ids de SORTS empruntés via un choix `feature-from-path` marqué `borrowFreeCast` (PER-333, lutin) :
+ * gratuits à lancer (0 PM) ET sans le +1 PM d'un sort connu, même pour un lanceur. Farfadet r3 repli
+ * (Télékinésie/Confusion, « dans les mêmes conditions ») : gratuit quel que soit le rang emprunté.
+ * Fée r3 « Poudre de fée » (p. 27) : verbatim, seule la variante de RANG 2 « ne lui rapporte aucun point
+ * de mana (mais ne lui en coûte pas non plus) » — un emprunt de rang 1 suit le coût normal d'un sort
+ * emprunté (payé par une fée lanceuse) — d'où `borrowFreeCastMinRank: 2` sur ce choix, qui restreint la
+ * gratuité au rang minimal indiqué (absent = tout rang, comme le farfadet). Distinct de
+ * `borrowedNoManaFeatureIds` (`noManaCost`, demi-elfe « Sang féerique ») qui ne dispense QUE le
+ * non-lanceur — ici la gratuité est INCONDITIONNELLE (lanceur inclus). Consommé par le pool de PM (union
+ * avec les octrois/emprunts `noMana`) ET par le rendu de la carte empruntée (goutte de PM masquée sans
+ * condition).
  */
 export function freeCastBorrowedFeatureIds(character: Character): Set<string> {
   const owned = new Set(character.featureIds);
@@ -691,9 +697,10 @@ export function freeCastBorrowedFeatureIds(character: Character): Set<string> {
     const defs = featureChoiceDefs(hostId);
     selections.forEach((sel, i) => {
       const def = defs[i];
-      if (def?.kind === 'feature-from-path' && def.borrowFreeCast && typeof sel === 'string') {
-        out.add(sel);
-      }
+      if (def?.kind !== 'feature-from-path' || !def.borrowFreeCast || typeof sel !== 'string') return;
+      const minRank = def.borrowFreeCastMinRank;
+      if (minRank !== undefined && (featureById.get(sel)?.rank ?? 0) < minRank) return;
+      out.add(sel);
     });
   }
   return out;

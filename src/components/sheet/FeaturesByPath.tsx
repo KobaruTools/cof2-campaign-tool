@@ -158,6 +158,8 @@ import {
   featureArmorRestrictionMessage,
   magicTalentSpellsBlockedByArmor,
   magicTalentArmorBlockMessage,
+  poudreDeFeeSpellBlockedByArmor,
+  poudreDeFeeArmorBlockMessage,
   borrowedArmorUsageCounters as computeBorrowedArmorUsageCounters,
   pathArmorDisabledReasons,
   shieldDisabledFeatureIds,
@@ -6312,6 +6314,11 @@ export function FeaturesByPath({
         // le sort qu'en retirant son armure.
         ...[...magicTalentSpellsBlockedByArmor(character)].map(
           (id) => [id, magicTalentArmorBlockMessage()] as const,
+        ),
+        // PER-333 — sort emprunté de rang 2 via « Poudre de fée » (lutin fée) non lançable tant qu'une
+        // armure est portée (p. 27). Même mécanique que PER-144 ci-dessus.
+        ...[...poudreDeFeeSpellBlockedByArmor(character)].map(
+          (id) => [id, poudreDeFeeArmorBlockMessage()] as const,
         ),
       ])
     : undefined;
