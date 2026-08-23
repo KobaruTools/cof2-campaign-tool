@@ -77,6 +77,7 @@ export function equipmentCodexHref(equipmentId: string): string {
  */
 export const CODEX_SUBPAGES: readonly { label: string; href: string }[] = [
   { label: 'Voies', href: '/codex/voies' },
+  { label: 'Capacités', href: '/codex/capacites' },
   { label: 'Objets magiques', href: '/codex/objets-magiques' },
   { label: 'Dieux', href: '/codex/dieux' },
   { label: 'Familiers fantastiques', href: '/codex/familiers' },

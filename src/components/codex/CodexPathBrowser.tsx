@@ -52,7 +52,9 @@ import { CollapsibleFeatureBody } from '@/components/codex/CollapsibleFeatureBod
 
 type CodexTab = 'ancestry' | 'class' | 'prestige';
 
-const PRESTIGE_CATEGORY_LABELS: Record<PrestigeCategory, string> = {
+/** Exporté : réutilisé par `CodexAbilityBrowser` (grille exhaustive, PER-445) pour grouper le
+ * sélecteur de voies par famille de prestige — même libellé, une seule source de vérité. */
+export const PRESTIGE_CATEGORY_LABELS: Record<PrestigeCategory, string> = {
   generic: 'Génériques',
   adventurer: 'Aventuriers',
   fighter: 'Combattants',

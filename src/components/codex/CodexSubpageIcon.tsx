@@ -8,6 +8,8 @@
  *
  * Choix (mêmes assets que le reste de l'app) :
  *  - Voies → `SectionIcon` « paths » : même icône que la section Voies de la fiche.
+ *  - Capacités → `SectionIcon` « abilities » : même icône que la section Capacités de la fiche,
+ *    distincte de « paths » (Voies) bien que les deux sous-pages portent sur les mêmes voies.
  *  - Objets magiques → `SectionIcon` « inventory » : même icône que la section Inventaire
  *    de la fiche (choix du propriétaire).
  *  - Dieux → `ItemIcon` « holy-symbol » : déjà dans le vocabulaire d'objets (icônes libres).
@@ -26,6 +28,8 @@ export function CodexSubpageIcon({ label, size }: { label: string; size: number 
   switch (label) {
     case 'Voies':
       return <SectionIcon name="paths" size={size} />;
+    case 'Capacités':
+      return <SectionIcon name="abilities" size={size} />;
     case 'Objets magiques':
       return <SectionIcon name="inventory" size={size} />;
     case 'Dieux':

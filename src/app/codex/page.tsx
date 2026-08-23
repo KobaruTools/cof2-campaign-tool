@@ -40,6 +40,13 @@ const ENTRIES: CodexEntry[] = [
     variant: 'photo',
   },
   {
+    label: 'Capacités',
+    description: 'Grille exhaustive de toutes les capacités, filtrable par voie, rang et action.',
+    href: '/codex/capacites',
+    image: '/classes/magicien.webp',
+    variant: 'photo',
+  },
+  {
     label: 'Objets magiques',
     description: 'Armes, armures, anneaux, potions et artefacts magiques du jeu.',
     href: '/codex/objets-magiques',
