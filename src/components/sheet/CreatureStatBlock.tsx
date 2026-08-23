@@ -484,20 +484,6 @@ export function CreatureStatsLine({
           </CreatureStatChip>
         ))}
       </Stack>
-      {/* Capacités spéciales (PER-175, modèle bestiaire) : nom en gras + texte enrichi
-          (dés/formules/`rang`/`niveau` résolus contre le maître, glossaire auto). */}
-      {profile.specialAbilities && profile.specialAbilities.length > 0 && (
-        <Stack spacing={0.25} sx={{ mt: 0.5 }}>
-          {profile.specialAbilities.map((ab, i) => (
-            <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.5 }}>
-              <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                {ab.name}.
-              </Box>{' '}
-              {rich(ab.richText ?? ab.text)}
-            </Typography>
-          ))}
-        </Stack>
-      )}
       {profile.note && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
           {profile.note}
@@ -896,6 +882,14 @@ export function CreatureStatBlock({
         masterDerived={masterDerived}
         defenseAltActive={defenseAltActive}
       />
+
+      {/* Capacités spéciales en cartes bordées (PER-175, modèle bestiaire) — même rendu que la
+          section « Compagnons » (`CreatureSpecialAbilityBlocks`), plutôt que du texte simple. */}
+      {profile.specialAbilities && profile.specialAbilities.length > 0 && (
+        <Box sx={{ mt: 0.75 }}>
+          <CreatureSpecialAbilityBlocks profile={profile} abilities={abilities} level={level} rank={rank} />
+        </Box>
+      )}
 
       {/* Texte d'origine verbatim + page source (PER-175), en bas du bloc — traçabilité au livre. */}
       {profile.verbatimSource && (
