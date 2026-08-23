@@ -60,6 +60,10 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     expect(r5?.situationalEffectIds).toEqual(['locust-swarm']);
   });
 
+  it("« Nuée de criquets » déclare sa durée « 5 + CHA » (PER-446)", () => {
+    expect(SITUATIONAL_EFFECTS['locust-swarm'].durationFrom).toEqual({ ability: 'CHA', base: 5 });
+  });
+
   it("« Nuée d'insectes » est cataloguée (druide animaux r3, p. 114) : -2 plat, sans stacking, référencée", () => {
     const entry = SITUATIONAL_EFFECTS['insect-swarm'];
     expect(entry.label).toBe("Nuée d'insectes");

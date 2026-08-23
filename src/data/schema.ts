@@ -1528,6 +1528,15 @@ export interface StatusEffectEntry {
     | { kind: 'character-level'; level: number }
     | { kind: 'ability'; ability: AbilityId };
   /**
+   * DURÉE CALCULÉE (PER-446) : cette entrée dure « `base` + la caractéristique `ability` DU LANCEUR »
+   * (ex. Nuée de criquets, vermines r5 p. 175 : « [5 + CHA] rounds »). Sert UNIQUEMENT à PRÉ-REMPLIR
+   * le champ « Durée (tours) » de la fenêtre de pose avec la caractéristique du lanceur identifié —
+   * le MJ garde toujours la main pour la corriger ou l'effacer (décision propriétaire : jamais un
+   * calcul imposé). ABSENT = pas de fenêtre dédiée, l'effet se pose comme aujourd'hui (durée tapée à
+   * la main via le badge, `adjustStatusDuration`).
+   */
+  durationFrom?: { ability: AbilityId; base: number };
+  /**
    * DURÉE SECRÈTE (PER-440) : le compteur de tours de cet état, une fois posé, ne doit PAS être
    * révélé en PROJECTION (écran partagé avec les joueurs) — le livre confie ce chiffre au seul MJ
    * (ex. Frappe concentrée, combat mystique r5 p. 171 : « le MJ garde cette durée secrète »). Champ
@@ -1702,6 +1711,7 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
       "S'il réussit un test opposé d'attaque magique (portée 20 m), le personnage libère sur sa cible une nuée de criquets affamés qui la dévorent pendant [5 + CHA] rounds. La victime subit 2 DM par tour et un malus de -3 à toutes ses actions. Les DM de zone détruisent la nuée (minimum 1 DM).",
     sourcePage: 175,
     modifiers: { allTestsFlat: -3 },
+    durationFrom: { ability: 'CHA', base: 5 },
   },
   // « Nuée d'insectes » (druide, voie des animaux, r3, p. 114). NON cumulatif : le malus PLAT de -2 à tous
   // les tests s'applique UNE seule fois. Le DoT (« 1 DM par round ») et l'aveuglement décrit restent
@@ -2365,6 +2375,14 @@ export interface WeaponDamageCondition {
    * bon mode) en main. Absent = aucune contrainte de famille statique.
    */
   weaponFamilies?: WeaponFamily[];
+  /**
+   * L'arme portée doit infliger un des TYPES DE DM listés (PER-381, Affinité au poison, vermines
+   * r7, p. 175 : « arme tranchante ou perforante ») — comparé à `Weapon.damageType` (PER-422).
+   * Jusqu'ici ce champ ne servait qu'au filtre du Codex ; c'est le premier point où une capacité le
+   * consomme pour de vrai plutôt que de laisser la restriction en `label` non modélisable. Implique
+   * une arme de contact en main (comme `weaponCategories`). Absent = aucune contrainte de type de DM.
+   */
+  weaponDamageTypes?: DamageType[];
 }
 
 /**
@@ -4894,12 +4912,32 @@ export interface Feature {
  */
 export type Price = { amount: number; unit: string } | null;
 
+/**
+ * Valeur d'ENCOMBREMENT — règle OPTIONNELLE de campagne tirée du supplément payant *Atlas*
+ * (p. 156-158, hors périmètre d'extraction habituel, cf. `CampaignRules.encumbranceEnabled`) :
+ * 0 = petit, 1 = moyen, 2 = grand, d'après le tableau « Encombrement des objets portés » du
+ * livre. Absente sur les armures : leur encombrement se calcule depuis leur DEF (DEF ÷ 2, arrondi
+ * au-dessus si portée — formule du livre, jamais une valeur fixe par objet), donc le champ ne
+ * s'applique qu'aux armes, boucliers et matériel. Sert uniquement si l'option de campagne est
+ * activée ; ignorée sinon. Le calcul du TOTAL d'un personnage et des paliers (essoufflé / ralenti
+ * / immobilisé) fait l'objet d'un ticket séparé (PER-447 ne fait que porter la donnée).
+ */
+export const ENCUMBRANCE_WEIGHTS = [0, 1, 2] as const;
+export type EncumbranceWeight = (typeof ENCUMBRANCE_WEIGHTS)[number];
+
 interface EquipmentBase {
   id: string;
   name: string;
   price: Price;
   /** Règles particulières (verbatim), ex. armes en italique p. 184+. */
   properties?: string;
+  /**
+   * Encombrement (Atlas, optionnel) — voir `EncumbranceWeight`. Absent sur les armures (formule
+   * DEF÷2). Renseigné sur toutes les armes, boucliers et objets de matériel du catalogue ; sur un
+   * objet personnalisé, choisi par le joueur/MJ à la création si l'option de campagne est activée
+   * (absent sinon = 0/petit par défaut).
+   */
+  encumbrance?: EncumbranceWeight;
   /**
    * SOUS-CATÉGORIE D'ICÔNE de cet objet — purement visuel (aucune règle CO2), mais porté par
    * la DONNÉE parce que c'est une propriété de l'objet du livre et non de son affichage : une

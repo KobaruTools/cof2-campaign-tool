@@ -103,7 +103,9 @@ import {
 } from '@/lib/character/statusEffects';
 import { groupBuffFeatureId, groupBuffIntensityFor } from '@/lib/character/groupBuffs';
 import { GroupBuffDialog, type GroupBuffCandidate } from '@/components/campaign/GroupBuffDialog';
-import type { BeneficialEffectId } from '@/data/schema';
+import { situationalEffectCasters } from '@/lib/character/situationalCasters';
+import { SituationalDurationDialog } from '@/components/campaign/SituationalDurationDialog';
+import { SITUATIONAL_EFFECTS, type BeneficialEffectId, type SituationalEffectId } from '@/data/schema';
 import { useHeaderContent } from '@/stores/headerContent';
 import { hrefFromIndex, useCharacterSlugIndex, useResolvedCampaign } from '@/lib/routing/slug';
 import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
@@ -525,6 +527,26 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     buffId: BeneficialEffectId;
     carrierKey: string;
   } | null>(null);
+  // FENÊTRE DE POSE d'un effet situationnel à DURÉE CALCULÉE (PER-446) : `targetKey` est la VICTIME
+  // déjà visée par le dépôt, `effectId` sert à retrouver les lanceurs possibles et sa formule de durée.
+  const [situationalDurationPose, setSituationalDurationPose] = useState<{
+    targetKey: string;
+    effectId: SituationalEffectId;
+  } | null>(null);
+  const situationalDurationCasters = useMemo(
+    () => (situationalDurationPose ? situationalEffectCasters(claimed, situationalDurationPose.effectId) : []),
+    [situationalDurationPose, claimed],
+  );
+  // Étiquette affichée de la victime déjà fixée par le dépôt (personnage réclamé ou créature du tracker).
+  const situationalDurationTargetLabel = useMemo(() => {
+    if (!situationalDurationPose) return '';
+    const { targetKey } = situationalDurationPose;
+    return (
+      claimed.find((c) => c.id === targetKey)?.name ??
+      labeledCreatures.find((inst) => inst.id === targetKey)?.label ??
+      targetKey
+    );
+  }, [situationalDurationPose, claimed, labeledCreatures]);
   // Résout le VRAI porteur parmi les personnages réclamés (seuls porteurs possibles, cf. `groupBuffIntensity`
   // ci-dessous) : celui dont les capacités confèrent `buffId`. Repli sur la carte visée par le dépôt si
   // personne ne le porte (ne devrait pas arriver — la palette ne propose ce buff que si un porteur existe).
@@ -582,8 +604,20 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       // règle vise « ses alliés et lui », ou « un allié » qui n'est pas forcément celui-là. Le PORTEUR
       // (camp + palier pré-rempli) est le personnage dont la capacité confère ce buff (PER-361) — pas
       // forcément la carte visée par le dépôt, que `openGroupBuff` n'utilise qu'en repli.
-      if (isCampScopedStatus(statusId)) openGroupBuff(combatantKey, statusId as BeneficialEffectId);
-      else applyStatus(combatantKey, statusId);
+      if (isCampScopedStatus(statusId)) {
+        openGroupBuff(combatantKey, statusId as BeneficialEffectId);
+        return;
+      }
+      // Effet situationnel à DURÉE CALCULÉE (PER-446, ex. Nuée de criquets « 5 + CHA ») : la victime
+      // visée par le dépôt n'est pas le lanceur, donc pas la bonne source pour la caractéristique. On
+      // n'ouvre la fenêtre dédiée que si au moins un personnage réclamé possède la capacité — sinon
+      // rien à calculer, l'effet se pose directement comme avant PER-446.
+      const casters = situationalEffectCasters(claimed, statusId as SituationalEffectId);
+      if (SITUATIONAL_EFFECTS[statusId as SituationalEffectId]?.durationFrom && casters.length > 0) {
+        setSituationalDurationPose({ targetKey: combatantKey, effectId: statusId as SituationalEffectId });
+        return;
+      }
+      applyStatus(combatantKey, statusId);
       return;
     }
     // Réordonnancement libre (PER-436) : la poignée d'une carte glissée sur une AUTRE carte — déjà
@@ -1082,6 +1116,20 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         }
         posedKeys={groupBuffPosedKeys}
         onRemoveAll={(keys) => groupBuffPose && removeStatusFromMany(keys, groupBuffPose.buffId)}
+      />
+
+      {/* Pose d'un effet situationnel à durée calculée (PER-446) : la victime est déjà fixée par le
+          dépôt, il ne manque que le lanceur (pour lire sa caractéristique) et la durée pré-remplie. */}
+      <SituationalDurationDialog
+        open={situationalDurationPose !== null}
+        onClose={() => setSituationalDurationPose(null)}
+        effectId={situationalDurationPose?.effectId ?? null}
+        targetLabel={situationalDurationTargetLabel}
+        candidates={situationalDurationCasters}
+        onApply={(options) =>
+          situationalDurationPose &&
+          applyStatusToMany([situationalDurationPose.targetKey], situationalDurationPose.effectId, options)
+        }
       />
 
       {/* Modale d'ajout d'une créature au combat : du bestiaire (sélecteur + aperçu) ou

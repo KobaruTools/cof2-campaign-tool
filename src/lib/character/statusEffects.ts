@@ -16,6 +16,7 @@ import {
   ENVIRONMENTAL_EFFECTS,
   SITUATIONAL_EFFECTS,
   STATUS_EFFECTS,
+  type AbilityId,
   type BeneficialEffectId,
   type DerivedStatId,
   type EnvironmentalEffectId,
@@ -372,6 +373,21 @@ export function isStatusExpired(applied: AppliedStatus, roundNumber: number): bo
  */
 export function untilRoundFor(roundNumber: number, remaining: number): number {
   return Math.trunc(roundNumber) + clampStatusRounds(remaining) - 1;
+}
+
+/**
+ * Durée en tours à PRÉ-REMPLIR pour `effectId` d'après ce que le catalogue déclare (`durationFrom`,
+ * PER-446) — `base` + la caractéristique du LANCEUR (ex. Nuée de criquets, « 5 + CHA »). `undefined`
+ * si l'effet ne déclare pas de formule (pas de fenêtre dédiée) ; une caractéristique absente du
+ * lanceur (créature, personnage non réclamé) compte pour 0, jamais une erreur.
+ */
+export function situationalDurationRounds(
+  effectId: SituationalEffectId,
+  abilities: Partial<Record<AbilityId, number>> | undefined,
+): number | undefined {
+  const from = SITUATIONAL_EFFECTS[effectId]?.durationFrom;
+  if (!from) return undefined;
+  return clampStatusRounds(from.base + (abilities?.[from.ability] ?? 0));
 }
 
 /**

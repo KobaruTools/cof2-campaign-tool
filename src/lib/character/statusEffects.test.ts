@@ -8,6 +8,7 @@ import {
   isStackingStatus,
   isStatusExpired,
   resolveStatusModifiers,
+  situationalDurationRounds,
   statusEntry,
   statusMaxIntensity,
   statusRemainingRounds,
@@ -136,6 +137,27 @@ describe('compteur de tours (PER-305)', () => {
         remaining,
       );
     }
+  });
+});
+
+// PER-446 — durée en tours pré-remplie d'après le catalogue (`durationFrom`).
+describe('situationalDurationRounds', () => {
+  it('base + caractéristique du lanceur (Nuée de criquets, « 5 + CHA »)', () => {
+    expect(situationalDurationRounds('locust-swarm', { CHA: 3 })).toBe(8);
+    expect(situationalDurationRounds('locust-swarm', { CHA: -1 })).toBe(4);
+  });
+
+  it('caractéristique absente du lanceur (créature) compte pour 0, jamais une erreur', () => {
+    expect(situationalDurationRounds('locust-swarm', {})).toBe(5);
+    expect(situationalDurationRounds('locust-swarm', undefined)).toBe(5);
+  });
+
+  it('borné par `clampStatusRounds`, comme toute durée en tours', () => {
+    expect(situationalDurationRounds('locust-swarm', { CHA: 999 })).toBe(STATUS_DURATION_MAX);
+  });
+
+  it("undefined si l'effet ne déclare pas de formule (pas de fenêtre dédiée)", () => {
+    expect(situationalDurationRounds('silenced', { CHA: 5 })).toBeUndefined();
   });
 });
 
