@@ -3318,6 +3318,18 @@ export interface CreatureUpgrade {
   specialAbilities?: CreatureSpecialAbility[];
   /** Note libre ajoutée à la fiche de la créature (ex. Vol, « doué de parole »). */
   note?: string;
+  /**
+   * BASCULE de nature du compagnon (PER-381, Vermine supérieure r8, p. 175 : « la vermine peut
+   * désormais servir de monture à son maître ») — une capacité de rang SUPÉRIEUR transforme un
+   * compagnon `'animal'` PERMANENT en `'mount'` chevauchable, sans remplacer son profil
+   * (`creatureProfile` fait déjà ça pour un changement de PROFIL entier). Écrase le `companionType` du
+   * profil de base. `companionMountEnSelle` (companions.ts) exige EN PLUS un marqueur `en selle`
+   * (`conditional-stat-bonus`, `activation: { kind: 'condition', label: 'en selle' }`, patron
+   * cavalier-r1) sur une capacité de la MÊME voie — sans lui, le compagnon devient bien `'mount'` mais
+   * aucun toggle « En selle / À pied » ne s'affiche (l'interrupteur qu'il lirait n'existe pas). Absent
+   * = `companionType` du profil de base inchangé (cas général).
+   */
+  companionType?: CompanionType;
 }
 
 export interface FeatureChoiceOption {

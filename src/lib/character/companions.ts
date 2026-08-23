@@ -297,6 +297,7 @@ export function applyCreatureUpgrades(
   // dragon : RD feu 10 du drake au r4, Souffle enflammé au r8). Cumulées / ajoutées, jamais substituées.
   const reductions: DamageReduction[] = [];
   const specials: CreatureSpecialAbility[] = [];
+  let companionTypeOverride: CreatureUpgrade['companionType'];
   for (const u of upgrades) {
     if (u.abilities) {
       for (const [k, v] of Object.entries(u.abilities) as [AbilityId, number][]) {
@@ -312,8 +313,10 @@ export function applyCreatureUpgrades(
     if (u.extraAttack) extraAttackSpecs.push(u.extraAttack);
     if (u.damageReduction) reductions.push(...(Array.isArray(u.damageReduction) ? u.damageReduction : [u.damageReduction]));
     if (u.specialAbilities) specials.push(...u.specialAbilities);
+    if (u.companionType) companionTypeOverride = u.companionType;
   }
   const next: CreatureProfile = { ...base };
+  if (companionTypeOverride) next.companionType = companionTypeOverride;
   if (base.abilities && Object.keys(abilityDelta).length > 0) {
     const ab = { ...base.abilities };
     for (const [k, v] of Object.entries(abilityDelta) as [AbilityId, number][]) ab[k] = (ab[k] ?? 0) + v;

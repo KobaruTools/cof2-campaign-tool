@@ -28,10 +28,23 @@ function bonusLabel(b: SituationalDamageBonus): string {
  * qui sont agrégés à l'expression de DM de l'arme, pas rendus en badge.
  */
 export function WeaponDamageBonusBadge({ bonus }: { bonus: SituationalDamageBonus }) {
+  const dice = diceNotation(bonus);
   const tooltip = (
     <Box sx={{ minWidth: 160 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Bonus de DM situationnel : {bonusLabel(bonus)}
+      <Typography
+        variant="subtitle2"
+        sx={{ fontWeight: 700, mb: 0.5, display: 'flex', alignItems: 'center', gap: 0.35, flexWrap: 'wrap' }}
+      >
+        Bonus de DM situationnel :
+        {/* Même rendu que le badge (icône de dé) — un dé en texte brut ici serait le seul endroit de
+            la tooltip à ne pas passer par le rendu enrichi, incohérent avec la puce elle-même. */}
+        {dice ? (
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+            +<DamageValue damage={dice} size={16} />
+          </Box>
+        ) : (
+          bonusLabel(bonus)
+        )}
       </Typography>
       <Box sx={{ mb: bonus.conditionLabel ? 0.5 : 0 }}>
         <CapabilityChip featureId={bonus.featureId} label={null} />

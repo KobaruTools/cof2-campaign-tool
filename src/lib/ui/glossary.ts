@@ -156,7 +156,9 @@ const STATUS_EFFECT_FORMS: Record<StatusEffectId, string[]> = {
   weakened: ['affaibli', 'affaiblie', 'affaiblis', 'affaiblies'],
   winded: ['essoufflé', 'essoufflée', 'essoufflés', 'essoufflées'],
   dazed: ['étourdi', 'étourdie', 'étourdis', 'étourdies'],
-  immobilized: ['immobilisé', 'immobilisée', 'immobilisés', 'immobilisées'],
+  // Formes VERBALES (« le scorpion immobilise son adversaire », PER-381, vermines r8) en plus
+  // des participes/adjectifs — jusqu'ici seule la forme adjectif était reconnue.
+  immobilized: ['immobilisé', 'immobilisée', 'immobilisés', 'immobilisées', 'immobilise', 'immobilisent'],
   crippled: ['invalide', 'invalides'],
   paralyzed: ['paralysé', 'paralysée', 'paralysés', 'paralysées'],
   slowed: ['ralenti', 'ralentie', 'ralentis', 'ralenties'],

@@ -198,7 +198,7 @@ import {
   FeatureDeclensionContext,
   useFeatureNameDecliner,
 } from '@/components/sheet/FeatureDeclension';
-import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
+import { ChoiceDependentAbilityBlocks, CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
 import { FamiliarGrantedPowerNote, FamiliarPowerCompactCard } from '@/components/sheet/FamiliarGrantedPowerNote';
 import { FeatureChoiceField, ChoiceValueBadge, ChoiceTodoBadge } from '@/components/sheet/FeatureChoiceField';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
@@ -5099,7 +5099,33 @@ function PathBlock({
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <PathFeatureCard feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} chosenDuration={chosenDurationFor(openFeature)} scalingTierBonus={scalingTierBonus} abilitySubstitutions={nativeFeatureAbilitySubstitutions(character, openFeature)} />
+                <PathFeatureCard
+                  feature={openFeature}
+                  abilities={abilities}
+                  level={level}
+                  pathRank={effectiveRank(openFeature)}
+                  milestoneBonus={milestoneBonusFor(openFeature)}
+                  chosenDuration={chosenDurationFor(openFeature)}
+                  scalingTierBonus={scalingTierBonus}
+                  abilitySubstitutions={nativeFeatureAbilitySubstitutions(character, openFeature)}
+                  hideSourcePage={!!openFeature.creatureUpgradeFromChoice}
+                />
+                {/* Capacité dont l'ability octroyée dépend d'un choix fait ailleurs (PER-381,
+                    `creatureUpgradeFromChoice`) — ex. Vermine supérieure : cartes ENTRE le reste de la
+                    description (`richText` recadré à sa phrase d'intro, patron Grand félin) et la
+                    référence de page (`hideSourcePage` ci-dessus + `FeatureSourcePage` ci-dessous). */}
+                {openFeature.creatureUpgradeFromChoice && abilities && level != null && (
+                  <Box sx={{ my: 1.5 }}>
+                    <ChoiceDependentAbilityBlocks
+                      feature={openFeature}
+                      character={character}
+                      abilities={abilities}
+                      level={level}
+                      rank={pathRank}
+                    />
+                  </Box>
+                )}
+                {openFeature.creatureUpgradeFromChoice && <FeatureSourcePage feature={openFeature} />}
                 {openFeature.referencedFeatures && openFeature.referencedFeatures.length > 0 && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -5751,7 +5777,33 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <PathFeatureCard feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} chosenDuration={chosenDurationFor(feature)} scalingTierBonus={scalingTierBonus} abilitySubstitutions={nativeFeatureAbilitySubstitutions(character, feature)} />
+              <PathFeatureCard
+                feature={feature}
+                abilities={abilities}
+                level={level}
+                pathRank={effectiveRank(feature)}
+                milestoneBonus={milestoneBonusFor(feature)}
+                chosenDuration={chosenDurationFor(feature)}
+                scalingTierBonus={scalingTierBonus}
+                abilitySubstitutions={nativeFeatureAbilitySubstitutions(character, feature)}
+                hideSourcePage={!!feature.creatureUpgradeFromChoice}
+              />
+              {/* Capacité dont l'ability octroyée dépend d'un choix fait ailleurs (PER-381,
+                  `creatureUpgradeFromChoice`) — ex. Vermine supérieure : cartes ENTRE le reste de la
+                  description et la référence de page (`hideSourcePage` ci-dessus + `FeatureSourcePage`
+                  ci-dessous). */}
+              {feature.creatureUpgradeFromChoice && abilities && level != null && (
+                <Box sx={{ my: 1.5 }}>
+                  <ChoiceDependentAbilityBlocks
+                    feature={feature}
+                    character={character}
+                    abilities={abilities}
+                    level={level}
+                    rank={pathRank}
+                  />
+                </Box>
+              )}
+              {feature.creatureUpgradeFromChoice && <FeatureSourcePage feature={feature} />}
               {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
                 <>
                   <Divider sx={{ my: 1.5 }} />

@@ -16,7 +16,8 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined';
 import type { ReactNode } from 'react';
-import { ABILITY_IDS, type AbilityId, type CreatureProfile, type CreatureSize, type DerivedStatId, type MasterStatRef } from '@/data/schema';
+import { ABILITY_IDS, type AbilityId, type CreatureProfile, type CreatureSize, type DerivedStatId, type Feature, type MasterStatRef } from '@/data/schema';
+import { featureById } from '@/data';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { CREATURE_SIZE_LABELS, resolveCreatureAbilities } from '@/lib/ui/creature';
@@ -29,6 +30,8 @@ import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { MetaPill } from '@/components/MetaPill';
 import { creatureDefenseBreakdown } from '@/lib/character/companions';
+import { getSelection } from '@/lib/character/choices';
+import type { Character } from '@/lib/character/types';
 import type { StatBreakdown } from '@/lib/character/statBreakdown';
 import { damageReductionBadges } from '@/components/bestiary/creatureDefenseBadges';
 import { DefenseBadge } from './DefenseBadge';
@@ -798,6 +801,85 @@ export function CreatureSpecialAbilityBlocks({
           </Typography>
         </Box>
       ))}
+    </Box>
+  );
+}
+
+/**
+ * Capacités dont le contenu dépend d'un CHOIX fait à une AUTRE capacité (PER-381,
+ * `Feature.creatureUpgradeFromChoice`) — ex. Vermine supérieure (r8, p. 175) : Étreinte du scorpion OU
+ * Toile d'araignée, selon la nature choisie au r6. Rend TOUTES les branches en cartes (même gabarit que
+ * `CreatureSpecialAbilityBlocks`) plutôt qu'un paragraphe de texte — celle qui NE correspond PAS au choix
+ * retenu (ou si aucun choix n'est encore fait) reste visible mais GRISÉE (`opacity`), pour que le lecteur
+ * voie les deux possibilités du livre sans confondre celle qui s'applique vraiment à SON compagnon.
+ * `null` si la capacité ne porte pas ce champ, ou si aucune de ses entrées n'a de `specialAbilities`.
+ */
+export function ChoiceDependentAbilityBlocks({
+  feature,
+  character,
+  abilities,
+  level,
+  rank,
+}: {
+  feature: Feature;
+  character: Character | undefined;
+  abilities: Abilities;
+  level: number;
+  rank: number;
+}) {
+  const spec = feature.creatureUpgradeFromChoice;
+  if (!spec) return null;
+  const choiceFeature = featureById.get(spec.choiceFeatureId);
+  const choiceDef = choiceFeature?.choices?.[spec.choiceIndex];
+  const optionLabelById = new Map<string, string>();
+  if (choiceDef?.kind === 'option') {
+    for (const opt of choiceDef.options) optionLabelById.set(opt.id, opt.label);
+  }
+  const rawSelection = character ? getSelection(character, spec.choiceFeatureId, spec.choiceIndex) : undefined;
+  const chosenId = Array.isArray(rawSelection) ? rawSelection[0] : rawSelection;
+  const cards = Object.entries(spec.upgrades).flatMap(([optionId, upgrade]) =>
+    (upgrade.specialAbilities ?? []).map((ab, i) => ({ optionId, ab, key: `${optionId}-${i}` })),
+  );
+  if (cards.length === 0) return null;
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: `repeat(${Math.min(cards.length, 2)}, minmax(0, 1fr))` }, gap: 0.75 }}>
+      {cards.map(({ optionId, ab, key }) => {
+        const active = chosenId === optionId;
+        const optionLabel = optionLabelById.get(optionId);
+        return (
+          <Box
+            key={key}
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 1,
+              px: 1,
+              py: 0.75,
+              bgcolor: (t) => alpha(t.palette.text.primary, 0.03),
+              opacity: active ? 1 : 0.45,
+            }}
+          >
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'baseline', flexWrap: 'wrap', mb: 0.25 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+                {ab.name}
+              </Typography>
+              {optionLabel && (
+                <Typography variant="caption" color="text.disabled">
+                  ({optionLabel})
+                </Typography>
+              )}
+            </Stack>
+            <Typography
+              variant="caption"
+              color={active ? 'text.secondary' : 'text.disabled'}
+              component="div"
+              sx={{ lineHeight: 1.5 }}
+            >
+              <RichInline text={ab.richText ?? ab.text} abilities={abilities} level={level} rank={rank} />
+            </Typography>
+          </Box>
+        );
+      })}
     </Box>
   );
 }

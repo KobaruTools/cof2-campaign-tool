@@ -5199,9 +5199,10 @@ export const prestigeFeatures2: Feature[] = [
       "Le personnage peut enduire une arme tranchante ou perforante de poison une fois par combat. Cette arme inflige +{1d4°} DM de poison. En plus des effets décrits ci-dessus, le personnage divise par deux les DM et la durée d'effet des poisons.",
     // « Enduire une arme … une fois par combat » : même patron qu'Arme dansante (prestige-arme-liee-r?) —
     // interrupteur `conditional-stat-bonus` (consomme le compteur à l'activation, dure le reste du
-    // combat) + `weapon-damage-bonus` gaté sur cet interrupteur (index 0). Pas de type d'arme
-    // tranchante/perforante au schéma (seulement familles/catégories) → `label` non modélisable, patron
-    // documenté de `WeaponDamageCondition.label`.
+    // combat) + `weapon-damage-bonus` gaté sur cet interrupteur (index 0). Repasse (retour propriétaire) :
+    // `WeaponDamageCondition.weaponDamageTypes` (PER-422, `Weapon.damageType`) EXISTE bel et bien — filtre
+    // maintenant réellement sur tranchant/perforant (une arme contondante comme le bâton n'y a plus droit),
+    // `label` gardé en plus pour l'affichage.
     // « Divise par deux les DM ET la durée des poisons » : patron EXACT d'Invulnérable (moine,
     // energie-vitale-r3, p. 119) pour la partie DM (`damageReduction` divide/2 scoped poison). La
     // réduction de DURÉE reste verbatim (aucun primitif de durée d'effet au catalogue, PER-381).
@@ -5214,7 +5215,13 @@ export const prestigeFeatures2: Feature[] = [
       {
         kind: 'weapon-damage-bonus',
         dice: { count: 1, die: 'd4', evolving: true },
-        condition: { attackMode: 'melee', label: 'arme tranchante ou perforante' },
+        // Retour propriétaire : le texte NE restreint PAS au contact — une flèche/carreau est
+        // « perforant(e) » au même titre qu'une dague (PER-422, `Weapon.damageType`). Pas
+        // d'`attackMode` : les deux modes valent, seul le TYPE de DM de l'arme portée compte.
+        condition: {
+          weaponDamageTypes: ['piercing', 'slashing'],
+          label: 'arme tranchante ou perforante',
+        },
         requiresActiveEffectIndex: 0,
         situational: true,
       },
@@ -5234,8 +5241,25 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le compagnon vermine du personnage gagne une des capacités suivantes, qui dépend de sa nature. De plus, la vermine peut désormais servir de monture à son maître.\nÉtreinte du scorpion : le scorpion peut désormais tenter d'attraper entre ses pinces une créature de taille grande ou inférieure. Lorsqu'il obtient un résultat de 15 à 20 sur son dé d'attaque, le scorpion immobilise son adversaire en plus des DM habituels.\nToile d'araignée (L) : l'araignée gagne la capacité de lancer (portée 10 m) une toile gluante et collante. Si elle réussit son attaque, la cible est immobilisée pour 1d6 rounds. Au début de son tour, la créature engluée peut faire un test de FOR difficulté 15, en cas de succès, elle réussit à se libérer, sinon elle reste immobilisée.",
+    // `richText` RECADRÉ à la seule phrase d'intro (patron Grand félin, fauve-r4/mystics.ts) : les deux
+    // paragraphes d'ability sont déjà rendus en cartes (`ChoiceDependentAbilityBlocks`,
+    // FeaturesByPath.tsx) — les laisser AUSSI dans le richText les dupliquerait à l'écran. `text`
+    // verbatim, lui, les garde tous les deux (retour propriétaire : ne pas amputer le texte source).
     richText:
-      "Le compagnon vermine du personnage gagne une des capacités suivantes, qui dépend de sa nature. De plus, la vermine peut désormais servir de monture à son maître.\nÉtreinte du scorpion : le scorpion peut désormais tenter d'attraper entre ses pinces une créature de taille grande ou inférieure. Lorsqu'il obtient un résultat de 15 à 20 sur son dé d'attaque, le scorpion immobilise son adversaire en plus des DM habituels.\nToile d'araignée (L) : l'araignée gagne la capacité de lancer (portée 10 m) une toile gluante et collante. Si elle réussit son attaque, la cible est immobilisée pour {1d6} rounds. Au début de son tour, la créature engluée peut faire un test de FOR difficulté 15, en cas de succès, elle réussit à se libérer, sinon elle reste immobilisée.",
+      "Le compagnon vermine du personnage gagne une des capacités suivantes, qui dépend de sa nature. De plus, la vermine peut désormais servir de monture à son maître.",
+    // « Peut désormais servir de monture » — INCONDITIONNEL (les deux branches y ont droit, à la
+    // différence de l'ability ci-dessous) : `creatureUpgrade.companionType` (nouveau champ PER-381)
+    // bascule le compagnon `'animal'` du r6 en `'mount'` chevauchable. Le marqueur `en selle` (patron
+    // cavalier-r1, `companionMountEnSelle`) vit ICI plutôt qu'au r6 : il n'a de sens qu'une fois cette
+    // capacité acquise, comme la bascule de nature elle-même.
+    creatureUpgrade: { companionType: 'mount' },
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'en selle', activeByDefault: false },
+      },
+    ],
     // Capacité octroyée au compagnon DÉPEND de la nature choisie au r6 — nouveau primitif cross-capacité
     // `creatureUpgradeFromChoice` (PER-381), sur le patron d'`elementFromChoice`/`creatureNameFromChoice`.
     creatureUpgradeFromChoice: {

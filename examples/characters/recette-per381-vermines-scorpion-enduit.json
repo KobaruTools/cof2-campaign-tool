@@ -9,7 +9,7 @@
   "playerId": null,
   "status": "active",
   "ancestryId": "humain",
-  "classId": "mystique",
+  "classId": "druide",
   "level": 12,
   "priestVocation": null,
   "portraitVariant": "default",
@@ -69,7 +69,7 @@
   "levelUpHistory": [],
   "equipment": [
     {
-      "itemId": "epee-longue",
+      "itemId": "dague",
       "quantity": 1,
       "worn": {
         "slot": "main-hand"

@@ -119,6 +119,13 @@ export function weaponConditionMet(
     if (!weapon?.weaponFamilies?.length) return false;
     if (!cond.weaponFamilies.some((f) => weapon.weaponFamilies!.includes(f))) return false;
   }
+  if (cond.weaponDamageTypes && cond.weaponDamageTypes.length > 0) {
+    // Contrairement à `weaponCategories` (classification RÉSERVÉE aux armes de contact), le type de
+    // DM couvre AUSSI les armes à distance (arc/arbalète perforants, PER-422) : pas de `weapon.melee`
+    // ici — c'est `cond.attackMode` qui filtre par mode s'il y a lieu.
+    if (!weapon) return false;
+    if (!cond.weaponDamageTypes.includes(weapon.damageType)) return false;
+  }
   return true;
 }
 
