@@ -3554,14 +3554,15 @@ export function damageReductionSources(character: Character): DamageReductionSou
       .map((e, i) => (e.kind === 'conditional-stat-bonus' ? i : -1))
       .filter((i) => i >= 0);
     // Capacité passive (aucun effet conditionnel) → RD permanente. Sinon, RD affichée seulement si
-    // l'un de ses interrupteurs conditionnels est actif.
-    const active =
+    // l'un de ses interrupteurs conditionnels est actif — SAUF entrée marquée `alwaysActive` (PER-381 :
+    // résistance innée sans rapport avec un interrupteur porté par ailleurs sur la même capacité).
+    const featureActive =
       conditionalIndexes.length === 0 || conditionalIndexes.some((i) => isEffectActive(character, id, i));
-    if (!active) continue;
     // Une capacité peut porter PLUSIEURS entrées de RD (tableau, PER-137).
     const entries = Array.isArray(feature.damageReduction) ? feature.damageReduction : [feature.damageReduction];
     const rank = pathRanks[rankPathId] ?? 0;
     for (const dr of entries) {
+      if (!featureActive && !dr.alwaysActive) continue;
       // Gating CROSS-CAPACITÉ (PER-74) : RD active seulement si l'interrupteur d'une AUTRE capacité
       // (la forme porteuse) est actif — ex. la RD hybride de r7 suit l'interrupteur de r4 (Forme hybride).
       if (

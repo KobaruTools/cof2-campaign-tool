@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 25,
+  "id": "recette-per381-vermines-scorpion-enduit",
+  "name": "Recette PER-381 — vermines (scorpion, enduit)",
+  "identity": {
+    "description": "ATTENDU : r6 compagnon (scorpion/araignée) avec specialAbilities distinctes, r7 RD poison permanente + arme enduite si interrupteur ON, r8 ability injectée cohérente avec le r6 choisi."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "mystique",
+  "level": 12,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 3
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 3
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "prestige-vermines-r4",
+    "prestige-vermines-r5",
+    "prestige-vermines-r6",
+    "prestige-vermines-r7",
+    "prestige-vermines-r8"
+  ],
+  "featureChoices": {
+    "prestige-vermines-r6": [
+      "scorpion"
+    ]
+  },
+  "effectToggles": {
+    "prestige-vermines-r7": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "transformationDerivedStats": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "main-hand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-381 — voie des vermines, branche scorpion (arme enduite).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

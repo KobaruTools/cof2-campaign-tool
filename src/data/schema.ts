@@ -2762,6 +2762,17 @@ export interface DamageReduction {
    */
   requiresActiveEffect?: { featureId: string; index: number };
   /**
+   * Force cette entrée à rester PERMANENTE même si sa capacité hôte porte par ailleurs un ou des
+   * interrupteurs `conditional-stat-bonus` pour un AUTRE mécanisme (PER-381, Affinité au poison r7,
+   * p. 175 : la RD ÷2 poison est une résistance INNÉE, sans rapport avec l'interrupteur qui suit
+   * l'application temporaire de poison sur une arme, posé sur la MÊME capacité). Sans ce champ,
+   * `damageReductionSources` couple par défaut TOUTE RD d'une capacité à SES PROPRES interrupteurs
+   * (comportement voulu pour Armure de pierre/Déphasage, où la RD EST le mécanisme conditionné) — ce
+   * qui couperait ici la RD innée dès que l'interrupteur du coating repasse à OFF. Absent/`false` =
+   * comportement par défaut (gating par interrupteur(s) propre(s), cas général).
+   */
+  alwaysActive?: boolean;
+  /**
    * PRÉCISION courte affichée en SOURCE du badge (PER-260) : exception ou condition que la portée
    * typée ne sait pas exprimer — « Sauf les armes en argent et le feu. », « Les armes contondantes
    * infligent des DM pleins. », « Seulement tant qu'au moins 4 créatures sous ses ordres sont à
@@ -4646,6 +4657,18 @@ export interface Feature {
    * portées par les options retenues (`FeatureChoiceOption.creatureUpgrade`). Absent = aucune.
    */
   creatureUpgrade?: CreatureUpgrade;
+  /**
+   * AMÉLIORATION de créature dont le contenu dépend d'un CHOIX fait sur une AUTRE capacité (PER-381,
+   * Vermine supérieure r8, p. 175) : l'ability octroyée au compagnon (étreinte du scorpion / toile de
+   * l'araignée) dépend de la nature choisie à Compagnon vermine (r6). Sur le patron cross-capacité
+   * d'`elementFromChoice`/`creatureNameFromChoice` : `choiceFeatureId`/`choiceIndex` désignent le choix
+   * `option` SOURCE (une autre capacité, généralement d'un rang antérieur), et `upgrades` mappe chaque
+   * id d'option retenue vers le `CreatureUpgrade` correspondant — fusionné par `applyCreatureUpgrades`,
+   * même canal que `creatureUpgrade` ci-dessus. Rien n'est octroyé tant que le choix source n'est pas
+   * fait, ou si l'id retenu n'a pas d'entrée dans `upgrades`. Absent = aucune amélioration conditionnée
+   * par un choix externe (cas général : `creatureUpgrade` suffit).
+   */
+  creatureUpgradeFromChoice?: { choiceFeatureId: string; choiceIndex: number; upgrades: Record<string, CreatureUpgrade> };
   /**
    * Attaque naturelle conférée par une FORME prise via cette capacité (PER-74) — morsure de la
    * forme hybride du lycanthrope. Donnée d'affichage, gatée par l'interrupteur de forme (cf.

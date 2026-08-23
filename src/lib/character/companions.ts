@@ -220,6 +220,15 @@ function gatherCreatureUpgrades(
     if (!feature) continue;
     // Amélioration portée DIRECTEMENT par la capacité (cross-voie via `targetPaths`).
     if (feature.creatureUpgrade) consider(feature.creatureUpgrade, feature.pathId, feature.id, feature.name);
+    // Amélioration dont le CONTENU dépend d'un choix fait sur une AUTRE capacité (PER-381, Vermine
+    // supérieure : étreinte du scorpion / toile de l'araignée selon la nature choisie au r6).
+    if (feature.creatureUpgradeFromChoice) {
+      const { choiceFeatureId, choiceIndex, upgrades } = feature.creatureUpgradeFromChoice;
+      const raw = getSelection(character, choiceFeatureId, choiceIndex);
+      const optionId = Array.isArray(raw) ? raw[0] : raw;
+      const upgrade = optionId ? upgrades[optionId] : undefined;
+      if (upgrade) consider(upgrade, feature.pathId, feature.id, feature.name);
+    }
     // Améliorations portées par les OPTIONS retenues (même balayage que `creatureBonusDiceForPath`).
     // Source affichée = libellé de l'OPTION (ex. « Armure »), plus parlant que le nom de la capacité hôte.
     if (feature.choices) {

@@ -5100,6 +5100,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "S'il réussit un test opposé d'attaque magique (portée 20 m), le personnage libère sur sa cible une nuée de criquets affamés qui la dévorent pendant [5 + CHA] rounds. La victime subit 2 DM par tour et un malus de -3 à toutes ses actions. Les DM de zone détruisent la nuée (minimum 1 DM).",
+    // Repasse PER-381 : `[5 + CHA]` déjà entre crochets dans le `text` (verbatim livre) n'a jamais
+    // déclenché le rendu enrichi faute de `richText` posé à côté (piège documenté, cf. patron EXACT
+    // du sibling « Nuée d'insectes », animaux-r3, mystics.ts p. 114) — durée = QUANTITÉ (`[=…]`).
+    richText:
+      "S'il réussit un test opposé d'attaque magique (portée 20 m), le personnage libère sur sa cible une nuée de criquets affamés qui la dévorent pendant [=5 + CHA] rounds. La victime subit 2 DM par tour et un malus de -3 à toutes ses actions. Les DM de zone détruisent la nuée (minimum 1 DM).",
     situationalEffectIds: ['locust-swarm'],
     sourcePage: 175,
   },
@@ -5112,6 +5117,71 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage adopte un scorpion ou une araignée géante (au choix du joueur).\n\nSCORPION OU ARAIGNÉE — TAILLE MOYENNE\nAGI +3* | CON +5 | FOR +5 | PER +2 | CHA -4 | INT -3 | VOL +2\nDéfense [15 + rang dans la voie] · Points de vigueur [niveau du personnage × 5] · Initiative [Init. du personnage]\nAttaque au contact [attaque magique] · DM 1d4°+5 et poison +1d4° DM\nAu prix d'une action limitée, le scorpion peut attaquer une fois avec ses pinces (pas de poison) et une fois avec son dard (avec poison). L'araignée peut se déplacer sur les surfaces verticales. Déplacement rapide : les vermines se déplacent de 20 m par action de mouvement.",
+    // Profil structuré retiré du richText (bloc de stats) ; patron Grand félin (fauve-r4, mystics.ts) :
+    // choix `option` à deux profils DISTINCTS (spécificités mécaniques réelles — pinces/dard vs
+    // surfaces verticales — pas qu'un nom cosmétique). `choiceIndex: 0` lu cross-capacité par le r8
+    // (`creatureUpgradeFromChoice`) pour savoir quelle nature octroyer.
+    richText: "Le personnage adopte un scorpion ou une araignée géante (au choix du joueur).",
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Vermine adoptée',
+        options: [
+          {
+            id: 'scorpion',
+            label: 'Scorpion géant',
+            creatureProfile: {
+              name: 'Scorpion géant',
+              companionType: 'animal',
+              abilities: { AGI: 3, CON: 5, FOR: 5, PER: 2, CHA: -4, INT: -3, VOL: 2 },
+              bonusDieAbilities: ['AGI'],
+              defense: '[15 + rang]',
+              hitPoints: '[=niveau × 5]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' },
+              specialAbilities: [
+                {
+                  name: 'Poison',
+                  text: 'Le dard du scorpion inflige +1d4° DM de poison en plus des dégâts habituels.',
+                  richText: 'Le dard du scorpion inflige +{1d4°} DM de poison en plus des dégâts habituels.',
+                },
+                {
+                  name: 'Pinces et dard (L)',
+                  text: "Au prix d'une action limitée, le scorpion peut attaquer une fois avec ses pinces (pas de poison) et une fois avec son dard (avec poison).",
+                },
+              ],
+              note: 'Déplacement rapide : se déplace de 20 m par action de mouvement.',
+            },
+          },
+          {
+            id: 'spider',
+            label: 'Araignée géante',
+            creatureProfile: {
+              name: 'Araignée géante',
+              companionType: 'animal',
+              abilities: { AGI: 3, CON: 5, FOR: 5, PER: 2, CHA: -4, INT: -3, VOL: 2 },
+              bonusDieAbilities: ['AGI'],
+              defense: '[15 + rang]',
+              hitPoints: '[=niveau × 5]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' },
+              specialAbilities: [
+                {
+                  name: 'Poison',
+                  text: "La morsure de l'araignée inflige +1d4° DM de poison en plus des dégâts habituels.",
+                  richText: "La morsure de l'araignée inflige +{1d4°} DM de poison en plus des dégâts habituels.",
+                },
+                {
+                  name: 'Surfaces verticales',
+                  text: "L'araignée peut se déplacer sur les surfaces verticales.",
+                },
+              ],
+              note: 'Déplacement rapide : se déplace de 20 m par action de mouvement.',
+            },
+          },
+        ],
+      },
+    ],
     sourcePage: 175,
   },
   {
@@ -5123,6 +5193,36 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage peut enduire une arme tranchante ou perforante de poison une fois par combat. Cette arme inflige +1d4° DM de poison. En plus des effets décrits ci-dessus, le personnage divise par deux les DM et la durée d'effet des poisons.",
+    // Repasse PER-381 : le dé `1d4°` du `text` doit être balisé en `richText` (aucune balise ne
+    // reste littérale sans lui, cf. `richtext-parse-doffice`).
+    richText:
+      "Le personnage peut enduire une arme tranchante ou perforante de poison une fois par combat. Cette arme inflige +{1d4°} DM de poison. En plus des effets décrits ci-dessus, le personnage divise par deux les DM et la durée d'effet des poisons.",
+    // « Enduire une arme … une fois par combat » : même patron qu'Arme dansante (prestige-arme-liee-r?) —
+    // interrupteur `conditional-stat-bonus` (consomme le compteur à l'activation, dure le reste du
+    // combat) + `weapon-damage-bonus` gaté sur cet interrupteur (index 0). Pas de type d'arme
+    // tranchante/perforante au schéma (seulement familles/catégories) → `label` non modélisable, patron
+    // documenté de `WeaponDamageCondition.label`.
+    // « Divise par deux les DM ET la durée des poisons » : patron EXACT d'Invulnérable (moine,
+    // energie-vitale-r3, p. 119) pour la partie DM (`damageReduction` divide/2 scoped poison). La
+    // réduction de DURÉE reste verbatim (aucun primitif de durée d'effet au catalogue, PER-381).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Arme enduite de poison', activeByDefault: false },
+      },
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: { attackMode: 'melee', label: 'arme tranchante ou perforante' },
+        requiresActiveEffectIndex: 0,
+        situational: true,
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'combat', label: 'Affinité au poison (enduire une arme)', hideFromStatusPanel: true },
+    // `alwaysActive` : la RD innée ne suit PAS l'interrupteur du coating temporaire ci-dessus (même
+    // capacité) — cf. `DamageReduction.alwaysActive`.
+    damageReduction: { kind: 'divide', value: 2, scopes: ['poison'], alwaysActive: true },
     sourcePage: 175,
   },
   {
@@ -5134,6 +5234,34 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le compagnon vermine du personnage gagne une des capacités suivantes, qui dépend de sa nature. De plus, la vermine peut désormais servir de monture à son maître.\nÉtreinte du scorpion : le scorpion peut désormais tenter d'attraper entre ses pinces une créature de taille grande ou inférieure. Lorsqu'il obtient un résultat de 15 à 20 sur son dé d'attaque, le scorpion immobilise son adversaire en plus des DM habituels.\nToile d'araignée (L) : l'araignée gagne la capacité de lancer (portée 10 m) une toile gluante et collante. Si elle réussit son attaque, la cible est immobilisée pour 1d6 rounds. Au début de son tour, la créature engluée peut faire un test de FOR difficulté 15, en cas de succès, elle réussit à se libérer, sinon elle reste immobilisée.",
+    richText:
+      "Le compagnon vermine du personnage gagne une des capacités suivantes, qui dépend de sa nature. De plus, la vermine peut désormais servir de monture à son maître.\nÉtreinte du scorpion : le scorpion peut désormais tenter d'attraper entre ses pinces une créature de taille grande ou inférieure. Lorsqu'il obtient un résultat de 15 à 20 sur son dé d'attaque, le scorpion immobilise son adversaire en plus des DM habituels.\nToile d'araignée (L) : l'araignée gagne la capacité de lancer (portée 10 m) une toile gluante et collante. Si elle réussit son attaque, la cible est immobilisée pour {1d6} rounds. Au début de son tour, la créature engluée peut faire un test de FOR difficulté 15, en cas de succès, elle réussit à se libérer, sinon elle reste immobilisée.",
+    // Capacité octroyée au compagnon DÉPEND de la nature choisie au r6 — nouveau primitif cross-capacité
+    // `creatureUpgradeFromChoice` (PER-381), sur le patron d'`elementFromChoice`/`creatureNameFromChoice`.
+    creatureUpgradeFromChoice: {
+      choiceFeatureId: 'prestige-vermines-r6',
+      choiceIndex: 0,
+      upgrades: {
+        scorpion: {
+          specialAbilities: [
+            {
+              name: 'Étreinte du scorpion',
+              text: "Le scorpion peut désormais tenter d'attraper entre ses pinces une créature de taille grande ou inférieure. Lorsqu'il obtient un résultat de 15 à 20 sur son dé d'attaque, le scorpion immobilise son adversaire en plus des DM habituels.",
+            },
+          ],
+        },
+        spider: {
+          specialAbilities: [
+            {
+              name: "Toile d'araignée (L)",
+              text: "L'araignée gagne la capacité de lancer (portée 10 m) une toile gluante et collante. Si elle réussit son attaque, la cible est immobilisée pour 1d6 rounds. Au début de son tour, la créature engluée peut faire un test de FOR difficulté 15, en cas de succès, elle réussit à se libérer, sinon elle reste immobilisée.",
+              richText:
+                "L'araignée gagne la capacité de lancer (portée 10 m) une toile gluante et collante. Si elle réussit son attaque, la cible est immobilisée pour {1d6} rounds. Au début de son tour, la créature engluée peut faire un test de FOR difficulté 15, en cas de succès, elle réussit à se libérer, sinon elle reste immobilisée.",
+            },
+          ],
+        },
+      },
+    },
     sourcePage: 175,
   },
 ];
