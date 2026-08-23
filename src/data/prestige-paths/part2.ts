@@ -654,6 +654,8 @@ export const prestigePaths2: PrestigePath[] = [
     category: 'mystic',
     prerequisites:
       "Cette voie est obligatoirement utilisée avec le CHA (même si le personnage est druide ou moine).",
+    note:
+      "Le templier est un soldat de la foi. Il combat les forces du mal et concentre ses forces pour combattre les démons et les morts-vivants.",
     featureIds: [
       'prestige-templier-r4',
       'prestige-templier-r5',
@@ -4976,6 +4978,24 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['M'],
     text:
       "Le personnage touche une cible volontaire (ce peut être lui-même). Celle-ci devient immunisée à toutes les capacités de drain, de charme, de domination, de paralysie ou d'affaiblissement (etc.) des morts-vivants pendant CHA minutes. En plus de ce sort, le personnage gagne +1 en DEF.",
+    // PER-74/PER-445 : le sort (immunité temporaire sur cible choisie, pas forcément le personnage) est
+    // chiffré via le nouveau canal `statusImmunities` des buffs de groupe (`groupBuffIds` ci-dessous) —
+    // le MJ le pose sur QUI il veut depuis son écran, pas seulement le porteur. Le +1→+2 DEF PERMANENT
+    // (r6) reste sur la FICHE du templier lui-même, en UNE seule entrée `stepped` par rang de voie
+    // (remplace, ne cumule pas — patron Mouche du coche p. 139 / Épée [du drake] p. 148).
+    richText:
+      "Le personnage touche une cible volontaire (ce peut être lui-même). Celle-ci devient immunisée à toutes les capacités de drain, de charme, de domination, de paralysie ou d'affaiblissement (etc.) des morts-vivants pendant [=CHA] minutes. En plus de ce sort, le personnage gagne +1 en DEF.",
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 4, value: 1 }, { min: 6, value: 2 }] },
+      },
+    ],
+    // PER-445 : le sort lui-même (immunité temporaire sur cible choisie) est désormais chiffré via le
+    // buff de groupe `templar-protection` (canal `statusImmunities`) — débloque sa puce dans la palette
+    // de l'écran de MJ dès que ce rang est possédé par un personnage réclamé de la table.
+    groupBuffIds: ['templar-protection'],
     sourcePage: 174,
   },
   {
@@ -4987,6 +5007,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage assigne une quête à une cible volontaire (ou contrainte à accepter sous la menace) lors d'un long rituel de 10 min. La créature récupère 1 PC par jour tant qu'elle travaille à sa quête. En revanche, si elle cesse de travailler à l'objectif fixé, elle est affaiblie après un laps de temps de 24 h. L'effet préjudiciable cesse si la créature reprend la quête et le sort prend fin une fois la quête menée à bien. Alternativement, le personnage peut imposer au récipiendaire un interdit : tu ne tueras point, tu ne parleras point, tu ne mangeras pas de viande, etc. Dans ce cas, le sort dure un mois par point de CHA du lanceur de sort et à chaque incartade, la cible subit un dé malus pendant 24 h. Le personnage ne peut maintenir plus d'un sort de quête à la fois.",
+    // PER-74 : aucune mécanisation numérique — suivi jour-par-jour d'une quête assignée à une cible
+    // TIERCE (récupération de PC, dé malus après 24 h d'incartade) hors de portée d'un compteur/`Depletion`
+    // porté par LA FICHE DU LANCEUR (pas de la cible). Reste RP/arbitré MJ, comme Résister à la corruption
+    // (usage limité) ou la voie du colosse gèrent déjà des délais de plusieurs jours en verbatim.
+    richText:
+      "Le personnage assigne une quête à une cible volontaire (ou contrainte à accepter sous la menace) lors d'un long rituel de 10 min. La créature récupère 1 PC par jour tant qu'elle travaille à sa quête. En revanche, si elle cesse de travailler à l'objectif fixé, elle est affaiblie après un laps de temps de 24 h. L'effet préjudiciable cesse si la créature reprend la quête et le sort prend fin une fois la quête menée à bien. Alternativement, le personnage peut imposer au récipiendaire un interdit : tu ne tueras point, tu ne parleras point, tu ne mangeras pas de viande, etc. Dans ce cas, le sort dure un mois par point de [#CHA] et à chaque incartade, la cible subit un dé malus pendant 24 h. Le personnage ne peut maintenir plus d'un sort de quête à la fois.",
     sourcePage: 174,
   },
   {
@@ -4998,6 +5024,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Cette version permet au personnage visé de résister à la fois aux pouvoirs des morts-vivants et à ceux des démons. Le bonus de DEF permanent passe à +2.",
+    // Le +1→+2 DEF permanent est déjà mécanisé sur `prestige-templier-r4` (palier `stepped` unique,
+    // lu au rang de voie ATTEINT) : rien à ajouter ici. Aucun dé/formule à baliser → pas de richText
+    // (repli sur `text`, cf. doc `Feature.richText`).
     sourcePage: 174,
   },
   {
@@ -5009,6 +5038,13 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage effectue une attaque contre un mort-vivant ou un démon. Il inflige le double des DM habituels s'il réussit son attaque (le triple en cas de critique). S'il la rate, il inflige ses DM normaux. Si le personnage connaît la capacité Châtiment divin, il peut appliquer cette capacité simultanément (le bonus de CHA sera doublé).",
+    // PER-74 (décision propriétaire, AskUserQuestion) : manœuvre d'attaque VERBATIM, aucun primitif
+    // ×2/×3 conditionnel au schéma (premier de son genre, pas de précédent) — même traitement que les
+    // autres manœuvres spéciales de `prestige-combat-du-mal` et Châtiment divin (`guerre-sainte-r3`),
+    // classées 'conditional' sans `effects` numériques. « Châtiment divin » balisé en référence de
+    // capacité (interaction croisée CHA doublé, décrite dans SON texte à elle, pas dupliquée ici).
+    richText:
+      "Le personnage effectue une attaque contre un mort-vivant ou un démon. Il inflige le double des DM habituels s'il réussit son attaque (le triple en cas de critique). S'il la rate, il inflige ses DM normaux. Si le personnage connaît la capacité [&guerre-sainte-r3|Châtiment divin], il peut appliquer cette capacité simultanément (le bonus de CHA sera doublé).",
     sourcePage: 174,
   },
   {
@@ -5020,6 +5056,26 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par jour, le personnage prend la forme d'un ange pendant CHA minutes. Lorsqu'il est en forme d'ange, il garde son profil et toutes ses caractéristiques habituelles, mais il peut voler à une vitesse de 30 m par action de mouvement et il obtient une RD 10 contre les attaques des morts-vivants et des démons.",
+    // PER-137/74 : RD 10 modélisée (`damageReduction`, `againstAggressors` — patron « Résister à la
+    // corruption » `prestige-combat-du-mal-r8`, portée par TYPE D'AGRESSEUR et non par type de DM, donc
+    // sans `scopes`). Le vol (30 m/action de mouvement) n'a aucun primitif de déplacement au schéma
+    // (aucune capacité du catalogue n'en a) → reste verbatim/richText. « Une fois par jour » → compteur
+    // 1 usage rechargé au repos long (patron Voyage par les arbres / portail lumineux ci-dessus).
+    // INTERRUPTEUR (retour propriétaire) : la forme est TEMPORAIRE (CHA minutes), pas un état permanent
+    // dès l'acquisition — sans lui, `damageReductionSources` traiterait la RD comme PASSIVE (règle : « pas
+    // d'effet conditionnel » = RD permanente). L'activation dépense 1 usage du compteur ci-dessous par
+    // défaut (`consumeOnActivate`, patron Rage/Furie du berserk, PER-130 — aucun champ à poser explicitement).
+    richText:
+      "Une fois par jour, le personnage prend la forme d'un ange pendant [=CHA] minutes. Lorsqu'il est en forme d'ange, il garde son profil et toutes ses caractéristiques habituelles, mais il peut voler à une vitesse de 30 m par action de mouvement et il obtient une RD 10 contre les attaques des morts-vivants et des démons.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Forme d’Ange active', activeByDefault: false },
+      },
+    ],
+    damageReduction: { kind: 'flat', value: 10, againstAggressors: 'les morts-vivants et les démons' },
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 174,
   },
 

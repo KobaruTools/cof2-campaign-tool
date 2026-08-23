@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 25,
+  "id": "recette-per380-templier-r8",
+  "name": "Recette PER-380 — Templier (r4-r8 complet)",
+  "identity": {
+    "description": "ATTENDU : DEF +2 (permanent, stepped r4→r6). r4 débloque « Résistance au mal » dans la palette de buffs de groupe du MJ (immunité charme/domination/paralysie/affaiblissement/drain, posable sur n'importe quelle cible). r8 Forme d'Ange : interrupteur (carte de la capacité) — RD 10 contre morts-vivants/démons + vol N'APPARAISSENT QUE le temps de l'activer, ce qui dépense 1 usage/jour. r5 (Quête) et r7 (Châtiment du mal, réf. Châtiment divin) restent en verbatim sans effect moteur."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 13,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 2,
+    "FOR": 1,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 2,
+    "FOR": 1,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "prestige-templier-r4",
+    "prestige-templier-r5",
+    "prestige-templier-r6",
+    "prestige-templier-r7",
+    "prestige-templier-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "transformationDerivedStats": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-380 — recette voie du templier (p. 174).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

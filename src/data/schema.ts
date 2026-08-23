@@ -1330,6 +1330,12 @@ export const IMMUNITY_IDS = [
   // combat ci-dessus mais même mécanique de badge (aucune logique de blocage automatique, purement
   // informatif — comme les 10 autres immunités).
   'magic-detection',
+  // Résistance au mal (templier, `prestige-templier-r4`/`-r6`, p. 174, PER-445) : « immunisée à toutes
+  // les capacités de drain, de charme, de domination, de paralysie ou d'affaiblissement (etc.) des
+  // morts-vivants ». `weakened` = état du glossaire (p. 214-215) ; `drain` est NOUVEAU (aucun état du
+  // glossaire ni immunité existante ne couvre le drain de vigueur/niveau des morts-vivants).
+  'weakened',
+  'drain',
 ] as const;
 export type ImmunityId = (typeof IMMUNITY_IDS)[number];
 
@@ -1346,6 +1352,8 @@ export const IMMUNITY_LABELS: Record<ImmunityId, string> = {
   prone: 'Renversé',
   surprised: 'Surpris',
   'magic-detection': 'Détection magique',
+  weakened: 'Affaibli',
+  drain: 'Drain (vigueur/niveau)',
 };
 
 /**
@@ -1432,6 +1440,17 @@ export interface StatusModifiers {
    * livre les groupant par énumération. Absent = l'état ne vise aucun domaine en particulier.
    */
   testDomains?: { domains: string[]; value: number };
+  /**
+   * Liste d'`ImmunityId` (PER-445) dont bénéficie TEMPORAIREMENT le porteur de l'état — canal
+   * manquant jusqu'ici dans `BENEFICIAL_EFFECTS` : les cinq autres channels ne savent donner que des
+   * bonus CHIFFRÉS, aucun ne sait dire « cette créature devient immunisée à X pendant que l'état est
+   * actif ». Premier usage : Résistance au mal (templier, `prestige-templier-r4`/`-r6`, p. 174) — le
+   * personnage touche une cible volontaire (lui ou un allié) et l'immunise CHA minutes. Purement
+   * INFORMATIF comme toute immunité du projet (aucune logique de blocage automatique) : agrégé par
+   * `resolveStatusModifiers` (écran de MJ) et `statusSheetImpact` (fiche du joueur visé). Absent =
+   * l'état ne confère aucune immunité.
+   */
+  statusImmunities?: ImmunityId[];
 }
 
 /**
@@ -1957,6 +1976,7 @@ export const BENEFICIAL_EFFECT_IDS = [
   'shield-ally',
   'precision-strike',
   'frouin-stench',
+  'templar-protection',
 ] as const;
 export type BeneficialEffectId = (typeof BENEFICIAL_EFFECT_IDS)[number];
 
@@ -2107,6 +2127,22 @@ export const BENEFICIAL_EFFECTS: Record<BeneficialEffectId, StatusEffectEntry> =
     },
     scope: 'group',
     excludesCarrier: true,
+  },
+  // « Résistance au mal » (templier, `prestige-templier-r4`, p. 174, PER-445). PREMIER buff à porter
+  // le nouveau canal `statusImmunities` : « immunisée à toutes les capacités de drain, de charme, de
+  // domination, de paralysie ou d'affaiblissement (etc.) des morts-vivants » → mind-control (charme +
+  // domination), paralyzed, weakened, drain. CIBLE UNIQUE, SANS `excludesCarrier` (« ce peut être
+  // lui-même », comme Coup au but). Le +1→+2 DEF PERMANENT de la capacité est du côté PORTEUR
+  // (`stat-bonus` stepped sur `prestige-templier-r4`), hors du buff comme toujours dans ce catalogue.
+  // Le rang 6 (« résiste à la fois aux morts-vivants et aux démons ») élargit QUI peut être visé par
+  // le sort, pas CE dont la cible est immunisée : même entrée pour les deux rangs, sans `intensityFrom`.
+  'templar-protection': {
+    label: 'Résistance au mal',
+    effect:
+      "Le personnage touche une cible volontaire (ce peut être lui-même). Celle-ci devient immunisée à toutes les capacités de drain, de charme, de domination, de paralysie ou d'affaiblissement (etc.) des morts-vivants pendant CHA minutes.",
+    sourcePage: 174,
+    modifiers: { statusImmunities: ['mind-control', 'paralyzed', 'weakened', 'drain'] },
+    scope: 'single-ally',
   },
 };
 

@@ -148,6 +148,7 @@ describe('resolveStatusModifiers', () => {
       allTestsFlat: 0,
       damageDealt: 0,
       testDomains: {},
+      statusImmunities: [],
     });
   });
 
@@ -344,5 +345,47 @@ describe('PER-359 — ventilation par domaine sur la fiche', () => {
 
   it('l’état sans bonus de domaine ne crée aucune entrée', () => {
     expect(statusSheetImpact([{ id: 'heroes-song' }]).testDomainSources).toEqual({});
+  });
+});
+
+/* --------------------------------------------------------------------------- *
+ * PER-445 — immunités TEMPORAIRES posées via un buff de groupe (`statusImmunities`).
+ * --------------------------------------------------------------------------- */
+
+describe('PER-445 — immunités temporaires posées (statusImmunities)', () => {
+  it('Résistance au mal (templier) agrège ses quatre immunités', () => {
+    const r = resolveStatusModifiers([{ id: 'templar-protection' }]);
+    expect(r.statusImmunities.sort()).toEqual(['drain', 'mind-control', 'paralyzed', 'weakened'].sort());
+    // Aucun autre canal touché : ni stat dérivée, ni dé malus, ni bonus plat.
+    expect(r.derived).toEqual({});
+    expect(r.allTestsFlat).toBe(0);
+  });
+
+  it('un état sans immunité ne contribue rien au canal', () => {
+    expect(resolveStatusModifiers([{ id: 'heroes-song' }]).statusImmunities).toEqual([]);
+  });
+
+  it('deux sources donnant la même immunité ne la dédupliquent qu’une fois', () => {
+    const r = resolveStatusModifiers([{ id: 'templar-protection' }, { id: 'templar-protection' }]);
+    expect(r.statusImmunities.filter((i) => i === 'paralyzed')).toHaveLength(1);
+  });
+
+  it('sans état actif, aucune immunité (fiche)', () => {
+    expect(statusSheetImpact([]).statusImmunitySources).toEqual({});
+  });
+
+  it('la ventilation par immunité porte le nom du buff et qui l’a lancé', () => {
+    const r = statusSheetImpact([{ id: 'templar-protection', castBy: 'Adalric' }]);
+    expect(r.statusImmunitySources['mind-control']).toEqual([
+      { id: 'templar-protection', label: 'Résistance au mal', castBy: 'Adalric' },
+    ]);
+    expect(r.statusImmunitySources.paralyzed).toHaveLength(1);
+    expect(r.statusImmunitySources.weakened).toHaveLength(1);
+    expect(r.statusImmunitySources.drain).toHaveLength(1);
+  });
+
+  it('sans lanceur identifié, la ligne existe sans mention de source', () => {
+    const r = statusSheetImpact([{ id: 'templar-protection' }]);
+    expect(r.statusImmunitySources['mind-control']?.[0]).not.toHaveProperty('castBy');
   });
 });

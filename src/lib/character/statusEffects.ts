@@ -19,6 +19,7 @@ import {
   type BeneficialEffectId,
   type DerivedStatId,
   type EnvironmentalEffectId,
+  type ImmunityId,
   type SituationalEffectId,
   type StatusEffectEntry,
   type StatusEffectId,
@@ -191,6 +192,12 @@ export interface ResolvedStatusModifiers {
    * sur un domaine visé par les deux canaux. Vide si aucun état ne vise de domaine.
    */
   testDomains: Record<string, number>;
+  /**
+   * Union DÉDUPLIQUÉE des `ImmunityId` conférés TEMPORAIREMENT par les états actifs (PER-445, canal
+   * `statusImmunities`) — ex. Résistance au mal (templier). Purement informatif (badge), comme les
+   * immunités permanentes de `aggregateImmunities`. Vide si aucun état ne confère d'immunité.
+   */
+  statusImmunities: ImmunityId[];
 }
 
 /** Toutes les stats dérivées susceptibles d'être modifiées — pour balayer proprement `derived`. */
@@ -380,6 +387,7 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
   let allTestsFlat = 0;
   let damageDealt = 0;
   const testDomains: Record<string, number> = {};
+  const statusImmunities = new Set<ImmunityId>();
 
   for (const entry of applied) {
     const mods = statusEntry(entry.id)?.modifiers;
@@ -401,6 +409,7 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
       for (const domain of mods.testDomains.domains)
         testDomains[domain] = (testDomains[domain] ?? 0) + value;
     }
+    if (mods.statusImmunities) for (const imm of mods.statusImmunities) statusImmunities.add(imm);
   }
 
   // On n'expose que les stats dérivées effectivement modifiées (on écarte les totaux nuls).
@@ -410,7 +419,15 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
     if (total !== undefined && total !== 0) derived[key] = total;
   }
 
-  return { derived, allTestsMalusDie, attackTestsMalusDie, allTestsFlat, damageDealt, testDomains };
+  return {
+    derived,
+    allTestsMalusDie,
+    attackTestsMalusDie,
+    allTestsFlat,
+    damageDealt,
+    testDomains,
+    statusImmunities: [...statusImmunities],
+  };
 }
 
 /**
@@ -471,6 +488,13 @@ export interface StatusSheetImpact {
     string,
     { id: AnyStatusEffectId; label: string; value: number; castBy?: string }[]
   >;
+  /**
+   * Attribution PAR IMMUNITÉ (PER-445, canal `statusImmunities`) — même forme que `testDomainSources`,
+   * keyée par `ImmunityId` au lieu d'un domaine de test : une ligne par état source, avec qui l'a posée
+   * le cas échéant. Comptée NULLE PART ailleurs (ni `mods`, ni les autres ventilations). Vide = aucun
+   * état actif ne confère d'immunité.
+   */
+  statusImmunitySources: Partial<Record<ImmunityId, { id: AnyStatusEffectId; label: string; castBy?: string }[]>>;
 }
 
 export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
@@ -480,6 +504,7 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
   const attackTestsMalusDie: string[] = [];
   const abilityTestSources: StatusSheetImpact['abilityTestSources'] = [];
   const testDomainSources: StatusSheetImpact['testDomainSources'] = {};
+  const statusImmunitySources: StatusSheetImpact['statusImmunitySources'] = {};
   let allTestsFlat = 0;
   let damageDealt = 0;
 
@@ -538,6 +563,13 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
             ...(entry.castBy ? { castBy: entry.castBy } : {}),
           });
     }
+    if (mods.statusImmunities)
+      for (const imm of mods.statusImmunities)
+        (statusImmunitySources[imm] ??= []).push({
+          id: entry.id,
+          label,
+          ...(entry.castBy ? { castBy: entry.castBy } : {}),
+        });
   }
 
   // Totaux par stat (somme des sources) → modificateurs injectables dans le calcul dérivé.
@@ -557,5 +589,6 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
     allTestsFlat,
     damageDealt,
     testDomainSources,
+    statusImmunitySources,
   };
 }
