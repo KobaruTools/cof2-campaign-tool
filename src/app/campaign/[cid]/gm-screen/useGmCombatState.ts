@@ -57,6 +57,7 @@ import {
   type UpdateCreaturePatch,
 } from '@/lib/session/combatState';
 import { randomTieBreakSeed } from '@/lib/session/initiativeOrder';
+import { launchEncounterPreset, type EncounterPreset } from '@/lib/session/encounterPreset';
 import type { CustomCreature } from '@/lib/session/customCreature';
 import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import type { Depletion } from '@/lib/character/types';
@@ -154,6 +155,13 @@ export interface GmCombatStateApi extends GmCombatState {
    * pas aux PV des joueurs.
    */
   resetCombat: () => void;
+  /**
+   * Lance un combat préparé à l'avance (PER-448) : REMPLACE ENTIÈREMENT le combat en cours par
+   * une copie fraîche de la composition du preset (`launchEncounterPreset`) — le preset
+   * d'origine n'est jamais modifié. Les personnages joueurs (et leurs compagnons actifs)
+   * rejoignent automatiquement, comme pour tout combat.
+   */
+  launchPreset: (preset: EncounterPreset) => void;
   /**
    * Recommence le décompte des manches (bouton ⟳) : compteur → 1 et tour courant repositionné sur
    * `firstTurnKey` (premier de l'ordre d'initiative, fourni par l'appelant) ou `null`. Ne touche NI
@@ -340,6 +348,11 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const launchPreset = useCallback(
+    (preset: EncounterPreset) => applyLocalCombat(cid, () => launchEncounterPreset(preset)),
+    [applyLocalCombat, cid],
+  );
+
   const restartRounds = useCallback(
     (firstTurnKey: string | null = null) =>
       applyLocalCombat(cid, (prev) => restartRoundsState(prev, firstTurnKey)),
@@ -390,6 +403,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     setCreatureInfo,
     setPartyAuraCarrierIds,
     resetCombat,
+    launchPreset,
     restartRounds,
     setCombatantActed: setCombatantActedCb,
     setManualPosition: setManualPositionCb,

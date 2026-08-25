@@ -40,6 +40,44 @@ export type Database = {
           },
         ]
       }
+      campaign_encounter_preset: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          entries: Json
+          id: string
+          name: string
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          entries?: Json
+          id?: string
+          name: string
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          entries?: Json
+          id?: string
+          name?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_encounter_preset_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_npcs: {
         Row: {
           ancestry_id: string | null

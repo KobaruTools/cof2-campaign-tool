@@ -58,6 +58,7 @@ import {
   type CreatureDisplayInfo,
 } from '@/lib/session/combatState';
 import { sortByInitiative } from '@/lib/session/initiativeOrder';
+import type { EncounterPreset } from '@/lib/session/encounterPreset';
 import {
   effectiveStatuses,
   hpAutoStatuses,
@@ -318,6 +319,11 @@ export interface GmScreenCombat {
    */
   resetCombat: () => void;
   /**
+   * Lance un combat préparé à l'avance (PER-448) : remplace ENTIÈREMENT le combat en cours par
+   * une copie fraîche de la composition du preset. Le preset d'origine n'est jamais modifié.
+   */
+  launchPreset: (preset: EncounterPreset) => void;
+  /**
    * Recommence le décompte des manches (bouton ⟳ de l'en-tête) : compteur → 1 et tour courant
    * remis à « aucun » (`null`) — PAS repositionné sur le premier de l'ordre d'initiative, pour que
    * `currentTurnKey === null` reste le signal fiable « combat non commencé » (bouton « Commencer
@@ -370,6 +376,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     adjustStatusDuration,
     setCreatureInfo,
     resetCombat,
+    launchPreset,
     restartRounds: restartRoundsBase,
     actedKeys,
     setCombatantActed,
@@ -910,6 +917,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     adjustStatus,
     adjustStatusDuration,
     resetCombat,
+    launchPreset,
     restartRounds,
     actedKeys,
     setCombatantActed,

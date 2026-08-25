@@ -76,6 +76,7 @@ import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
 import { GmScreenCompanionCard } from '@/components/campaign/GmScreenCompanionCard';
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
+import { EncounterPresetsPanel } from '@/components/campaign/EncounterPresetsPanel';
 import { InitiativeTracker, type ReorderDragPreview } from '@/components/campaign/InitiativeTracker';
 import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { BuffRequestsControl } from '@/components/campaign/BuffRequestsControl';
@@ -396,6 +397,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     adjustStatus,
     adjustStatusDuration,
     resetCombat,
+    launchPreset,
     restartRounds,
     actedKeys,
     setCombatantActed,
@@ -888,6 +890,18 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           </Menu>
         </Stack>
         </Box>
+
+        {/* Combats préparés à l'avance (PER-448) : le MJ compose des rencontres ENTRE deux
+            séances, indépendamment du combat en cours ci-dessous — les lancer le remplace
+            entièrement (confirmation si non vide), sans jamais modifier le preset d'origine. */}
+        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+          <EncounterPresetsPanel
+            campaignId={cid}
+            hasCurrentCombat={labeledCreatures.length > 0 || currentTurnKey !== null}
+            onLaunch={launchPreset}
+          />
+        </Box>
+
         {claimed.length === 0 && labeledCreatures.length === 0 ? (
           <Paper
             variant="outlined"
