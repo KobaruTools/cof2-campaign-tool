@@ -10,6 +10,7 @@ import {
   equipConflicts,
   isHeavyArmorWorn,
   isStaffWielded,
+  itemDamageBonusesFromEquipment,
   setWornAt,
   wornMeleeWeapon,
   wornMeleeWeaponLine,
@@ -619,6 +620,113 @@ describe('abilityBonusesFromEquipment (apports de caractéristiques des objets, 
   it('accepte un inventaire absent ou vide', () => {
     expect(abilityBonusesFromEquipment()).toEqual({});
     expect(abilityBonusesFromEquipment([])).toEqual({});
+  });
+});
+
+describe('itemDamageBonusesFromEquipment (riders de DM des objets enchantés, règle maison)', () => {
+  it("ne compte que les objets PORTÉS (le sac n'apporte rien)", () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Anneau du serpent',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        damageBonus: [{ dice: { count: 1, die: 'd4' }, substance: 'poison' }],
+      },
+      {
+        custom: true,
+        name: 'Anneau rangé',
+        quantity: 1,
+        damageBonus: [{ dice: { count: 1, die: 'd6' }, substance: 'fire' }],
+      },
+    ];
+    expect(itemDamageBonusesFromEquipment(lines, 'melee')).toEqual([
+      { featureId: 'magic-item', name: 'Anneau du serpent', dice: { count: 1, die: 'd4' }, conditionLabel: 'Poison' },
+    ]);
+  });
+
+  it("vaut au contact ET à distance quand aucun mode n'est précisé (anneau « toutes attaques »)", () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Anneau du serpent',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        damageBonus: [{ dice: { count: 1, die: 'd4' }, substance: 'poison' }],
+      },
+    ];
+    expect(itemDamageBonusesFromEquipment(lines, 'melee')).toHaveLength(1);
+    expect(itemDamageBonusesFromEquipment(lines, 'ranged')).toHaveLength(1);
+  });
+
+  it('respecte un mode restreint quand il est précisé sur la ligne', () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Carquois enchanté',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        damageBonus: [{ dice: { count: 1, die: 'd6' }, substance: 'lightning', attackModes: ['ranged'] }],
+      },
+    ];
+    expect(itemDamageBonusesFromEquipment(lines, 'melee')).toEqual([]);
+    expect(itemDamageBonusesFromEquipment(lines, 'ranged')).toHaveLength(1);
+  });
+
+  it("accepte plusieurs modes COMBINÉS (Distance + Magique) et le reflète dans le libellé", () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Baguette prismatique',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        damageBonus: [{ dice: { count: 1, die: 'd6' }, substance: 'acid', attackModes: ['ranged', 'magic'] }],
+      },
+    ];
+    expect(itemDamageBonusesFromEquipment(lines, 'melee')).toEqual([]);
+    expect(itemDamageBonusesFromEquipment(lines, 'ranged')).toEqual([
+      { featureId: 'magic-item', name: 'Baguette prismatique', dice: { count: 1, die: 'd6' }, conditionLabel: 'Acide, magique' },
+    ]);
+  });
+
+  it("porte un libellé LIBRE (« custom ») quand l'élément choisi n'est pas dans la liste", () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Lame maudite',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        damageBonus: [{ dice: { count: 1, die: 'd4' }, substance: 'custom', customLabel: 'sacré' }],
+      },
+    ];
+    expect(itemDamageBonusesFromEquipment(lines, 'melee')[0].conditionLabel).toBe('sacré');
+  });
+
+  it('cumule plusieurs entrées et plusieurs objets portés', () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Anneau du serpent',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        damageBonus: [
+          { dice: { count: 1, die: 'd4' }, substance: 'poison' },
+          { dice: { count: 1, die: 'd4' }, substance: 'acid' },
+        ],
+      },
+      {
+        custom: true,
+        name: 'Amulette ardente',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        damageBonus: [{ dice: { count: 1, die: 'd6' }, substance: 'fire' }],
+      },
+    ];
+    expect(itemDamageBonusesFromEquipment(lines, 'melee')).toHaveLength(3);
+  });
+
+  it('accepte un inventaire absent ou vide', () => {
+    expect(itemDamageBonusesFromEquipment([], 'melee')).toEqual([]);
   });
 });
 

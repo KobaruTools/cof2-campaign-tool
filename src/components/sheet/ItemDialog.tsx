@@ -36,9 +36,11 @@ import { equipment as equipmentCatalog, equipmentById, testDomainById } from '@/
 import {
   ABILITY_IDS,
   DAMAGE_DICE,
+  ENCUMBRANCE_WEIGHTS,
   WEAPON_CATEGORIES,
   type AbilityId,
   type DamageDie,
+  type EncumbranceWeight,
   type EquipmentItem,
   type ResistibleDamageType,
   type WeaponCategory,
@@ -48,6 +50,7 @@ import type {
   EquipmentLine,
   EquipmentRef,
   ItemCharges,
+  ItemDamageBonusEntry,
   ItemDerivedStatId,
   ItemTestTarget,
   ItemType,
@@ -101,6 +104,7 @@ import {
   AbilityBonusBadges,
   DerivedBonusBadges,
   TestBonusBadges,
+  DamageBonusBadges,
 } from '@/components/sheet/MagicItemBadges';
 import SportsMartialArtsIcon from '@mui/icons-material/SportsMartialArts';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
@@ -124,6 +128,13 @@ const TYPE_ORDER = ITEM_TYPE_ORDER;
 
 /** Types de la famille cosmétique (objet libre, sans base du livre). */
 const COSMETIC_TYPES: ItemType[] = ['consumable', 'gear', 'treasure', 'misc'];
+
+/** Libellés FR des valeurs d'encombrement (Atlas, p. 158, PER-447). */
+const ENCUMBRANCE_WEIGHT_LABELS: Record<EncumbranceWeight, string> = {
+  0: 'Petit',
+  1: 'Moyen',
+  2: 'Grand',
+};
 
 /** Libellés FR des catégories d'arme (p. 184). */
 const WEAPON_CATEGORY_LABELS: Record<WeaponCategory, string> = {
@@ -765,6 +776,165 @@ function MagicPropertyRows({
   );
 }
 
+/** Entrée par défaut ajoutée par le bouton « Ajouter un bonus de dégâts ». */
+const DEFAULT_DAMAGE_BONUS_ENTRY: ItemDamageBonusEntry = { dice: { count: 1, die: 'd4' } };
+
+/** Sentinelle du sélecteur d'élément pour un libellé LIBRE (saisie manuelle, `customLabel`). */
+const CUSTOM_SUBSTANCE_OPTION = 'custom';
+
+/** Sentinelle du bouton « Tous » du groupe de modes — jamais persistée (`attackModes` reste vide). */
+const ALL_ATTACK_MODES_OPTION = 'all';
+
+/** Modes d'attaque combinables d'un bonus de DM d'objet, dans l'ordre d'affichage des boutons. */
+const DAMAGE_BONUS_ATTACK_MODES: { id: NonNullable<ItemDamageBonusEntry['attackModes']>[number]; label: string }[] = [
+  { id: 'melee', label: 'Contact' },
+  { id: 'ranged', label: 'Distance' },
+  { id: 'magic', label: 'Magique' },
+];
+
+/**
+ * Éditeur des bonus de DM SITUATIONNELS d'un objet enchanté (`ItemDamageBonusEntry`, RÈGLE
+ * MAISON — généralisation à N'IMPORTE QUEL objet de ce que le livre réserve aux ARMES via
+ * « Élément »/« Fléau », p. 251). Une ligne = un dé + un élément (même liste que la propriété
+ * d'arme magique « Élément », ou un libellé LIBRE) + des modes d'attaque COMBINABLES (contact/
+ * distance/magique, cases à cocher — absent/aucun coché = toutes, contact et distance). Même
+ * coquille que `MagicPropertyRows` (tableau libre, pas de clé exclusive contrairement à
+ * `BonusRows`).
+ */
+function DamageBonusRows({
+  rows,
+  onChange,
+}: {
+  rows: ItemDamageBonusEntry[];
+  onChange: (rows: ItemDamageBonusEntry[]) => void;
+}) {
+  const setRow = (index: number, next: Partial<ItemDamageBonusEntry>) =>
+    onChange(rows.map((r, i) => (i === index ? { ...r, ...next } : r)));
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+        Bonus de dégâts (règle maison — ex. anneau « +1d4 de poison à vos attaques »)
+      </Typography>
+      <Stack spacing={1.25}>
+        {rows.map((row, i) => (
+          <Stack
+            key={i}
+            spacing={0.75}
+            sx={{ p: 1, border: 1, borderColor: 'divider', borderRadius: 1 }}
+          >
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+              <TextField
+                type="number"
+                size="small"
+                label="Nombre de dés"
+                value={String(row.dice.count)}
+                onChange={(e) =>
+                  setRow(i, { dice: { ...row.dice, count: Math.max(1, Math.floor(Number(e.target.value) || 1)) } })
+                }
+                sx={{ flex: '1 1 110px', minWidth: 100 }}
+                slotProps={{ htmlInput: { min: 1 } }}
+              />
+              <TextField
+                select
+                size="small"
+                label="Dé"
+                value={row.dice.die}
+                onChange={(e) => setRow(i, { dice: { ...row.dice, die: e.target.value as DamageDie } })}
+                sx={{ flex: '1 1 96px', minWidth: 92 }}
+              >
+                {DAMAGE_DICE.map((d) => (
+                  <MenuItem key={d} value={d}>
+                    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                      <DieIcon die={d} size={18} noTooltip />
+                      {d}
+                    </Box>
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                size="small"
+                label="Élément"
+                value={row.substance ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setRow(i, {
+                    substance: (v || undefined) as ItemDamageBonusEntry['substance'],
+                    ...(v !== CUSTOM_SUBSTANCE_OPTION ? { customLabel: undefined } : {}),
+                  });
+                }}
+                sx={{ flex: '1 1 130px', minWidth: 120 }}
+              >
+                <MenuItem value="">Aucun</MenuItem>
+                {MAGIC_SUBSTANCES.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {DAMAGE_TYPE_LABEL[s] ?? s}
+                  </MenuItem>
+                ))}
+                <MenuItem value={CUSTOM_SUBSTANCE_OPTION}>Libre…</MenuItem>
+              </TextField>
+              {row.substance === CUSTOM_SUBSTANCE_OPTION && (
+                <TextField
+                  size="small"
+                  label="Libellé"
+                  placeholder="ex. sacré"
+                  value={row.customLabel ?? ''}
+                  onChange={(e) => setRow(i, { customLabel: e.target.value || undefined })}
+                  sx={{ flex: '1 1 150px', minWidth: 130 }}
+                />
+              )}
+              <IconButton
+                size="small"
+                aria-label="Retirer ce bonus de dégâts"
+                onClick={() => onChange(rows.filter((_, j) => j !== i))}
+                sx={{ ml: 'auto' }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+            <ToggleButtonGroup
+              size="small"
+              value={row.attackModes && row.attackModes.length > 0 ? row.attackModes : [ALL_ATTACK_MODES_OPTION]}
+              onChange={(_, next: string[]) => {
+                const pressed = row.attackModes && row.attackModes.length > 0 ? row.attackModes : [ALL_ATTACK_MODES_OPTION];
+                // Clic sur « Tous » (absent avant, présent après) : réinitialise — les modes
+                // explicites n'ont plus lieu d'être, quels qu'ils soient.
+                if (next.includes(ALL_ATTACK_MODES_OPTION) && !pressed.includes(ALL_ATTACK_MODES_OPTION)) {
+                  setRow(i, { attackModes: undefined });
+                  return;
+                }
+                // Clic sur un mode explicite : « Tous » ne peut plus tenir (retiré s'il traînait),
+                // vide = revient à « Tous » de lui-même au prochain rendu (`value` ci-dessus).
+                const modes = next.filter((v) => v !== ALL_ATTACK_MODES_OPTION) as NonNullable<
+                  ItemDamageBonusEntry['attackModes']
+                >;
+                setRow(i, { attackModes: modes.length > 0 ? modes : undefined });
+              }}
+            >
+              <ToggleButton value={ALL_ATTACK_MODES_OPTION} sx={{ textTransform: 'none', px: 1.25 }}>
+                Tous
+              </ToggleButton>
+              {DAMAGE_BONUS_ATTACK_MODES.map(({ id, label }) => (
+                <ToggleButton key={id} value={id} sx={{ textTransform: 'none', px: 1.25 }}>
+                  {label}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          </Stack>
+        ))}
+      </Stack>
+      <Button
+        size="small"
+        startIcon={<AddIcon />}
+        onClick={() => onChange([...rows, { ...DEFAULT_DAMAGE_BONUS_ENTRY }])}
+        sx={{ textTransform: 'none', mt: rows.length ? 1 : 0 }}
+      >
+        Ajouter un bonus de dégâts
+      </Button>
+    </Box>
+  );
+}
+
 /** État de formulaire mutualisé (les champs sans rapport avec le type sont ignorés). */
 /**
  * Séparateur de section du formulaire d'objet : un trait horizontal, titré quand la section n'a
@@ -863,6 +1033,8 @@ interface FormState {
   derivedBonuses: BonusRow<ItemDerivedStatId>[];
   /** Apports aux tests en lignes (PER-275), tout type d'objet — carac ou domaine. */
   testBonuses: BonusRow<ItemTestTarget>[];
+  /** Bonus de DM situationnels (RÈGLE MAISON), tout type d'objet — cf. `ItemDamageBonusEntry`. */
+  damageBonus: ItemDamageBonusEntry[];
   /** Nombre de charges de l'objet plein (PER-294) ; vide ou 0 = objet SANS charges. */
   chargesMax: string;
   /** L'objet se remet à plein au repos court / au repos long (réglages CUMULABLES). */
@@ -882,6 +1054,12 @@ interface FormState {
   potionEvolving: boolean;
   /** Bonus plat (« 1d6+4 ») ; vide ou 0 = aucun bonus. */
   potionModifier: string;
+  /**
+   * Encombrement (Atlas, règle optionnelle de campagne, PER-447) — saisi uniquement sur un objet
+   * PERSONNALISÉ, quand `encumbranceEnabled`. Une variante mécanique (arme/armure/bouclier) hérite
+   * sa valeur du catalogue (`EquipmentItem.encumbrance`), aucun champ à saisir pour elle.
+   */
+  encumbrance: EncumbranceWeight;
 }
 
 const EMPTY_FORM: FormState = {
@@ -900,6 +1078,7 @@ const EMPTY_FORM: FormState = {
   abilityBonuses: [],
   derivedBonuses: [],
   testBonuses: [],
+  damageBonus: [],
   chargesMax: '',
   chargesOnShortRest: false,
   chargesOnLongRest: false,
@@ -909,6 +1088,7 @@ const EMPTY_FORM: FormState = {
   potionCount: '1',
   potionEvolving: false,
   potionModifier: '',
+  encumbrance: 0,
 };
 
 /** Le bloc Enchantement doit-il partir DÉPLIÉ ? Oui si l'objet édité porte déjà une des
@@ -922,6 +1102,7 @@ function formHasEnchantment(f: FormState): boolean {
     f.abilityBonuses.length > 0 ||
     f.derivedBonuses.length > 0 ||
     f.testBonuses.length > 0 ||
+    f.damageBonus.length > 0 ||
     Boolean(Number(f.chargesMax) || 0)
   );
 }
@@ -974,6 +1155,7 @@ function formFromLine(line: EquipmentLine): FormState {
       abilityBonuses: rowsFromBonuses(ABILITY_IDS, line.abilityBonuses),
       derivedBonuses: rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses),
       testBonuses: rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses),
+      damageBonus: line.damageBonus ? line.damageBonus.map((d) => ({ ...d })) : [],
       ...chargeFieldsFromLine(line),
       potionEnabled: line.potion !== undefined,
       potionResource: line.potion?.resource ?? EMPTY_FORM.potionResource,
@@ -981,6 +1163,7 @@ function formFromLine(line: EquipmentLine): FormState {
       potionCount: line.potion?.count ? String(line.potion.count) : EMPTY_FORM.potionCount,
       potionEvolving: line.potion?.evolving === true,
       potionModifier: line.potion?.modifier ? String(line.potion.modifier) : EMPTY_FORM.potionModifier,
+      encumbrance: line.encumbrance ?? EMPTY_FORM.encumbrance,
     };
   }
   const item = effectiveItem(line);
@@ -1011,6 +1194,7 @@ function formFromLine(line: EquipmentLine): FormState {
   base.abilityBonuses = rowsFromBonuses(ABILITY_IDS, line.abilityBonuses);
   base.derivedBonuses = rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses);
   base.testBonuses = rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses);
+  base.damageBonus = line.damageBonus ? line.damageBonus.map((d) => ({ ...d })) : [];
   Object.assign(base, chargeFieldsFromLine(line));
   return base;
 }
@@ -1092,7 +1276,8 @@ function ItemPreviewCard({
         magicProperties.length > 0 ||
         abilityBonuses ||
         derivedBonuses ||
-        testBonuses) && (
+        testBonuses ||
+        form.damageBonus.length > 0) && (
         <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.35 }}>
           {magicDefNum > 0 && <MagicDefBadge value={magicDefNum} />}
           {magicBonusNum > 0 && <MagicWeaponBonusBadge value={magicBonusNum} />}
@@ -1100,6 +1285,7 @@ function ItemPreviewCard({
           {abilityBonuses && <AbilityBonusBadges bonuses={abilityBonuses} />}
           {derivedBonuses && <DerivedBonusBadges bonuses={derivedBonuses} />}
           {testBonuses && <TestBonusBadges bonuses={testBonuses} />}
+          {form.damageBonus.length > 0 && <DamageBonusBadges entries={form.damageBonus} />}
         </Stack>
       )}
     </Stack>
@@ -1203,6 +1389,13 @@ export interface ItemDialogProps {
    * Absent/faux → comportement historique de la fiche (une seule ligne, jamais de champ).
    */
   bulkCreate?: boolean;
+  /**
+   * Règle optionnelle de campagne « Encombrement » active (Atlas, `CampaignRules.encumbranceEnabled`,
+   * PER-447) ? Affiche un champ de poids (petit/moyen/grand) à la création/édition d'un objet
+   * PERSONNALISÉ (une variante mécanique du catalogue porte déjà la sienne, rien à saisir pour elle).
+   * Absent/faux = champ masqué, comportement historique inchangé.
+   */
+  encumbranceEnabled?: boolean;
 }
 
 /**
@@ -1215,7 +1408,14 @@ export interface ItemDialogProps {
  * nom + description. En édition, le type/la base sont fixés (on customise CET objet) ;
  * on peut re-typer un objet cosmétique (icône + « Utiliser » du consommable).
  */
-export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = false }: ItemDialogProps) {
+export function ItemDialog({
+  open,
+  onClose,
+  initial,
+  onConfirm,
+  bulkCreate = false,
+  encumbranceEnabled = false,
+}: ItemDialogProps) {
   // Plein écran sur mobile (PER-231) : formulaire de saisie d'objet, plus confortable
   // en plein cadre qu'en petite boîte centrée sur téléphone.
   const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
@@ -1325,6 +1525,9 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
     // Apports aux tests (PER-275) : même règle d'instance, mais cumul PARTICULIER — c'est un
     // bonus de magie, non cumulable avec un autre bonus de magie sur le même test (p. 80).
     const testBonuses = bonusesFromRows(form.testBonuses);
+    // Bonus de DM situationnels (RÈGLE MAISON) : même règle d'instance, tout type d'objet.
+    // Écrit seulement s'il reste au moins une ligne (le compte de dés est déjà borné ≥ 1 en saisie).
+    const damageBonus = form.damageBonus.length > 0 ? form.damageBonus : undefined;
     // Charges (PER-294) : propriété d'instance comme ci-dessus. Un maximum vide, nul ou négatif
     // signifie « objet sans charges » — le champ n'est alors pas écrit du tout, et l'état de charge
     // éventuellement présent disparaît avec lui (retirer les charges d'un objet le rend ordinaire).
@@ -1392,6 +1595,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
         ...(abilityBonuses ? { abilityBonuses } : {}),
         ...(derivedBonuses ? { derivedBonuses } : {}),
         ...(testBonuses ? { testBonuses } : {}),
+        ...(damageBonus ? { damageBonus } : {}),
         ...carriedCharges,
       };
       onConfirm(line, bulkCount);
@@ -1422,8 +1626,12 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
         ...(abilityBonuses ? { abilityBonuses } : {}),
         ...(derivedBonuses ? { derivedBonuses } : {}),
         ...(testBonuses ? { testBonuses } : {}),
+        ...(damageBonus ? { damageBonus } : {}),
         ...carriedCharges,
         ...(potion ? { potion } : {}),
+        // Encombrement (Atlas, PER-447) : n'écrit la valeur QUE si la règle de campagne est active
+        // — sinon le champ n'est même pas affiché, et 0/petit par défaut n'aurait rien à apporter.
+        ...(encumbranceEnabled ? { encumbrance: form.encumbrance } : {}),
       }, bulkCount);
     }
   };
@@ -1714,6 +1922,29 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                   }
                   onChange={(icon) => setField('icon', icon)}
                 />
+                {/* Encombrement (Atlas, règle optionnelle de campagne, PER-447) : uniquement sur un
+                    objet PERSONNALISÉ — une variante mécanique porte déjà la sienne au catalogue. */}
+                {!mechanical && encumbranceEnabled && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      Encombrement (Atlas, optionnel)
+                    </Typography>
+                    <ToggleButtonGroup
+                      exclusive
+                      size="small"
+                      value={form.encumbrance}
+                      onChange={(_, value: EncumbranceWeight | null) => {
+                        if (value !== null) setField('encumbrance', value);
+                      }}
+                    >
+                      {ENCUMBRANCE_WEIGHTS.map((w) => (
+                        <ToggleButton key={w} value={w} sx={{ textTransform: 'none', px: 1.5 }}>
+                          {ENCUMBRANCE_WEIGHT_LABELS[w]}
+                        </ToggleButton>
+                      ))}
+                    </ToggleButtonGroup>
+                  </Box>
+                )}
               </FormAccordion>
 
               {/* Potion d'énergie custom (PER-XXX) : réservée aux consommables — restaure 1dX
@@ -2075,6 +2306,13 @@ export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = fal
                       }}
                       rows={form.testBonuses}
                       onChange={(rows) => setField('testBonuses', rows)}
+                    />
+
+                    {/* Bonus de DM SITUATIONNELS (RÈGLE MAISON) : généralise à tout objet ce que le
+                        livre réserve aux armes enchantées (Élément/Fléau, p. 251). */}
+                    <DamageBonusRows
+                      rows={form.damageBonus}
+                      onChange={(rows) => setField('damageBonus', rows)}
                     />
                     </Stack>
 

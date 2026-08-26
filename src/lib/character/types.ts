@@ -17,6 +17,7 @@ import type {
   AbilityId,
   DamageDie,
   DerivedStatId,
+  EncumbranceWeight,
   FeatureChoice,
   PoisonKind,
   ResistibleDamageType,
@@ -452,6 +453,36 @@ export type ItemDerivedBonuses = Partial<Record<ItemDerivedStatId, number>>;
 export type ItemTestTarget = string;
 
 /**
+ * Bonus de DM SITUATIONNEL (dé) accordé par un objet enchanté PORTÉ, à TOUTES les attaques du
+ * personnage (RÈGLE MAISON — le livre ne réserve ce type d'enchantement qu'aux ARMES via
+ * `MagicProperty` « Élément »/« Fléau », p. 251 ; ce canal généralise à N'IMPORTE QUEL objet
+ * — anneau, amulette… — cf. `magicDef`). Rendu comme badge situationnel sous la carte
+ * d'attaque, même famille que les riders des capacités et des propriétés d'arme magique (voir
+ * `SituationalDamageBonus`, `weaponDamageBonus.ts`).
+ */
+export interface ItemDamageBonusEntry {
+  /** Dé(s) de DM ajoutés (ex. +1d4 de poison). */
+  dice: { count: number; die: DamageDie };
+  /**
+   * Élément du dé, parmi la MÊME liste que la propriété d'arme magique « Élément » (p. 251 —
+   * `MAGIC_SUBSTANCES`), ou `'custom'` pour un libellé libre (`customLabel`). Purement descriptif,
+   * comme `WeaponDamageCondition.label` — aucun type de DM mécanique n'est modélisé ici, cf.
+   * `weaponDamageBonus.ts`. Absent = dé sans libellé de type.
+   */
+  substance?: ResistibleDamageType | 'custom';
+  /** Libellé libre, actif seulement si `substance === 'custom'` (option « Libre » de l'éditeur). */
+  customLabel?: string;
+  /**
+   * Modes concernés, COMBINABLES (ex. Distance + Magique pour un sort à distance). `'magic'`
+   * QUALIFIE le DM comme magique (RÈGLE MAISON, cf. `RangedAttackMagicalEffect`) — ce n'est pas un
+   * mode de résolution propre (le livre n'a pas de jet « attaque magique » distinct pour ce
+   * canal), donc toujours combiné en pratique à `'melee'` et/ou `'ranged'`. Absent/vide = contact
+   * ET distance (comportement historique), SANS le qualificatif magique (à cocher explicitement).
+   */
+  attackModes?: Array<'melee' | 'ranged' | 'magic'>;
+}
+
+/**
  * Bonus/malus aux TESTS d'une instance d'objet enchanté (PER-275) : une entrée par cible,
  * valeur signée. Ex. une cape d'ombre `{ stealth: 5 }`, un anneau de vigueur `{ FOR: 2 }`,
  * un heaume maudit `{ perception: -2 }`.
@@ -683,6 +714,14 @@ export interface EquipmentRef {
    */
   testBonuses?: ItemTestBonuses;
   /**
+   * Bonus de DM SITUATIONNELS (dés) de cette instance d'objet enchanté, actifs à TOUTES les
+   * attaques quand l'objet est PORTÉ (RÈGLE MAISON, généralisation de `magicDef` aux DM — cf.
+   * `ItemDamageBonusEntry`). Ex. un anneau « +1d4 de poison à vos attaques ». Distinct du
+   * `magicBonus`/`magicProperties` d'une ARME enchantée (p. 251), réservés au livre. Champ
+   * additif optionnel absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
+   */
+  damageBonus?: ItemDamageBonusEntry[];
+  /**
    * DÉFINITION des charges de cette instance d'objet (PER-294) : nombre maximum d'utilisations et
    * politique de rechargement automatique. Absent = objet sans charges (le cas de la quasi-totalité
    * de l'inventaire). Propriété de l'INSTANCE comme `magicDef` et les bonus : le catalogue du livre
@@ -835,6 +874,12 @@ export interface CustomItem {
    */
   testBonuses?: ItemTestBonuses;
   /**
+   * Bonus de DM SITUATIONNELS (dés) de cet objet libre enchanté. Même sémantique que
+   * `EquipmentRef.damageBonus` (RÈGLE MAISON) — cas d'usage typique : un anneau ou une amulette
+   * « +1d4 de poison à vos attaques », absent du catalogue.
+   */
+  damageBonus?: ItemDamageBonusEntry[];
+  /**
    * DÉFINITION des charges de cet objet libre (PER-294). Même sémantique que
    * `EquipmentRef.charges` — c'est même le cas d'usage PRINCIPAL du ticket : une baguette ou un
    * talisman à charges n'a aucune contrepartie au catalogue, il s'invente de toutes pièces.
@@ -868,6 +913,15 @@ export interface CustomItem {
     evolving?: true;
     modifier?: number;
   };
+  /**
+   * Encombrement (Atlas, règle optionnelle de campagne, PER-447) — même sémantique que
+   * `EquipmentItem.encumbrance` (0=petit, 1=moyen, 2=grand), choisi par le joueur/MJ à la
+   * création puisqu'un objet libre n'a pas de base au catalogue pour l'hériter. Saisi
+   * uniquement si `CampaignRules.encumbranceEnabled` ; absent sinon (ou objet créé avant
+   * l'activation de l'option). Champ additif optionnel absent-safe → pas de bump de
+   * `schemaVersion`.
+   */
+  encumbrance?: EncumbranceWeight;
 }
 
 export type EquipmentLine = EquipmentRef | CustomItem;

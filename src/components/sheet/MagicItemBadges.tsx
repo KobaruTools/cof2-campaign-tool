@@ -6,13 +6,14 @@ import { alpha } from '@mui/material/styles';
 import { ABILITY_IDS, type AbilityId } from '@/data/schema';
 import type {
   ItemAbilityBonuses,
+  ItemDamageBonusEntry,
   ItemDerivedBonuses,
   ItemTestBonuses,
   MagicProperty,
 } from '@/lib/character/types';
 import { ITEM_DERIVED_STAT_IDS } from '@/lib/character/types';
 import { MAGIC_PROPERTY_RULES, magicPropertyLabel } from '@/lib/character/magicItem';
-import { ITEM_TEST_TARGET_IDS } from '@/lib/character/equipment';
+import { ITEM_TEST_TARGET_IDS, itemDamageBonusLabel } from '@/lib/character/equipment';
 import { testDomainById } from '@/data';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import {
@@ -206,6 +207,61 @@ export function ItemBonusBadge({
         {Math.abs(value)} {label}
       </Box>
     </AppTooltip>
+  );
+}
+
+/**
+ * Badges des bonus de DM SITUATIONNELS d'un objet enchanté (`ItemDamageBonusEntry`, RÈGLE
+ * MAISON) : une pastille par entrée, dé + libellé (ex. « +1d4 poison »), avec le mode d'attaque
+ * en info-bulle. Même langage visuel que les autres pastilles d'enchantement, ≠ `ItemBonusBadge`
+ * (pas de score signé — un dé, pas un nombre fixe).
+ */
+export function DamageBonusBadges({ entries }: { entries: ItemDamageBonusEntry[] }) {
+  const modeLabel: Record<'melee' | 'ranged' | 'magic', string> = {
+    melee: 'au contact',
+    ranged: 'à distance',
+    magic: 'magiques',
+  };
+  return (
+    <>
+      {entries.map((entry, i) => {
+        const modes = entry.attackModes ?? [];
+        const scope = modes.length > 0 ? modes.map((m) => modeLabel[m]).join(' + ') : 'contact et distance';
+        const label = itemDamageBonusLabel(entry);
+        return (
+          <AppTooltip
+            key={i}
+            title={`Ajouté à toutes les attaques ${scope} tant que l’objet est équipé (règle maison).`}
+          >
+            <Box
+              component="span"
+              data-glossary-shot="MagicItemBadges"
+              sx={(theme) => ({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.25,
+                verticalAlign: 'baseline',
+                ml: 0.75,
+                px: 0.6,
+                borderRadius: 0.75,
+                fontWeight: 700,
+                fontSize: '0.72rem',
+                lineHeight: 1.4,
+                whiteSpace: 'nowrap',
+                cursor: 'help',
+                color: theme.palette.secondary.main,
+                bgcolor: alpha(theme.palette.secondary.main, 0.12),
+                border: `1px solid ${alpha(theme.palette.secondary.main, 0.45)}`,
+              })}
+            >
+              <DieIcon die={entry.dice.die} size={13} noTooltip />+{entry.dice.count}
+              {entry.dice.die}
+              {label ? ` ${label}` : ''}
+            </Box>
+          </AppTooltip>
+        );
+      })}
+    </>
   );
 }
 

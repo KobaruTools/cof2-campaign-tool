@@ -48,6 +48,7 @@ import { crystalStatBonuses } from '@/lib/character/crystals';
 import {
   derivedBonusSourcesFromEquipment,
   derivedBonusesFromEquipment,
+  itemDamageBonusesFromEquipment,
   oneHandDamageOverride,
   oneHandingFeatureIds,
   verySmallWeaponDamageOverride,
@@ -915,13 +916,21 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const tierBonus = scalingDieTierBonus(character);
   // Aux riders des capacités s'ajoutent ceux des propriétés de l'arme magique en main (Fléau, Élément,
   // Affûtée « aux critiques » ; +1d4°, p. 251, PER-307), résolus au niveau du personnage.
+  // Riders de DM des objets enchantés PORTÉS (anneau, amulette… RÈGLE MAISON, cf.
+  // `itemDamageBonusesFromEquipment`) : valables à TOUTES les attaques de leur mode, donc
+  // ajoutés à CHAQUE carte d'attaque (principale ET main secondaire), sans lien avec l'arme
+  // en main — contrairement aux riders d'ARME magique (`magicWeaponSituationalDamage`).
+  const itemMeleeDamage = itemDamageBonusesFromEquipment(character.equipment, 'melee');
+  const itemRangedDamage = itemDamageBonusesFromEquipment(character.equipment, 'ranged');
   const meleeSituationalDamage = [
     ...weaponDamageBonuses(character, 'melee', meleeWorn, maxHp).situational,
     ...magicWeaponSituationalDamage(meleeWornLine, meleeWorn?.name ?? '', character.level, tierBonus),
+    ...itemMeleeDamage,
   ];
   const rangedSituationalDamage = [
     ...weaponDamageBonuses(character, 'ranged', rangedWorn, maxHp).situational,
     ...magicWeaponSituationalDamage(rangedWornLine, rangedWorn?.name ?? '', character.level, tierBonus),
+    ...itemRangedDamage,
   ];
   // PER-116/307 — bonus situationnels de la MAIN SECONDAIRE (combat à deux armes) : calculés pour SON
   // arme (donc filtrés par SA condition + ses propriétés magiques), pour être affichés SOUS sa ligne et
@@ -930,6 +939,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ? [
         ...weaponDamageBonuses(character, 'melee', offHandMelee.item, maxHp).situational,
         ...magicWeaponSituationalDamage(offHandMelee.line, offHandMelee.item.name, character.level, tierBonus),
+        ...itemMeleeDamage,
       ]
     : [];
   const meleeAttackNotes = [

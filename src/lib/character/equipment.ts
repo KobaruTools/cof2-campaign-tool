@@ -16,6 +16,7 @@ import { ABILITY_IDS } from '@/data/schema';
 import type {
   EquipmentLine,
   EquipmentRef,
+  ItemDamageBonusEntry,
   ItemDerivedStatId,
   ItemTestTarget,
   WornState,
@@ -23,7 +24,9 @@ import type {
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from './types';
 import { effectiveItem } from './items';
 import { baseAncestrySize } from './size';
-import { magicMobilePenaltyReduction, magicPropertyTestBonuses } from './magicItemEffects';
+import { MAGIC_ITEM_FEATURE_ID, magicMobilePenaltyReduction, magicPropertyTestBonuses } from './magicItemEffects';
+import type { AttackMode, SituationalDamageBonus } from './weaponDamageBonus';
+import { DAMAGE_TYPE_LABEL } from '@/lib/ui/damageTypeLabels';
 
 /**
  * Auto-équipe, sur une copie de la liste, la **meilleure armure**, le **meilleur
@@ -670,6 +673,60 @@ export interface AbilityBonusItemSource {
 export function lineDisplayName(line: EquipmentLine): string {
   if (isCustomItem(line)) return line.name;
   return effectiveItem(line)?.name ?? line.itemId;
+}
+
+/**
+ * Libellé en toutes lettres d'un bonus de DM d'objet (`ItemDamageBonusEntry`, RÈGLE MAISON) :
+ * l'élément choisi (« Poison »), le libellé libre (`substance: 'custom'`), le qualificatif
+ * « magique » si `attackModes` le porte, les deux joints par une virgule — ou `undefined` si
+ * l'entrée ne porte ni élément ni qualificatif (dé « nu »). Partagé par l'agrégation moteur
+ * (`itemDamageBonusesFromEquipment`, ci-dessous) et l'aperçu de saisie (`DamageBonusBadges`,
+ * `ItemDialog`), pour ne jamais désynchroniser les deux affichages.
+ */
+export function itemDamageBonusLabel(entry: ItemDamageBonusEntry): string | undefined {
+  const substanceLabel =
+    entry.substance === 'custom'
+      ? entry.customLabel?.trim() || undefined
+      : entry.substance
+        ? DAMAGE_TYPE_LABEL[entry.substance]
+        : undefined;
+  const magic = entry.attackModes?.includes('magic') ? 'magique' : undefined;
+  const parts = [substanceLabel, magic].filter((p): p is string => Boolean(p));
+  return parts.length > 0 ? parts.join(', ') : undefined;
+}
+
+/**
+ * Riders de DM SITUATIONNELS de l'équipement PORTÉ (`EquipmentLine.damageBonus`, RÈGLE
+ * MAISON — cf. `ItemDamageBonusEntry`) valables pour le `mode` d'attaque donné, N'IMPORTE
+ * QUEL objet équipé confondu (anneau, amulette… via `accessory`, comme `magicDef`) : un
+ * anneau « +1d4 de poison » vaut à TOUTES les attaques du personnage, contact ET distance,
+ * qu'il tienne une arme ou non — contrairement aux riders d'ARME magique
+ * (`magicWeaponSituationalDamage`), qui ne comptent que pour l'arme enchantée en main.
+ * Le qualificatif `'magic'` de `attackModes` ne filtre PAS ici (`mode` ne connaît que
+ * contact/distance) : il se répercute uniquement sur le LIBELLÉ (`itemDamageBonusLabel`).
+ * `featureId` sentinelle `MAGIC_ITEM_FEATURE_ID` (aucune voie associée), comme les autres
+ * riders d'objet. Consommé par `characterDerivedView`, concaténé aux autres sources de
+ * `SituationalDamageBonus`.
+ */
+export function itemDamageBonusesFromEquipment(
+  equipment: EquipmentLine[],
+  mode: AttackMode,
+): SituationalDamageBonus[] {
+  const out: SituationalDamageBonus[] = [];
+  for (const line of equipment) {
+    if (!line.worn || !line.damageBonus) continue;
+    const name = lineDisplayName(line);
+    for (const entry of line.damageBonus) {
+      if (entry.attackModes && entry.attackModes.length > 0 && !entry.attackModes.includes(mode)) continue;
+      out.push({
+        featureId: MAGIC_ITEM_FEATURE_ID,
+        name,
+        dice: entry.dice,
+        conditionLabel: itemDamageBonusLabel(entry),
+      });
+    }
+  }
+  return out;
 }
 
 /**
