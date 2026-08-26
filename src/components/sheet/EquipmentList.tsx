@@ -732,6 +732,12 @@ export interface EquipmentListProps {
   /** Autorisation EFFECTIVE des armes à feu (PER-185), pour l'indicateur de maîtrise. */
   firearmsAllowed?: boolean;
   /**
+   * Règle optionnelle de campagne « Encombrement » active (Atlas, `CampaignRules.encumbranceEnabled`,
+   * PER-447) ? Transmis tel quel à `ItemDialog` pour afficher son champ de poids. Absent = masqué
+   * (comportement historique inchangé).
+   */
+  encumbranceEnabled?: boolean;
+  /**
    * Armes maîtrisées PAR EXCEPTION à une arme précise (`extraMasteredWeaponIds`) : arme sacrée du
    * prêtre spécialiste (PER-96) et octroi de maîtrise de peuple (nain « Haches et marteaux », PER-154).
    * Suppriment l'indicateur de dé malus sur ces armes. Absent → aucune exception.
@@ -935,6 +941,7 @@ export function EquipmentList({
   characterClass,
   masteredIds,
   firearmsAllowed = true,
+  encumbranceEnabled = false,
   extraMasteredWeaponIds,
   resolveWeaponAffinities,
   twoWeaponStatus,
@@ -1663,7 +1670,10 @@ export function EquipmentList({
           {sourceRefBadge && (
             <Box sx={{ position: 'absolute', top: 6, right: 6 }}>{sourceRefBadge}</Box>
           )}
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, pr: sourceRefBadge ? 4.5 : 0 }}>
+          {/* Réserve suffisante pour le badge (icône + « p. NNN » + bouton codex éventuel,
+              ~110px) — un simple 4.5 (36px) laissait le texte du titre passer PAR-DESSUS le
+              badge sur un nom assez long pour remplir la 1re ligne (retour propriétaire). */}
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, pr: sourceRefBadge ? 14 : 0 }}>
             {opts?.dragHandle}
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>{titleContent}</Box>
           </Box>
@@ -1925,6 +1935,7 @@ export function EquipmentList({
               open
               onClose={() => setItemEdit(null)}
               initial={editing}
+              encumbranceEnabled={encumbranceEnabled}
               onConfirm={(line) => {
                 if (itemEdit === 'new') addLine(line);
                 else setLine(itemEdit, line);
