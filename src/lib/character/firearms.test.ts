@@ -8,11 +8,12 @@ function makeCampaign(firearmsAllowed: boolean): Campaign {
     id: 'camp',
     name: 'Campagne',
     description: null,
-    rules: { firearmsAllowed, hitDieOnLevelUp: false },
+    rules: { firearmsAllowed, hitDieOnLevelUp: false, encumbranceEnabled: false },
     rumors: [],
     loot: [],
     gmInventory: { categories: [], items: [] },
     npcCategories: [],
+    encounterPresetCategories: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   };

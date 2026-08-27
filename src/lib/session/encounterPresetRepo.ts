@@ -20,7 +20,7 @@ export async function listEncounterPresets(campaignId: string): Promise<Encounte
   const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase
     .from('campaign_encounter_preset')
-    .select('id, name, note, entries')
+    .select('id, name, note, entries, category_id')
     .eq('campaign_id', campaignId)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -29,13 +29,14 @@ export async function listEncounterPresets(campaignId: string): Promise<Encounte
     name: row.name,
     note: row.note ?? undefined,
     entries: reviveEntries(row.entries),
+    categoryId: row.category_id,
   }));
 }
 
 /** Crée un preset et renvoie son id. */
 export async function createEncounterPreset(
   campaignId: string,
-  input: { name: string; note?: string; entries: EncounterPresetEntry[] },
+  input: { name: string; note?: string; entries: EncounterPresetEntry[]; categoryId?: string | null },
 ): Promise<string> {
   const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase
@@ -45,6 +46,7 @@ export async function createEncounterPreset(
       name: input.name,
       note: input.note ?? null,
       entries: input.entries as unknown as Json,
+      category_id: input.categoryId ?? null,
     })
     .select('id')
     .single();
@@ -57,18 +59,20 @@ export interface UpdateEncounterPresetPatch {
   name?: string;
   note?: string | null;
   entries?: EncounterPresetEntry[];
+  categoryId?: string | null;
 }
 
-/** Modifie un preset existant (renommage, note, composition). */
+/** Modifie un preset existant (renommage, note, composition, catégorie). */
 export async function updateEncounterPreset(
   id: string,
   patch: UpdateEncounterPresetPatch,
 ): Promise<void> {
   const supabase = createBrowserSupabaseClient();
-  const update: { name?: string; note?: string | null; entries?: Json } = {};
+  const update: { name?: string; note?: string | null; entries?: Json; category_id?: string | null } = {};
   if (patch.name !== undefined) update.name = patch.name;
   if (patch.note !== undefined) update.note = patch.note;
   if (patch.entries !== undefined) update.entries = patch.entries as unknown as Json;
+  if (patch.categoryId !== undefined) update.category_id = patch.categoryId;
   const { error } = await supabase.from('campaign_encounter_preset').update(update).eq('id', id);
   if (error) throw error;
 }

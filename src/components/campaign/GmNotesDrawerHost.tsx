@@ -11,9 +11,11 @@
  */
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmNotesDrawer } from './GmNotesDrawer';
+import { NOTES_PARAM } from './gmToolsMenu';
 
-/** Nom du paramètre d'URL qui ouvre le tiroir de notes (booléen : `?notes=1`). */
-export const NOTES_PARAM = 'notes';
+/** Nom du paramètre d'URL qui ouvre le tiroir de notes (booléen : `?notes=1`) — défini dans
+ * `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à l'API externe. */
+export { NOTES_PARAM };
 
 export function GmNotesDrawerHost({ campaignId }: { campaignId: string }) {
   const router = useRouter();

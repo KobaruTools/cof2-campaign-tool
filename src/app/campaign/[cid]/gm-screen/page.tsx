@@ -17,7 +17,7 @@
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
-import { Fragment, Suspense, use, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { Fragment, Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   DndContext,
@@ -34,16 +34,9 @@ import {
 import { type Step } from 'react-joyride';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import DiamondIcon from '@mui/icons-material/Diamond';
-import EditNoteIcon from '@mui/icons-material/EditNote';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import GroupsIcon from '@mui/icons-material/Groups';
 import HandymanIcon from '@mui/icons-material/Handyman';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
-import HistoryIcon from '@mui/icons-material/History';
-import LocalBarIcon from '@mui/icons-material/LocalBar';
-import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
-import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -76,20 +69,21 @@ import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
 import { GmScreenCompanionCard } from '@/components/campaign/GmScreenCompanionCard';
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
-import { EncounterPresetsPanel } from '@/components/campaign/EncounterPresetsPanel';
+import { EncounterPresetsDrawerHost } from '@/components/campaign/EncounterPresetsDrawerHost';
 import { InitiativeTracker, type ReorderDragPreview } from '@/components/campaign/InitiativeTracker';
 import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { BuffRequestsControl } from '@/components/campaign/BuffRequestsControl';
 import { GroupRestControl } from '@/components/campaign/GroupRestControl';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
-import { GmRumorsDrawerHost, RUMORS_PARAM } from '@/components/campaign/GmRumorsDrawerHost';
-import { GmLootDrawerHost, LOOT_PARAM } from '@/components/campaign/GmLootDrawerHost';
-import { GmNpcDrawerHost, NPC_PARAM } from '@/components/campaign/GmNpcDrawerHost';
-import { GmNotesDrawerHost, NOTES_PARAM } from '@/components/campaign/GmNotesDrawerHost';
-import { GmReferenceDrawerHost, REFERENCE_PARAM } from '@/components/campaign/GmReferenceDrawerHost';
-import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBestiaryDrawerHost';
-import { GmHistoryDrawerHost, HISTORY_PARAM } from '@/components/campaign/GmHistoryDrawerHost';
+import { GM_TOOLS_MENU } from '@/components/campaign/gmToolsMenu';
+import { GmRumorsDrawerHost } from '@/components/campaign/GmRumorsDrawerHost';
+import { GmLootDrawerHost } from '@/components/campaign/GmLootDrawerHost';
+import { GmNpcDrawerHost } from '@/components/campaign/GmNpcDrawerHost';
+import { GmNotesDrawerHost } from '@/components/campaign/GmNotesDrawerHost';
+import { GmReferenceDrawerHost } from '@/components/campaign/GmReferenceDrawerHost';
+import { GmBestiaryDrawerHost } from '@/components/campaign/GmBestiaryDrawerHost';
+import { GmHistoryDrawerHost } from '@/components/campaign/GmHistoryDrawerHost';
 import { HomeBackground } from '@/components/HomeBackground';
 import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIndicator';
 import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
@@ -257,22 +251,6 @@ const GM_SCREEN_PLAYERS_STEP_TARGET = '[data-tour="gm-screen-players"]';
  * l'étape décrit les colonnes, invisibles en repli condensé. */
 const GM_SCREEN_TRACKER_STEP_TARGET = '[data-tour="gm-screen-tracker"]';
 
-/** Entrées du menu « Outils du MJ » (retour propriétaire), dans l'ordre d'affichage — chacune une
- * VRAIE ancre vers son propre tiroir (cf. `GmRumorsDrawerHost` et consorts), pas un onglet d'un
- * tiroir conteneur. `param` porte à la fois le nom du paramètre d'URL et la clé React. Groupées par
- * nature (retour propriétaire) : contenu de table généré/tiré (Butin, PNJ, Rumeurs), puis suivi de
- * partie (Notes, Historique), puis consultation pure (Aide-mémoire, Bestiaire) — `separatorAfter`
- * pose un `Divider` entre ces trois groupes. */
-const GM_TOOLS_MENU: { param: string; label: string; icon: ReactElement; dataTour: string; separatorAfter?: boolean }[] = [
-  { param: LOOT_PARAM, label: 'Butin', icon: <DiamondIcon fontSize="small" />, dataTour: 'gm-screen-loot' },
-  { param: NPC_PARAM, label: 'PNJ', icon: <GroupsIcon fontSize="small" />, dataTour: 'gm-screen-npc' },
-  { param: RUMORS_PARAM, label: 'Rumeurs de taverne', icon: <LocalBarIcon fontSize="small" />, dataTour: 'gm-screen-rumors', separatorAfter: true },
-  { param: NOTES_PARAM, label: 'Notes de session', icon: <EditNoteIcon fontSize="small" />, dataTour: 'gm-screen-notes' },
-  { param: HISTORY_PARAM, label: 'Historique des parties', icon: <HistoryIcon fontSize="small" />, dataTour: 'gm-screen-history', separatorAfter: true },
-  { param: REFERENCE_PARAM, label: 'Aide-mémoire', icon: <MenuBookOutlinedIcon fontSize="small" />, dataTour: 'gm-screen-reference' },
-  { param: BESTIARY_PARAM, label: 'Bestiaire', icon: <PetsOutlinedIcon fontSize="small" />, dataTour: 'gm-screen-bestiary' },
-];
-
 function buildGmScreenTourSteps({ showPlayersStep }: { showPlayersStep: boolean }): Step[] {
   const steps: Step[] = [
     {
@@ -293,7 +271,7 @@ function buildGmScreenTourSteps({ showPlayersStep }: { showPlayersStep: boolean 
       target: '[data-tour="gm-screen-tools"]',
       title: 'Outils du MJ',
       content:
-        'Ouvre un menu réunissant vos outils de session, chacun dans son propre tiroir latéral : rumeurs de taverne, butin, PNJ, notes de session, bestiaire, aide-mémoire et historique des parties.',
+        'Ouvre un menu réunissant vos outils de session, chacun dans son propre tiroir latéral : rumeurs de taverne, butin, PNJ, combats préparés, notes de session, bestiaire, aide-mémoire et historique des parties.',
       placement: 'auto',
     },
   ];
@@ -891,17 +869,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         </Stack>
         </Box>
 
-        {/* Combats préparés à l'avance (PER-448) : le MJ compose des rencontres ENTRE deux
-            séances, indépendamment du combat en cours ci-dessous — les lancer le remplace
-            entièrement (confirmation si non vide), sans jamais modifier le preset d'origine. */}
-        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
-          <EncounterPresetsPanel
-            campaignId={cid}
-            hasCurrentCombat={labeledCreatures.length > 0 || currentTurnKey !== null}
-            onLaunch={launchPreset}
-          />
-        </Box>
-
         {claimed.length === 0 && labeledCreatures.length === 0 ? (
           <Paper
             variant="outlined"
@@ -1222,6 +1189,18 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
       <Suspense>
         <GmNpcDrawerHost campaign={campaign} />
+      </Suspense>
+
+      {/* Tiroir « Combats préparés » (PER-448, retour propriétaire), piloté par `?combats=1`.
+          Même contrainte de frontière `Suspense` que les autres tiroirs de l'écran de MJ. Le
+          MJ compose des rencontres ENTRE deux séances, indépendamment du combat en cours —
+          les lancer le remplace entièrement (confirmation si non vide, cf. `launchPreset`). */}
+      <Suspense>
+        <EncounterPresetsDrawerHost
+          campaign={campaign}
+          hasCurrentCombat={labeledCreatures.length > 0 || currentTurnKey !== null}
+          onLaunch={launchPreset}
+        />
       </Suspense>
 
       {/* Tiroir « Notes de session » (PER-427), piloté par `?notes=1`. Même contrainte de frontière

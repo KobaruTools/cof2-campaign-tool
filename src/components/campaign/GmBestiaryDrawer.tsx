@@ -14,22 +14,12 @@
  * Purement présentationnel : l'ouverture est pilotée par l'URL (`?bestiary=1`, cf.
  * `GmBestiaryDrawerHost`), en vraie ancre — le bouton Retour ferme le tiroir, un lien direct l'ouvre.
  */
-import CloseIcon from '@mui/icons-material/Close';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
-import IconButton from '@mui/material/IconButton';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
-import { AppTooltip } from '@/components/AppTooltip';
 import { BestiaryBrowser } from '@/components/bestiary/BestiaryBrowser';
-
-/**
- * Hauteur (px) de l'en-tête collé du tiroir. Fixée en dur ET appliquée au conteneur d'en-tête :
- * la sidebar (tri + liste) de `BestiaryBrowser` se cale juste dessous (`stickyTop`) — même
- * mécanique que `GmReferenceDrawer`.
- */
-const HEADER_HEIGHT = 52;
+import { GM_DRAWER_HEADER_HEIGHT, GmDrawerHeader } from './GmDrawerHeader';
+import { BESTIARY_PARAM } from './gmToolsMenu';
 
 export interface GmBestiaryDrawerProps {
   /** Le tiroir est-il ouvert ? */
@@ -62,39 +52,17 @@ export function GmBestiaryDrawer({ open, onClose }: GmBestiaryDrawerProps) {
         },
       }}
     >
-      {/* En-tête collé : titre + fermeture, visibles pendant le défilement. Opaque + flou pour
-          masquer le contenu qui défile dessous, comme les autres tiroirs. Hauteur figée =
-          `HEADER_HEIGHT`. */}
-      <Box
-        data-glossary-shot="GmBestiaryDrawer"
-        sx={(theme) => ({
-          position: 'sticky',
-          top: 0,
-          zIndex: 4,
-          height: HEADER_HEIGHT,
-          display: 'flex',
-          alignItems: 'center',
-          px: { xs: 2, sm: 3 },
-          bgcolor: alpha(theme.palette.background.paper, 0.94),
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-        })}
-      >
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', width: '100%' }}>
-          <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
-            Bestiaire
-          </Typography>
-          <AppTooltip title="Fermer">
-            <IconButton size="small" onClick={onClose} aria-label="Fermer le tiroir">
-              <CloseIcon />
-            </IconButton>
-          </AppTooltip>
-        </Stack>
-      </Box>
+      <Box data-glossary-shot="GmBestiaryDrawer">
+      <GmDrawerHeader
+        icon={<PetsOutlinedIcon fontSize="small" />}
+        title="Bestiaire"
+        currentParam={BESTIARY_PARAM}
+        onClose={onClose}
+      />
 
       <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 3 }}>
-        <BestiaryBrowser variant="drawer" stickyTop={HEADER_HEIGHT} />
+        <BestiaryBrowser variant="drawer" stickyTop={GM_DRAWER_HEADER_HEIGHT} />
+      </Box>
       </Box>
     </Drawer>
   );

@@ -11,10 +11,12 @@
  */
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmRumorsDrawer } from './GmRumorsDrawer';
+import { RUMORS_PARAM } from './gmToolsMenu';
 import type { Campaign } from '@/lib/campaign/types';
 
-/** Nom du paramètre d'URL qui ouvre le tiroir de rumeurs (booléen : `?rumors=1`). */
-export const RUMORS_PARAM = 'rumors';
+/** Nom du paramètre d'URL qui ouvre le tiroir de rumeurs (booléen : `?rumors=1`) — défini
+ * dans `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à l'API externe. */
+export { RUMORS_PARAM };
 
 export function GmRumorsDrawerHost({ campaign }: { campaign: Campaign }) {
   const router = useRouter();

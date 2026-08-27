@@ -17,6 +17,7 @@ import {
   DEFAULT_CAMPAIGN_RULES,
   type Campaign,
   type CampaignRules,
+  type EncounterPresetCategory,
   type GmInventory,
   type LootItem,
   type Npc,
@@ -44,6 +45,10 @@ export function parseRules(raw: Json): CampaignRules {
       typeof obj.hitDieOnLevelUp === 'boolean'
         ? obj.hitDieOnLevelUp
         : DEFAULT_CAMPAIGN_RULES.hitDieOnLevelUp,
+    encumbranceEnabled:
+      typeof obj.encumbranceEnabled === 'boolean'
+        ? obj.encumbranceEnabled
+        : DEFAULT_CAMPAIGN_RULES.encumbranceEnabled,
   };
 }
 
@@ -157,6 +162,24 @@ export function parseNpcCategories(raw: Json): NpcCategory[] {
   return out;
 }
 
+/**
+ * Parse défensif de la colonne `encounter_preset_categories` (jsonb) vers
+ * `EncounterPresetCategory[]` (PER-448) — même corps que `parseNpcCategories`.
+ */
+export function parseEncounterPresetCategories(raw: Json): EncounterPresetCategory[] {
+  if (!Array.isArray(raw)) return [];
+  const out: EncounterPresetCategory[] = [];
+  for (const item of raw) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const { id, name, collapsed } = item as Record<string, unknown>;
+      if (typeof id === 'string' && typeof name === 'string') {
+        out.push({ id, name, collapsed: collapsed === true });
+      }
+    }
+  }
+  return out;
+}
+
 /** Mappe une ligne SQL `campaigns` vers l'entité `Campaign` de l'application. */
 export function rowToCampaign(row: CampaignRow): Campaign {
   return {
@@ -168,6 +191,7 @@ export function rowToCampaign(row: CampaignRow): Campaign {
     loot: parseLoot(row.loot),
     gmInventory: parseGmInventory(row.gm_inventory),
     npcCategories: parseNpcCategories(row.npc_categories),
+    encounterPresetCategories: parseEncounterPresetCategories(row.encounter_preset_categories),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -237,16 +261,18 @@ export async function updateCampaign(
     loot?: LootItem[];
     gmInventory?: GmInventory;
     npcCategories?: NpcCategory[];
+    encounterPresetCategories?: EncounterPresetCategory[];
   },
 ): Promise<Campaign> {
   const supabase = createBrowserSupabaseClient();
-  const { rules, rumors, loot, gmInventory, npcCategories, ...rest } = patch;
+  const { rules, rumors, loot, gmInventory, npcCategories, encounterPresetCategories, ...rest } = patch;
   const row: Database['public']['Tables']['campaigns']['Update'] = { ...rest };
   if (rules) row.rules = rules as unknown as Json;
   if (rumors) row.rumors = rumors as unknown as Json;
   if (loot) row.loot = loot as unknown as Json;
   if (gmInventory) row.gm_inventory = gmInventory as unknown as Json;
   if (npcCategories) row.npc_categories = npcCategories as unknown as Json;
+  if (encounterPresetCategories) row.encounter_preset_categories = encounterPresetCategories as unknown as Json;
   const { data, error } = await supabase
     .from('campaigns')
     .update(row)

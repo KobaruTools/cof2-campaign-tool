@@ -17,21 +17,15 @@
  * Purement présentationnel : l'ouverture est pilotée par l'URL (`?history=1`, cf.
  * `GmHistoryDrawerHost`), en vraie ancre — le bouton Retour ferme le tiroir, un lien direct l'ouvre.
  */
-import CloseIcon from '@mui/icons-material/Close';
+import HistoryIcon from '@mui/icons-material/History';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
-import IconButton from '@mui/material/IconButton';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
-import { AppTooltip } from '@/components/AppTooltip';
+import { GmDrawerHeader } from './GmDrawerHeader';
+import { HISTORY_PARAM } from './gmToolsMenu';
 import { SessionHistoryList } from '@/components/session/SessionHistoryList';
 
 /** Largeur (px, ≥ `sm`) du tiroir — même gabarit que le tiroir « Outils du MJ » (contenu simple). */
 const HISTORY_WIDTH = 1120;
-
-/** Hauteur (px) de l'en-tête collé du tiroir — même valeur que les autres tiroirs de l'écran de MJ. */
-const HEADER_HEIGHT = 52;
 
 export interface GmHistoryDrawerProps {
   /** Campagne dont on affiche l'historique des parties. */
@@ -67,32 +61,12 @@ export function GmHistoryDrawer({ campaignId, open, onClose }: GmHistoryDrawerPr
           flux) : sert d'ancre DOM pour le crop du glossaire (PER-443) — le `Paper` du `Drawer`
           n'accepte pas d'attribut `data-*` inconnu en typage strict MUI. */}
       <Box data-glossary-shot="GmHistoryDrawer">
-      <Box
-        sx={(theme) => ({
-          position: 'sticky',
-          top: 0,
-          zIndex: 4,
-          height: HEADER_HEIGHT,
-          display: 'flex',
-          alignItems: 'center',
-          px: { xs: 2, sm: 3 },
-          bgcolor: alpha(theme.palette.background.paper, 0.94),
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-        })}
-      >
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', width: '100%' }}>
-          <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
-            Historique des parties
-          </Typography>
-          <AppTooltip title="Fermer">
-            <IconButton size="small" onClick={onClose} aria-label="Fermer le tiroir">
-              <CloseIcon />
-            </IconButton>
-          </AppTooltip>
-        </Stack>
-      </Box>
+      <GmDrawerHeader
+        icon={<HistoryIcon fontSize="small" />}
+        title="Historique des parties"
+        currentParam={HISTORY_PARAM}
+        onClose={onClose}
+      />
 
       <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 3 }}>
         <SessionHistoryList

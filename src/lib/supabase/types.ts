@@ -43,6 +43,7 @@ export type Database = {
       campaign_encounter_preset: {
         Row: {
           campaign_id: string
+          category_id: string | null
           created_at: string
           entries: Json
           id: string
@@ -52,6 +53,7 @@ export type Database = {
         }
         Insert: {
           campaign_id: string
+          category_id?: string | null
           created_at?: string
           entries?: Json
           id?: string
@@ -61,6 +63,7 @@ export type Database = {
         }
         Update: {
           campaign_id?: string
+          category_id?: string | null
           created_at?: string
           entries?: Json
           id?: string
@@ -150,6 +153,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          encounter_preset_categories: Json
           gm_inventory: Json
           id: string
           loot: Json
@@ -163,6 +167,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          encounter_preset_categories?: Json
           gm_inventory?: Json
           id?: string
           loot?: Json
@@ -176,6 +181,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          encounter_preset_categories?: Json
           gm_inventory?: Json
           id?: string
           loot?: Json

@@ -407,6 +407,7 @@ L'affichage passe par le composant commun `src/components/SectionIcon.tsx`.
 | Historique des niveaux | `delapouite/upgrade.svg` | Delapouite |
 | Montures & véhicules (Codex) | `lorc/horse-head.svg` | Lorc |
 | PNJ | `lorc/cowled.svg` | Lorc |
+| Combats préparés (menu Outils du MJ) | `lorc/battle-gear.svg` | Lorc |
 
 ## Icônes des types de dégât
 

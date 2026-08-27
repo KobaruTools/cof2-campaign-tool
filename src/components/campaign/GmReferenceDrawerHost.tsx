@@ -11,9 +11,12 @@
  */
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmReferenceDrawer } from './GmReferenceDrawer';
+import { REFERENCE_PARAM } from './gmToolsMenu';
 
-/** Nom du paramètre d'URL qui ouvre le tiroir d'aide-mémoire (booléen : `?reference=1`). */
-export const REFERENCE_PARAM = 'reference';
+/** Nom du paramètre d'URL qui ouvre le tiroir d'aide-mémoire (booléen : `?reference=1`) —
+ * défini dans `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à
+ * l'API externe. */
+export { REFERENCE_PARAM };
 
 export function GmReferenceDrawerHost() {
   const router = useRouter();

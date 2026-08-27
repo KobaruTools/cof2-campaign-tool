@@ -44,6 +44,15 @@ export interface CampaignRules {
    * `false` (défaut), les PV fixes s'appliquent, comportement inchangé.
    */
   hitDieOnLevelUp: boolean;
+  /**
+   * Règle optionnelle d'ENCOMBREMENT (PER-447) — tirée du supplément payant *Atlas* (p. 156-158),
+   * PAS du livre de base. Ajoute une valeur d'encombrement (petit/moyen/grand) aux objets et, une
+   * fois activée, propose un champ de poids à la création d'un objet personnalisé. Le calcul du
+   * total par personnage et des paliers (essoufflé/ralenti/immobilisé) n'est PAS encore branché
+   * (ticket séparé) : à `true`, seule la donnée est collectée. Défaut `false` : comportement
+   * historique inchangé (aucun poids suivi).
+   */
+  encumbranceEnabled: boolean;
 }
 
 /**
@@ -188,6 +197,22 @@ export interface NpcCategory {
 }
 
 /**
+ * Catégorie de combat préparé (PER-448, retour propriétaire) — MÊME FORME que
+ * `NpcCategory`, persistée séparément (`campaigns.encounter_preset_categories`,
+ * jsonb, posée par la migration 0042) : les combats préparés vivent dans leur
+ * table dédiée `campaign_encounter_preset` (voir `EncounterPreset`), donc leur
+ * rattachement à une catégorie passe par `EncounterPreset.categoryId`.
+ */
+export interface EncounterPresetCategory {
+  /** Clé stable (UUID). */
+  id: string;
+  /** Nom affiché, librement édité par le MJ. */
+  name: string;
+  /** La catégorie est-elle repliée dans le tiroir ? Persistant, propre au MJ. */
+  collapsed: boolean;
+}
+
+/**
  * PNJ du MJ (PER-428 socle + PER-429 fiche complète). Persisté dans une table
  * DÉDIÉE `campaign_npcs` — PAS un jsonb sur `Campaign` comme les entités
  * ci-dessus (rumeurs/butin/inventaire) — car `gmNotes` (privées) et les futures
@@ -321,6 +346,12 @@ export interface Campaign {
    * `parseNpcCategories`.
    */
   npcCategories: NpcCategory[];
+  /**
+   * Catégories de combats préparés (PER-448) — vide par défaut (`[]`), jamais
+   * `null` (colonne `not null default '[]'`, posée par la migration 0042).
+   * Lecture défensive via `parseEncounterPresetCategories`.
+   */
+  encounterPresetCategories: EncounterPresetCategory[];
   /** Horodatages ISO recopiés de la base (tri, affichage). */
   createdAt: string;
   updatedAt: string;
@@ -343,4 +374,5 @@ export const DEFAULT_PLAYER_ID = 'default-player';
 export const DEFAULT_CAMPAIGN_RULES: CampaignRules = {
   firearmsAllowed: true,
   hitDieOnLevelUp: false,
+  encumbranceEnabled: false,
 };

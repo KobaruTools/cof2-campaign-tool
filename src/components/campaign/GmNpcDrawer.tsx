@@ -25,23 +25,18 @@
  * l'extension accolée à sa gauche) : ce tiroir n'a qu'une seule boîte, rien d'autre
  * à côté dont se démarquer.
  */
-import CloseIcon from '@mui/icons-material/Close';
+import GroupsIcon from '@mui/icons-material/Groups';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
-import IconButton from '@mui/material/IconButton';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { AppTooltip } from '@/components/AppTooltip';
+import { GmDrawerHeader } from './GmDrawerHeader';
 import { GM_INVENTORY_PANEL_WIDTH } from './GmInventoryPanel';
+import { NPC_PARAM } from './gmToolsMenu';
 import { NpcPanel } from './NpcPanel';
 import type { Campaign } from '@/lib/campaign/types';
 
 /** Largeur (px, ≥ `sm`) du tiroir — même gabarit que l'extension « Inventaire du MJ ». */
 const WIDTH = GM_INVENTORY_PANEL_WIDTH;
-
-/** Hauteur (px) de l'en-tête collé — même valeur que les autres tiroirs de l'écran de MJ. */
-const HEADER_HEIGHT = 52;
 
 export interface GmNpcDrawerProps {
   /** Campagne courante — porte les catégories de PNJ et sert de cible de persistance. */
@@ -81,32 +76,7 @@ export function GmNpcDrawer({ campaign, open, onClose }: GmNpcDrawerProps) {
           boxShadow: '0 0 24px rgba(0, 0, 0, 0.5)',
         })}
       >
-        <Box
-          sx={(theme) => ({
-            position: 'sticky',
-            top: 0,
-            zIndex: 4,
-            height: HEADER_HEIGHT,
-            display: 'flex',
-            alignItems: 'center',
-            px: { xs: 2, sm: 3 },
-            bgcolor: alpha(theme.palette.background.paper, 0.94),
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-          })}
-        >
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', width: '100%' }}>
-            <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
-              PNJ
-            </Typography>
-            <AppTooltip title="Fermer">
-              <IconButton size="small" onClick={onClose} aria-label="Fermer le tiroir">
-                <CloseIcon />
-              </IconButton>
-            </AppTooltip>
-          </Stack>
-        </Box>
+        <GmDrawerHeader icon={<GroupsIcon fontSize="small" />} title="PNJ" currentParam={NPC_PARAM} onClose={onClose} />
 
         <Box sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
           <NpcPanel campaign={campaign} />

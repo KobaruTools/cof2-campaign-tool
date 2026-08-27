@@ -21,12 +21,16 @@ import {
 import {
   addCustomPresetEntry,
   addPresetEntry,
+  duplicatePresetEntry,
   normalizePresetName,
   normalizePresetNote,
   removePresetEntry,
+  updatePresetEntry,
   type AddPresetEntryOptions,
   type EncounterPreset,
+  type UpdatePresetEntryPatch,
 } from '@/lib/session/encounterPreset';
+import { reassignEncounterPresetsCategory } from '@/lib/campaign/encounterPresetCategory';
 import type { CustomCreature } from '@/lib/session/customCreature';
 
 export type EncounterPresetsStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unconfigured';
@@ -66,10 +70,32 @@ interface EncounterPresetsState {
   ) => Promise<void>;
   /** Retire l'entrée `index` de la composition d'un preset. */
   removeEntry: (campaignId: string, presetId: string, index: number) => Promise<void>;
-  /** Duplique un preset (nouvelle ligne, nom suffixé « (copie) »). */
+  /** Duplique l'entrée `index` : une copie conforme insérée juste après. */
+  duplicateEntry: (campaignId: string, presetId: string, index: number) => Promise<void>;
+  /** Modifie l'entrée `index` (nom, camp, bloc manuel). */
+  updateEntry: (
+    campaignId: string,
+    presetId: string,
+    index: number,
+    patch: UpdatePresetEntryPatch,
+  ) => Promise<void>;
+  /** Duplique un preset (nouvelle ligne, nom suffixé « (copie) », même catégorie). */
   duplicate: (campaignId: string, presetId: string) => Promise<void>;
   /** Supprime un preset. */
   remove: (campaignId: string, presetId: string) => Promise<void>;
+  /**
+   * Déplace un preset vers une catégorie (`null` = « Sans catégorie »), PER-448 —
+   * glisser-déposer ou reclassement manuel. La catégorie elle-même (création,
+   * renommage, suppression, repli) passe par `useCampaignsStore().update`
+   * (`Campaign.encounterPresetCategories`), pas par ce store.
+   */
+  moveToCategory: (campaignId: string, presetId: string, categoryId: string | null) => Promise<void>;
+  /**
+   * Répercute LOCALEMENT (sans écriture réseau) le passage à `null` des presets
+   * listés — appelée après la suppression d'une catégorie, une fois chaque preset
+   * affecté déjà persisté individuellement par l'appelant (`updateEncounterPreset`).
+   */
+  reassignLocalCategory: (campaignId: string, presetIds: string[], categoryId: string | null) => void;
 }
 
 export const useEncounterPresetsStore = create<EncounterPresetsState>()((set, get) => ({
@@ -98,7 +124,11 @@ export const useEncounterPresetsStore = create<EncounterPresetsState>()((set, ge
   },
 
   create: async (campaignId, name) => {
-    const preset: Omit<EncounterPreset, 'id'> = { name: normalizePresetName(name), entries: [] };
+    const preset: Omit<EncounterPreset, 'id'> = {
+      name: normalizePresetName(name),
+      entries: [],
+      categoryId: null,
+    };
     const id = await createEncounterPreset(campaignId, preset);
     set((s) => ({
       byCampaign: {
@@ -138,6 +168,18 @@ export const useEncounterPresetsStore = create<EncounterPresetsState>()((set, ge
     );
   },
 
+  duplicateEntry: async (campaignId, presetId, index) => {
+    await mutateEntries(set, get, campaignId, presetId, (entries) =>
+      duplicatePresetEntry(entries, index),
+    );
+  },
+
+  updateEntry: async (campaignId, presetId, index, patch) => {
+    await mutateEntries(set, get, campaignId, presetId, (entries) =>
+      updatePresetEntry(entries, index, patch),
+    );
+  },
+
   duplicate: async (campaignId, presetId) => {
     const source = get().byCampaign[campaignId]?.find((p) => p.id === presetId);
     if (!source) return;
@@ -145,6 +187,7 @@ export const useEncounterPresetsStore = create<EncounterPresetsState>()((set, ge
       name: normalizePresetName(`${source.name} (copie)`),
       ...(source.note ? { note: source.note } : {}),
       entries: source.entries,
+      categoryId: source.categoryId,
     };
     const id = await createEncounterPreset(campaignId, copy);
     set((s) => ({
@@ -161,6 +204,24 @@ export const useEncounterPresetsStore = create<EncounterPresetsState>()((set, ge
       byCampaign: {
         ...s.byCampaign,
         [campaignId]: (s.byCampaign[campaignId] ?? []).filter((p) => p.id !== presetId),
+      },
+    }));
+  },
+
+  moveToCategory: async (campaignId, presetId, categoryId) => {
+    await updateEncounterPreset(presetId, { categoryId });
+    patchPreset(set, campaignId, presetId, (p) => ({ ...p, categoryId }));
+  },
+
+  reassignLocalCategory: (campaignId, presetIds, categoryId) => {
+    set((s) => ({
+      byCampaign: {
+        ...s.byCampaign,
+        [campaignId]: reassignEncounterPresetsCategory(
+          s.byCampaign[campaignId] ?? [],
+          presetIds,
+          categoryId,
+        ),
       },
     }));
   },

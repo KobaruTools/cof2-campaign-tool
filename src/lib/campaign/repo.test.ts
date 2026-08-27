@@ -25,6 +25,7 @@ const row = (over: Partial<CampaignRow> = {}): CampaignRow => ({
   loot: [],
   gm_inventory: { categories: [], items: [] },
   npc_categories: [],
+  encounter_preset_categories: [],
   created_at: '2026-07-01T10:00:00Z',
   updated_at: '2026-07-02T11:00:00Z',
   ...over,
@@ -35,6 +36,7 @@ describe('parseRules', () => {
     expect(parseRules({ firearmsAllowed: false })).toEqual({
       firearmsAllowed: false,
       hitDieOnLevelUp: false,
+      encumbranceEnabled: false,
     });
   });
 
@@ -42,25 +44,44 @@ describe('parseRules', () => {
     expect(parseRules({ hitDieOnLevelUp: true })).toEqual({
       firearmsAllowed: true,
       hitDieOnLevelUp: true,
+      encumbranceEnabled: false,
     });
   });
 
-  it('retombe sur le défaut (armes à feu OK, dé de vie off) pour un objet vide', () => {
-    expect(parseRules({})).toEqual({ firearmsAllowed: true, hitDieOnLevelUp: false });
+  it('lit encumbranceEnabled (Atlas, PER-447) quand présent', () => {
+    expect(parseRules({ encumbranceEnabled: true })).toEqual({
+      firearmsAllowed: true,
+      hitDieOnLevelUp: false,
+      encumbranceEnabled: true,
+    });
+  });
+
+  it('retombe sur le défaut (armes à feu OK, dé de vie et encombrement off) pour un objet vide', () => {
+    expect(parseRules({})).toEqual({
+      firearmsAllowed: true,
+      hitDieOnLevelUp: false,
+      encumbranceEnabled: false,
+    });
   });
 
   it('ignore une valeur non booléenne et retombe sur le défaut', () => {
     expect(parseRules({ firearmsAllowed: 'yes' as unknown as boolean })).toEqual({
       firearmsAllowed: true,
       hitDieOnLevelUp: false,
+      encumbranceEnabled: false,
     });
   });
 
   it('tolère null / un tableau (jsonb inattendu) sans lever', () => {
-    expect(parseRules(null)).toEqual({ firearmsAllowed: true, hitDieOnLevelUp: false });
+    expect(parseRules(null)).toEqual({
+      firearmsAllowed: true,
+      hitDieOnLevelUp: false,
+      encumbranceEnabled: false,
+    });
     expect(parseRules([1, 2] as unknown as Record<string, never>)).toEqual({
       firearmsAllowed: true,
       hitDieOnLevelUp: false,
+      encumbranceEnabled: false,
     });
   });
 });
@@ -71,11 +92,12 @@ describe('rowToCampaign', () => {
       id: 'c1',
       name: 'La Tour Écarlate',
       description: null,
-      rules: { firearmsAllowed: true, hitDieOnLevelUp: false },
+      rules: { firearmsAllowed: true, hitDieOnLevelUp: false, encumbranceEnabled: false },
       rumors: [],
       loot: [],
       gmInventory: { categories: [], items: [] },
       npcCategories: [],
+      encounterPresetCategories: [],
       createdAt: '2026-07-01T10:00:00Z',
       updatedAt: '2026-07-02T11:00:00Z',
     });
@@ -84,7 +106,11 @@ describe('rowToCampaign', () => {
   it('conserve une description non nulle et parse des règles partielles', () => {
     const c = rowToCampaign(row({ description: 'Notes du MJ', rules: {} }));
     expect(c.description).toBe('Notes du MJ');
-    expect(c.rules).toEqual({ firearmsAllowed: true, hitDieOnLevelUp: false });
+    expect(c.rules).toEqual({
+      firearmsAllowed: true,
+      hitDieOnLevelUp: false,
+      encumbranceEnabled: false,
+    });
   });
 });
 
@@ -286,7 +312,11 @@ describe('round-trip des règles (écriture → lecture)', () => {
   // `parseRules` doit relire exactement ce qui a été écrit. On verrouille la
   // symétrie sans mocker Supabase (l'écriture réseau reste hors périmètre unitaire).
   it('parseRules relit fidèlement des règles sérialisées', () => {
-    const rules: CampaignRules = { firearmsAllowed: false, hitDieOnLevelUp: true };
+    const rules: CampaignRules = {
+      firearmsAllowed: false,
+      hitDieOnLevelUp: true,
+      encumbranceEnabled: true,
+    };
     expect(parseRules(rules as unknown as Json)).toEqual(rules);
   });
 });

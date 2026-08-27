@@ -24,6 +24,7 @@ import {
   updateCampaign,
   type Campaign,
   type CampaignRules,
+  type EncounterPresetCategory,
   type GmInventory,
   type LootItem,
   type NpcCategory,
@@ -68,6 +69,7 @@ interface CampaignsState {
       loot?: LootItem[];
       gmInventory?: GmInventory;
       npcCategories?: NpcCategory[];
+      encounterPresetCategories?: EncounterPresetCategory[];
     },
   ) => Promise<void>;
   /**
@@ -138,6 +140,7 @@ export const useCampaignsStore = create<CampaignsState>()((set, get) => ({
       loot?: LootItem[];
       gmInventory?: GmInventory;
       npcCategories?: NpcCategory[];
+      encounterPresetCategories?: EncounterPresetCategory[];
     } = {};
     if (patch.name !== undefined) normalized.name = patch.name.trim() || 'Nouvelle campagne';
     if (patch.description !== undefined) normalized.description = patch.description?.trim() || null;
@@ -146,6 +149,9 @@ export const useCampaignsStore = create<CampaignsState>()((set, get) => ({
     if (patch.loot !== undefined) normalized.loot = patch.loot;
     if (patch.gmInventory !== undefined) normalized.gmInventory = patch.gmInventory;
     if (patch.npcCategories !== undefined) normalized.npcCategories = patch.npcCategories;
+    if (patch.encounterPresetCategories !== undefined) {
+      normalized.encounterPresetCategories = patch.encounterPresetCategories;
+    }
     const updated = await updateCampaign(id, normalized);
     set((state) => ({ campaigns: state.campaigns.map((c) => (c.id === id ? updated : c)) }));
   },

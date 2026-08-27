@@ -11,10 +11,12 @@
  */
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmNpcDrawer } from './GmNpcDrawer';
+import { NPC_PARAM } from './gmToolsMenu';
 import type { Campaign } from '@/lib/campaign/types';
 
-/** Nom du paramètre d'URL qui ouvre le tiroir de PNJ (booléen : `?npc=1`). */
-export const NPC_PARAM = 'npc';
+/** Nom du paramètre d'URL qui ouvre le tiroir de PNJ (booléen : `?npc=1`) — défini dans
+ * `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à l'API externe. */
+export { NPC_PARAM };
 
 export function GmNpcDrawerHost({ campaign }: { campaign: Campaign }) {
   const router = useRouter();

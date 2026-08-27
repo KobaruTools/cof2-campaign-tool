@@ -12,9 +12,12 @@
  */
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmHistoryDrawer } from './GmHistoryDrawer';
+import { HISTORY_PARAM } from './gmToolsMenu';
 
-/** Nom du paramètre d'URL qui ouvre le tiroir d'historique (booléen : `?history=1`). */
-export const HISTORY_PARAM = 'history';
+/** Nom du paramètre d'URL qui ouvre le tiroir d'historique (booléen : `?history=1`) —
+ * défini dans `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à
+ * l'API externe. */
+export { HISTORY_PARAM };
 
 export function GmHistoryDrawerHost({ campaignId }: { campaignId: string }) {
   const router = useRouter();

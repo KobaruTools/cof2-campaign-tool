@@ -55,12 +55,18 @@ export interface EncounterPresetEntry {
   count: number;
 }
 
-/** Un combat préparé à l'avance : nom, note libre, composition. */
+/** Un combat préparé à l'avance : nom, note libre, composition, catégorie. */
 export interface EncounterPreset {
   id: string;
   name: string;
   note?: string;
   entries: EncounterPresetEntry[];
+  /**
+   * Catégorie d'appartenance (PER-448, retour propriétaire), ou `null` = « Sans
+   * catégorie ». Référence un id de `Campaign.encounterPresetCategories` SANS FK
+   * en base — même motif que `Npc.categoryId`.
+   */
+  categoryId: string | null;
 }
 
 /** Nom nettoyé et tronqué ; chaîne vide/espaces → nom par défaut (le champ reste obligatoire). */
@@ -165,6 +171,61 @@ export function removePresetEntry(
 ): EncounterPresetEntry[] {
   if (index < 0 || index >= entries.length) return [...entries];
   return entries.filter((_e, i) => i !== index);
+}
+
+/**
+ * Duplique l'entrée à `index` : une COPIE conforme insérée JUSTE APRÈS l'originale — même
+ * geste que `duplicateCreature` sur une instance du combat en cours. No-op si hors bornes.
+ */
+export function duplicatePresetEntry(
+  entries: readonly EncounterPresetEntry[],
+  index: number,
+): EncounterPresetEntry[] {
+  if (index < 0 || index >= entries.length) return [...entries];
+  const copy: EncounterPresetEntry = { ...entries[index] };
+  const next = [...entries];
+  next.splice(index + 1, 0, copy);
+  return next;
+}
+
+/** Champs d'une entrée modifiables APRÈS son ajout — même esprit qu'`UpdateCreaturePatch`. */
+export interface UpdatePresetEntryPatch {
+  /** Nom personnalisé. Vide / espaces seuls = RETIRER le nom (retour au nom du bestiaire). */
+  name?: string;
+  /** Camp. */
+  side?: CreatureSide;
+  /**
+   * Bloc de stats saisi à la main. **Ignoré pour une entrée du bestiaire**, et si le socle
+   * obligatoire (initiative, PV, défense) n'est pas complet — même garde qu'`UpdateCreaturePatch`.
+   */
+  custom?: CustomCreature;
+}
+
+/**
+ * Applique `patch` à l'entrée `index` (identité INCHANGÉE : ni le slug ni la nature
+ * bestiaire/manuelle ne bougent). No-op si hors bornes.
+ */
+export function updatePresetEntry(
+  entries: readonly EncounterPresetEntry[],
+  index: number,
+  patch: UpdatePresetEntryPatch,
+): EncounterPresetEntry[] {
+  if (index < 0 || index >= entries.length) return [...entries];
+  return entries.map((entry, i) => {
+    if (i !== index) return entry;
+    const next: EncounterPresetEntry = { ...entry };
+    if ('name' in patch) {
+      const name = normalizeCreatureName(patch.name);
+      if (name) next.name = name;
+      else delete next.name;
+    }
+    if (patch.side) next.side = patch.side;
+    if (patch.custom && entry.custom) {
+      const normalized = normalizeCustomCreature(patch.custom);
+      if (normalized) next.custom = normalized;
+    }
+    return next;
+  });
 }
 
 /**

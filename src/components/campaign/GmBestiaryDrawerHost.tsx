@@ -12,9 +12,12 @@
  */
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmBestiaryDrawer } from './GmBestiaryDrawer';
+import { BESTIARY_PARAM } from './gmToolsMenu';
 
-/** Nom du paramètre d'URL qui ouvre le tiroir de bestiaire (booléen : `?bestiary=1`). */
-export const BESTIARY_PARAM = 'bestiary';
+/** Nom du paramètre d'URL qui ouvre le tiroir de bestiaire (booléen : `?bestiary=1`) —
+ * défini dans `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à
+ * l'API externe. */
+export { BESTIARY_PARAM };
 
 export function GmBestiaryDrawerHost() {
   const router = useRouter();

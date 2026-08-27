@@ -4,11 +4,13 @@ import {
   ENCOUNTER_PRESET_DEFAULT_NAME,
   addCustomPresetEntry,
   addPresetEntry,
+  duplicatePresetEntry,
   launchEncounterPreset,
   normalizePresetName,
   normalizePresetNote,
   removePresetEntry,
   reviveEntries,
+  updatePresetEntry,
   type EncounterPreset,
   type EncounterPresetEntry,
 } from './encounterPreset';
@@ -69,6 +71,46 @@ describe('removePresetEntry', () => {
   });
 });
 
+describe('duplicatePresetEntry', () => {
+  it('insère une copie conforme juste après l’originale', () => {
+    const entries = addPresetEntry(addPresetEntry([], 'gobelin'), 'bandit-de-base');
+    expect(duplicatePresetEntry(entries, 0)).toEqual([entries[0], { ...entries[0] }, entries[1]]);
+  });
+
+  it('no-op hors bornes', () => {
+    const entries = addPresetEntry([], 'gobelin');
+    expect(duplicatePresetEntry(entries, 5)).toEqual(entries);
+    expect(duplicatePresetEntry(entries, -1)).toEqual(entries);
+  });
+});
+
+describe('updatePresetEntry', () => {
+  it('renomme, change de camp, no-op hors bornes', () => {
+    const entries = addPresetEntry([], 'gobelin', { side: 'enemy' });
+    const renamed = updatePresetEntry(entries, 0, { name: 'Grishnak le borgne', side: 'ally' });
+    expect(renamed[0]).toEqual({ slug: 'gobelin', side: 'ally', count: 1, name: 'Grishnak le borgne' });
+    expect(updatePresetEntry(entries, 5, { name: 'x' })).toEqual(entries);
+  });
+
+  it('un nom vide RETIRE le nom personnalisé', () => {
+    const entries = addPresetEntry([], 'gobelin', { name: 'Garde du corps' });
+    expect(updatePresetEntry(entries, 0, { name: '   ' })[0]).toEqual({ slug: 'gobelin', side: 'enemy', count: 1 });
+  });
+
+  it('le bloc manuel est ignoré pour une entrée du bestiaire', () => {
+    const entries = addPresetEntry([], 'gobelin');
+    expect(updatePresetEntry(entries, 0, { custom: CUSTOM })).toEqual(entries);
+  });
+
+  it('le bloc manuel est appliqué pour une entrée manuelle valide, ignoré si invalide', () => {
+    const entries = addCustomPresetEntry([], CUSTOM);
+    const updated = updatePresetEntry(entries, 0, { custom: { ...CUSTOM, hitPoints: 20 } });
+    expect(updated[0].custom?.hitPoints).toBe(20);
+    const untouched = updatePresetEntry(entries, 0, { custom: { initiative: 2 } as CustomCreature });
+    expect(untouched[0].custom?.hitPoints).toBe(CUSTOM.hitPoints);
+  });
+});
+
 describe('reviveEntries', () => {
   it('écarte les entrées mal formées', () => {
     expect(
@@ -94,6 +136,7 @@ describe('launchEncounterPreset', () => {
     const preset: EncounterPreset = {
       id: 'p1',
       name: 'Embuscade',
+      categoryId: null,
       entries: [
         { slug: 'gobelin', side: 'enemy', count: 2 },
         { slug: CUSTOM_CREATURE_SLUG, custom: CUSTOM, side: 'ally', name: 'Allié', count: 1 },
@@ -110,6 +153,7 @@ describe('launchEncounterPreset', () => {
     const preset: EncounterPreset = {
       id: 'p1',
       name: 'Embuscade',
+      categoryId: null,
       entries: [
         { slug: 'gobelin', side: 'enemy', count: 1 },
         { slug: 'garde', side: 'ally', count: 1 },
@@ -123,7 +167,7 @@ describe('launchEncounterPreset', () => {
   });
 
   it('un preset vide lance un combat vide', () => {
-    const state = launchEncounterPreset({ id: 'p1', name: 'Vide', entries: [] });
+    const state = launchEncounterPreset({ id: 'p1', name: 'Vide', categoryId: null, entries: [] });
     expect(state.creatures).toEqual([]);
   });
 
@@ -131,6 +175,7 @@ describe('launchEncounterPreset', () => {
     const preset: EncounterPreset = {
       id: 'p1',
       name: 'Embuscade',
+      categoryId: null,
       entries: [{ slug: 'gobelin', side: 'enemy', count: 1 }],
     };
     const first = launchEncounterPreset(preset);

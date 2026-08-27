@@ -14,18 +14,17 @@
  * direct l'ouvre.
  */
 import { useState } from 'react';
-import CloseIcon from '@mui/icons-material/Close';
 import DiamondIcon from '@mui/icons-material/Diamond';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import type { Campaign } from '@/lib/campaign/types';
+import { GmDrawerHeader } from './GmDrawerHeader';
 import { GM_INVENTORY_PANEL_WIDTH, GmInventoryPanel } from './GmInventoryPanel';
+import { LOOT_PARAM } from './gmToolsMenu';
 import { LootTreasurePanel } from './LootTreasurePanel';
 
 /** Largeur (px, ≥ `md`) de la colonne Butin proprement dite (hors extension). */
@@ -125,23 +124,12 @@ export function GmLootDrawer({ campaign, open, onClose, pendingTarget }: GmLootD
           boxShadow: '-16px 0 24px rgba(0, 0, 0, 0.5)',
         })}
       >
-        <Box
-          sx={(theme) => ({
-            position: 'sticky',
-            top: 0,
-            zIndex: 2,
-            px: { xs: 2, sm: 3 },
-            py: 1.5,
-            bgcolor: alpha(theme.palette.background.paper, 0.94),
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-          })}
-        >
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold', flexGrow: 1 }}>
-              Butin
-            </Typography>
+        <GmDrawerHeader
+          icon={<DiamondIcon fontSize="small" />}
+          title="Butin"
+          currentParam={LOOT_PARAM}
+          onClose={onClose}
+          actions={
             <AppTooltip title={mobileView === 'inventory' ? 'Revenir au butin' : 'Voir l’inventaire du MJ'}>
               <IconButton
                 size="small"
@@ -152,13 +140,8 @@ export function GmLootDrawer({ campaign, open, onClose, pendingTarget }: GmLootD
                 {mobileView === 'inventory' ? <DiamondIcon fontSize="small" /> : <Inventory2Icon fontSize="small" />}
               </IconButton>
             </AppTooltip>
-            <AppTooltip title="Fermer">
-              <IconButton size="small" onClick={onClose} aria-label="Fermer le tiroir">
-                <CloseIcon />
-              </IconButton>
-            </AppTooltip>
-          </Stack>
-        </Box>
+          }
+        />
 
         <Box sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
           <LootTreasurePanel campaign={campaign} pending={pendingTarget?.pool === 'random'} />

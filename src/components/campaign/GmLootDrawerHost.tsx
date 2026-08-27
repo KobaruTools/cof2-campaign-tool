@@ -35,6 +35,7 @@ import Typography from '@mui/material/Typography';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { categoryDropId } from './GmInventoryPanel';
 import { GmLootDrawer, type PendingDropTarget } from './GmLootDrawer';
+import { LOOT_PARAM } from './gmToolsMenu';
 import { RANDOM_POOL_DROP_ID } from './LootTreasurePanel';
 import type { Campaign } from '@/lib/campaign/types';
 import {
@@ -47,8 +48,10 @@ import type { EquipmentLine } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { useCampaignsStore } from '@/stores/campaigns';
 
-/** Nom du paramètre d'URL qui ouvre le tiroir de butin (booléen : `?loot=1`). */
-export const LOOT_PARAM = 'loot';
+/** Nom du paramètre d'URL qui ouvre le tiroir de butin (booléen : `?loot=1`) — défini
+ * dans `gmToolsMenu.tsx` (source unique, cf. son en-tête), réexporté ici pour ne rien
+ * changer à l'API externe de ce fichier. */
+export { LOOT_PARAM };
 
 /** Payload `@dnd-kit` posé par `LootRow`/`InventoryItemRow` sur l'objet glissé. */
 interface LootDragData {
