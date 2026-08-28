@@ -791,7 +791,9 @@ export function BestiaryStatBlock({
           </AppTooltip>
         )}
         {nc && <MetaPill label="NC">{nc}</MetaPill>}
-        {creature.size && <MetaPill>{CREATURE_SIZE_LABELS[creature.size]}</MetaPill>}
+        {/* Taille absente en donnée (rare, cf. schema.ts) = « moyenne » par défaut (même
+            convention que la fiche perso, `baseAncestrySize`) : toujours une pastille. */}
+        <MetaPill>{CREATURE_SIZE_LABELS[creature.size ?? 'moyenne']}</MetaPill>
         {creature.nature?.map((n) => (
           <MetaPill key={n}>{CREATURE_NATURE_LABELS[n]}</MetaPill>
         ))}
