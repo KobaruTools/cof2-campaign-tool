@@ -24,6 +24,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import Diversity3Icon from '@mui/icons-material/Diversity3';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -52,7 +53,6 @@ import {
 } from '@dnd-kit/core';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -61,6 +61,7 @@ import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -741,7 +742,7 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
               </Stack>
             ) : (
               <ToolbarActionButton
-                icon={<AddIcon fontSize="small" />}
+                icon={<CreateNewFolderOutlinedIcon fontSize="small" />}
                 label="Nouvelle catégorie"
                 onClick={() => setNewCategoryOpen(true)}
                 disabled={busy}
@@ -757,9 +758,11 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
         </Stack>
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-            <CircularProgress size={24} />
-          </Box>
+          <Stack spacing={0.75} aria-hidden>
+            <Skeleton variant="rounded" height={64} />
+            <Skeleton variant="rounded" height={64} />
+            <Skeleton variant="rounded" height={64} />
+          </Stack>
         ) : npcs.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             Aucun PNJ pour l’instant. Créez-en un ci-dessus pour le retrouver ici.

@@ -44,7 +44,6 @@ import {
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -53,6 +52,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -697,9 +697,11 @@ export function EncounterPresetsPanel({ campaign, hasCurrentCombat, onLaunch }: 
         </Stack>
 
         {status === 'loading' ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-            <CircularProgress size={24} />
-          </Box>
+          <Stack spacing={0.75} aria-hidden>
+            <Skeleton variant="rounded" height={64} />
+            <Skeleton variant="rounded" height={64} />
+            <Skeleton variant="rounded" height={64} />
+          </Stack>
         ) : presets.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             Aucun combat préparé pour l&apos;instant. Composez-en un à l&apos;avance : il restera
