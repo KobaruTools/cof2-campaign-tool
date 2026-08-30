@@ -62,7 +62,12 @@ export function AppTooltip({
   children,
   ...rest
 }: AppTooltipProps) {
-  const isTouch = useMediaQuery('(pointer: coarse)');
+  // `noSsr` : sans lui, MUI rend `false` au premier client render (aligné SSR)
+  // puis bascule après montage — ce qui fait passer `open` d'`undefined` à une
+  // valeur définie en cours de vie du `Tooltip`, déclenchant l'avertissement
+  // MUI "changing uncontrolled ... to controlled" en masse à chaque montage
+  // sur mobile (ex. remount des lignes pendant un glisser-déposer).
+  const isTouch = useMediaQuery('(pointer: coarse)', { noSsr: true });
   const [touchOpen, setTouchOpen] = React.useState(false);
   // Le `touchend` de l'appui long qui ouvre la bulle cible encore l'élément
   // d'origine (capturé au `touchstart`, avant que le fond assombri n'existe) :

@@ -177,6 +177,7 @@ import {
 import { stepTurn, turnDirectionFromKey, type TurnDirection } from '@/lib/ui/turnOrder';
 import { applyManualOrder, isDefeatedCreature, relegateSidelined } from '@/lib/session/initiativeOrder';
 import type { CreatureSide } from '@/lib/ui/creature';
+import { MetaPill } from '@/components/MetaPill';
 import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CollapsibleLabelButton } from '@/components/CollapsibleLabelButton';
@@ -244,6 +245,13 @@ export interface InitiativeRow {
   profileLabel: string;
   /** Couleur d'accent du profil (teinte du texte de profil). */
   profileColor: string;
+  /**
+   * Pastilles « taille » / « type » (nature) de la créature, mêmes libellés que le
+   * bestiaire (`BestiaryStatBlock`). Absentes pour un personnage joueur/compagnon, et pour
+   * une créature dont le bloc n'est pas chargé (repli d'affichage diffusé, PER-293).
+   */
+  sizeLabel?: string;
+  natureLabel?: string;
   /**
    * Id du profil (ex. `'guerrier'`) — pour l'icône de classe (`ClassIcon`) du condensé replié de
    * la fiche. Absent pour les créatures, qui n'ont pas de profil.
@@ -2517,24 +2525,22 @@ function CombatantColumn({
             transition: 'opacity 0.15s',
           }}
         >
-          <AppTooltip title="Glisser pour réordonner librement">
-            <IconButton
-              ref={order.dragHandle.setActivatorNodeRef}
-              {...order.dragHandle.attributes}
-              {...order.dragHandle.listeners}
-              size="small"
-              aria-label={`Réordonner ${row.name}`}
-              sx={{
-                color: 'text.secondary',
-                bgcolor: 'rgba(0, 0, 0, 0.45)',
-                cursor: 'grab',
-                touchAction: 'none',
-                '&:active': { cursor: 'grabbing' },
-              }}
-            >
-              <DragIndicatorIcon fontSize="small" />
-            </IconButton>
-          </AppTooltip>
+          <IconButton
+            ref={order.dragHandle.setActivatorNodeRef}
+            {...order.dragHandle.attributes}
+            {...order.dragHandle.listeners}
+            size="small"
+            aria-label={`Réordonner ${row.name}`}
+            sx={{
+              color: 'text.secondary',
+              bgcolor: 'rgba(0, 0, 0, 0.45)',
+              cursor: 'grab',
+              touchAction: 'none',
+              '&:active': { cursor: 'grabbing' },
+            }}
+          >
+            <DragIndicatorIcon fontSize="small" />
+          </IconButton>
           <AppTooltip title={order.pinned ? 'Épinglé — cliquer pour désépingler' : 'Épingler cette position'}>
             <IconButton
               size="small"
@@ -2630,6 +2636,15 @@ function CombatantColumn({
               <Typography variant="caption" sx={{ display: 'block', color: row.profileColor, fontWeight: 600 }} noWrap>
                 {row.profileLabel}
               </Typography>
+            )}
+            {/* Pastille taille (bestiaire) — masquée en projection (pas d'info supplémentaire à
+                révéler aux joueurs pour l'instant). Le type (nature) reste réservé à la carte
+                DÉTAILLÉE : la compacte n'a pas la place pour deux pastilles en plus du profil. */}
+            {!projection && row.isCreature && row.sizeLabel && (
+              <Stack direction="row" spacing={0.5} sx={{ mt: 0.25 }}>
+                <MetaPill>{row.sizeLabel}</MetaPill>
+                {!compact && row.natureLabel && <MetaPill>{row.natureLabel}</MetaPill>}
+              </Stack>
             )}
           </Box>
           {/* Repère visuel « appliquer un état » (écran de MJ) : indique que l'en-tête ouvre le
@@ -3020,14 +3035,14 @@ export function InitiativeTracker({
   // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) : ils restent
   // visibles côté MJ mais absents de l'écran projeté, et l'ordre y est rendu NU — la relégation
   // déplacerait la carte d'une créature à l'instant même où sa croix annonce sa mort à la table.
-  // Sur l'ÉCRAN DE MJ, à l'inverse, les combattants hors du chemin sont repoussés en fin de bande
-  // (PER-302 : masqués puis vaincus), le combattant actif étant toujours épargné.
+  // Sur l'ÉCRAN DE MJ, à l'inverse, les combattants MASQUÉS sont repoussés en fin de bande
+  // (PER-302). Une créature VAINCUE, elle, garde sa place (PER-312, cf. `relegateSidelined`).
   // Ordre manuel du MJ (PER-436) : DERNIÈRE couche avant rendu, appliquée par-dessus la
   // relégation — commodité d'AFFICHAGE, elle ne change ni l'initiative ni la relégation, mais
   // replace les combattants explicitement glissés par le MJ. Jamais en projection.
   const displayedRows = projection
     ? rows.filter((r) => !r.hidden)
-    : applyManualOrder(relegateSidelined(rows, currentTurnKey), orderControls?.manualOrder ?? {});
+    : applyManualOrder(relegateSidelined(rows), orderControls?.manualOrder ?? {});
   /**
    * Avance (+1) ou recule (−1) d'un cran dans l'ordre d'initiative (PER-299). Toute l'arithmétique
    * — bouclage aux deux bouts, incrément/décrément de manche, saut des créatures vaincues, cas
