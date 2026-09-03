@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "date": "2026-09-03",
+    "items": [
+      "Ajout de repères techniques cachés pour faciliter la maintenance du glossaire, avec un outil pour les capturer automatiquement.",
+      "Correction d'un bug où une infobulle pouvait effacer un repère déjà posé sur un élément.",
+      "Amélioration de la stabilité de la capture d'écran des pages et sections dépliées.",
+      "Prise en charge de cas d'affichage supplémentaires et de nouvelles scènes de dialogue dans les captures.",
+      "Ajout de la voie des saisons : bouton dédié, âge apparent modifié, et tourbillon pour le compagnon.",
+      "Corrections suite aux retours sur la voie des fées/farfadets : sorts gratuits, repli conditionnel, compteurs d'utilisation.",
+      "La poudre de fée varie maintenant selon le rang emprunté.",
+      "Ajout d'une page listant toutes les capacités du jeu, avec filtres et tri (voie, rang, action, sort).",
+      "Ajout de la voie du templier et d'une immunité temporaire que le MJ peut poser manuellement.",
+      "Ajout de la voie des vermines : compagnon scorpion ou araignée, affinité au poison, vermine supérieure.",
+      "Calcul automatique de la durée de certains effets selon la caractéristique du lanceur.",
+      "Ajout de cartes de capacités spéciales dans la mini-fiche de voie.",
+      "Corrections suite aux retours sur la voie des vermines : type de dégâts d'arme, cartes de rang 8, monture.",
+      "Ajout d'une bibliothèque pour préparer et sauvegarder des combats à l'avance.",
+      "Ajustement d'affichage pour que le badge de source tienne bien sur les cartes d'objet.",
+      "Ajout d'une règle maison de bonus de dégâts pour tout objet enchanté.",
+      "Ajout de catégories glisser-déposer et d'un tiroir dédié pour les combats préparés.",
+      "La taille par défaut affichée est maintenant \"moyenne\".",
+      "Remplacement des anciens indicateurs de chargement par des squelettes visuels plus agréables.",
+      "Retrait du filigrane d'identité personnelle sur le livre de base.",
+      "Ajout d'une infobulle mobile sur la poignée de glisser-déposer de l'initiative.",
+      "Ajout d'un rappel des caractéristiques conseillées à l'étape de création correspondante.",
+      "Ajout d'une étoile au survol des caractéristiques recommandées.",
+      "Le générateur de nom parle maintenant de \"genre\" plutôt que de \"sexe\".",
+      "Amélioration visuelle et de performance du glisser-déposer dans l'ordre d'initiative.",
+      "Ajout d'un avertissement indiquant que la bourse et le choix de départ peuvent être réglés après la création du personnage.",
+      "Remplacement des anciens bandeaux d'avertissement par un simple triangle à côté du nom.",
+      "Retrait d'une modification liée à l'encombrement intégrée par erreur dans une mise à jour précédente.",
+      "L'emprunt d'argent utilise maintenant automatiquement la dénomination supérieure quand c'est nécessaire.",
+      "Correction du calcul des dégâts à mains nues pour utiliser le meilleur score entre Force et Agilité avec les Poings de fer."
+    ]
+  }
+]
