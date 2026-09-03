@@ -26,7 +26,13 @@ import { applyDamage, healHp, resetHp } from '@/lib/character/gauges';
 import { storageKeys } from '@/lib/storage/keys';
 import { summarize } from '@/lib/character/summary';
 import { classColor, prestigeCategoryColor, ANCESTRY_COLOR, MAGE_PATH_COLOR } from '@/lib/ui/classColors';
-import { creatureNcLabel, SIDE_ACCENT, SIDE_LABELS } from '@/lib/ui/creature';
+import {
+  creatureNcLabel,
+  CREATURE_NATURE_LABELS,
+  CREATURE_SIZE_LABELS,
+  SIDE_ACCENT,
+  SIDE_LABELS,
+} from '@/lib/ui/creature';
 import type { DamageKind } from '@/components/sheet/HpGauge';
 import type {
   CombatAttackKind,
@@ -67,6 +73,8 @@ import {
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
 import { unlockedGroupBuffIds } from '@/lib/character/groupBuffs';
+import { regenerationAmount } from '@/lib/session/regeneration';
+import { SCOPE_SHORT } from '@/lib/ui/damageReduction';
 import { passiveAuraCarrierIds, passiveAuraStatusesFor } from '@/lib/character/partyAuras';
 import { effectiveFeatureIdsForMods } from '@/lib/character/choices';
 import { withReceivedCrystals } from '@/lib/character/crystals';
@@ -366,7 +374,9 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     setCreatureVisibility,
     setCreatureDepletion,
     setCurrentTurnKey,
-    setRoundNumber,
+    setRoundNumber: setRoundNumberBase,
+    regenBlocked,
+    setRegenBlocked,
     applyStatus,
     removeStatus,
     applyStatusToMany,
@@ -841,6 +851,9 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             // sa base côté données. Absente → repli sur l'icône « person » du tracker.
             portraitSrc: blob.illustration,
             profileLabel: nc ? `NC ${nc}` : isAlly ? SIDE_LABELS.ally : 'PNJ',
+            // Repli « moyenne » si absente en donnée (même convention que `BestiaryStatBlock`).
+            sizeLabel: CREATURE_SIZE_LABELS[blob.size ?? 'moyenne'],
+            natureLabel: blob.nature?.map((n) => CREATURE_NATURE_LABELS[n]).join(', '),
             profileColor: accent,
             accentColor: accent,
             initiative,
@@ -853,6 +866,18 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             // États EFFECTIFS (posés + déduits) — servent les badges des deux écrans (PER-282).
             appliedStatuses,
             depletion,
+            // Régénération automatique par tour (PER-456) : absente pour une créature sans ce trait
+            // de bestiaire (cas courant) ET pour une créature créée à la main (`customCreatureBlob`
+            // n'en pose jamais). Le montant réel du tour suivant est calculé par `setRoundNumber`
+            // ci-dessus ; ici on n'expose que l'affichage + la bascule de blocage manuel du MJ.
+            regeneration: blob.regeneration
+              ? {
+                  amount: blob.regeneration.amount,
+                  blockedByLabel: blob.regeneration.blockedBy?.map((t) => SCOPE_SHORT[t]).join(', '),
+                  blockedThisRound: regenBlocked[inst.id] === true,
+                  onToggleBlocked: () => setRegenBlocked(inst.id, !(regenBlocked[inst.id] === true)),
+                }
+              : undefined,
             onDamage: (amount: number, kind: DamageKind) =>
               setCreatureDepletion(inst.id, applyDamage(depletion, amount, kind, maxHp)),
             onHeal: (amount: number) => setCreatureDepletion(inst.id, healHp(depletion, amount)),
@@ -861,7 +886,17 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           },
         ];
       }),
-    [labeledCreatures, blobs, creatureInfo, depletions, setCreatureDepletion, setCreatureVisibility, statuses],
+    [
+      labeledCreatures,
+      blobs,
+      creatureInfo,
+      depletions,
+      setCreatureDepletion,
+      setCreatureVisibility,
+      statuses,
+      regenBlocked,
+      setRegenBlocked,
+    ],
   );
 
   // Ordre d'initiative décroissant, avec départage à ÉGALITÉ (couche pure `initiativeOrder`) :
@@ -878,6 +913,25 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
   // `currentTurnKey === null` reste ainsi le signal fiable « combat non commencé » (bouton
   // « Commencer le combat », condensé de la bande d'initiative de la fiche). Ne touche NI aux
   // états NI aux PV (contrairement à `resetCombat`).
+  // Régénération automatique par tour (PER-456, troll/hydre/élémentaire d'eau…) : calculée ICI —
+  // seule couche à connaître à la fois le bloc de bestiaire de chaque instance ET son éventuel
+  // blocage manuel `regenBlocked` du tour qui s'achève — puis appliquée ATOMIQUEMENT avec
+  // l'avancée de manche (`setRoundNumberBase` vide `regenBlocked` juste après en avoir lu l'état,
+  // cf. `combatState.setRoundNumber`/`purgeUnpinnedOrder`). Une créature créée à la main
+  // (`inst.custom`, PER-455) n'a pas de bloc de bestiaire à porter cette règle : jamais concernée.
+  const setRoundNumber = useCallback(
+    (nextRoundNumber: number) => {
+      const healDeltas: Record<string, number> = {};
+      for (const inst of creatures) {
+        if (inst.custom) continue;
+        const amount = regenerationAmount(blobs[inst.slug]?.regeneration, regenBlocked[inst.id] === true);
+        if (amount > 0) healDeltas[inst.id] = amount;
+      }
+      setRoundNumberBase(nextRoundNumber, healDeltas);
+    },
+    [creatures, blobs, regenBlocked, setRoundNumberBase],
+  );
+
   const restartRounds = useCallback(() => restartRoundsBase(null), [restartRoundsBase]);
 
   const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';

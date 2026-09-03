@@ -31,6 +31,7 @@ import {
   setCombatantActed,
   setCurrentTurnKey,
   setManualPosition,
+  setRegenBlocked,
   setRoundNumber,
   toggleCombatantPin,
   reviveState,
@@ -70,6 +71,7 @@ describe('reviveStateObject', () => {
       manualOrder: { 'c-2': 'c-1', 'char-9': null },
       pinnedOrderKeys: ['c-2'],
       partyAuraCarrierIds: { 'frouin-stench': ['c-1'] },
+      regenBlocked: { 'c-1': true },
     };
     expect(reviveStateObject(state)).toEqual(state);
   });
@@ -648,6 +650,7 @@ describe('resetCombat', () => {
     manualOrder: { 'c-1': 'c-2' },
     pinnedOrderKeys: ['c-1'],
     partyAuraCarrierIds: {},
+    regenBlocked: { 'c-1': true },
   };
 
   it('vide les états, restaure les PV des créatures, recommence à la manche 1 et met le tour courant à null', () => {
@@ -663,6 +666,10 @@ describe('resetCombat', () => {
     expect(reset.actedKeys).toEqual([]);
     expect(reset.manualOrder).toEqual({});
     expect(reset.pinnedOrderKeys).toEqual([]);
+  });
+
+  it('vide les blocages de régénération (PER-456)', () => {
+    expect(resetCombat(inCombat).regenBlocked).toEqual({});
   });
 
   it('conserve le roster de créatures (creatures + nextInstanceId)', () => {
@@ -697,14 +704,16 @@ describe('restartRounds', () => {
     manualOrder: { 'c-1': 'char-7', 'char-8': null },
     pinnedOrderKeys: ['c-1'],
     partyAuraCarrierIds: {},
+    regenBlocked: { 'c-1': true },
   };
 
-  it('purge le badge « a déjà joué » et l’ordre manuel NON épinglé (PER-436)', () => {
+  it('purge le badge « a déjà joué », l’ordre manuel NON épinglé et les blocages de régénération (PER-436, PER-456)', () => {
     const restarted = restartRounds(inCombat, 'char-7');
     expect(restarted.actedKeys).toEqual([]);
     expect(restarted.manualOrder).toEqual({ 'c-1': 'char-7' });
     // L'épinglage lui-même n'est pas retiré : `pinnedOrderKeys` survit tel quel.
     expect(restarted.pinnedOrderKeys).toEqual(['c-1']);
+    expect(restarted.regenBlocked).toEqual({});
   });
 
   it('recommence à la manche 1 et repositionne le tour courant sur le premier fourni', () => {
@@ -778,18 +787,20 @@ describe('setRoundNumber', () => {
     expect(state.roundNumber).toBe(1);
   });
 
-  it('purge le badge « a déjà joué » et l’ordre manuel non épinglé quand la manche change (PER-436)', () => {
+  it('purge le badge « a déjà joué », l’ordre manuel non épinglé et les blocages de régénération quand la manche change (PER-436, PER-456)', () => {
     const state: GmCombatState = {
       ...EMPTY_COMBAT_STATE,
       roundNumber: 2,
       actedKeys: ['c-1', 'c-2'],
       manualOrder: { 'c-1': 'c-3', 'c-2': null },
       pinnedOrderKeys: ['c-2'],
+      regenBlocked: { 'c-1': true },
     };
     const next = setRoundNumber(state, 3);
     expect(next.actedKeys).toEqual([]);
     expect(next.manualOrder).toEqual({ 'c-2': null });
     expect(next.pinnedOrderKeys).toEqual(['c-2']);
+    expect(next.regenBlocked).toEqual({});
   });
 
   it('ne purge PAS quand la manche ne change pas réellement (no-op)', () => {
@@ -800,6 +811,34 @@ describe('setRoundNumber', () => {
       manualOrder: { 'c-1': 'c-2' },
     };
     expect(setRoundNumber(state, 3)).toBe(state);
+  });
+
+  it('applique healDeltas (PER-456, régénération du troll) avant de purger la manche', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      roundNumber: 2,
+      depletions: { 'c-1': { hp: { lethal: 8, temp: 0 } } },
+    };
+    const next = setRoundNumber(state, 3, { 'c-1': 5 });
+    expect(next.depletions).toEqual({ 'c-1': { hp: { lethal: 3, temp: 0 } } });
+    expect(next.roundNumber).toBe(3);
+  });
+
+  it('ignore les montants négatifs/nuls de healDeltas', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      roundNumber: 2,
+      depletions: { 'c-1': { hp: { lethal: 8, temp: 0 } } },
+    };
+    const next = setRoundNumber(state, 3, { 'c-1': 0, 'c-2': -5 });
+    expect(next.depletions).toEqual(state.depletions);
+  });
+
+  it('soigne une instance sans dépletion préexistante (créature au max)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 1 };
+    const next = setRoundNumber(state, 2, { 'c-1': 5 });
+    // healHp d'une dépletion vide (PV pleins) est un no-op — pas de dépletion créée pour rien.
+    expect(next.depletions).toEqual({});
   });
 });
 
@@ -815,6 +854,11 @@ describe('purgeUnpinnedOrder (PER-436)', () => {
     expect(next.actedKeys).toEqual([]);
     expect(next.manualOrder).toEqual({ 'c-1': 'c-3', 'c-4': 'c-5' });
     expect(next.pinnedOrderKeys).toEqual(['c-1', 'c-4']);
+  });
+
+  it('vide aussi les blocages de régénération (PER-456)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, regenBlocked: { 'c-1': true } };
+    expect(purgeUnpinnedOrder(state).regenBlocked).toEqual({});
   });
 });
 
@@ -838,6 +882,23 @@ describe('setCurrentTurnKey (PER-436)', () => {
   it('renvoie la même référence si rien ne change (no-op)', () => {
     const state: GmCombatState = { ...EMPTY_COMBAT_STATE, currentTurnKey: 'c-1', actedKeys: ['c-2'] };
     expect(setCurrentTurnKey(state, 'c-1')).toBe(state);
+  });
+});
+
+describe('setRegenBlocked (PER-456)', () => {
+  it('pose le blocage', () => {
+    expect(setRegenBlocked(EMPTY_COMBAT_STATE, 'c-1', true).regenBlocked).toEqual({ 'c-1': true });
+  });
+
+  it('retire le blocage', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, regenBlocked: { 'c-1': true, 'c-2': true } };
+    expect(setRegenBlocked(state, 'c-1', false).regenBlocked).toEqual({ 'c-2': true });
+  });
+
+  it('renvoie la même référence si rien ne change (no-op)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, regenBlocked: { 'c-1': true } };
+    expect(setRegenBlocked(state, 'c-1', true)).toBe(state);
+    expect(setRegenBlocked(EMPTY_COMBAT_STATE, 'c-2', false)).toBe(EMPTY_COMBAT_STATE);
   });
 });
 

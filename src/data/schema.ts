@@ -2828,6 +2828,25 @@ export interface DamageReduction {
 }
 
 /**
+ * RÉGÉNÉRATION AUTOMATIQUE par tour d'une CRÉATURE du bestiaire (PER-456, p. 298 troll :
+ * « récupère 5 PV par tour, sauf si les DM subis sont de feu ou d'acide » ; p. 287/288 hydre/
+ * cryohydre ; p. 280 élémentaire d'eau). Appliquée par le combat tracker MJ à chaque nouvelle
+ * manche (`roundNumber`), sauf si la créature a encaissé CE TOUR un DM d'un type de `blockedBy`
+ * (bascule manuelle MJ, aucun type de DM n'étant tracké ailleurs dans l'état de combat). Une
+ * créature créée à la main (hors bestiaire, PER-455) n'a pas de bloc de bestiaire à porter cette
+ * règle : jamais concernée.
+ */
+export interface CreatureRegeneration {
+  /** PV régénérés automatiquement au début de chaque tour (ex. 5). */
+  amount: number;
+  /**
+   * Types de DM qui BLOQUENT la régénération si la créature en a subi ce tour (troll : feu et
+   * acide). Absent = aucune exception, la régénération joue toujours.
+   */
+  blockedBy?: ResistibleDamageType[];
+}
+
+/**
  * PLAGE DE CRITIQUE élargie accordée par une capacité (PER-133) — concept de règles du
  * livre : un critique est normalement obtenu sur un 20 naturel (p. 213), et certaines
  * capacités « augmentent les chances d'obtenir un critique » (« 19-20 au lieu de 20 »).
@@ -5428,6 +5447,11 @@ export interface Creature {
    * Remplace l'ancien champ étroit `damageImmunities` (replié en `{ kind: 'immunity', scopes }`).
    */
   damageReduction?: DamageReduction | DamageReduction[];
+  /**
+   * Régénération automatique de PV par tour (PER-456, troll/hydre/élémentaire d'eau…). Absente =
+   * aucune régénération de bestiaire (cas courant).
+   */
+  regeneration?: CreatureRegeneration;
   /**
    * Immunités aux ÉTATS préjudiciables (peur, sommeil magique, paralysie, renversé…) décrites
    * par une capacité, remontées en badge vert (icône d'état dédiée) dans la cellule DEF —

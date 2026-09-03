@@ -47,6 +47,7 @@ import {
   setCombatantActed,
   setCurrentTurnKey as setCurrentTurnKeyState,
   setManualPosition,
+  setRegenBlocked as setRegenBlockedState,
   setRoundNumber as setRoundNumberState,
   toggleCombatantPin,
   type AddCreatureOptions,
@@ -103,8 +104,18 @@ export interface GmCombatStateApi extends GmCombatState {
   setCreatureDepletion: (instanceId: string, depletion: Depletion) => void;
   /** Fixe le combattant dont c'est le tour. */
   setCurrentTurnKey: (key: string | null) => void;
-  /** Fixe le numéro de manche (« Tour N »), borné à ≥ 1 (incrément auto de fin de manche + réglage manuel). */
-  setRoundNumber: (roundNumber: number) => void;
+  /**
+   * Fixe le numéro de manche (« Tour N »), borné à ≥ 1 (incrément auto de fin de manche + réglage
+   * manuel). `healDeltas` (PER-456, `{ instanceId: montant }`) applique EN MÊME TEMPS la
+   * régénération automatique de PV des créatures concernées du bestiaire (troll, hydre…) —
+   * calculé par l'appelant, seul à connaître les blocs de bestiaire (`useGmScreenCombat`).
+   */
+  setRoundNumber: (roundNumber: number, healDeltas?: Record<string, number>) => void;
+  /**
+   * Bascule « a subi un dégât bloquant sa régénération ce tour » (PER-456) sur l'instance
+   * `instanceId`. Vidée automatiquement à la manche suivante.
+   */
+  setRegenBlocked: (instanceId: string, blocked: boolean) => void;
   /**
    * Applique un état négatif sur un combattant (`combatantKey` = id de perso joueur OU id
    * d'instance de créature). Idempotent : ré-appliquer fixe l'intensité (bornée au plafond).
@@ -235,12 +246,16 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
         const depletions = { ...prev.depletions };
         delete depletions[instanceId];
         // Retire aussi les états posés sur l'instance (sinon ils orphelineraient la carte),
-        // et toute trace de pilotage du tour/de l'ordre (PER-436, sinon une ancre morte).
+        // toute trace de pilotage du tour/de l'ordre (PER-436, sinon une ancre morte), et un
+        // éventuel blocage de régénération (PER-456, sinon il orphelinerait la clé).
         const cleaned = dropCombatantOrderTraces(clearStatusesOf(prev, instanceId), instanceId);
+        const regenBlocked = { ...cleaned.regenBlocked };
+        delete regenBlocked[instanceId];
         return {
           ...cleaned,
           creatures: prev.creatures.filter((c) => c.id !== instanceId),
           depletions,
+          regenBlocked,
         };
       }),
     [applyLocalCombat, cid],
@@ -270,8 +285,14 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
   );
 
   const setRoundNumber = useCallback(
-    (roundNumber: number) =>
-      applyLocalCombat(cid, (prev) => setRoundNumberState(prev, roundNumber)),
+    (roundNumber: number, healDeltas?: Record<string, number>) =>
+      applyLocalCombat(cid, (prev) => setRoundNumberState(prev, roundNumber, healDeltas)),
+    [applyLocalCombat, cid],
+  );
+
+  const setRegenBlocked = useCallback(
+    (instanceId: string, blocked: boolean) =>
+      applyLocalCombat(cid, (prev) => setRegenBlockedState(prev, instanceId, blocked)),
     [applyLocalCombat, cid],
   );
 
@@ -393,6 +414,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     setCreatureDepletion,
     setCurrentTurnKey,
     setRoundNumber,
+    setRegenBlocked,
     applyStatus,
     removeStatus,
     applyStatusToMany,

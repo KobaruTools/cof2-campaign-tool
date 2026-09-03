@@ -135,6 +135,8 @@ import DensitySmallIcon from '@mui/icons-material/DensitySmall';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import HealingOutlinedIcon from '@mui/icons-material/HealingOutlined';
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
@@ -347,6 +349,21 @@ export interface InitiativeRow {
    * rendu (hors projection) ; absent ⇒ pas de bouton (personnages, toujours visibles).
    */
   onToggleVisible?: () => void;
+  /**
+   * Régénération automatique de PV par tour (PER-456, troll/hydre/élémentaire d'eau…). Présent ⇒
+   * un bouton bascule est rendu côté MJ (hors projection) pour signaler un dégât bloquant subi CE
+   * tour ; absent = créature sans ce trait de bestiaire (cas courant) ou créature créée à la main.
+   */
+  regeneration?: {
+    /** PV régénérés au début de la PROCHAINE manche si non bloquée (ex. 5). */
+    amount: number;
+    /** Types de DM qui bloquent, en clair (« Feu, Acide ») — absent = aucune exception. */
+    blockedByLabel?: string;
+    /** La créature a-t-elle subi CE TOUR un DM d'un type bloquant (coupe la régén au tour suivant) ? */
+    blockedThisRound: boolean;
+    /** Bascule `blockedThisRound`. */
+    onToggleBlocked: () => void;
+  };
 }
 
 /**
@@ -2729,6 +2746,39 @@ const CombatantColumn = memo(function CombatantColumn({
                   <VisibilityOffOutlinedIcon fontSize="small" />
                 ) : (
                   <VisibilityOutlinedIcon fontSize="small" />
+                )}
+              </IconButton>
+            </AppTooltip>
+          )}
+          {/* Bascule « dégât bloquant subi ce tour » (PER-456, régénération auto de bestiaire) :
+              croix rouge = régénération coupée au tour suivant, pastille de soin = régénération
+              active. Purement déclaratif ; le montant réel est appliqué par `setRoundNumber` au
+              passage de manche, pas ici. */}
+          {!projection && row.regeneration && (
+            <AppTooltip
+              title={
+                row.regeneration.blockedThisRound
+                  ? `Régénération (${row.regeneration.amount} PV/tour) coupée — a subi un DM bloquant ce tour${row.regeneration.blockedByLabel ? ` (${row.regeneration.blockedByLabel})` : ''}. Cliquer pour la rétablir.`
+                  : `Régénère ${row.regeneration.amount} PV au début du prochain tour${row.regeneration.blockedByLabel ? ` — sauf DM ${row.regeneration.blockedByLabel}` : ''}. Cliquer si elle subit un tel DM ce tour.`
+              }
+            >
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  row.regeneration?.onToggleBlocked();
+                }}
+                aria-label={
+                  row.regeneration.blockedThisRound
+                    ? `Rétablir la régénération de ${row.name}`
+                    : `Signaler un DM bloquant la régénération de ${row.name} ce tour`
+                }
+                sx={{ flexShrink: 0, color: row.regeneration.blockedThisRound ? 'error.main' : 'success.main' }}
+              >
+                {row.regeneration.blockedThisRound ? (
+                  <BlockOutlinedIcon fontSize="small" />
+                ) : (
+                  <HealingOutlinedIcon fontSize="small" />
                 )}
               </IconButton>
             </AppTooltip>

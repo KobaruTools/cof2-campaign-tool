@@ -13,6 +13,7 @@
  * reconnaissent le format courant ET migrent l'ancien format « bandits ».
  */
 import type { Depletion } from '@/lib/character/types';
+import { healHp } from '@/lib/character/gauges';
 import type { CreatureSide } from '@/lib/ui/creature';
 import {
   clampIntensity,
@@ -181,6 +182,14 @@ export interface GmCombatState {
    * défaut (migration douce, table sans porteur d'aura passive).
    */
   partyAuraCarrierIds: Record<string, string[]>;
+  /**
+   * Instances de créature ayant subi CE TOUR un DM d'un type qui bloque leur régénération
+   * automatique (PER-456, troll : feu/acide) — bascule MANUELLE du MJ, faute d'un type de DM
+   * tracké ailleurs dans l'état de combat. `true` = régénération coupée à la PROCHAINE manche ;
+   * absent = pas de blocage (défaut). Vidé à chaque nouvelle manche (`purgeUnpinnedOrder`), comme
+   * `actedKeys`. MJ seul auteur ; vide par défaut (migration douce des combats antérieurs).
+   */
+  regenBlocked: Record<string, boolean>;
 }
 
 /**
@@ -211,6 +220,7 @@ export const EMPTY_COMBAT_STATE: GmCombatState = {
   manualOrder: {},
   pinnedOrderKeys: [],
   partyAuraCarrierIds: {},
+  regenBlocked: {},
 };
 
 /** Clé `localStorage` dédiée au combat en cours d'une campagne. */
@@ -247,6 +257,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       manualOrder: reviveManualOrder(current.manualOrder),
       pinnedOrderKeys: revivePinnedOrderKeys(current.pinnedOrderKeys),
       partyAuraCarrierIds: revivePartyAuraCarrierIds(current.partyAuraCarrierIds),
+      regenBlocked: reviveRegenBlocked(current.regenBlocked),
     };
   }
 
@@ -278,6 +289,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       manualOrder: {},
       pinnedOrderKeys: [],
       partyAuraCarrierIds: {},
+      regenBlocked: {},
     };
   }
 
@@ -356,6 +368,20 @@ function reviveManualOrder(raw: unknown): Record<string, string | null> {
 function revivePinnedOrderKeys(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return [...new Set(raw.filter((k): k is string => typeof k === 'string'))];
+}
+
+/**
+ * Reconstruit défensivement les blocages de régénération (`state.regenBlocked`, PER-456) :
+ * tolère l'absence (migration douce) et ne garde que les entrées valant strictement `true`
+ * (`false`/autre = pas de blocage, cf. `setRegenBlocked`).
+ */
+function reviveRegenBlocked(raw: unknown): Record<string, boolean> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, boolean> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (value === true) out[key] = true;
+  }
+  return out;
 }
 
 /**
@@ -1018,6 +1044,7 @@ export function resetCombat(state: GmCombatState): GmCombatState {
     actedKeys: [],
     manualOrder: {},
     pinnedOrderKeys: [],
+    regenBlocked: {},
   };
 }
 
@@ -1061,21 +1088,58 @@ export function restartRounds(
  * Fixe le numéro de manche (« Tour N »), borné à ≥ 1 (un « Tour 0 » n'existe pas). Sert l'incrément
  * automatique en fin de manche (« Tour suivant » qui reboucle) comme l'ajustement/la remise à 1 à
  * la main. MJ seul auteur (broadcast automatique).
+ *
+ * `healDeltas` (PER-456) applique en MÊME TEMPS la régénération automatique de PV des créatures du
+ * bestiaire qui en ont (troll, hydre…) — `{ instanceId: montant }`, calculé par l'appelant (seul à
+ * connaître le bloc de bestiaire de chaque instance ET son blocage `regenBlocked` du tour qui
+ * s'achève). Appliqué AVANT la purge de manche pour lire encore l'ancien `regenBlocked`.
  */
-export function setRoundNumber(state: GmCombatState, roundNumber: number): GmCombatState {
+export function setRoundNumber(
+  state: GmCombatState,
+  roundNumber: number,
+  healDeltas?: Record<string, number>,
+): GmCombatState {
   const next = Math.max(1, Math.trunc(roundNumber));
   if (next === state.roundNumber) return state;
   // Toute manche différente de la précédente EST une nouvelle manche (PER-436), qu'elle
   // vienne du bouclage automatique de l'ordre ou d'un réglage manuel : purge le badge
-  // « a déjà joué » et l'ordre manuel non épinglé (cf. `purgeUnpinnedOrder`).
-  return { ...purgeUnpinnedOrder(state), roundNumber: next };
+  // « a déjà joué », l'ordre manuel non épinglé et les blocages de régénération (cf.
+  // `purgeUnpinnedOrder`) — mais SEULEMENT après avoir régénéré au vu du tour qui s'achève.
+  return { ...purgeUnpinnedOrder(applyRegenerationHeal(state, healDeltas)), roundNumber: next };
 }
 
 /**
- * Purge de DÉBUT DE MANCHE (PER-436) : vide le badge « a déjà joué » de tout le monde et
- * oublie la position manuelle des combattants NON épinglés — ceux épinglés (`pinnedOrderKeys`)
- * la conservent. Appelée par `setRoundNumber`/`restartRounds` dès que le numéro de manche
- * change réellement : c'est le point unique « une nouvelle manche démarre ».
+ * Applique les montants de régénération calculés par l'appelant (PER-456) aux `depletions`
+ * concernées, via `healHp` (même règle que soigner à la main). Amounts ≤ 0 ignorés. No-op
+ * (même référence) si `healDeltas` est absent/vide ou ne change rien.
+ */
+function applyRegenerationHeal(
+  state: GmCombatState,
+  healDeltas: Record<string, number> | undefined,
+): GmCombatState {
+  if (!healDeltas) return state;
+  let depletions = state.depletions;
+  let changed = false;
+  for (const [instanceId, amount] of Object.entries(healDeltas)) {
+    if (amount <= 0) continue;
+    const current = depletions[instanceId] ?? {};
+    const healed = healHp(current, amount);
+    if (healed === current) continue;
+    if (!changed) {
+      depletions = { ...depletions };
+      changed = true;
+    }
+    depletions[instanceId] = healed;
+  }
+  return changed ? { ...state, depletions } : state;
+}
+
+/**
+ * Purge de DÉBUT DE MANCHE (PER-436, étendue PER-456) : vide le badge « a déjà joué » et les
+ * blocages de régénération (PER-456) de tout le monde, et oublie la position manuelle des
+ * combattants NON épinglés — ceux épinglés (`pinnedOrderKeys`) la conservent. Appelée par
+ * `setRoundNumber`/`restartRounds` dès que le numéro de manche change réellement : c'est le point
+ * unique « une nouvelle manche démarre ».
  */
 export function purgeUnpinnedOrder(state: GmCombatState): GmCombatState {
   const pinned = new Set(state.pinnedOrderKeys);
@@ -1083,7 +1147,27 @@ export function purgeUnpinnedOrder(state: GmCombatState): GmCombatState {
   for (const [key, beforeKey] of Object.entries(state.manualOrder)) {
     if (pinned.has(key)) manualOrder[key] = beforeKey;
   }
-  return { ...state, actedKeys: [], manualOrder };
+  return { ...state, actedKeys: [], manualOrder, regenBlocked: {} };
+}
+
+/**
+ * Bascule manuelle « a subi un dégât bloquant sa régénération ce tour » (PER-456), faute d'un
+ * type de DM tracké ailleurs dans l'état de combat. Vidée automatiquement à la manche suivante
+ * (`purgeUnpinnedOrder`). MJ seul auteur.
+ */
+export function setRegenBlocked(
+  state: GmCombatState,
+  instanceId: string,
+  blocked: boolean,
+): GmCombatState {
+  const has = state.regenBlocked[instanceId] === true;
+  if (has === blocked) return state;
+  if (!blocked) {
+    const regenBlocked = { ...state.regenBlocked };
+    delete regenBlocked[instanceId];
+    return { ...state, regenBlocked };
+  }
+  return { ...state, regenBlocked: { ...state.regenBlocked, [instanceId]: true } };
 }
 
 /**

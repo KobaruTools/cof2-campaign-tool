@@ -1236,6 +1236,7 @@ const fantasticCreatures: Creature[] = [
       { kind: 'divide', value: 2, scopes: ['non-magical'] },
     ],
     attacks: [{ name: 'Coups', attackCount: 2, bonus: '+10', damage: '1d8+6' }],
+    regeneration: { amount: 5, blockedBy: ['fire'] },
     specialAbilities: [
       { name: 'Eau de vie', text: "L'élémentaire d'eau régénère 5 PV par round (sauf DM de feu)." },
       {
@@ -1683,6 +1684,7 @@ const fantasticCreatures: Creature[] = [
     defense: 18,
     hitPoints: 50,
     initiative: 10,
+    regeneration: { amount: 5, blockedBy: ['fire'] },
     attacks: [{ name: 'Morsure', attackCount: 5, bonus: '+8', damage: '1d8+4' }],
     specialAbilities: [
       {
@@ -1717,6 +1719,7 @@ const fantasticCreatures: Creature[] = [
     initiative: 10,
     // Créature élémentaire (p. 288) : « elle est immunisée aux DM de froid ».
     damageReduction: { kind: 'immunity', scopes: ['cold'] },
+    regeneration: { amount: 5, blockedBy: ['fire'] },
     attacks: [{ name: 'Morsure', attackCount: 10, bonus: '+13', damage: '1d8+4', rider: '+1d6 de froid' }],
     specialAbilities: [
       {
@@ -2316,6 +2319,7 @@ const fantasticCreatures: Creature[] = [
     hitPoints: 70,
     hitPointsNote: 'RD3',
     initiative: 10,
+    regeneration: { amount: 5, blockedBy: ['fire', 'acid'] },
     attacks: [
       { name: 'Griffes ou gourdin', attackCount: 2, bonus: '+10', damage: '1d6+6' },
       { name: 'Lancer de rocher', range: '10 m', bonus: '+10', damage: '2d6+6' },
