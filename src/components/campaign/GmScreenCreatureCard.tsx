@@ -9,6 +9,7 @@
  * APPARAÎT DANS LE BESTIAIRE (`BestiaryStatBlock` via `CreatureBlobView`, blob chargé à
  * la demande).
  */
+import { memo, useCallback, useMemo } from 'react';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -25,6 +26,7 @@ import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
 import type { Creature } from '@/data/schema';
 import { SIDE_ACCENT, SIDE_LABELS, type CreatureSide } from '@/lib/ui/creature';
 import { useBestiaryStore } from '@/stores/bestiary';
+import { customCreatureBlob, type CustomCreature } from '@/lib/session/customCreature';
 
 /**
  * Une créature « lourde » mérite 2 colonnes dans la grille de l'écran de MJ pour ne
@@ -41,14 +43,19 @@ export function isWideCreatureCard(blob?: Creature, baseBlob?: Creature): boolea
 }
 
 export interface GmScreenCreatureCardProps {
+  /** Id d'instance stable (clé du tracker) — reliée aux callbacks ci-dessous par le composant lui-même. */
+  instanceId: string;
   /** Slug de la créature du bestiaire à afficher (`Creature.id`). */
   slug: string;
   /**
-   * Bloc de stats FOURNI par l'appelant — cas d'une créature CRÉÉE À LA MAIN par le MJ, dont le
-   * bloc synthétique (`customCreatureBlob`) ne vient pas du bestiaire. Renseigné, il court-circuite
-   * le chargement par slug ; absent (cas courant), le bloc est chargé depuis le bestiaire.
+   * Bloc SAISI À LA MAIN par le MJ (créature hors bestiaire, cf. `CreatureInstance.custom`) — le
+   * composant construit lui-même son bloc de stats synthétique (`customCreatureBlob`), pour que la
+   * référence reste stable d'un rendu à l'autre tant que `custom`/`name` ne changent pas (`memo`).
+   * Absent (cas courant), le bloc est chargé depuis le bestiaire par `slug`.
    */
-  blob?: Creature;
+  custom?: CustomCreature;
+  /** Nom NU de l'instance (sans numérotation d'homonymes) — titre du bloc si `custom` est fourni. */
+  name?: string;
   /** Libellé du badge (ex. « Gobelin 2 ») pour distinguer plusieurs instances. */
   label: string;
   /** Camp de la créature (PER-249) : teinte la carte (rouge adversaire / vert allié). */
@@ -58,21 +65,43 @@ export interface GmScreenCreatureCardProps {
    * voit toujours, mais elle n'apparaît pas dans la projection).
    */
   visible: boolean;
-  /** Bascule la visibilité joueurs de cette créature. */
-  onToggleVisible: () => void;
+  /** Bascule la visibilité joueurs de `instanceId` vers l'état opposé de `visible`. */
+  onToggleVisible: (instanceId: string, nextVisible: boolean) => void;
   /**
-   * Duplique cette instance : un exemplaire de plus, à l'identique, sans repasser par la modale
+   * Duplique `instanceId` : un exemplaire de plus, à l'identique, sans repasser par la modale
    * d'ajout — le geste courant quand un combat enfle en cours de scène.
    */
-  onDuplicate: () => void;
-  /** Ouvre la modale d'édition de cette instance (nom, camp, visibilité, bloc manuel). */
-  onEdit: () => void;
-  /** Retire cette instance du combat tracker. */
-  onRemove: () => void;
+  onDuplicate: (instanceId: string) => void;
+  /** Ouvre la modale d'édition de `instanceId` (nom, camp, visibilité, bloc manuel). */
+  onEdit: (instanceId: string) => void;
+  /** Retire `instanceId` du combat tracker. */
+  onRemove: (instanceId: string) => void;
 }
 
-export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, visible, onToggleVisible, onDuplicate, onEdit, onRemove }: GmScreenCreatureCardProps) {
+/**
+ * `memo` : chaque mutation de l'état de combat (statut posé, tour suivant…) fait remonter une
+ * NOUVELLE référence depuis la racine `GmScreenPage` (PER-461, même classe de cause que le
+ * `dragPreview` isolé en PER-459) — sans ce garde, tout le roster se re-rend à chaque action MJ,
+ * même celles qui ne concernent pas cette carte. Les callbacks ci-dessous sont liés à
+ * `instanceId` EN INTERNE (pas par des fermetures créées à l'appel) pour que les props restent
+ * stables d'un rendu à l'autre tant que `instanceId`/`slug`/`custom`/`name`/`label`/`side`/
+ * `visible` ne changent pas.
+ */
+export const GmScreenCreatureCard = memo(function GmScreenCreatureCard({
+  instanceId,
+  slug,
+  custom,
+  name,
+  label,
+  side,
+  visible,
+  onToggleVisible,
+  onDuplicate,
+  onEdit,
+  onRemove,
+}: GmScreenCreatureCardProps) {
   const accent = SIDE_ACCENT[side];
+  const providedBlob = useMemo(() => (custom ? customCreatureBlob(custom, name) : undefined), [custom, name]);
   // Créature « lourde » (≥ 2 voies ou ≥ 4 capacités) → carte sur 2 colonnes. On lit le
   // blob (et sa base pour les capacités héritées) dans le store, alimenté par le rendu ;
   // un bloc fourni (créature manuelle) prime et n'a ni base ni héritage.
@@ -81,6 +110,13 @@ export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, vi
   const baseId = !providedBlob && blob?.sharedAbilitiesNote ? blob.baseCreatureId : undefined;
   const baseBlob = useBestiaryStore((s) => (baseId ? s.blobs[baseId] : undefined));
   const wide = isWideCreatureCard(blob, baseBlob);
+  const handleToggleVisible = useCallback(
+    () => onToggleVisible(instanceId, !visible),
+    [onToggleVisible, instanceId, visible],
+  );
+  const handleDuplicate = useCallback(() => onDuplicate(instanceId), [onDuplicate, instanceId]);
+  const handleEdit = useCallback(() => onEdit(instanceId), [onEdit, instanceId]);
+  const handleRemove = useCallback(() => onRemove(instanceId), [onRemove, instanceId]);
   return (
     <Paper
       sx={{
@@ -132,7 +168,7 @@ export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, vi
           >
             <IconButton
               size="small"
-              onClick={onToggleVisible}
+              onClick={handleToggleVisible}
               aria-label={visible ? `Masquer ${label}` : `Rendre ${label} visible`}
               sx={{ color: visible ? 'inherit' : 'text.disabled' }}
             >
@@ -146,17 +182,17 @@ export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, vi
           {/* Éditer / dupliquer, entre l'œil et la corbeille : les deux gestes d'entretien du
               roster en cours de scène (retoucher un PNJ, gonfler un groupe d'un exemplaire). */}
           <AppTooltip title="Modifier cette créature">
-            <IconButton size="small" onClick={onEdit} aria-label={`Modifier ${label}`}>
+            <IconButton size="small" onClick={handleEdit} aria-label={`Modifier ${label}`}>
               <EditOutlinedIcon fontSize="small" />
             </IconButton>
           </AppTooltip>
           <AppTooltip title="Dupliquer — un exemplaire de plus, à l’identique">
-            <IconButton size="small" onClick={onDuplicate} aria-label={`Dupliquer ${label}`}>
+            <IconButton size="small" onClick={handleDuplicate} aria-label={`Dupliquer ${label}`}>
               <ContentCopyOutlinedIcon fontSize="small" />
             </IconButton>
           </AppTooltip>
           <AppTooltip title="Retirer du combat">
-            <IconButton size="small" onClick={onRemove} aria-label={`Retirer ${label}`}>
+            <IconButton size="small" onClick={handleRemove} aria-label={`Retirer ${label}`}>
               <DeleteOutlineIcon fontSize="small" />
             </IconButton>
           </AppTooltip>
@@ -177,4 +213,4 @@ export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, vi
       </Stack>
     </Paper>
   );
-}
+});

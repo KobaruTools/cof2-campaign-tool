@@ -24,6 +24,7 @@
  * La vue dérivée (entrée moteur + badges) est calculée ici via le helper partagé
  * avec la fiche (`buildCharacterDerivedView`) : mêmes valeurs, aucune dérive.
  */
+import { memo } from 'react';
 import Link from 'next/link';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import Box from '@mui/material/Box';
@@ -56,7 +57,14 @@ export interface GmScreenCardProps {
   dataTour?: string;
 }
 
-export function GmScreenCard({ character, player, href, panelHref, dataTour }: GmScreenCardProps) {
+/**
+ * `memo` (PER-461) : `character`/`player` restent des références STABLES d'un rendu à l'autre
+ * tant que le personnage/joueur lui-même ne change pas (`claimed`/`playerById` de
+ * `useGmScreenCombat` sont des `useMemo` indépendants de l'état de combat) — sans ce garde,
+ * chaque mutation de combat (statut posé, tour suivant…) re-rendait TOUTE la grille de cartes
+ * joueurs depuis la racine `GmScreenPage`, même celles qu'elle ne concerne pas.
+ */
+export const GmScreenCard = memo(function GmScreenCard({ character, player, href, panelHref, dataTour }: GmScreenCardProps) {
   // Vue dérivée partagée avec la fiche (mêmes stats + puces). `null` si profil
   // incomplet : on n'affiche alors que l'aperçu.
   const view = buildCharacterDerivedView(character);
@@ -173,4 +181,4 @@ export function GmScreenCard({ character, player, href, panelHref, dataTour }: G
       </Stack>
     </Paper>
   );
-}
+});

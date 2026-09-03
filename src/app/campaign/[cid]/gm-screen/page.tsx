@@ -91,7 +91,6 @@ import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { storageKeys } from '@/lib/storage/keys';
-import { customCreatureBlob } from '@/lib/session/customCreature';
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import {
   isCampScopedStatus,
@@ -136,16 +135,6 @@ const GRID_SX = {
   gap: 2,
   alignItems: 'start',
 } as const;
-
-/**
- * Bloc de stats à passer à la carte d'une créature : `undefined` pour une créature du bestiaire
- * (la carte le charge elle-même par slug), bloc SYNTHÉTIQUE pour une créature créée à la main.
- * Le titre du bloc reprend le nom nu de l'instance — la numérotation des homonymes vit dans le
- * badge de la carte, comme pour une créature de livre.
- */
-function creatureCardBlob(inst: LabeledCreature) {
-  return inst.custom ? customCreatureBlob(inst.custom, inst.name) : undefined;
-}
 
 /**
  * Section repliable de la grille de combat (joueurs / alliés / adversaires). L'état
@@ -751,10 +740,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     setEditingId(null);
     setCreatureDialogOpen(true);
   };
-  const openEditCreature = (instanceId: string) => {
+  // `useCallback` (PER-461) : passée telle quelle à `GmScreenCreatureCard` (`memo`), une fermeture
+  // fraîche à chaque rendu casserait la stabilité de ses props et annulerait le garde `memo`.
+  const openEditCreature = useCallback((instanceId: string) => {
     setEditingId(instanceId);
     setCreatureDialogOpen(true);
-  };
+  }, []);
   // Repos de groupe (PER-312) : la proposition part sur le canal de session, donc rien à proposer
   // hors session. Observateur SANS battement — le battement de l'écran de MJ est porté par le
   // `GmSessionHeaderIndicator` de l'en-tête (un seul par page), comme sur la fiche.
@@ -1161,15 +1152,17 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                 {allies.map((inst) => (
                   <GmScreenCreatureCard
                     key={inst.id}
+                    instanceId={inst.id}
                     slug={inst.slug}
-                    blob={creatureCardBlob(inst)}
+                    custom={inst.custom}
+                    name={inst.name}
                     label={inst.label}
                     side="ally"
                     visible={inst.visible !== false}
-                    onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
-                    onDuplicate={() => duplicateCreature(inst.id)}
-                    onEdit={() => openEditCreature(inst.id)}
-                    onRemove={() => removeCreature(inst.id)}
+                    onToggleVisible={setCreatureVisibility}
+                    onDuplicate={duplicateCreature}
+                    onEdit={openEditCreature}
+                    onRemove={removeCreature}
                   />
                 ))}
               </CollapsibleSection>
@@ -1184,15 +1177,17 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                 {enemies.map((inst) => (
                   <GmScreenCreatureCard
                     key={inst.id}
+                    instanceId={inst.id}
                     slug={inst.slug}
-                    blob={creatureCardBlob(inst)}
+                    custom={inst.custom}
+                    name={inst.name}
                     label={inst.label}
                     side="enemy"
                     visible={inst.visible !== false}
-                    onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
-                    onDuplicate={() => duplicateCreature(inst.id)}
-                    onEdit={() => openEditCreature(inst.id)}
-                    onRemove={() => removeCreature(inst.id)}
+                    onToggleVisible={setCreatureVisibility}
+                    onDuplicate={duplicateCreature}
+                    onEdit={openEditCreature}
+                    onRemove={removeCreature}
                   />
                 ))}
               </CollapsibleSection>

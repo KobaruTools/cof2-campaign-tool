@@ -25,6 +25,7 @@
  *  4. Capacités spéciales, puis suppression manuelle / toggle « en selle » si applicables (ces
  *     deux-là restent des actions de GESTION du roster, pas de combat — elles gardent leur callback).
  */
+import { memo } from 'react';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
@@ -70,7 +71,13 @@ export interface GmScreenCompanionCardProps {
   onSetMounted?: (on: boolean) => void;
 }
 
-export function GmScreenCompanionCard({
+/**
+ * `memo` (PER-461) : toutes les props remontent d'un seul `useMemo` (`companionRoster` de
+ * `useGmScreenCombat`, deps `[claimed, upsert]`) — stables tant que les personnages réclamés ne
+ * changent pas, indépendamment de l'état de combat. Sans ce garde, chaque mutation de combat
+ * re-rendait toute la section « Compagnons » depuis la racine `GmScreenPage`.
+ */
+export const GmScreenCompanionCard = memo(function GmScreenCompanionCard({
   ownerName,
   accentColor,
   entry,
@@ -217,4 +224,4 @@ export function GmScreenCompanionCard({
       </Stack>
     </Paper>
   );
-}
+});

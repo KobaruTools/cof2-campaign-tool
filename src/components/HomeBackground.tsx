@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { memo, useRef } from 'react';
 import Box from '@mui/material/Box';
 import { MOUSE_PARALLAX_X, MOUSE_PARALLAX_Y, useMouseParallax } from '@/lib/ui/useMouseParallax';
 
@@ -167,7 +167,15 @@ function SidePanel({
   );
 }
 
-export function HomeBackground({ variant = 'full' }: { variant?: HomeBackgroundVariant } = {}) {
+/**
+ * `memo` (PER-461) : montée à la racine de toute page via `providers.tsx`/l'écran de MJ, sans
+ * prop qui varie jamais en pratique (`variant` est fixé par le parent) — sans ce garde, chaque
+ * re-render de la page (ex. une mutation de combat côté MJ) reflow inutilement cette illustration
+ * plein écran et sa boucle de parallaxe.
+ */
+export const HomeBackground = memo(function HomeBackground({
+  variant = 'full',
+}: { variant?: HomeBackgroundVariant } = {}) {
   const isFooter = variant === 'footer';
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
@@ -232,4 +240,4 @@ export function HomeBackground({ variant = 'full' }: { variant?: HomeBackgroundV
       <SidePanel side="right" variant={variant} imageRef={rightRef} />
     </Box>
   );
-}
+});
