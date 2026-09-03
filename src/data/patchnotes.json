@@ -41,5 +41,13 @@
     "items": [
       "Le journal des mises à jour s'affiche maintenant automatiquement pour les joueurs."
     ]
+  },
+  {
+    "id": 3,
+    "date": "2026-09-03",
+    "items": [
+      "Correction du choix de voie chevalier dragon/élémentaliste, incohérent dans le codex et lors de la montée de niveau.",
+      "Correction d'un petit décalage visuel lors du glisser-déposer dans l'ordre d'initiative."
+    ]
   }
 ]
