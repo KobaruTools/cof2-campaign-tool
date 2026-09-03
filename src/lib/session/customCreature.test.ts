@@ -78,6 +78,30 @@ describe('normalizeCustomCreature', () => {
     expect(custom?.specialAbilities).toHaveLength(1);
     expect(custom?.specialAbilities?.[0].text).toHaveLength(CUSTOM_TEXT_MAX_LENGTH);
   });
+
+  it('ne conserve que les caractéristiques renseignées (PER-455)', () => {
+    const custom = normalizeCustomCreature({
+      ...BASE,
+      abilities: { FOR: 3.6, AGI: undefined, CON: 'x' },
+    });
+    expect(custom?.abilities).toEqual({ FOR: 3 });
+  });
+
+  it('omet les caractéristiques quand aucune n’est renseignée', () => {
+    expect(normalizeCustomCreature({ ...BASE, abilities: {} })?.abilities).toBeUndefined();
+  });
+
+  it('normalise la RD, en écartant un type de dégât inconnu (PER-455)', () => {
+    expect(normalizeCustomCreature({ ...BASE, damageReduction: { value: 5.9, scope: 'fire' } })
+      ?.damageReduction).toEqual({ value: 5, scope: 'fire' });
+    expect(normalizeCustomCreature({ ...BASE, damageReduction: { value: 5, scope: 'lave' } })
+      ?.damageReduction).toEqual({ value: 5 });
+  });
+
+  it('omet la RD sans valeur numérique', () => {
+    expect(normalizeCustomCreature({ ...BASE, damageReduction: { scope: 'fire' } })?.damageReduction).toBeUndefined();
+    expect(normalizeCustomCreature({ ...BASE, damageReduction: {} })?.damageReduction).toBeUndefined();
+  });
 });
 
 describe('customCreatureBlob', () => {
@@ -90,13 +114,32 @@ describe('customCreatureBlob', () => {
     expect(blob.defense).toBe(14);
     expect(blob.ncNote).toBe('3');
     expect(blob.sourcePage).toBe(0);
-    // Le MJ ne saisit pas les 7 caractéristiques : la grille du bloc ne doit pas s'afficher.
+    // Aucune caractéristique saisie : la grille du bloc ne doit pas s'afficher.
     expect(blob.abilities).toBeUndefined();
   });
 
   it('retombe sur un nom générique quand l’instance n’est pas nommée', () => {
     expect(customCreatureBlob(BASE).name).toBe(CUSTOM_CREATURE_FALLBACK_NAME);
     expect(customCreatureBlob(BASE, '').name).toBe(CUSTOM_CREATURE_FALLBACK_NAME);
+  });
+
+  it('complète les caractéristiques partielles à 0 (PER-455)', () => {
+    const blob = customCreatureBlob({ ...BASE, abilities: { FOR: 3, AGI: -1 } });
+    expect(blob.abilities).toEqual({ FOR: 3, CON: 0, AGI: -1, PER: 0, CHA: 0, INT: 0, VOL: 0 });
+  });
+
+  it('projette une RD simple en DamageReduction plate (PER-455)', () => {
+    const withScope = customCreatureBlob({ ...BASE, damageReduction: { value: 5, scope: 'fire' } });
+    expect(withScope.damageReduction).toEqual({ kind: 'flat', value: 5, scopes: ['fire'] });
+
+    const withoutScope = customCreatureBlob({ ...BASE, damageReduction: { value: 5 } });
+    expect(withoutScope.damageReduction).toEqual({ kind: 'flat', value: 5 });
+  });
+
+  it('omet la RD et les caractéristiques quand elles sont absentes', () => {
+    const blob = customCreatureBlob(BASE);
+    expect(blob.abilities).toBeUndefined();
+    expect(blob.damageReduction).toBeUndefined();
   });
 });
 

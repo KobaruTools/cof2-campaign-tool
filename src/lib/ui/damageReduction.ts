@@ -9,8 +9,11 @@
  */
 import type { DamageReduction, ResistibleDamageType } from '@/data/schema';
 
-/** Libellé COURT (puce), portée en clair et capitalisée — « RD Froid 2 ». */
-const SCOPE_SHORT: Record<ResistibleDamageType, string> = {
+/**
+ * Libellé COURT (puce), portée en clair et capitalisée — « RD Froid 2 ». Exporté pour alimenter
+ * le sélecteur de type de RD de la créature créée à la main (PER-455, `AddCreatureDialog.tsx`).
+ */
+export const SCOPE_SHORT: Record<ResistibleDamageType, string> = {
   physical: 'Physiques',
   'non-magical': 'Non magiques',
   magical: 'Magiques',

@@ -14,7 +14,7 @@
  * un bloc de bestiaire SYNTHÉTIQUE — ce qui permet de réutiliser tel quel le rendu
  * `BestiaryStatBlock` et toute la dérivation des lignes d'initiative.
  */
-import type { Creature } from '@/data/schema';
+import { ABILITY_IDS, RESISTIBLE_DAMAGE_TYPES, type AbilityId, type Creature, type ResistibleDamageType } from '@/data/schema';
 import { creatureNcLabel } from '@/lib/ui/creature';
 
 /** Slug porté par une instance de créature créée à la main (aucune entrée de bestiaire derrière). */
@@ -53,6 +53,18 @@ export interface CustomCreatureAbility {
 }
 
 /**
+ * Réduction de dégâts (RD) SIMPLE saisie à la main (PER-455) — une seule entrée plate, contrairement
+ * au `DamageReduction[]` du bestiaire (immunités, division, gating par rang/interrupteur…) : le MJ
+ * n'a besoin ni de cumul ni de conditions pour un adversaire improvisé.
+ */
+export interface CustomCreatureDamageReduction {
+  /** DM retranchés (ex. 5 pour « RD 5 »). */
+  value: number;
+  /** Type de dégât couvert, parmi la liste fermée du jeu (ex. `'fire'` → « RD Feu 5 »). Absent = tous les DM. */
+  scope?: ResistibleDamageType;
+}
+
+/**
  * Bloc de stats d'une créature créée à la main. Le NOM n'est PAS ici : il vit sur l'instance
  * de combat (`CreatureInstance.name`, PER-295), qui gère déjà l'étiquetage et la numérotation
  * des homonymes.
@@ -74,6 +86,14 @@ export interface CustomCreature {
   attacks?: CustomCreatureAttack[];
   /** Capacités spéciales. Facultatives. */
   specialAbilities?: CustomCreatureAbility[];
+  /**
+   * Les 7 caractéristiques (PER-455), en saisie libre et facultative — le MJ peut n'en renseigner
+   * qu'une partie. Une entrée absente vaut 0 à la projection (`customCreatureBlob`), même convention
+   * que `AbilityCompactGrid` (micro-fiches Joueurs/Compagnons de l'écran de MJ).
+   */
+  abilities?: Partial<Record<AbilityId, number>>;
+  /** Réduction de dégâts simple (PER-455). Facultative. */
+  damageReduction?: CustomCreatureDamageReduction;
 }
 
 /** Chaîne nettoyée et tronquée, ou `undefined` si vide (un champ vide n'est jamais persisté). */
@@ -123,6 +143,31 @@ function normalizeAbilities(raw: unknown): CustomCreatureAbility[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
+/** Caractéristiques normalisées : entrées non numériques écartées ; `undefined` si aucune renseignée. */
+function normalizeAbilityScores(raw: unknown): Partial<Record<AbilityId, number>> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const entry = raw as Partial<Record<AbilityId, unknown>>;
+  const out: Partial<Record<AbilityId, number>> = {};
+  for (const id of ABILITY_IDS) {
+    const value = cleanNumber(entry[id]);
+    if (value !== undefined) out[id] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** RD normalisée : `undefined` sans valeur numérique ; `scope` écarté s'il n'est pas un type connu. */
+function normalizeDamageReduction(raw: unknown): CustomCreatureDamageReduction | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const entry = raw as Partial<CustomCreatureDamageReduction>;
+  const value = cleanNumber(entry.value);
+  if (value === undefined) return undefined;
+  const scope =
+    typeof entry.scope === 'string' && (RESISTIBLE_DAMAGE_TYPES as readonly string[]).includes(entry.scope)
+      ? (entry.scope as ResistibleDamageType)
+      : undefined;
+  return { value, ...(scope ? { scope } : {}) };
+}
+
 /**
  * Normalise un bloc saisi à la main (ou relu d'un état persisté / d'un broadcast) : entiers
  * tronqués, textes rognés/plafonnés, champs vides omis, listes bornées.
@@ -142,6 +187,8 @@ export function normalizeCustomCreature(raw: unknown): CustomCreature | undefine
   const description = cleanText(entry.description, CUSTOM_TEXT_MAX_LENGTH);
   const attacks = normalizeAttacks(entry.attacks);
   const specialAbilities = normalizeAbilities(entry.specialAbilities);
+  const abilities = normalizeAbilityScores(entry.abilities);
+  const damageReduction = normalizeDamageReduction(entry.damageReduction);
   return {
     initiative,
     // Des PV négatifs n'ont pas de sens pour une jauge : plancher à 0.
@@ -152,6 +199,8 @@ export function normalizeCustomCreature(raw: unknown): CustomCreature | undefine
     ...(description ? { description } : {}),
     ...(attacks ? { attacks } : {}),
     ...(specialAbilities ? { specialAbilities } : {}),
+    ...(abilities ? { abilities } : {}),
+    ...(damageReduction ? { damageReduction } : {}),
   };
 }
 
@@ -164,8 +213,10 @@ export function normalizeCustomCreature(raw: unknown): CustomCreature | undefine
  * Deux champs sont INERTES ici, imposés par le type `Creature` :
  *  - `category` (section du livre) — le bloc de stats ne l'affiche pas ;
  *  - `sourcePage` à 0 — sentinelle « pas de page de livre » : le renvoi `SourceRef` est omis.
- * `abilities` est délibérément absent : le MJ ne saisit pas les 7 caractéristiques (la grille
- * ne s'affiche donc pas), seule l'AGI de départage est conservée, hors bloc.
+ * `abilities` (PER-455) est projeté en RECORD COMPLET des 7 caractéristiques, une entrée absente
+ * de la saisie valant 0 (même convention que `AbilityCompactGrid`) : `Creature.abilities` n'admet
+ * pas de partiel. `damageReduction` (PER-455) devient une entrée `DamageReduction` `kind: 'flat'`
+ * unique, `scopes` portant le type choisi s'il y en a un (sinon la RD couvre tous les DM).
  */
 export function customCreatureBlob(
   custom: CustomCreature,
@@ -182,6 +233,22 @@ export function customCreatureBlob(
     initiative: custom.initiative,
     ...(custom.attacks ? { attacks: custom.attacks } : {}),
     ...(custom.specialAbilities ? { specialAbilities: custom.specialAbilities } : {}),
+    ...(custom.abilities
+      ? {
+          abilities: Object.fromEntries(
+            ABILITY_IDS.map((id) => [id, custom.abilities?.[id] ?? 0]),
+          ) as Record<AbilityId, number>,
+        }
+      : {}),
+    ...(custom.damageReduction
+      ? {
+          damageReduction: {
+            kind: 'flat',
+            value: custom.damageReduction.value,
+            ...(custom.damageReduction.scope ? { scopes: [custom.damageReduction.scope] } : {}),
+          },
+        }
+      : {}),
     sourcePage: 0,
   };
 }

@@ -10,9 +10,9 @@
  *    l'« invoquer » dans le combat.
  *  - **Créée à la main** : le MJ saisit lui-même un bloc minimal pour un adversaire qui n'est
  *    dans aucun livre (PNJ improvisé, variante bricolée). Seuls **initiative, PV et défense**
- *    sont obligatoires ; agilité, NC, description, attaques et capacités sont facultatifs. Le
- *    bloc saisi est copié sur l'instance de combat, donc affiché partout (écran de MJ,
- *    projection, écran joueur) sans rien charger.
+ *    sont obligatoires ; agilité, NC, description, attaques, capacités, les 7 caractéristiques
+ *    et une RD simple (PER-455) sont facultatifs. Le bloc saisi est copié sur l'instance de
+ *    combat, donc affiché partout (écran de MJ, projection, écran joueur) sans rien charger.
  *
  * PER-295 : on peut donner à la créature un **nom personnalisé** (« Grishnak le borgne »,
  * « Garde du corps » — obligatoire pour une créature créée à la main) et un **nombre
@@ -48,6 +48,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
+import MenuItem from '@mui/material/MenuItem';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
@@ -56,12 +57,15 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import { ABILITY_IDS, RESISTIBLE_DAMAGE_TYPES, type AbilityId, type ResistibleDamageType } from '@/data/schema';
 import { useBestiaryStore } from '@/stores/bestiary';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
 import { RichTextEditor } from '@/components/sheet/RichTextEditor';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { SCOPE_SHORT } from '@/lib/ui/damageReduction';
 import { SIDE_ACCENT, SIDE_LABELS, type CreatureSide } from '@/lib/ui/creature';
 import {
   clampAddCount,
@@ -246,6 +250,21 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
   const [abilities, setAbilities] = useState<AbilityDraft[]>(() =>
     (editingCustom?.specialAbilities ?? []).map((a) => ({ name: a.name, text: a.text })),
   );
+  // Les 7 caractéristiques (PER-455), facultatives — même patron « texte tenu, entier parsé à la
+  // validation » que le reste du socle numérique.
+  const [abilityScores, setAbilityScores] = useState<Record<AbilityId, string>>(
+    () =>
+      Object.fromEntries(
+        ABILITY_IDS.map((id) => [id, numberField(editingCustom?.abilities?.[id])]),
+      ) as Record<AbilityId, string>,
+  );
+  // RD simple (PER-455) : une valeur plate + un type de dégât optionnel (liste fermée du jeu).
+  const [damageReductionValue, setDamageReductionValue] = useState(
+    numberField(editingCustom?.damageReduction?.value),
+  );
+  const [damageReductionScope, setDamageReductionScope] = useState<ResistibleDamageType | ''>(
+    editingCustom?.damageReduction?.scope ?? '',
+  );
 
   const custom = source === 'custom';
   const isEditing = Boolean(editing);
@@ -279,8 +298,27 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
         description,
         attacks,
         specialAbilities: abilities,
+        abilities: Object.fromEntries(
+          ABILITY_IDS.map((id) => [id, parseIntegerField(abilityScores[id])]),
+        ),
+        damageReduction: {
+          value: parseIntegerField(damageReductionValue),
+          scope: damageReductionScope || undefined,
+        },
       }),
-    [initiative, hitPoints, defense, agility, nc, description, attacks, abilities],
+    [
+      initiative,
+      hitPoints,
+      defense,
+      agility,
+      nc,
+      description,
+      attacks,
+      abilities,
+      abilityScores,
+      damageReductionValue,
+      damageReductionScope,
+    ],
   );
 
   // Aperçu du bloc manuel : bloc de bestiaire SYNTHÉTIQUE, rendu exactement comme le sera la
@@ -512,6 +550,64 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
                     sx={{ flex: '0 1 100px', minWidth: 90 }}
                     slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
                   />
+                </Stack>
+              </Stack>
+
+              {/* Les 7 caractéristiques (PER-455), facultatives : une entrée non renseignée
+                  compte pour 0 à l'aperçu, comme sur les micro-fiches de l'écran de MJ. */}
+              <Stack spacing={0.75}>
+                <FieldLabel>Caractéristiques</FieldLabel>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                  {ABILITY_IDS.map((id) => (
+                    <TextField
+                      key={id}
+                      type="number"
+                      size="small"
+                      label={ABILITY_NAMES[id]}
+                      value={abilityScores[id]}
+                      onChange={(e) =>
+                        setAbilityScores((prev) => ({ ...prev, [id]: e.target.value }))
+                      }
+                      helperText="Facultatif"
+                      sx={{ flex: '1 1 110px', minWidth: 100 }}
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+
+              {/* RD simple (PER-455) : valeur plate + type de dégât facultatif, même liste
+                  fermée que la RD du bestiaire — badge et rendu identiques (`DefenseBadge`). */}
+              <Stack spacing={0.75}>
+                <FieldLabel>Réduction de dégâts</FieldLabel>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                  <TextField
+                    type="number"
+                    size="small"
+                    label="RD"
+                    value={damageReductionValue}
+                    onChange={(e) => setDamageReductionValue(e.target.value)}
+                    helperText="Facultatif"
+                    sx={{ flex: '0 1 100px', minWidth: 90 }}
+                    slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                  />
+                  <TextField
+                    select
+                    size="small"
+                    label="Type de dégât"
+                    value={damageReductionScope}
+                    onChange={(e) =>
+                      setDamageReductionScope(e.target.value as ResistibleDamageType | '')
+                    }
+                    helperText="Facultatif — vide = tous les DM"
+                    sx={{ flex: '1 1 180px', minWidth: 160 }}
+                  >
+                    <MenuItem value="">Tous les DM</MenuItem>
+                    {RESISTIBLE_DAMAGE_TYPES.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {SCOPE_SHORT[type]}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 </Stack>
               </Stack>
 
