@@ -20,6 +20,8 @@ import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
+import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
@@ -41,11 +43,13 @@ import {
 } from '@/lib/ui/classColors';
 import { prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
 import { AncestryIcon } from '@/components/AncestryIcon';
+import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { RankBadge } from '@/components/RankBadge';
-import { PageRefText, SourceRef } from '@/components/SourceRef';
+import { SourceRef } from '@/components/SourceRef';
 import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
+import { GlossaryRichText } from '@/components/sheet/FeatureRichText';
 import { PathFeatureCard } from '@/components/sheet/PathFeatureCard';
 import { useFeatureNameDecliner } from '@/components/sheet/FeatureDeclension';
 import { CodexFeatureChoices } from '@/components/codex/CodexChoiceSummary';
@@ -381,14 +385,18 @@ export function CodexPathBrowser() {
               )}
             </Stack>
             {selectedPath.type === 'prestige' && selectedPath.prerequisites ? (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                <strong>Prérequis :</strong> <PageRefText>{selectedPath.prerequisites}</PageRefText>
-              </Typography>
+              <AppAlert severity="warning" icon={<FactCheckOutlinedIcon fontSize="inherit" />} sx={{ mt: 2 }}>
+                <Typography variant="body2" component="div">
+                  <strong>Prérequis :</strong> <GlossaryRichText>{selectedPath.prerequisites}</GlossaryRichText>
+                </Typography>
+              </AppAlert>
             ) : null}
             {selectedPath.note ? (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                <PageRefText>{selectedPath.note}</PageRefText>
-              </Typography>
+              <AppAlert severity="info" icon={<HistoryEduOutlinedIcon />} sx={{ mt: 2 }}>
+                <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55, fontStyle: 'italic' }}>
+                  <GlossaryRichText>{selectedPath.note}</GlossaryRichText>
+                </Typography>
+              </AppAlert>
             ) : null}
 
             <Stack spacing={2} sx={{ mt: 3 }}>

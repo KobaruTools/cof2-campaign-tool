@@ -28,7 +28,7 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites:
-      "Les capacités issues de cette voie ne fonctionnent pas avec les armes qui infligent des DM non létaux ou seulement 1d6 DM.",
+      "Les capacités issues de cette voie ne fonctionnent pas avec les armes qui infligent des DM non létaux ou seulement {1d6} DM.",
     featureIds: [
       'prestige-armes-a-deux-mains-r4',
       'prestige-armes-a-deux-mains-r5',
@@ -44,13 +44,13 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites:
-      "Le personnage choisit une arme et se lie avec l'objet par un rituel informel qui dure 2d6 jours. Une fois par niveau, le personnage peut créer un lien avec une nouvelle arme, mais le lien qui le liait à la précédente disparaît.",
+      "Le personnage choisit une arme et se lie avec l'objet par un rituel informel qui dure {2d6} jours. Une fois par niveau, le personnage peut créer un lien avec une nouvelle arme, mais le lien qui le liait à la précédente disparaît.",
     // PER-74 : présentation de la voie (p. 147) en info-bulle « i » de l'en-tête, verbatim. Le
     // second paragraphe redit le rituel porté par `prerequisites` — c'est voulu : l'info-bulle doit
     // se lire d'un bloc, sans renvoyer ailleurs.
     note:
       "Certains héros tissent un lien particulier avec leur arme favorite. Cette compagne de tous les jours devient leur alliée la plus fidèle et un lien magique les unit progressivement.\n\n" +
-      "Le personnage choisit une arme et se lie avec l'objet par un rituel informel qui dure 2d6 jours. Une fois par niveau, le personnage peut créer un lien avec une nouvelle arme, mais le lien qui le liait à la précédente disparaît.",
+      "Le personnage choisit une arme et se lie avec l'objet par un rituel informel qui dure {2d6} jours. Une fois par niveau, le personnage peut créer un lien avec une nouvelle arme, mais le lien qui le liait à la précédente disparaît.",
     featureIds: [
       'prestige-arme-liee-r4',
       'prestige-arme-liee-r5',
