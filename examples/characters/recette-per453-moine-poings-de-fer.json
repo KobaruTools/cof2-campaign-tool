@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 25,
+  "id": "recette-per453-moine-poings-de-fer",
+  "name": "Recette PER-453 — Moine Poings de fer (AGI > FOR)",
+  "identity": {
+    "description": "ATTENDU : carte « Attaque au contact », face mains nues — la touche affiche FOR (base) + l'écart AGI-FOR (best-of), PAS FOR seul. La face ARME (si une arme de contact était portée) resterait, elle, inchangée sur FOR."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "moine",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "poing-r1",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "transformationDerivedStats": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-453 — best-of FOR/AGI (Poings de fer) étendu à la touche à mains nues.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

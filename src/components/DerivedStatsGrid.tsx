@@ -136,6 +136,10 @@ export interface DerivedStatsGridProps {
   offHandCriticalRanges?: DefenseBadgeData[];
   /** PER-116 — écart de touche de la main secondaire (non nul si la finesse substitue la touche). */
   offHandTouchDelta?: number;
+  /** PER-453 — écart de touche à mains nues (non nul si Poings de fer substitue AGI, plus avantageuse). */
+  unarmedTouchDelta?: number;
+  /** PER-453 — explication de l'écart de touche à mains nues, en info-bulle. `null`/absent = aucun écart. */
+  unarmedTouchNote?: string | null;
   /** PER-116 — dé malus imposé par le combat à deux armes (p. 215), sur chacune des deux lignes. */
   twoWeaponPenaltyDie?: boolean;
   /**
@@ -280,6 +284,8 @@ export function DerivedStatsGrid({
   offHandMeleeSituationalDamage,
   offHandCriticalRanges,
   offHandTouchDelta = 0,
+  unarmedTouchDelta = 0,
+  unarmedTouchNote = null,
   twoWeaponPenaltyDie = false,
   onScrollToWeapon,
   unarmedCriticalRanges,
@@ -483,6 +489,8 @@ export function DerivedStatsGrid({
                   weaponCriticalRanges={meleeCriticalRanges ?? []}
                   offHandCriticalRanges={offHandCriticalRanges ?? []}
                   offHandTouchDelta={offHandTouchDelta}
+                  unarmedTouchDelta={unarmedTouchDelta}
+                  unarmedTouchNote={unarmedTouchNote}
                   twoWeaponPenaltyDie={twoWeaponPenaltyDie}
                   onScrollToWeapon={onScrollToWeapon}
                   unarmedCriticalRanges={unarmedCriticalRanges ?? []}

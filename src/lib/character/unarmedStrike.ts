@@ -6,15 +6,17 @@
  * non létaux (arme `mains-nues`, p. 183 ; DM temporaires p. 219). Trois sources
  * modifient les mains nues et sont agrégées ici comme un bloc d'arme :
  * - MOINE (voies de moine, p. 119-121) : DM létaux au choix (trait de profil),
- *   Poings de fer (dé qui monte par rang, FOR→AGI aux DM), Mains d'énergie
- *   (attaques magiques, FOR→VOL aux DM), Griffes du tigre (1 au dé → max, choix du
- *   type de DM), Morsure du serpent (plage de critique +1 au contact) ;
+ *   Poings de fer (dé qui monte par rang, FOR→AGI aux DM ET aux tests d'attaque, PER-453),
+ *   Mains d'énergie (attaques magiques, FOR→VOL aux DM), Griffes du tigre (1 au dé → max,
+ *   choix du type de DM), Morsure du serpent (plage de critique +1 au contact) ;
  * - ARQUEBUSIER — Pilier de bar (p. 64) : `1d4°` non létal, sans caractéristique ;
  * - COLOSSE — Stature de géant (voie de prestige, p. 149) : `1d6` fixe au lieu de `1d3`.
  *
  * On AFFICHE (dé, carac, létalité, plage de critique) : aucun jet n'est résolu.
- * La TOUCHE n'est pas recalculée ici (identique à l'attaque au contact, base + FOR,
- * cf. `meleeAttack`) ; seule la partie DM / létalité / critique est décrite.
+ * La TOUCHE n'est PAS recalculée ICI (identique à l'attaque au contact, base + FOR, cf.
+ * `meleeAttack`) : `touchAbilities` ne fait que SIGNALER une substitution best-of possible
+ * (Poings de fer) ; c'est `characterDerivedView.ts` qui la résout en écart de touche
+ * (`unarmedTouchDelta`), la fiche connaissant seule la caractéristique de base résolue.
  */
 import { classById, equipmentById, featureById } from '@/data';
 import type { AbilityId, WeaponDamage } from '@/data/schema';
@@ -55,6 +57,13 @@ export interface UnarmedStrikeView {
    * `FOR/AGI` du livre). Vide = aucune (Pilier de bar).
    */
   damageAbilities: AbilityId[];
+  /**
+   * Caractéristique(s) utilisable(s) pour le TEST D'ATTAQUE à mains nues (best-of si plusieurs).
+   * `['FOR']` dans le cas commun. Poings de fer (p. 121, PER-453) l'étend à `['FOR', 'AGI']` — le
+   * moine « peut remplacer sa FOR par son AGI pour ses tests d'attaque au contact » : modélisé en
+   * best-of automatique, comme `damageAbilities`, pas en choix manuel à la table.
+   */
+  touchAbilities: AbilityId[];
   /**
    * Non létal (défaut, p. 219), AU CHOIX (moine) ou LÉTAL forcé (félis « Armes naturelles », Le
    * Compagnon p. 19 : DM létaux avec les armes naturelles). Un moine garde TOUJOURS le choix
@@ -144,6 +153,7 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
   let damage: WeaponDamage = { ...BASE_DAMAGE };
   let evolving = false;
   let damageAbilities: AbilityId[] = ['FOR'];
+  let touchAbilities: AbilityId[] = ['FOR'];
   let lethality: UnarmedStrikeView['lethality'] = 'non-lethal';
   let magical = false;
   let minRollBecomesMax = false;
@@ -203,11 +213,14 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
 
   // Poings de fer (p. 121) : dé qui monte avec le rang de la voie du poing ; FOR→AGI possible (best-of,
   // choix de table validé sur `poing-r1`). La létalité reste AU CHOIX (« il peut, s'il le souhaite… »).
+  // Le livre étend explicitement la substitution AUX TESTS D'ATTAQUE (« remplacer sa FOR par son AGI
+  // pour ses tests d'attaque au contact », PER-453) — modélisée en best-of automatique comme les DM.
   if (has('poing-r1')) {
     const rank = Math.min(5, Math.max(1, pathRanks['poing'] ?? 1));
     damage = { ...IRON_FIST_DIE_BY_RANK[rank] };
     evolving = false;
     damageAbilities = ['FOR', 'AGI'];
+    touchAbilities = ['FOR', 'AGI'];
     sources = addSource(sources, 'poing-r1');
   }
 
@@ -279,6 +292,7 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
     damage,
     evolving,
     damageAbilities,
+    touchAbilities,
     lethality,
     magical,
     minRollBecomesMax,

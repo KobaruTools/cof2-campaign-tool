@@ -51,6 +51,7 @@ describe('unarmedStrike — cas commun (n\'importe quel personnage)', () => {
     const v = unarmedStrike(makeCharacter());
     expect(v.damage).toEqual({ count: 1, die: 'd3', nonLethal: true });
     expect(v.damageAbilities).toEqual(['FOR']);
+    expect(v.touchAbilities).toEqual(['FOR']);
     expect(v.lethality).toBe('non-lethal');
     expect(v.magical).toBe(false);
     expect(v.evolving).toBe(false);
@@ -73,12 +74,15 @@ describe('unarmedStrike — moine', () => {
     // Le dé de base reste 1d3 tant que Poings de fer n'est pas pris.
     expect(v.damage).toEqual({ count: 1, die: 'd3', nonLethal: false });
     expect(v.damageAbilities).toEqual(['FOR']);
+    expect(v.touchAbilities).toEqual(['FOR']);
   });
 
   it('Poings de fer rang 1 : 1d6 + FOR/AGI, létalité AU CHOIX (le moine décide, p. 121)', () => {
     const v = unarmedStrike(makeCharacter({ classId: 'moine', featureIds: ['poing-r1'] }));
     expect(v.damage).toEqual({ count: 1, die: 'd6', nonLethal: false });
     expect(v.damageAbilities).toEqual(['FOR', 'AGI']);
+    // PER-453 — la substitution best-of FOR/AGI vaut AUSSI pour le test d'attaque (p. 121, verbatim).
+    expect(v.touchAbilities).toEqual(['FOR', 'AGI']);
     expect(v.lethality).toBe('choice');
     expect(v.sources).toContainEqual({ featureId: 'poing-r1', name: 'Poings de fer' });
     expect(formatUnarmedDamage(v)).toBe('1d6 + FOR/AGI');

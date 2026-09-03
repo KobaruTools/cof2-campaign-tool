@@ -327,6 +327,17 @@ export interface CharacterDerivedView {
    */
   offHandTouchDelta: number;
   /**
+   * PER-453 — CORRECTION à appliquer à la valeur de touche pour la face MAINS NUES de la bascule
+   * (0 = pas d'écart, cas courant). Poings de fer (p. 121) étend la substitution best-of FOR/AGI —
+   * déjà appliquée aux DM (`unarmed.damageAbilities`) — aux tests d'attaque au contact à mains nues ;
+   * la face ARME n'est jamais concernée (base + FOR, sauf finesse). `max(0, AGI − FOR)`, donc jamais
+   * négatif : la substitution n'est retenue QUE si elle est avantageuse (même patron que la finesse
+   * automatique, `finesseAttackChoices`).
+   */
+  unarmedTouchDelta: number;
+  /** PER-453 — explication de l'écart de touche à mains nues, en info-bulle. `null` si aucun écart. */
+  unarmedTouchNote: string | null;
+  /**
    * PER-116 — le combat à deux armes impose-t-il un dé MALUS aux attaques (p. 215) ? Faux hors combat
    * à deux armes ET quand l'exemption « Combattant héroïque » joue (même arme dans les deux mains,
    * option FOR, p. 73). Rendu en badge sur CHACUNE des deux lignes de la carte : le livre pénalise
@@ -739,6 +750,18 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // Attaque à mains nues (PER-141) + DM de l'arme de contact équipée, pour la bascule
   // de la carte « Attaque au contact ».
   const unarmed = unarmedStrike(character);
+  // PER-453 — Poings de fer (p. 121) étend le best-of FOR/AGI (déjà appliqué aux DM à mains nues,
+  // `unarmed.damageAbilities`) aux TESTS D'ATTAQUE au contact à mains nues. La touche de base
+  // (`stats.meleeAttack`) reste calculée sur FOR (la finesse ne s'applique jamais à mains nues,
+  // faute d'arme en main) : on n'ajoute donc qu'un écart, retenu SEULEMENT s'il est avantageux —
+  // jamais sur la face ARME de la bascule (cf. `unarmedTouchDelta` dans `MeleeAttackCard`).
+  const unarmedTouchDelta = unarmed.touchAbilities.includes('AGI')
+    ? Math.max(0, (effectCtx.abilities.AGI ?? 0) - (effectCtx.abilities.FOR ?? 0))
+    : 0;
+  const unarmedTouchNote =
+    unarmedTouchDelta > 0
+      ? "Poings de fer : agilité (AGI) substituée à la force (FOR) pour ce test d'attaque, plus avantageuse."
+      : null;
   const meleeWeaponDamage = wornWeaponDamage(character, 'melee');
   // PER-116 — DM de la main SECONDAIRE (`null` hors combat à deux armes) : recalculés pour SON arme,
   // donc avec ses propres dés, ses bonus permanents applicables et sa FOR (la finesse est réservée à
@@ -965,6 +988,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     offHandMeleeWeaponDamage,
     offHandCriticalRanges,
     offHandTouchDelta,
+    unarmedTouchDelta,
+    unarmedTouchNote,
     twoWeaponPenaltyDie: twoWeaponCombat.penaltyDie,
     unarmedCriticalRanges,
     rangedWeaponDamage,

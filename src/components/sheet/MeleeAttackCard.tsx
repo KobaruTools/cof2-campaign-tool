@@ -191,6 +191,8 @@ function Face({
   weaponCriticalRanges,
   offHandCriticalRanges,
   offHandTouchDelta,
+  unarmedTouchDelta,
+  unarmedTouchNote,
   unarmedCriticalRanges,
   situationalBonuses,
   offHandSituationalBonuses,
@@ -212,6 +214,8 @@ function Face({
   weaponCriticalRanges: DefenseBadgeData[];
   offHandCriticalRanges: DefenseBadgeData[];
   offHandTouchDelta: number;
+  unarmedTouchDelta: number;
+  unarmedTouchNote: string | null;
   unarmedCriticalRanges: DefenseBadgeData[];
   situationalBonuses: SituationalDamageBonus[];
   offHandSituationalBonuses: SituationalDamageBonus[];
@@ -271,8 +275,10 @@ function Face({
           handLabel: null,
           damage: meleeWeaponDamage,
           wrap: true,
-          touchDelta: 0,
-          touchNote: null,
+          // PER-453 — la face MAINS NUES seule (jamais la face ARME) porte l'écart de touche de
+          // Poings de fer (best-of FOR/AGI, `unarmedTouchDelta`), avec sa note d'infobulle dédiée.
+          touchDelta: mode === 'unarmed' ? unarmedTouchDelta : 0,
+          touchNote: mode === 'unarmed' ? unarmedTouchNote : null,
           slot: null,
           weaponKind: null,
         },
@@ -523,7 +529,10 @@ function Face({
 }
 
 export interface MeleeAttackCardProps {
-  /** Valeur de touche (base + FOR, éventuellement forcée) — identique dans les deux modes. */
+  /**
+   * Valeur de touche (base + FOR, éventuellement forcée). Commune aux deux faces ; la face MAINS NUES
+   * peut y ajouter `unarmedTouchDelta` (Poings de fer, PER-453), jamais la face ARME.
+   */
   touch: number | null;
   /** La valeur de touche est-elle forcée (surcharge épinglée) ? */
   forced: boolean;
@@ -550,6 +559,13 @@ export interface MeleeAttackCardProps {
    * (p. 140/150), la main secondaire garde la sienne.
    */
   offHandTouchDelta?: number;
+  /**
+   * PER-453 — écart de touche à mains nues (Poings de fer, best-of FOR/AGI). 0 = pas d'écart (cas
+   * courant). N'est jamais appliqué à la face ARME.
+   */
+  unarmedTouchDelta?: number;
+  /** PER-453 — explication de l'écart de touche à mains nues, en info-bulle. `null` = aucun écart. */
+  unarmedTouchNote?: string | null;
   /** Badges de plage de critique À MAINS NUES (mode mains nues). */
   unarmedCriticalRanges: DefenseBadgeData[];
   /** PER-115 — bonus de DM SITUATIONNELS au contact (Attaque éclair, Chasseur émérite…), en badges. */
@@ -611,6 +627,8 @@ export function MeleeAttackCard({
   weaponCriticalRanges,
   offHandCriticalRanges = [],
   offHandTouchDelta = 0,
+  unarmedTouchDelta = 0,
+  unarmedTouchNote = null,
   unarmedCriticalRanges,
   situationalBonuses,
   offHandSituationalBonuses = [],
@@ -635,6 +653,8 @@ export function MeleeAttackCard({
     weaponCriticalRanges,
     offHandCriticalRanges,
     offHandTouchDelta,
+    unarmedTouchDelta,
+    unarmedTouchNote,
     unarmedCriticalRanges,
     situationalBonuses,
     offHandSituationalBonuses,

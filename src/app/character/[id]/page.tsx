@@ -888,6 +888,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       offHandMeleeWeaponDamage,
       offHandCriticalRanges,
       offHandTouchDelta,
+      unarmedTouchDelta,
+      unarmedTouchNote,
       twoWeaponPenaltyDie,
       unarmedCriticalRanges,
       rangedWeaponDamage,
@@ -1999,6 +2001,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   offHandMeleeWeaponDamage={offHandMeleeWeaponDamage}
                   offHandCriticalRanges={offHandCriticalRanges}
                   offHandTouchDelta={offHandTouchDelta}
+                  unarmedTouchDelta={unarmedTouchDelta}
+                  unarmedTouchNote={unarmedTouchNote}
                   twoWeaponPenaltyDie={twoWeaponPenaltyDie}
                   onScrollToWeapon={scrollToEquipmentWeapon}
                   unarmedCriticalRanges={unarmedCriticalRanges}
