@@ -49,5 +49,12 @@
       "Correction du choix de voie chevalier dragon/élémentaliste, incohérent dans le codex et lors de la montée de niveau.",
       "Correction d'un petit décalage visuel lors du glisser-déposer dans l'ordre d'initiative."
     ]
+  },
+  {
+    "id": 4,
+    "date": "2026-09-03",
+    "items": [
+      "Amélioration de l'affichage des prérequis et des notes des voies de personnage, avec une meilleure lecture des jets de dés associés"
+    ]
   }
 ]
