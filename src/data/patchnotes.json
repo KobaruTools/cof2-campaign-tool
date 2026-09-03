@@ -34,5 +34,12 @@
       "L'emprunt d'argent utilise maintenant automatiquement la dénomination supérieure quand c'est nécessaire.",
       "Correction du calcul des dégâts à mains nues pour utiliser le meilleur score entre Force et Agilité avec les Poings de fer."
     ]
+  },
+  {
+    "id": 2,
+    "date": "2026-09-03",
+    "items": [
+      "Le journal des mises à jour s'affiche maintenant automatiquement pour les joueurs."
+    ]
   }
 ]
