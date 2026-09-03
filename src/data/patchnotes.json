@@ -63,5 +63,13 @@
     "items": [
       "Sur les créatures manuelles, vous pouvez désormais renseigner les 7 caractéristiques et une réduction de dégâts simple."
     ]
+  },
+  {
+    "id": 6,
+    "date": "2026-09-03",
+    "items": [
+      "Optimisation des performances de l'écran du meneur de jeu pour un affichage plus fluide.",
+      "Ajout d'indications visuelles pour repérer facilement les capacités, caractéristiques et dés manquants dans les prérequis et descriptions des voies."
+    ]
   }
 ]
