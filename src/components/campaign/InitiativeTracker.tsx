@@ -103,7 +103,18 @@
  * paraissent JAMAIS en projection — un tel badge révélerait aux joueurs que la créature est à 1 PV,
  * alors que ses PV leur sont masqués.
  */
-import { forwardRef, useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
+import { createPortal } from 'react-dom';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -141,7 +152,6 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha, type Theme } from '@mui/material/styles';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { ClassIcon } from '@/components/ClassIcon';
 import type { BeneficialEffectId, SituationalEffectId } from '@/data/schema';
 import type { Depletion, PortraitVariant } from '@/lib/character/types';
@@ -420,6 +430,14 @@ export interface ReorderDragPreview {
 
 /** Côté du portrait (px) : le bandeau d'initiative collé dessous fait la MÊME largeur. */
 const PORTRAIT_SIZE = 44;
+
+/**
+ * Repli STABLE pour `row.appliedStatuses` absent (PER-436bis) : `?? []` allouerait un nouveau
+ * tableau à CHAQUE rendu, cassant la mémoïsation de `status` dans `StatusDroppableColumn` (une
+ * carte SANS état posé aurait alors semblé « changée » à chaque re-rendu déclenché par `@dnd-kit`
+ * pendant un glisser — précisément ce que la mémoïsation cherche à éviter).
+ */
+const EMPTY_APPLIED_STATUSES: EffectiveStatus[] = [];
 
 /**
  * Largeur (px) d'une carte en mode DÉTAILLÉ — l'affichage par défaut de l'écran de MJ. C'est un
@@ -2300,8 +2318,17 @@ const REORDER_DROP_GAP = 28;
 /**
  * Colonne d'un combattant (présentation). `interactive` (optionnel, écran de MJ) transforme la
  * colonne en zone de drop et rend son en-tête cliquable (ouverture du menu d'états).
+ *
+ * `memo` (PER-436bis) : `@dnd-kit` (`useDraggable`/`useDroppable` dans `StatusDroppableColumn`,
+ * l'appelant) re-rend TOUTES les colonnes à chaque `pointermove` pendant un glisser, actives ou
+ * non — un abonnement au contexte interne du `DndContext`, pas à nos props. Sans `memo` ici, chaque
+ * pointermove ré-exécutait cette colonne (portrait, jauge de PV, tooltips…) pour les ~15 combattants
+ * d'un combat chargé, mesuré à ~20 ms/colonne, largement responsable du ralenti au glisser (constaté
+ * en profilant : 1 seul `onDragOver` réel déclenchait 10 à 20 rendus par colonne). Sans effet pour la
+ * colonne EFFECTIVEMENT glissée/survolée, dont les props changent réellement (cf. `StatusDroppableColumn`,
+ * qui mémoïse `interactive`/`status`/`order` pour que `memo` ait quelque chose à comparer).
  */
-function CombatantColumn({
+const CombatantColumn = memo(function CombatantColumn({
   row,
   isActive,
   projection,
@@ -2349,6 +2376,13 @@ function CombatantColumn({
   // au RELÂCHER, quand `transform` retombe à zéro (`isDragging` repasse `false`), pour un atterrissage
   // net plutôt qu'un saut instantané.
   const dragging = order?.dragHandle.isDragging ?? false;
+  // Position/décalage de prise capturés au `pointerdown` sur la poignée (cf. plus bas), pour le
+  // fantôme de glisser (`ReorderGhost`) : où DANS la carte le curseur l'a saisie, et sa position de
+  // départ — n'a besoin d'être JUSTE qu'à l'instant `t0` du glisser, jamais relu ensuite (le fantôme
+  // suit le `pointermove` natif au-delà, cf. `ReorderGhost`).
+  const cardRef = useRef<HTMLElement | null>(null);
+  const grabOffsetRef = useRef({ x: 0, y: 0 });
+  const grabPointerRef = useRef({ x: 0, y: 0 });
   // Résolution du portrait personnalisé (PER-391) : appelé INCONDITIONNELLEMENT (règle des
   // hooks — jamais dans un `if`), même pour une créature ou un compagnon. Sans effet dans ce cas
   // (variant absent → repli statique immédiat, aucun téléchargement) ; le résultat n'est routé
@@ -2393,6 +2427,7 @@ function CombatantColumn({
       ref={(el: HTMLElement | null) => {
         interactive?.dropRef(el);
         order?.dragHandle.setNodeRef(el);
+        cardRef.current = el;
       }}
       // Repère du combattant ACTIF pour le recentrage automatique de la bande (PER-297) : la réf
       // `@dnd-kit` occupant déjà `ref` sur l'écran de MJ, on marque la carte d'un attribut que le
@@ -2400,7 +2435,14 @@ function CombatantColumn({
       {...(isActive && { [ACTIVE_COMBATANT_ATTR]: 'true' })}
       style={
         order && {
-          transform: CSS.Translate.toString(order.dragHandle.transform),
+          // Pendant le glisser, la carte d'ORIGINE reste invisible sur place (case réservée) : le
+          // fantôme qui suit le curseur est désormais le `DragOverlay` (rendu hors du conteneur
+          // défilant, cf. `TrackerReorderOverlay`) et non plus cette carte translatée en place —
+          // celle-ci, elle, restait dans le flux de la bande `overflowX: auto` et son `transform`
+          // ne rattrapait le défilement automatique qu'avec un temps de retard visible (décollage
+          // du curseur constaté à l'usage). `visibility` (pas `opacity`) pour ne laisser aucun
+          // artefact d'ombre/bordure derrière elle.
+          visibility: dragging ? 'hidden' : 'visible',
           transition: dragging ? 'none' : 'transform 200ms ease',
         }
       }
@@ -2529,6 +2571,17 @@ function CombatantColumn({
             ref={order.dragHandle.setActivatorNodeRef}
             {...order.dragHandle.attributes}
             {...order.dragHandle.listeners}
+            onPointerDown={(event) => {
+              // Capture AVANT `@dnd-kit` (dont l'activation n'a pas encore commencé le glisser à cet
+              // instant) : décalage doigt/souris ↔ coin de la carte, pour que le fantôme démarre
+              // exactement là où la vraie carte était, pas au coin de la poignée.
+              const rect = cardRef.current?.getBoundingClientRect();
+              if (rect) {
+                grabOffsetRef.current = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+              }
+              grabPointerRef.current = { x: event.clientX, y: event.clientY };
+              order.dragHandle.listeners?.onPointerDown?.(event);
+            }}
             size="small"
             aria-label={`Réordonner ${row.name}`}
             sx={{
@@ -2759,7 +2812,105 @@ function CombatantColumn({
       {(incapacity === 'down' || incapacity === 'stunned') && (
         <IncapacitatedOverlay name={row.name} state={incapacity} />
       )}
+      {dragging && (
+        <ReorderGhost row={row} compact={compact} grabOffsetRef={grabOffsetRef} grabPointerRef={grabPointerRef} />
+      )}
     </Box>
+  );
+});
+CombatantColumn.displayName = 'CombatantColumn';
+
+/** Contenu visuel du fantôme de réordonnancement (cf. `ReorderGhost`, qui le positionne). Volontairement
+ * simplifié (identité seule, portrait STATIQUE non recadré) : transitoire et décoratif, il n'a pas
+ * besoin de la fidélité pixel de la vraie carte. */
+function ReorderOverlayCard({ row, compact }: { row: InitiativeRow; compact: boolean }) {
+  return (
+    <Box
+      sx={{
+        width: compact ? COLUMN_WIDTH_COMPACT : COLUMN_WIDTH_DETAILED,
+        p: 1.25,
+        borderRadius: 2,
+        bgcolor: 'rgba(20, 20, 23, 0.95)',
+        border: `2px solid ${row.accentColor ? alpha(row.accentColor, 0.6) : 'rgba(255, 255, 255, 0.2)'}`,
+        boxShadow: '0 10px 28px 4px rgba(0, 0, 0, 0.55)',
+        cursor: 'grabbing',
+      }}
+    >
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+        <CombatantIdentityBlock
+          src={row.portraitSrc}
+          name={row.name}
+          initiative={row.initiative}
+          initiativeDelta={row.initiativeDelta}
+        />
+        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+          <CombatantName name={row.name} />
+          {row.profileLabel && (
+            <Typography
+              variant="caption"
+              sx={{ display: 'block', color: row.profileColor || 'text.secondary', lineHeight: 1.2 }}
+            >
+              {row.profileLabel}
+            </Typography>
+          )}
+        </Box>
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * Fantôme de la carte glissée pour le réordonnancement (PER-436), collé au curseur SANS passer par
+ * la mécanique `transform`/`rect` de `@dnd-kit` : porté (`createPortal`) directement sous `<body>` et
+ * repositionné par un `pointermove` natif qui écrit dans le DOM (`ref.style.transform`), hors du cycle
+ * de rendu React. Deux bugs corrigés d'un coup par ce choix :
+ * - le `DragOverlay` `@dnd-kit` essayé d'abord se plaçait très loin du curseur (son `rect` mesuré sur
+ *   la carte, DANS la bande `overflowX: auto`, composé avec le `transform` de compensation de
+ *   défilement — pensé pour une carte translatée EN PLACE, pas pour un fantôme déjà hors conteneur —
+ *   partait dans la mauvaise direction) ;
+ * - `setDragPreview` (état React, dans l'appelant) tournant à chaque `pointermove` pour suivre un
+ *   fantôme aurait ré-affiché TOUTE la bande de cartes à chaque pixel ; ici il ne sert plus qu'à
+ *   l'indicateur d'insertion (case qui s'écarte), inchangé entre deux survols de la même carte.
+ * `grabOffsetRef`/`grabPointerRef` sont figés à l'OUVERTURE du fantôme (capturés au `pointerdown` sur
+ * la poignée, cf. `CombatantColumn`) : reçus en `ref` (pas en valeur) pour n'être lus qu'après le
+ * rendu, dans l'effet ci-dessous — jamais pendant le rendu — et l'effet ne les relit jamais ensuite,
+ * un seul fantôme vivant par glisser.
+ */
+function ReorderGhost({
+  row,
+  compact,
+  grabOffsetRef,
+  grabPointerRef,
+}: {
+  row: InitiativeRow;
+  compact: boolean;
+  grabOffsetRef: RefObject<{ x: number; y: number }>;
+  grabPointerRef: RefObject<{ x: number; y: number }>;
+}) {
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node) return;
+    const grabOffset = grabOffsetRef.current;
+    const initialPointer = grabPointerRef.current;
+    const place = (clientX: number, clientY: number) => {
+      node.style.transform = `translate3d(${clientX - grabOffset.x}px, ${clientY - grabOffset.y}px, 0)`;
+    };
+    place(initialPointer.x, initialPointer.y);
+    const handlePointerMove = (event: PointerEvent) => place(event.clientX, event.clientY);
+    window.addEventListener('pointermove', handlePointerMove);
+    return () => window.removeEventListener('pointermove', handlePointerMove);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return createPortal(
+    <Box
+      ref={nodeRef}
+      aria-hidden
+      sx={{ position: 'fixed', top: 0, left: 0, zIndex: 2000, pointerEvents: 'none', willChange: 'transform' }}
+    >
+      <ReorderOverlayCard row={row} compact={compact} />
+    </Box>,
+    document.body,
   );
 }
 
@@ -2815,7 +2966,7 @@ function StatusDroppableColumn({
   // état déduit des PV n'est pas de son fait, le décocher n'aurait rien à retirer.
   const manualIds = new Set((controls.statusesByKey[row.key] ?? []).map((s) => s.id));
   // Les BADGES, eux, montrent les états EFFECTIFS de la ligne (posés + déduits), comme la projection.
-  const applied = row.appliedStatuses ?? [];
+  const applied = row.appliedStatuses ?? EMPTY_APPLIED_STATUSES;
 
   // Buffs de groupe débloqués — proposés dans le menu SEULEMENT si l'écran de MJ sait ouvrir la
   // fenêtre de pose : sans elle, cocher la case poserait le buff sur ce seul combattant, à rebours
@@ -2836,18 +2987,59 @@ function StatusDroppableColumn({
     // Le menu reste ouvert : le MJ peut cocher/décocher plusieurs états d'affilée.
   };
 
-  const order: ColumnOrderRender | undefined = orderControls
-    ? {
-        acted: orderControls.actedKeys.includes(row.key),
-        onToggleActed: () =>
-          orderControls.onSetActed(row.key, !orderControls.actedKeys.includes(row.key)),
-        dragHandle: reorderDraggable,
-        pinned: orderControls.pinnedKeys.includes(row.key),
-        onTogglePin: () => orderControls.onTogglePin(row.key, nextRowKey),
-        hasManualPosition: row.key in orderControls.manualOrder,
-        onResetOrder: () => orderControls.onResetOrder(row.key),
-      }
-    : undefined;
+  // `order`/`interactive`/`status` mémoïsés (PER-436bis) : sans eux, `CombatantColumn` recevrait un
+  // objet FRAÎCHEMENT ALLOUÉ à chaque rendu de `StatusDroppableColumn` (donc à chaque pointermove
+  // pendant un glisser, cf. `CombatantColumn`) — cassant net son `memo`, puisqu'une nouvelle
+  // référence d'objet paraît toujours « changée » même à contenu identique. Dépendances sur les
+  // CHAMPS individuels de `reorderDraggable`/`setNodeRef` (pas l'objet englobant, recréé lui aussi à
+  // chaque rendu par `useDraggable`/`useDroppable`, cf. leur source).
+  const order: ColumnOrderRender | undefined = useMemo(
+    () =>
+      orderControls
+        ? {
+            acted: orderControls.actedKeys.includes(row.key),
+            onToggleActed: () =>
+              orderControls.onSetActed(row.key, !orderControls.actedKeys.includes(row.key)),
+            dragHandle: reorderDraggable,
+            pinned: orderControls.pinnedKeys.includes(row.key),
+            onTogglePin: () => orderControls.onTogglePin(row.key, nextRowKey),
+            hasManualPosition: row.key in orderControls.manualOrder,
+            onResetOrder: () => orderControls.onResetOrder(row.key),
+          }
+        : undefined,
+    // `reorderDraggable` volontairement absent (dépendances sur ses CHAMPS individuels ci-dessous) :
+    // c'est un objet frais à chaque rendu (cf. `useDraggable`), le lister ferait recalculer `order`
+    // à CHAQUE rendu et annulerait la mémoïsation qu'il vise à obtenir. `transform` EXCLU aussi
+    // (délibérément, pas un oubli) : plus rien ne le lit dans `CombatantColumn` depuis que le
+    // fantôme suit le curseur en dehors de React (cf. `ReorderGhost`) — seul `isDragging` compte
+    // encore pour son rendu. Le lister ferait recalculer `order`, donc re-rendre TOUTE la carte
+    // glissée, à CHAQUE `pointermove` du geste (`transform` change à chaque pixel), directement
+    // responsable du stutter restant après le premier passage de mémoïsation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      orderControls,
+      row.key,
+      nextRowKey,
+      reorderDraggable.isDragging,
+      reorderDraggable.attributes,
+      reorderDraggable.listeners,
+      reorderDraggable.setNodeRef,
+      reorderDraggable.setActivatorNodeRef,
+    ],
+  );
+  const interactive: ColumnStatusInteractive = useMemo(
+    () => ({ dropRef: setNodeRef, isOver, onOpenMenu: (e) => setAnchorEl(e.currentTarget) }),
+    [setNodeRef, isOver],
+  );
+  const status: ColumnStatusRender = useMemo(
+    () => ({
+      applied,
+      onRemove: (id) => controls.onRemove(row.key, id),
+      onAdjust: (id, delta) => controls.onAdjust(row.key, id, delta),
+      onAdjustDuration: (id, delta) => controls.onAdjustDuration(row.key, id, delta),
+    }),
+    [applied, controls, row.key],
+  );
 
   return (
     <>
@@ -2857,18 +3049,9 @@ function StatusDroppableColumn({
         projection={false}
         compact={compact}
         onGiveTurn={onGiveTurn}
-        interactive={{
-          dropRef: setNodeRef,
-          isOver,
-          onOpenMenu: (e) => setAnchorEl(e.currentTarget),
-        }}
+        interactive={interactive}
         roundNumber={roundNumber}
-        status={{
-          applied,
-          onRemove: (id) => controls.onRemove(row.key, id),
-          onAdjust: (id, delta) => controls.onAdjust(row.key, id, delta),
-          onAdjustDuration: (id, delta) => controls.onAdjustDuration(row.key, id, delta),
-        }}
+        status={status}
         order={order}
       />
       <Menu
@@ -3043,6 +3226,23 @@ export function InitiativeTracker({
   const displayedRows = projection
     ? rows.filter((r) => !r.hidden)
     : applyManualOrder(relegateSidelined(rows), orderControls?.manualOrder ?? {});
+  // Poignée « donner le tour » stable PAR COMBATTANT (PER-436bis) : construite à la volée dans la
+  // boucle de rendu plus bas (`() => onCurrentTurnKeyChange(row.key)`), elle changeait de référence
+  // à CHAQUE rendu — même quand `onCurrentTurnKeyChange` lui-même est stable — cassant le `memo` de
+  // `CombatantColumn` pour TOUTES les colonnes à chaque franchissement de carte pendant un glisser
+  // (pas un Hook : `row.key` varie par itération d'une boucle dont la longueur elle-même varie).
+  const giveTurnHandlers = useRef(new Map<string, () => void>());
+  const getGiveTurnHandler = useCallback(
+    (key: string) => {
+      let handler = giveTurnHandlers.current.get(key);
+      if (!handler) {
+        handler = () => onCurrentTurnKeyChange(key);
+        giveTurnHandlers.current.set(key, handler);
+      }
+      return handler;
+    },
+    [onCurrentTurnKeyChange],
+  );
   /**
    * Avance (+1) ou recule (−1) d'un cran dans l'ordre d'initiative (PER-299). Toute l'arithmétique
    * — bouclage aux deux bouts, incrément/décrément de manche, saut des créatures vaincues, cas
@@ -3334,13 +3534,21 @@ export function InitiativeTracker({
                 ...SCROLLBAR_SX,
               }}
             >
+              {/* eslint-disable react-hooks/refs -- `getGiveTurnHandler` (plus bas) lit volontairement
+                  un cache posé en `ref` ; la règle rapporte la violation sur ce `.map()` englobant
+                  plutôt que sur son propre appel, cf. son commentaire. */}
               {displayedRows.map((row, i) => {
                 const isActive = row.key === currentTurnKey;
                 // Donner le tour à un combattant en cliquant SON bandeau d'initiative (PER-299) : une
                 // correction de position, donc le compteur de manche n'est PAS touché — contrairement
                 // à « Tour suivant », qui progresse dans l'ordre. Écran de MJ seul (la projection ne
                 // pilote rien).
-                const onGiveTurn = projection ? undefined : () => onCurrentTurnKeyChange(row.key);
+                // `getGiveTurnHandler` lit un cache posé dans une `ref` (délibéré, cf. sa définition
+                // plus haut) : lecture pendant le rendu par construction de ce patron de mise en
+                // cache — sans danger ici, la fonction retournée dépend seulement de `key` (constant
+                // pour cette ligne, `row.key`) et de `onCurrentTurnKeyChange` (déjà une dépendance du
+                // `useCallback` qui la fournit).
+                const onGiveTurn = projection ? undefined : getGiveTurnHandler(row.key);
                 const card = interactive ? (
                   <StatusDroppableColumn
                     row={row}
@@ -3348,7 +3556,7 @@ export function InitiativeTracker({
                     compact={compact}
                     controls={statusControls}
                     roundNumber={roundNumber}
-                    onGiveTurn={() => onCurrentTurnKeyChange(row.key)}
+                    onGiveTurn={onGiveTurn!}
                     orderControls={orderControls}
                     nextRowKey={displayedRows[i + 1]?.key ?? null}
                     dragPreview={dragPreview}
@@ -3403,6 +3611,7 @@ export function InitiativeTracker({
                   </Box>
                 );
               })}
+              {/* eslint-enable react-hooks/refs */}
             </Box>
             {/* Estompes des deux bords : sur l'écran de MJ ET en projection. */}
             <BandFade side="left" visible={edges.left} />
