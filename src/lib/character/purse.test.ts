@@ -6,12 +6,14 @@ import {
   COPPER_PER_SILVER,
   EMPTY_PURSE,
   GOLD_PER_PLATINUM,
+  canWithdrawCoin,
   copperToPurse,
   formatPurse,
   isPurseCanonical,
   isPurseEmpty,
   normalizePurse,
   purseTotalCopper,
+  withdrawCoin,
 } from './purse';
 
 describe('taux de conversion (p. 181)', () => {
@@ -89,6 +91,77 @@ describe('isPurseCanonical', () => {
     expect(isPurseCanonical({ platinum: 0, gold: 0, silver: 0, copper: 10 })).toBe(false);
     expect(isPurseCanonical({ platinum: -1, gold: 0, silver: 0, copper: 0 })).toBe(false);
     expect(isPurseCanonical({ platinum: 0, gold: 0, silver: 1.5, copper: 0 })).toBe(false);
+  });
+});
+
+describe('withdrawCoin (PER-452)', () => {
+  it('retire simplement si la dénomination est suffisante', () => {
+    expect(withdrawCoin({ platinum: 0, gold: 0, silver: 6, copper: 5 }, 'silver', 2)).toEqual({
+      platinum: 0,
+      gold: 0,
+      silver: 4,
+      copper: 5,
+    });
+  });
+
+  it('emprunte 1 pa (→ 10 pc) quand le cuivre est insuffisant (exemple du ticket)', () => {
+    // 6 pa, 0 pc, dépense de 1 pc → 5 pa, 9 pc.
+    expect(withdrawCoin({ platinum: 0, gold: 0, silver: 6, copper: 0 }, 'copper', 1)).toEqual({
+      platinum: 0,
+      gold: 0,
+      silver: 5,
+      copper: 9,
+    });
+  });
+
+  it('remonte la chaîne (po → pa → pc) si les dénominations intermédiaires sont vides', () => {
+    expect(withdrawCoin({ platinum: 0, gold: 1, silver: 0, copper: 0 }, 'copper', 1)).toEqual({
+      platinum: 0,
+      gold: 0,
+      silver: 9,
+      copper: 9,
+    });
+  });
+
+  it('remonte jusqu’à la platine si besoin', () => {
+    expect(withdrawCoin({ platinum: 1, gold: 0, silver: 0, copper: 0 }, 'silver', 1)).toEqual({
+      platinum: 0,
+      gold: 9,
+      silver: 9,
+      copper: 0,
+    });
+  });
+
+  it('ne touche jamais aux dénominations plus faibles que celle demandée', () => {
+    expect(withdrawCoin({ platinum: 0, gold: 1, silver: 0, copper: 7 }, 'silver', 1)).toEqual({
+      platinum: 0,
+      gold: 0,
+      silver: 9,
+      copper: 7,
+    });
+  });
+
+  it('plafonne à zéro (jamais négatif) si la bourse totale ne suffit pas, tous rangs confondus', () => {
+    expect(withdrawCoin({ platinum: 0, gold: 0, silver: 0, copper: 3 }, 'copper', 5)).toEqual({
+      platinum: 0,
+      gold: 0,
+      silver: 0,
+      copper: 0,
+    });
+  });
+});
+
+describe('canWithdrawCoin (PER-452)', () => {
+  it('vrai si la dénomination seule suffit', () => {
+    expect(canWithdrawCoin({ platinum: 0, gold: 0, silver: 0, copper: 3 }, 'copper', 2)).toBe(true);
+  });
+
+  it('vrai si un emprunt plus haut peut combler', () => {
+    expect(canWithdrawCoin({ platinum: 0, gold: 0, silver: 1, copper: 0 }, 'copper', 1)).toBe(true);
+  });
+
+  it('faux si la bourse totale est insuffisante', () => {
+    expect(canWithdrawCoin({ platinum: 0, gold: 0, silver: 0, copper: 0 }, 'copper', 1)).toBe(false);
   });
 });
 

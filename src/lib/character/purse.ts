@@ -84,6 +84,71 @@ export function isPurseCanonical(purse: Purse): boolean {
   );
 }
 
+/** Ordre des dénominations, de la plus faible (cuivre) à la plus forte (platine). */
+export const DENOMINATION_ORDER: readonly (keyof Purse)[] = ['copper', 'silver', 'gold', 'platinum'];
+
+/**
+ * Taux de conversion d'UNE pièce de la dénomination (clé) vers la dénomination
+ * immédiatement inférieure de `DENOMINATION_ORDER` (p. 181). Pas d'entrée pour `copper`
+ * (rien de plus faible).
+ */
+export const RATIO_TO_NEXT_LOWER: Partial<Record<keyof Purse, number>> = {
+  silver: COPPER_PER_SILVER,
+  gold: SILVER_PER_GOLD,
+  platinum: GOLD_PER_PLATINUM,
+};
+
+/** Valeur d'une pièce de `key`, exprimée en pièces de cuivre (cf. `purseTotalCopper`). */
+const COPPER_VALUE: Record<keyof Purse, number> = {
+  copper: 1,
+  silver: COPPER_PER_SILVER,
+  gold: COPPER_PER_GOLD,
+  platinum: COPPER_PER_PLATINUM,
+};
+
+/**
+ * `true` si la bourse contient de quoi retirer `amount` pièces de `key`, tous rangs
+ * confondus (emprunt automatique inclus, cf. `withdrawCoin`, PER-452).
+ */
+export function canWithdrawCoin(purse: Purse, key: keyof Purse, amount = 1): boolean {
+  return purseTotalCopper(purse) >= amount * COPPER_VALUE[key];
+}
+
+/**
+ * Garantit au moins 1 pièce disponible à `DENOMINATION_ORDER[index]`, en cassant une
+ * pièce de la dénomination immédiatement supérieure si besoin (récursif, remonte la
+ * chaîne aussi loin que nécessaire). Ne touche à rien si déjà disponible, ou si la
+ * bourse n'a plus rien à emprunter plus haut (insuffisante).
+ */
+function ensureOneCoin(purse: Purse, index: number): Purse {
+  const key = DENOMINATION_ORDER[index];
+  if (purse[key] > 0) return purse;
+  const higherKey = DENOMINATION_ORDER[index + 1];
+  if (!higherKey) return purse;
+  const withHigher = ensureOneCoin(purse, index + 1);
+  if (withHigher[higherKey] <= 0) return withHigher;
+  const ratio = RATIO_TO_NEXT_LOWER[higherKey]!;
+  return { ...withHigher, [higherKey]: withHigher[higherKey] - 1, [key]: withHigher[key] + ratio };
+}
+
+/**
+ * Retire `amount` pièces de `key` (PER-452). Si le solde de `key` est insuffisant,
+ * emprunte automatiquement sur la dénomination immédiatement supérieure (taux p. 181),
+ * en remontant la chaîne (po → pa → pc) si besoin — sans jamais toucher aux
+ * dénominations plus faibles que `key`. Si la bourse ne suffit pas tous rangs
+ * confondus, plafonne au maximum retirable (jamais négatif).
+ */
+export function withdrawCoin(purse: Purse, key: keyof Purse, amount = 1): Purse {
+  const index = DENOMINATION_ORDER.indexOf(key);
+  let working = purse;
+  while (working[key] < amount) {
+    const before = working;
+    working = ensureOneCoin(working, index);
+    if (working === before) break;
+  }
+  return { ...working, [key]: Math.max(0, working[key] - amount) };
+}
+
 /**
  * Formate une bourse en texte compact (« 1 pp 12 po 3 pa 5 pc »), en omettant les
  * unités à zéro. Bourse vide → « 0 pc ».

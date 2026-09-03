@@ -16,7 +16,7 @@ import Typography from '@mui/material/Typography';
 import { alpha, darken, lighten } from '@mui/material/styles';
 import type { Purse } from '@/lib/character/types';
 import { CURRENCY_COLOR } from '@/lib/character/coinPouch';
-import { COPPER_PER_SILVER, GOLD_PER_PLATINUM, SILVER_PER_GOLD } from '@/lib/character/purse';
+import { canWithdrawCoin, RATIO_TO_NEXT_LOWER, withdrawCoin } from '@/lib/character/purse';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PurseIcon } from '@/components/PurseIcon';
 import { SourceRef } from '@/components/SourceRef';
@@ -375,11 +375,17 @@ function CoinInput({
   coin,
   value,
   onCommit,
+  canWithdraw,
+  onWithdraw,
   fillBelow,
 }: {
   coin: CoinMeta;
   value: number;
   onCommit: (value: number) => void;
+  /** `true` si retirer 1 pièce de cette dénomination est possible (emprunt inclus, PER-452). */
+  canWithdraw: boolean;
+  /** Retire 1 pièce de cette dénomination, empruntant sur la dénomination supérieure si besoin. */
+  onWithdraw: () => void;
   /**
    * Largeur de container (px) SOUS laquelle le champ occupe toute sa cellule (pleine
    * largeur en 1 colonne, 50 % en 2 colonnes) au lieu de sa largeur compacte fixe.
@@ -407,7 +413,8 @@ function CoinInput({
   // Survol du champ : pilote la 3e barre large (fondu de sortie géré par `ThickShineBar`).
   const [hover, setHover] = useState(false);
 
-  // Incrément/décrément via les boutons −/+ (remplacent les flèches natives). Bornes ≥ 0.
+  // Incrément via le bouton + (remplace la flèche native). Le bouton − passe par
+  // `onWithdraw` (emprunt automatique sur la dénomination supérieure, PER-452).
   const step = (delta: number) => {
     const next = Math.max(0, value + delta);
     if (next !== value) onCommit(next);
@@ -536,8 +543,8 @@ function CoinInput({
                     aire serait rognée de 1px et les deux boutons n'auraient pas la même largeur. */}
                 <IconButton
                   aria-label={`Retirer 1 ${coin.code}`}
-                  onClick={() => step(-1)}
-                  disabled={value <= 0}
+                  onClick={onWithdraw}
+                  disabled={!canWithdraw}
                   sx={{
                     borderRadius: 0,
                     p: 0,
@@ -644,11 +651,7 @@ function CoinConvert({
 }
 
 /** Taux de conversion entre unités adjacentes (p. 181), dans l'ordre d'affichage des `COINS`. */
-const CONVERSION_RATIO: Record<string, number> = {
-  platinum: GOLD_PER_PLATINUM, // 1 pp ↔ 10 po
-  gold: SILVER_PER_GOLD, // 1 po ↔ 10 pa
-  silver: COPPER_PER_SILVER, // 1 pa ↔ 10 pc
-};
+const CONVERSION_RATIO = RATIO_TO_NEXT_LOWER;
 
 export interface PurseFieldProps {
   /** Bourse courante du personnage. */
@@ -761,6 +764,8 @@ export function PurseField({
                   coin={coin}
                   value={purse[coin.key]}
                   onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
+                  canWithdraw={canWithdrawCoin(purse, coin.key)}
+                  onWithdraw={() => onChange(withdrawCoin(purse, coin.key))}
                   fillBelow={breakpoint}
                 />
                 {next && (
@@ -771,7 +776,7 @@ export function PurseField({
                     lower={next.key}
                     higherCode={coin.code}
                     lowerCode={next.code}
-                    ratio={CONVERSION_RATIO[coin.key]}
+                    ratio={CONVERSION_RATIO[coin.key]!}
                     breakpoint={breakpoint}
                   />
                 )}
@@ -819,6 +824,8 @@ export function PurseField({
               coin={coin}
               value={purse[coin.key]}
               onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
+              canWithdraw={canWithdrawCoin(purse, coin.key)}
+              onWithdraw={() => onChange(withdrawCoin(purse, coin.key))}
               fillBelow={TWO_COL}
             />
           ))}
