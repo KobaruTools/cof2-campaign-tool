@@ -66,7 +66,7 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites:
-      "Pour choisir cette voie, il faut avoir acquis la capacité Monture fantastique (rang 5 de la voie du cavalier) et choisi un drake au niveau 9 (une sorte de lézard volant, cousin mineur du dragon). De fait, à moins d'une autorisation très spécifique du MJ, cette voie ne sera ouverte qu'à haut niveau (9 à 13). La voie est conçue à partir des symboles liés au dragon rouge, mais elle peut évidemment être déclinée pour d'autres couleurs : c'est la couleur retenue pour le drake (Monture fantastique) qui fixe le type d'énergie de la voie.",
+      "Pour choisir cette voie, il faut avoir acquis la capacité [&cavalier-r5|Monture fantastique] (rang 5 de la voie du cavalier) et choisi un drake au niveau 9 (une sorte de lézard volant, cousin mineur du dragon). De fait, à moins d'une autorisation très spécifique du MJ, cette voie ne sera ouverte qu'à haut niveau (9 à 13). La voie est conçue à partir des symboles liés au dragon rouge, mais elle peut évidemment être déclinée pour d'autres couleurs : c'est la couleur retenue pour le drake ([&cavalier-r5|Monture fantastique]) qui fixe le type d'énergie de la voie.",
     featureIds: [
       'prestige-chevalier-dragon-r4',
       'prestige-chevalier-dragon-r5',
@@ -120,7 +120,7 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites:
-      "Il est nécessaire d'avoir au moins +3 en Force pour choisir cette voie.",
+      "Il est nécessaire d'avoir au moins +3 en @FOR pour choisir cette voie.",
     note: "À force d'entraînement, le personnage développe une force prodigieuse et des muscles énormes. Il augmente son poids d'au moins 10 kg par rang atteint dans la voie, tout en muscle.",
     featureIds: [
       'prestige-colosse-r4',
@@ -288,7 +288,7 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'mage',
     prerequisites: '',
-    note: "Pour fonctionner, un cristal doit être lancé près de la tête du personnage, il se met alors à tourner rapidement autour de celle-ci. Activer ou désactiver un cristal correspond à une action limitée. Le personnage peut activer ou désactiver un cristal qu'il a fabriqué à n'importe quelle distance par une action limitée. Fabriquer un cristal demande 1d6 jours de travail et la dépense de 500 pa.\n\nTable des cristaux (Couleur — Forme — Effet) :\n- Blanc laiteux — Fuseau — Régénération (1 PV/h)\n- Bleu incandescent — Sphère — Bonus de +1 en PER\n- Bleu nuit — Rhombe — Bonus de +5 en Init.\n- Bleu pâle — Rhombe — Bonus de +1 en FOR\n- Irisé — Fuseau — Permet de survivre sans respirer\n- Noir fumé — Prisme — Résistance au feu et au froid 10 points\n- Orange — Fuseau — Résistance acide et électricité 10 points\n- Violet — Sphère — Bonus de +1 en CHA\n- Rose laiteux — Prisme — Bonus de +2 en DEF\n- Rouge sang — Rhombe — Bonus de +1 en CON\n- Rouge et bleu — Sphère — Bonus de +1 en INT\n- Rose vif — Sphère — Bonus de +1 en AGI\n- Translucide — Fuseau — Permet de subsister sans boire ni manger\n- Vert pâle — Prisme — Bonus de +1 en attaque",
+    note: "Pour fonctionner, un cristal doit être lancé près de la tête du personnage, il se met alors à tourner rapidement autour de celle-ci. Activer ou désactiver un cristal correspond à une action limitée. Le personnage peut activer ou désactiver un cristal qu'il a fabriqué à n'importe quelle distance par une action limitée. Fabriquer un cristal demande {1d6} jours de travail et la dépense de 500 pa.\n\nTable des cristaux (Couleur — Forme — Effet) :\n- Blanc laiteux — Fuseau — Régénération (1 PV/h)\n- Bleu incandescent — Sphère — Bonus de +1 en @PER\n- Bleu nuit — Rhombe — Bonus de +5 en Init.\n- Bleu pâle — Rhombe — Bonus de +1 en @FOR\n- Irisé — Fuseau — Permet de survivre sans respirer\n- Noir fumé — Prisme — Résistance au feu et au froid 10 points\n- Orange — Fuseau — Résistance acide et électricité 10 points\n- Violet — Sphère — Bonus de +1 en @CHA\n- Rose laiteux — Prisme — Bonus de +2 en DEF\n- Rouge sang — Rhombe — Bonus de +1 en @CON\n- Rouge et bleu — Sphère — Bonus de +1 en @INT\n- Rose vif — Sphère — Bonus de +1 en @AGI\n- Translucide — Fuseau — Permet de subsister sans boire ni manger\n- Vert pâle — Prisme — Bonus de +1 en attaque",
     featureIds: [
       'prestige-cristaux-r4',
       'prestige-cristaux-r5',
@@ -413,7 +413,7 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'mage',
     prerequisites: '',
-    note: "Contretemps : cette règle optionnelle permet de simuler les effets secondaires des sorts temporels. Elle sert aussi d'exemple à ce que le MJ pourrait inventer comme effet secondaire pour d'autres voies de prestige. Pour tous les sorts de cette voie, si le lanceur obtient un échec critique au test d'attaque magique (1 au d20), il subit un contrecoup : lancez un d6 sur la table ci-dessous.\n1 Reste perdu dans ses pensées pour 1d4° rounds. Attaqué, il se défend.\n2 Ne sait plus qui il est durant 1d4° minutes.\n3 Ne sait plus où il est ni pourquoi il est là durant 1d4° minutes.\n4 Ne reconnaît plus l'un de ses compagnons (déterminé au hasard) durant 1d4° h.\n5 Oubli d'un événement important durant 1d4° jours.\n6 Oubli d'un détail durant 1d4° mois.",
+    note: "Contretemps : cette règle optionnelle permet de simuler les effets secondaires des sorts temporels. Elle sert aussi d'exemple à ce que le MJ pourrait inventer comme effet secondaire pour d'autres voies de prestige. Pour tous les sorts de cette voie, si le lanceur obtient un échec critique au test d'attaque magique (1 au {d20}), il subit un contrecoup : lancez un {d6} sur la table ci-dessous.\n1 Reste perdu dans ses pensées pour {1d4°} rounds. Attaqué, il se défend.\n2 Ne sait plus qui il est durant {1d4°} minutes.\n3 Ne sait plus où il est ni pourquoi il est là durant {1d4°} minutes.\n4 Ne reconnaît plus l'un de ses compagnons (déterminé au hasard) durant {1d4°} h.\n5 Oubli d'un événement important durant {1d4°} jours.\n6 Oubli d'un détail durant {1d4°} mois.",
     featureIds: [
       'prestige-magie-du-temps-r4',
       'prestige-magie-du-temps-r5',

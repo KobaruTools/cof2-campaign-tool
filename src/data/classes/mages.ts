@@ -229,7 +229,7 @@ export const magePaths: ClassPath[] = [
     type: 'class',
     classIds: ['forgesort'],
     featureIds: ['golem-r1', 'golem-r2', 'golem-r3', 'golem-r4', 'golem-r5'],
-    note: "PARTICULARITÉS LIÉES AU GOLEM\nSoigner un golem : le golem ne guérit pas naturellement, mais le forgesort peut le réparer au rythme de [1d6 par rang + INT] PV par heure.\nGolem à 0 PV : si le golem est réduit à 0 PV, il cesse de fonctionner, mais le forgesort peut le réparer.\nMort d’un golem : si le golem est détruit ou perdu, le forgesort peut en construire un nouveau en 1d6 + 3 jours (+1d6 jours par amélioration de golem supérieur). Un forgesort peut utiliser tous les matériaux à sa disposition dans son environnement, par exemple pierre et bois s’il est dans une forêt.",
+    note: "PARTICULARITÉS LIÉES AU GOLEM\nSoigner un golem : le golem ne guérit pas naturellement, mais le forgesort peut le réparer au rythme de [1d6 par rang + INT] PV par heure.\nGolem à 0 PV : si le golem est réduit à 0 PV, il cesse de fonctionner, mais le forgesort peut le réparer.\nMort d’un golem : si le golem est détruit ou perdu, le forgesort peut en construire un nouveau en [1d6 + 3] jours (+{1d6} jours par amélioration de golem supérieur). Un forgesort peut utiliser tous les matériaux à sa disposition dans son environnement, par exemple pierre et bois s’il est dans une forêt.",
     sourcePage: 100,
   },
   {
