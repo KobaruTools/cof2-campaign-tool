@@ -6,6 +6,7 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
 import { CharacterSyncNotifier } from '@/components/CharacterSyncNotifier';
 import { PaidContentBoot } from '@/components/PaidContentBoot';
+import { PatchnotesNotifier } from '@/components/PatchnotesNotifier';
 import { TextureBackground } from '@/components/TextureBackground';
 import { ToastProvider } from '@/components/toast/ToastProvider';
 import theme from '@/theme';
@@ -35,6 +36,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <ToastProvider>{children}</ToastProvider>
         {/* Bandeau global de conflit de synchro + filet de flush avant fermeture (PER-192). */}
         <CharacterSyncNotifier />
+        {/* Toast de nouveautés (PER-460) : signale les patch notes non vues, renvoie vers /patchnotes. */}
+        <PatchnotesNotifier />
         {/* Chargement gaté du contenu payant « Le Compagnon » (PER-321) : sans effet
             pour un visiteur/joueur non entitlé, fusion des registres pour un propriétaire entitlé. */}
         <PaidContentBoot />

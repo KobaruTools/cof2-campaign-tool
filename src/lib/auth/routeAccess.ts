@@ -8,7 +8,7 @@
  * | Route                                     | anonyme | joueur | projection | proprio |
  * |-------------------------------------------|---------|--------|------------|---------|
  * | `/` (vitrine)                             |   oui   |  oui   |    non     |   oui   |
- * | `/login` `/auth` `/join` `/about` …       |   oui   |  oui   |    oui     |   oui   |
+ * | `/login` `/auth` `/join` `/about` `/patchnotes` … |   oui   |  oui   |    oui     |   oui   |
  * | `/characters` `/character/*` `/create`    |   oui   |  oui   |    non     |   oui   |
  * | `/bestiary` `/reference` `/rules` `/pdf` `/codex` |   oui   |  oui   |    non     |   oui   |
  * | `/play`                                   |   non   |  oui   |    non     |   non   |
@@ -37,8 +37,18 @@ const HOME_PATH = '/';
  * - `/privacy` : politique de vie privée (RGPD) — un document légal doit rester
  *   consultable sans compte ;
  * - `/project` : lien de projection (PER-271), une TV n'a pas de compte.
+ * - `/patchnotes` : historique des nouveautés (PER-460), affiché via toast sur
+ *   toutes les pages — doit rester atteignable par n'importe quel rôle.
  */
-const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about', '/privacy', '/project'] as const;
+const PUBLIC_PATH_PREFIXES = [
+  '/login',
+  '/auth',
+  '/join',
+  '/about',
+  '/privacy',
+  '/project',
+  '/patchnotes',
+] as const;
 
 /**
  * Routes de **contenu de règles** : ouvertes à TOUT LE MONDE, visiteur sans compte

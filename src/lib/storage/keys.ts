@@ -87,6 +87,9 @@ export const storageKeys = {
     sort: key('home', 'sort'),
     archivedOpen: key('home', 'archived-open'),
   },
+  patchnotes: {
+    lastSeenId: key('patchnotes', 'last-seen-id'),
+  },
   campaign: {
     archivedOpen: key('campaign', 'archived-open'),
     settingsPlayersOpen: key('campaign', 'settings-players-open'),

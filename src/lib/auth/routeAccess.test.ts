@@ -47,6 +47,7 @@ describe('decideRouteAccess — visiteur sans session', () => {
     expect(allows('/join', 'anonymous')).toBe(true);
     expect(allows('/join/8f1c2e0a-1111-2222-3333-444455556666', 'anonymous')).toBe(true);
     expect(allows('/auth/callback', 'anonymous')).toBe(true);
+    expect(allows('/patchnotes', 'anonymous')).toBe(true);
   });
 
   it("l'atelier de personnage est ouvert sans compte (l'app est locale d'abord)", () => {
