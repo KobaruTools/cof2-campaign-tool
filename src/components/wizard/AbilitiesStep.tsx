@@ -19,6 +19,7 @@ import { distributeValueSet, valueSets } from './helpers';
 import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
+import { AbilityBadgeList } from '@/components/AbilityBadge';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { AppAlert } from '@/components/AppAlert';
 import { SignedNumberField } from '@/components/SignedNumberField';
@@ -76,6 +77,18 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
           Reportez les valeurs déterminées à la table (saisie libre). Les séries du livre sont
           proposées comme point de départ.
         </Typography>
+        {characterClass && characterClass.recommendedAbilities.length > 0 && (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 2 }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              Caractéristiques conseillées pour {characterClass.name} :
+            </Typography>
+            <AbilityBadgeList abilities={characterClass.recommendedAbilities} />
+          </Stack>
+        )}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
           {valueSets.map((s) => (
             <Button
