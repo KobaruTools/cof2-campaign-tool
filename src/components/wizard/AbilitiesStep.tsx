@@ -19,9 +19,11 @@ import { distributeValueSet, valueSets } from './helpers';
 import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { glassButtonSx } from '@/lib/ui/glassButtonSx';
+import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { AbilityBadgeList } from '@/components/AbilityBadge';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { AppAlert } from '@/components/AppAlert';
+import { AppTooltip } from '@/components/AppTooltip';
 import { SignedNumberField } from '@/components/SignedNumberField';
 import { SourceRef } from '@/components/SourceRef';
 import type { StepProps } from './types';
@@ -198,10 +200,28 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
         {ABILITY_IDS.map((id) => {
           const total = draft.baseAbilities[id] + deltas[id];
           const color = abilityTotalColor(total, id);
+          const recommended = characterClass?.recommendedAbilities.includes(id) ?? false;
           return (
             <Grid key={id} size={12}>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <AbilityIcon ability={id} title size={24} sx={{ flexShrink: 0 }} />
+                <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                  <AbilityIcon ability={id} title size={24} />
+                  {recommended && (
+                    <AppTooltip title={`Caractéristique conseillée pour ${characterClass!.name}`}>
+                      <StarRoundedIcon
+                        sx={{
+                          position: 'absolute',
+                          bottom: -6,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          fontSize: 12,
+                          color: 'warning.main',
+                          cursor: 'default',
+                        }}
+                      />
+                    </AppTooltip>
+                  )}
+                </Box>
                 <SignedNumberField
                   label={id}
                   size="small"
