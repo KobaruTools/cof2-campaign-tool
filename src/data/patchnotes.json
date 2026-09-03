@@ -56,5 +56,12 @@
     "items": [
       "Amélioration de l'affichage des prérequis et des notes des voies de personnage, avec une meilleure lecture des jets de dés associés"
     ]
+  },
+  {
+    "id": 5,
+    "date": "2026-09-03",
+    "items": [
+      "Sur les créatures manuelles, vous pouvez désormais renseigner les 7 caractéristiques et une réduction de dégâts simple."
+    ]
   }
 ]
