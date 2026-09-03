@@ -475,6 +475,26 @@ function isCoinPouchLine(line: EquipmentLine): boolean {
 }
 
 /**
+ * Triangle d'avertissement (PER-451) posé À CÔTÉ DU NOM d'une ligne placeholder (choix
+ * « X ou Y » d'un profil, ou Bourse de départ) quand AUCUN bouton « Utiliser » n'est
+ * disponible pour la résoudre ici (le wizard de création, cf. `EquipmentStep`, ne câble
+ * pas `onUse` : consommer/résoudre un objet est un état de JEU, hors création). Sans ce
+ * signal, la ligne ne se distingue en rien d'un objet normal — une joueuse a cru que sa
+ * bourse saisie à la table (2d6 pa) était perdue une fois la création terminée. Simple
+ * icône + infobulle (pas de pastille pleine comme `ChoiceBadge`, qui présuppose un bouton
+ * adjacent à expliquer).
+ */
+function StartingPlaceholderWarningBadge({ tooltip }: { tooltip: string }) {
+  return (
+    <AppTooltip title={tooltip}>
+      <ReportProblemOutlinedIcon
+        sx={{ fontSize: 16, color: 'warning.main', cursor: 'help', flexShrink: 0 }}
+      />
+    </AppTooltip>
+  );
+}
+
+/**
  * Puce « Choisir » (PER-220) : pastille custom (≠ Chip MUI) posée sur une ligne
  * placeholder « à résoudre » (choix « X ou Y » d'un profil, ou Bourse de départ) pour
  * signaler qu'elle n'est qu'INDICATIVE et inciter le joueur à la remplacer par le vrai
@@ -1174,6 +1194,16 @@ export function EquipmentList({
     // RECHARGER, à l'inverse, reste disponible sur une arme rangée : c'est tout l'objet de la tactique
     // « charger des armes à poudre à l'avance » (p. 187), où l'on prépare les armes qu'on ne tient pas.
     const weaponInHand = line.worn?.slot === 'mainHand' || line.worn?.slot === 'offHand';
+    // PER-451 : hors bouton « Utiliser » (`onUse` absent — wizard de création), une ligne
+    // placeholder ne se distingue en rien d'un objet normal. `ChoiceBadge` présuppose ce
+    // bouton pour son texte ; ici on avertit sans le mentionner.
+    const startingPlaceholderWarning = onUse
+      ? null
+      : isCoinPouchLine(line)
+        ? 'La bourse de départ n’est qu’un rappel du livre : le résultat du jet de dés n’est pas ajouté automatiquement à la bourse de la fiche. Une fois le personnage créé, ouvrez cette ligne pour saisir vous-même le nombre de pièces obtenu.'
+        : isStartingChoiceLine(line)
+          ? 'Cette ligne rappelle un choix du profil : ce n’est pas encore un vrai objet. Une fois le personnage créé, ouvrez cette ligne pour choisir l’objet réel à ajouter à l’inventaire.'
+          : null;
     // === Pièces de contenu PARTAGÉES entre la ligne (row) et la carte (card) ===
 
     // Titre : nom d'élixir (puce de capacité) OU icône de type + nom (+ détail structuré,
@@ -1228,6 +1258,9 @@ export function EquipmentList({
           <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
             {equipmentLabel(line, characterClass)}
           </Typography>
+        )}
+        {startingPlaceholderWarning && (
+          <StartingPlaceholderWarningBadge tooltip={startingPlaceholderWarning} />
         )}
         {/* En carte (mode colonnes), le bouton codex migre en haut à droite de la carte
             (`sourceRefBadge` posé plus bas, hors du fil du titre) — inline ici uniquement en ligne. */}
