@@ -99,7 +99,7 @@ export function IdentityForm({
             endAdornment:
               showNameGenerator && ancestry ? (
                 <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                  <AppTooltip title={sexChosen ? 'Générer un nom' : 'Choisissez d’abord le sexe'}>
+                  <AppTooltip title={sexChosen ? 'Générer un nom' : 'Choisissez d’abord le genre'}>
                     <span>
                       <IconButton
                         size="small"
