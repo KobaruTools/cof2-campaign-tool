@@ -10,10 +10,17 @@
  * dernier commit traité, jamais exposé au site) — et inversement. Si aucun
  * commit ne matche, ne rien écrire ni committer (le push ne doit pas être
  * bloqué pour un commit non user-facing).
+ *
+ * Contenu payant (« Le Compagnon ») — INTERDIT à vie dans les patchnotes,
+ * repo public : tout commit qui matche `paidContentBlocklist.ts` est exclu,
+ * silencieusement (juste un log console), jamais reformulé « en générique ».
+ * Voir `scripts/patchnotes/paidContentBlocklist.ts` pour la règle complète.
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { containsPaidContent } from './paidContentBlocklist';
+import { PATCHNOTE_TAG_ORDER, isPatchnoteTagId, type PatchnoteTagId } from '@/data/patchnoteTags';
 
 const ROOT = join(__dirname, '..', '..');
 const STATE_PATH = join(ROOT, 'scripts', 'patchnotes', 'state.json');
@@ -24,18 +31,24 @@ interface State {
   lastSha: string | null;
 }
 
+interface PatchnoteItem {
+  text: string;
+  tag: PatchnoteTagId;
+}
+
 interface PatchnoteEntry {
   id: number;
   date: string;
-  items: string[];
+  items: PatchnoteItem[];
 }
 
 interface MatchedCommit {
   type: 'feat' | 'fix' | 'perf';
+  scope: string | null;
   subject: string;
 }
 
-const CONVENTIONAL_RE = /^(feat|fix|perf)(\([^)]+\))?!?:\s*(.+)$/;
+const CONVENTIONAL_RE = /^(feat|fix|perf)(\(([^)]+)\))?!?:\s*(.+)$/;
 const TICKET_REF_RE = /\s*\(?\bPER-\d+\)?\s*$/i;
 
 function git(args: string[]): string {
@@ -76,25 +89,56 @@ function getMatchedCommits(state: State): MatchedCommit[] {
   for (const line of raw.split('\n')) {
     const m = CONVENTIONAL_RE.exec(line.trim());
     if (!m) continue;
-    const [, type, , subject] = m;
-    matched.push({ type: type as MatchedCommit['type'], subject: cleanSubject(subject) });
+    const [, type, , scope, subject] = m;
+    const cleaned = cleanSubject(subject);
+    if (containsPaidContent(cleaned) || (scope && containsPaidContent(scope))) {
+      console.log(`[patchnotes] commit exclu (contenu payant) : ${line.trim()}`);
+      continue;
+    }
+    matched.push({ type: type as MatchedCommit['type'], scope: scope ?? null, subject: cleaned });
   }
   // git log liste du plus récent au plus ancien : on remet en ordre chronologique.
   return matched.reverse();
 }
 
-function fallbackItems(commits: MatchedCommit[]): string[] {
+/** Heuristique de repli (pas de Claude dispo) : scope conventionnel puis mots-clés du sujet. */
+function guessTag(commit: MatchedCommit): PatchnoteTagId {
+  const haystack = `${commit.scope ?? ''} ${commit.subject}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const rules: Array<[PatchnoteTagId, RegExp]> = [
+    ['gm-screen', /\b(mj|gm|meneur|initiative|combat|projection)\b/],
+    ['codex', /\bcodex\b/],
+    ['bestiary', /\b(bestiaire|creature)\b/],
+    ['campaign', /\b(campagne|joueurs?)\b/],
+    ['account', /\b(compte|connexion|auth)\b/],
+    ['creation-levelup', /\b(creation|assistant|wizard|niveau)\b/],
+    ['reference-sheet', /\baide-memoire\b/],
+    ['character-sheet', /\b(fiche|personnage|inventaire|equipement|prestige|lutin|kobold|peuples?)\b/],
+  ];
+  for (const [tag, re] of rules) {
+    if (re.test(haystack)) return tag;
+  }
+  return 'other';
+}
+
+function fallbackItems(commits: MatchedCommit[]): PatchnoteItem[] {
   const labels: Record<MatchedCommit['type'], string> = {
     feat: 'Nouveau',
     fix: 'Corrigé',
     perf: 'Amélioration',
   };
-  return commits.map((c) => `${labels[c.type]} : ${c.subject}`);
+  return commits.map((c) => ({
+    text: `${labels[c.type]} : ${c.subject}`,
+    tag: guessTag(c),
+  }));
 }
 
-function tryClaudeRewrite(commits: MatchedCommit[]): string[] | null {
+function tryClaudeRewrite(commits: MatchedCommit[]): PatchnoteItem[] | null {
   const list = commits.map((c, i) => `${i + 1}. ${c.subject}`).join('\n');
-  const prompt = `Voici des messages de commit techniques d'une mise à jour d'un outil de jeu de rôle (Chroniques Oubliées Fantasy). Reformule chacun en une phrase courte et naturelle en français, destinée aux joueurs : pas de jargon technique, pas de nom de fichier ni de composant, pas de référence de ticket. Réponds UNIQUEMENT avec un tableau JSON de chaînes de caractères, une par message, dans le même ordre, sans aucun autre texte.\n\nMessages :\n${list}`;
+  const tagList = PATCHNOTE_TAG_ORDER.join(', ');
+  const prompt = `Voici des messages de commit techniques d'une mise à jour d'un outil de jeu de rôle (Chroniques Oubliées Fantasy). Pour chaque message : (1) reformule-le en une phrase courte et naturelle en français, destinée aux joueurs — pas de jargon technique, pas de nom de fichier ni de composant, pas de référence de ticket ; (2) classe-le dans UNE seule zone du site parmi cette liste exacte d'identifiants : ${tagList}. Réponds UNIQUEMENT avec un tableau JSON d'objets {"text": string, "tag": string}, un par message, dans le même ordre, sans aucun autre texte.\n\nMessages :\n${list}`;
 
   try {
     const out = execFileSync('claude', ['-p', prompt], {
@@ -106,8 +150,14 @@ function tryClaudeRewrite(commits: MatchedCommit[]): string[] | null {
     if (start === -1 || end === -1 || end < start) return null;
     const parsed: unknown = JSON.parse(out.slice(start, end + 1));
     if (!Array.isArray(parsed) || parsed.length !== commits.length) return null;
-    if (!parsed.every((item) => typeof item === 'string' && item.trim().length > 0)) return null;
-    return parsed as string[];
+    const items: PatchnoteItem[] = [];
+    for (let i = 0; i < parsed.length; i++) {
+      const entry = parsed[i] as { text?: unknown; tag?: unknown };
+      if (typeof entry.text !== 'string' || entry.text.trim().length === 0) return null;
+      const tag = typeof entry.tag === 'string' && isPatchnoteTagId(entry.tag) ? entry.tag : guessTag(commits[i]);
+      items.push({ text: entry.text, tag });
+    }
+    return items;
   } catch {
     return null;
   }
@@ -122,7 +172,21 @@ function main() {
     return;
   }
 
-  const items = tryClaudeRewrite(commits) ?? fallbackItems(commits);
+  const rewritten = tryClaudeRewrite(commits) ?? fallbackItems(commits);
+  // Filet de sécurité : même reformulé par Claude, un item citant du contenu
+  // payant est retiré plutôt que publié (voir paidContentBlocklist.ts).
+  const items = rewritten.filter((item) => {
+    if (containsPaidContent(item.text)) {
+      console.log(`[patchnotes] item exclu apres reformulation (contenu payant) : ${item.text}`);
+      return false;
+    }
+    return true;
+  });
+
+  if (items.length === 0) {
+    console.log('[patchnotes] tous les commits matches etaient du contenu payant, rien a publier.');
+    return;
+  }
 
   const entries = readPatchnotes();
   const entry: PatchnoteEntry = {

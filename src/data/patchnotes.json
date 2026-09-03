@@ -3,80 +3,80 @@
     "id": 1,
     "date": "2026-09-03",
     "items": [
-      "Ajout de repères techniques cachés pour faciliter la maintenance du glossaire, avec un outil pour les capturer automatiquement.",
-      "Correction d'un bug où une infobulle pouvait effacer un repère déjà posé sur un élément.",
-      "Amélioration de la stabilité de la capture d'écran des pages et sections dépliées.",
-      "Prise en charge de cas d'affichage supplémentaires et de nouvelles scènes de dialogue dans les captures.",
-      "Ajout de la voie des saisons : bouton dédié, âge apparent modifié, et tourbillon pour le compagnon.",
-      "Corrections suite aux retours sur la voie des fées/farfadets : sorts gratuits, repli conditionnel, compteurs d'utilisation.",
-      "La poudre de fée varie maintenant selon le rang emprunté.",
-      "Ajout d'une page listant toutes les capacités du jeu, avec filtres et tri (voie, rang, action, sort).",
-      "Ajout de la voie du templier et d'une immunité temporaire que le MJ peut poser manuellement.",
-      "Ajout de la voie des vermines : compagnon scorpion ou araignée, affinité au poison, vermine supérieure.",
-      "Calcul automatique de la durée de certains effets selon la caractéristique du lanceur.",
-      "Ajout de cartes de capacités spéciales dans la mini-fiche de voie.",
-      "Corrections suite aux retours sur la voie des vermines : type de dégâts d'arme, cartes de rang 8, monture.",
-      "Ajout d'une bibliothèque pour préparer et sauvegarder des combats à l'avance.",
-      "Ajustement d'affichage pour que le badge de source tienne bien sur les cartes d'objet.",
-      "Ajout d'une règle maison de bonus de dégâts pour tout objet enchanté.",
-      "Ajout de catégories glisser-déposer et d'un tiroir dédié pour les combats préparés.",
-      "La taille par défaut affichée est maintenant \"moyenne\".",
-      "Remplacement des anciens indicateurs de chargement par des squelettes visuels plus agréables.",
-      "Retrait du filigrane d'identité personnelle sur le livre de base.",
-      "Ajout d'une infobulle mobile sur la poignée de glisser-déposer de l'initiative.",
-      "Ajout d'un rappel des caractéristiques conseillées à l'étape de création correspondante.",
-      "Ajout d'une étoile au survol des caractéristiques recommandées.",
-      "Le générateur de nom parle maintenant de \"genre\" plutôt que de \"sexe\".",
-      "Amélioration visuelle et de performance du glisser-déposer dans l'ordre d'initiative.",
-      "Ajout d'un avertissement indiquant que la bourse et le choix de départ peuvent être réglés après la création du personnage.",
-      "Remplacement des anciens bandeaux d'avertissement par un simple triangle à côté du nom.",
-      "Retrait d'une modification liée à l'encombrement intégrée par erreur dans une mise à jour précédente.",
-      "L'emprunt d'argent utilise maintenant automatiquement la dénomination supérieure quand c'est nécessaire.",
-      "Correction du calcul des dégâts à mains nues pour utiliser le meilleur score entre Force et Agilité avec les Poings de fer."
+      { "text": "Ajout de repères techniques cachés pour faciliter la maintenance du glossaire, avec un outil pour les capturer automatiquement.", "tag": "other" },
+      { "text": "Correction d'un bug où une infobulle pouvait effacer un repère déjà posé sur un élément.", "tag": "other" },
+      { "text": "Amélioration de la stabilité de la capture d'écran des pages et sections dépliées.", "tag": "other" },
+      { "text": "Prise en charge de cas d'affichage supplémentaires et de nouvelles scènes de dialogue dans les captures.", "tag": "other" },
+      { "text": "Ajout de la voie des saisons : bouton dédié, âge apparent modifié, et tourbillon pour le compagnon.", "tag": "character-sheet" },
+      { "text": "Ajout d'une page listant toutes les capacités du jeu, avec filtres et tri (voie, rang, action, sort).", "tag": "codex" },
+      { "text": "Ajout de la voie du templier.", "tag": "character-sheet" },
+      { "text": "Ajout d'une immunité temporaire que le MJ peut poser manuellement.", "tag": "gm-screen" },
+      { "text": "Ajout de la voie des vermines : compagnon scorpion ou araignée, affinité au poison, vermine supérieure.", "tag": "character-sheet" },
+      { "text": "Calcul automatique de la durée de certains effets selon la caractéristique du lanceur.", "tag": "character-sheet" },
+      { "text": "Ajout de cartes de capacités spéciales dans la mini-fiche de voie.", "tag": "character-sheet" },
+      { "text": "Corrections suite aux retours sur la voie des vermines : type de dégâts d'arme, cartes de rang 8, monture.", "tag": "character-sheet" },
+      { "text": "Ajout d'une bibliothèque pour préparer et sauvegarder des combats à l'avance.", "tag": "gm-screen" },
+      { "text": "Ajustement d'affichage pour que le badge de source tienne bien sur les cartes d'objet.", "tag": "character-sheet" },
+      { "text": "Ajout d'une règle maison de bonus de dégâts pour tout objet enchanté.", "tag": "character-sheet" },
+      { "text": "Ajout de catégories glisser-déposer et d'un tiroir dédié pour les combats préparés.", "tag": "gm-screen" },
+      { "text": "La taille par défaut affichée est maintenant \"moyenne\".", "tag": "creation-levelup" },
+      { "text": "Remplacement des anciens indicateurs de chargement par des squelettes visuels plus agréables.", "tag": "other" },
+      { "text": "Retrait du filigrane d'identité personnelle sur le livre de base.", "tag": "other" },
+      { "text": "Ajout d'une infobulle mobile sur la poignée de glisser-déposer de l'initiative.", "tag": "gm-screen" },
+      { "text": "Ajout d'un rappel des caractéristiques conseillées à l'étape de création correspondante.", "tag": "creation-levelup" },
+      { "text": "Ajout d'une étoile au survol des caractéristiques recommandées.", "tag": "creation-levelup" },
+      { "text": "Le générateur de nom parle maintenant de \"genre\" plutôt que de \"sexe\".", "tag": "creation-levelup" },
+      { "text": "Amélioration visuelle et de performance du glisser-déposer dans l'ordre d'initiative.", "tag": "gm-screen" },
+      { "text": "Ajout d'un avertissement indiquant que la bourse et le choix de départ peuvent être réglés après la création du personnage.", "tag": "creation-levelup" },
+      { "text": "Remplacement des anciens bandeaux d'avertissement par un simple triangle à côté du nom.", "tag": "character-sheet" },
+      { "text": "Retrait d'une modification liée à l'encombrement intégrée par erreur dans une mise à jour précédente.", "tag": "character-sheet" },
+      { "text": "L'emprunt d'argent utilise maintenant automatiquement la dénomination supérieure quand c'est nécessaire.", "tag": "character-sheet" },
+      { "text": "Correction du calcul des dégâts à mains nues pour utiliser le meilleur score entre Force et Agilité avec les Poings de fer.", "tag": "character-sheet" }
     ]
   },
   {
     "id": 2,
     "date": "2026-09-03",
     "items": [
-      "Le journal des mises à jour s'affiche maintenant automatiquement pour les joueurs."
+      { "text": "Le journal des mises à jour s'affiche maintenant automatiquement pour les joueurs.", "tag": "other" }
     ]
   },
   {
     "id": 3,
     "date": "2026-09-03",
     "items": [
-      "Correction du choix de voie chevalier dragon/élémentaliste, incohérent dans le codex et lors de la montée de niveau.",
-      "Correction d'un petit décalage visuel lors du glisser-déposer dans l'ordre d'initiative."
+      { "text": "Correction du choix de voie chevalier dragon/élémentaliste dans le codex.", "tag": "codex" },
+      { "text": "Correction du choix de voie chevalier dragon/élémentaliste lors de la montée de niveau.", "tag": "creation-levelup" },
+      { "text": "Correction d'un petit décalage visuel lors du glisser-déposer dans l'ordre d'initiative.", "tag": "gm-screen" }
     ]
   },
   {
     "id": 4,
     "date": "2026-09-03",
     "items": [
-      "Amélioration de l'affichage des prérequis et des notes des voies de personnage, avec une meilleure lecture des jets de dés associés"
+      { "text": "Amélioration de l'affichage des prérequis et des notes des voies de personnage, avec une meilleure lecture des jets de dés associés", "tag": "codex" }
     ]
   },
   {
     "id": 5,
     "date": "2026-09-03",
     "items": [
-      "Sur les créatures manuelles, vous pouvez désormais renseigner les 7 caractéristiques et une réduction de dégâts simple."
+      { "text": "Sur les créatures manuelles, vous pouvez désormais renseigner les 7 caractéristiques et une réduction de dégâts simple.", "tag": "gm-screen" }
     ]
   },
   {
     "id": 6,
     "date": "2026-09-03",
     "items": [
-      "Optimisation des performances de l'écran du meneur de jeu pour un affichage plus fluide.",
-      "Ajout d'indications visuelles pour repérer facilement les capacités, caractéristiques et dés manquants dans les prérequis et descriptions des voies."
+      { "text": "Optimisation des performances de l'écran du meneur de jeu pour un affichage plus fluide.", "tag": "gm-screen" },
+      { "text": "Ajout d'indications visuelles pour repérer facilement les capacités, caractéristiques et dés manquants dans les prérequis et descriptions des voies.", "tag": "codex" }
     ]
   },
   {
     "id": 7,
     "date": "2026-09-03",
     "items": [
-      "Régénération automatique des points de vie et du nombre d'attaques par tour pour certaines créatures du bestiaire (troll, hydre...)."
+      { "text": "Régénération automatique des points de vie et du nombre d'attaques par tour pour certaines créatures du bestiaire (troll, hydre...).", "tag": "gm-screen" }
     ]
   }
 ]

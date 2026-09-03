@@ -52,7 +52,7 @@ export function PatchnotesNotifier() {
         }
         sx={{ width: '100%' }}
       >
-        Nouveautés : {latest.items[0]}
+        Nouveautés : {latest.items[0].text}
         {latest.items.length > 1 ? '…' : ''}
       </AppAlert>
     </Snackbar>

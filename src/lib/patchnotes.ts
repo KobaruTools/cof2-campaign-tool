@@ -1,4 +1,11 @@
 import rawPatchnotes from '@/data/patchnotes.json';
+import type { PatchnoteTagId } from '@/data/patchnoteTags';
+
+/** Un item de patch note, rattaché à une zone du site (PER-460). */
+export interface PatchnoteItem {
+  text: string;
+  tag: PatchnoteTagId;
+}
 
 /**
  * Une entrée de patch note affichée aux joueurs (PER-460). `id` est un simple
@@ -8,7 +15,7 @@ import rawPatchnotes from '@/data/patchnotes.json';
 export interface PatchnoteEntry {
   id: number;
   date: string;
-  items: string[];
+  items: PatchnoteItem[];
 }
 
 export const patchnotes: PatchnoteEntry[] = rawPatchnotes as PatchnoteEntry[];
