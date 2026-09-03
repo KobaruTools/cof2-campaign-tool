@@ -50,7 +50,7 @@ import { AncestryIcon } from '@/components/AncestryIcon';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { PathCard } from '@/components/PathCard';
-import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
+import { DeclinedFeatureName, useFeatureNameDecliner } from '@/components/sheet/FeatureDeclension';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { prestigeCategoryColor } from '@/lib/ui/classColors';
 import { PATH_COLUMN_COUNT, PATH_RANK_COUNT, pathColumns, pathVisuals } from '@/lib/ui/pathColumns';
@@ -149,6 +149,10 @@ export function LevelUpPathsGrid({
   firearmsAllowed,
   onSelect,
 }: LevelUpPathsGridProps) {
+  // Nom décliné des capacités (PER-454) : chevalier dragon (p. 147) et élémentaliste portent des
+  // tokens de déclinaison dans `feature.name` lui-même (ex. « Résistance %toThe% »), pas seulement
+  // le `richText` — la case de la grille les affichait bruts.
+  const declineFeatureName = useFeatureNameDecliner();
   const columns = pathColumns(character);
   // Une seule colonne vide ouvre le popover « nouvelle voie » à la fois — la plus à
   // gauche — pour ne pas éparpiller le bouton « + » sur plusieurs colonnes de profil
@@ -650,7 +654,7 @@ export function LevelUpPathsGrid({
                         pointerEvents: 'none',
                       }}
                     >
-                      {feature.name}
+                      {declineFeatureName(feature)}
                     </Typography>
                   )}
                 </Box>

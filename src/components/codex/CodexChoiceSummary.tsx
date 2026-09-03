@@ -19,6 +19,7 @@ import { summarizeCodexChoice } from '@/lib/codex/codexChoiceSummary';
 import { codexPathHref } from '@/lib/ui/codex';
 import { ANCESTRY_MARKER_COLOR, classColor } from '@/lib/ui/classColors';
 import { ClassIcon } from '@/components/ClassIcon';
+import { useFeatureNameDecliner } from '@/components/sheet/FeatureDeclension';
 
 /** Couleur du profil d'une voie empruntable (PER-419 retours) : `classColor` de son premier
  * profil pour une voie de profil (le seul cas produit par `staticFeaturesForChoiceDomain`),
@@ -37,6 +38,9 @@ const boxSx = {
 
 function CodexChoiceBlock({ hostFeature, choice }: { hostFeature: Feature; choice: FeatureChoice }) {
   const summary = summarizeCodexChoice(hostFeature.id, choice);
+  // Nom décliné (PER-454) : une capacité empruntable listée ici peut elle-même porter des tokens
+  // de déclinaison (ex. voie de l'élémentaliste) — repli imprimé, comme le reste du Codex.
+  const declineFeatureName = useFeatureNameDecliner();
   return (
     <Box sx={boxSx}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -108,7 +112,7 @@ function CodexChoiceBlock({ hostFeature, choice }: { hostFeature: Feature; choic
                     </Typography>
                   </Stack>
                   <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
-                    {feature.name}
+                    {declineFeatureName(feature)}
                   </Typography>
                 </Box>
               );

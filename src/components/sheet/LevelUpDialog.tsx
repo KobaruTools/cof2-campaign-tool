@@ -89,7 +89,7 @@ import { RichInline, FeatureText } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
-import { DeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
+import { DeclinedFeatureName, FeatureDeclensionContext } from '@/components/sheet/FeatureDeclension';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DieIcon } from '@/components/DieIcon';
@@ -1478,6 +1478,11 @@ export function LevelUpDialog({
   return (
     <>
       <GlobalStyles styles={BORDER_ANGLE_STYLES} />
+      {/* Contexte de déclinaison (PER-454) : les capacités déclinables (chevalier dragon p. 147,
+          élémentaliste) affichent sinon leurs tokens (`%of%`, `%toThe%`…) bruts dans ce wizard.
+          `working` (pas `character`) pour refléter tout de suite un choix de couleur fait CE
+          niveau (`pickedChoices`, cf. sa construction plus haut). */}
+      <FeatureDeclensionContext.Provider value={working}>
       <Dialog
         open={open}
         onClose={close}
@@ -2326,6 +2331,7 @@ export function LevelUpDialog({
         </Stack>
       </DialogActions>
       </Dialog>
+      </FeatureDeclensionContext.Provider>
     </>
   );
 }

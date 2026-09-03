@@ -47,6 +47,7 @@ import { RankBadge } from '@/components/RankBadge';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
 import { PathFeatureCard } from '@/components/sheet/PathFeatureCard';
+import { useFeatureNameDecliner } from '@/components/sheet/FeatureDeclension';
 import { CodexFeatureChoices } from '@/components/codex/CodexChoiceSummary';
 import { CollapsibleFeatureBody } from '@/components/codex/CollapsibleFeatureBody';
 
@@ -221,6 +222,10 @@ function usePrestigeGroups(contentVersion: number): PathGroup[] {
 }
 
 export function CodexPathBrowser() {
+  // Nom décliné des capacités (PER-454) : chevalier dragon (p. 147) et élémentaliste portent des
+  // tokens de déclinaison dans `feature.name` lui-même (ex. « Résistance %toThe% »). Aucun
+  // personnage dans le Codex → repli automatique sur le texte imprimé (rouge/feu).
+  const declineFeatureName = useFeatureNameDecliner();
   // Réactivité au contenu payant : une voie du Compagnon qui arrive APRÈS le premier rendu
   // (fetch réseau, cf. PER-321) doit apparaître sans rechargement manuel — passé aux groupes
   // ci-dessous en dépendance de memo (PER-419 retours, sinon ignoré, cf. commentaires des hooks).
@@ -398,7 +403,7 @@ export function CodexPathBrowser() {
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                         <RankBadge rank={feature.rank} color={pathColor} prestige={selectedPath.type === 'prestige'} />
                         <Typography variant="h6" component="h3">
-                          {feature.name}
+                          {declineFeatureName(feature)}
                         </Typography>
                         {feature.isSpell && <ActionMarkerHex marker="spell" />}
                         {feature.actionTypes.map((a) => (
