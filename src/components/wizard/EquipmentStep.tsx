@@ -21,12 +21,7 @@ import type { StepProps } from './types';
  * - PAS de `onUse` : consommer un objet est un état de JEU, hors création ;
  * - `characterClass` applique les reskins de profil aux noms (PER-181).
  */
-export function EquipmentStep({
-  draft,
-  patch,
-  campaignAllowsFirearms,
-  campaignEncumbranceEnabled,
-}: StepProps) {
+export function EquipmentStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
   const characterClass = draft.classId ? classById.get(draft.classId) : undefined;
   // Autorisation EFFECTIVE des armes à feu (PER-185) : règle campagne ∧ choix du joueur.
   // Sert au grisage des lignes d'armes à poudre indisponibles dans l'inventaire.
@@ -49,7 +44,6 @@ export function EquipmentStep({
         ancestryId={draft.ancestryId}
         characterClass={characterClass}
         firearmsAllowed={firearmsAllowed}
-        encumbranceEnabled={campaignEncumbranceEnabled ?? false}
         onChange={(equipment) => patch({ equipment })}
         onWear={setWorn}
       />
