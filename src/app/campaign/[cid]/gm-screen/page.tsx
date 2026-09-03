@@ -104,7 +104,7 @@ import { SituationalDurationDialog } from '@/components/campaign/SituationalDura
 import { SITUATIONAL_EFFECTS, type BeneficialEffectId, type SituationalEffectId } from '@/data/schema';
 import { useHeaderContent } from '@/stores/headerContent';
 import { hrefFromIndex, useCharacterSlugIndex, useResolvedCampaign } from '@/lib/routing/slug';
-import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
+import { useGmScreenCombat, type GmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
 
 /**
  * Gabarit de colonnes commun aux trois grilles (joueurs / alliés / adversaires) : 3
@@ -297,6 +297,283 @@ function buildGmScreenTourSteps({ showPlayersStep }: { showPlayersStep: boolean 
     placement: 'auto',
   });
   return steps;
+}
+
+/**
+ * Zone de glisser-déposer du combat (PER-459) : `DndContext` + palette d'états + tracker
+ * d'initiative, isolés de `GmScreenPage` dans leur PROPRE composant.
+ *
+ * Cause du stutter réel (mesuré au `<Profiler>` React, geste réel du propriétaire, pas de
+ * simulation) : `dragPreview`/`activeStatus` vivaient dans `GmScreenPage` — la page ENTIÈRE,
+ * roster (compagnons/alliés/adversaires), fond animé (`HomeBackground`, boucle de parallaxe
+ * souris) et tour guidé compris. Chaque franchissement de carte pendant un glisser (`onDragOver`)
+ * re-rendait donc TOUT ce qui n'était pas explicitement mémoïsé — vérifié : 209 commits, 16,6 s
+ * cumulées, pic à 521 ms pour la page entière, contre 70 commits / 1,3 s / pic 88 ms pour le SEUL
+ * tracker sur le même geste. Le tracker lui-même avait déjà été assaini (memo cascade réparée,
+ * cf. `order`/`ColumnOrderRender` dans `InitiativeTracker.tsx`) — le coût restant venait d'ailleurs
+ * dans l'arbre, hors de portée de ce fichier tant que l'état vivait à la racine de la page.
+ *
+ * Le glisser-déposer NE DEVRAIT être que visuel jusqu'au dépôt (constat du propriétaire, exact) :
+ * ça l'est déjà pour le FANTÔME (`ReorderGhost`, `transform` posé en DOM direct, hors React) et pour
+ * l'ouverture du gap (CSS `transform`, cf. `InitiativeTracker.tsx`) — mais `onDragOver` doit tout de
+ * même prévenir REACT de la carte survolée pour piloter CE gap-là et suspendre le halo `isOver`
+ * générique, donc un minimum de re-rendu reste inévitable. Le fixé ici, c'est son PÉRIMÈTRE : borné
+ * à ce composant (tracker + palette), plus jamais à toute la page.
+ */
+function GmCombatDndArea({
+  cid,
+  claimed,
+  statuses,
+  situationalEffectIds,
+  posedSituationalIds,
+  groupBuffIds,
+  posedGroupBuffIds,
+  applyStatus,
+  removeStatus,
+  removeStatusesEverywhere,
+  adjustStatus,
+  adjustStatusDuration,
+  actedKeys,
+  setCombatantActed,
+  manualOrder,
+  pinnedOrderKeys,
+  toggleCombatantPin,
+  resetCombatantOrder,
+  setManualPosition,
+  initiativeRows,
+  currentTurnKey,
+  setCurrentTurnKey,
+  roundNumber,
+  setRoundNumber,
+  restartRounds,
+  openGroupBuff,
+  setSituationalDurationPose,
+  hasCombatants,
+  trackerForcedOpenForTour,
+  onRequestReset,
+}: Pick<
+  GmScreenCombat,
+  | 'claimed'
+  | 'statuses'
+  | 'situationalEffectIds'
+  | 'posedSituationalIds'
+  | 'groupBuffIds'
+  | 'posedGroupBuffIds'
+  | 'applyStatus'
+  | 'removeStatus'
+  | 'removeStatusesEverywhere'
+  | 'adjustStatus'
+  | 'adjustStatusDuration'
+  | 'actedKeys'
+  | 'setCombatantActed'
+  | 'manualOrder'
+  | 'pinnedOrderKeys'
+  | 'toggleCombatantPin'
+  | 'resetCombatantOrder'
+  | 'setManualPosition'
+  | 'initiativeRows'
+  | 'currentTurnKey'
+  | 'setCurrentTurnKey'
+  | 'roundNumber'
+  | 'setRoundNumber'
+  | 'restartRounds'
+> & {
+  cid: string;
+  openGroupBuff: (droppedKey: string, buffId: BeneficialEffectId) => void;
+  setSituationalDurationPose: (
+    pose: { targetKey: string; effectId: SituationalEffectId } | null,
+  ) => void;
+  hasCombatants: boolean;
+  trackerForcedOpenForTour: boolean;
+  onRequestReset: () => void;
+}) {
+  // Glisser-déposer des états (PER-279) : les puces de la palette (`useDraggable`, id préfixé) sont
+  // déposées sur les colonnes du tracker (`useDroppable`, id = clé de combattant). Le capteur pointeur
+  // couvre souris + tactile (l'écran de MJ peut être sur tablette) ; une distance d'activation évite de
+  // déclencher un glisser sur un simple clic. `activeStatus` alimente la surcouche qui suit le curseur.
+  const [activeStatus, setActiveStatus] = useState<AnyStatusEffectId | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor),
+  );
+  // Aperçu EN DIRECT du glisser d'une poignée de réordonnancement (PER-436) : feedback visuel
+  // (espace ouvert + barre lumineuse sur la carte survolée) demandé par le propriétaire — sans lui,
+  // rien ne distinguait un glisser en cours de l'état au repos. Purement transitoire, jamais persisté.
+  const [dragPreview, setDragPreview] = useState<ReorderDragPreview | null>(null);
+  const onDragStart = (event: DragStartEvent) => {
+    const id = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
+    setActiveStatus(id ?? null);
+    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
+    setDragPreview(reorderKey ? { activeKey: reorderKey, overKey: null } : null);
+  };
+  // `statusControls`/`orderControls` mémoïsés (PER-436bis) : construits en objet LITTÉRAL inline
+  // dans le JSX du tracker, ils changeaient de référence à CHAQUE rendu de cette page — y compris à
+  // chaque changement RÉEL de `dragPreview` (une carte survolée en croise une autre pendant le
+  // glisser) — ce qui cassait la mémoïsation posée dans `InitiativeTracker`/`StatusDroppableColumn`
+  // pour TOUTES les colonnes à chaque franchissement, pas seulement au pixel près : la cause du
+  // ralenti qui persistait malgré elle (confirmé en profilant : rafales de coût pile alignées sur
+  // ces franchissements, pas continues).
+  const statusControls = useMemo(
+    () => ({
+      statusesByKey: statuses,
+      situationalIds: situationalEffectIds,
+      groupBuffIds,
+      onApply: applyStatus,
+      onRemove: removeStatus,
+      onOpenGroupBuff: openGroupBuff,
+      onAdjust: adjustStatus,
+      onAdjustDuration: adjustStatusDuration,
+    }),
+    [statuses, situationalEffectIds, groupBuffIds, applyStatus, removeStatus, openGroupBuff, adjustStatus, adjustStatusDuration],
+  );
+  const orderControls = useMemo(
+    () => ({
+      actedKeys,
+      onSetActed: setCombatantActed,
+      manualOrder,
+      pinnedKeys: pinnedOrderKeys,
+      onTogglePin: toggleCombatantPin,
+      onResetOrder: resetCombatantOrder,
+    }),
+    [actedKeys, setCombatantActed, manualOrder, pinnedOrderKeys, toggleCombatantPin, resetCombatantOrder],
+  );
+  const onDragOver = (event: DragOverEvent) => {
+    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
+    if (!reorderKey) return;
+    const overKey = event.over?.id;
+    const nextOverKey = typeof overKey === 'string' && overKey !== reorderKey ? overKey : null;
+    // Coupe-court si rien n'a changé (PER-436bis) : `onDragOver` de `@dnd-kit` retombe à chaque
+    // recalcul de collision pendant le glisser (donc bien plus souvent qu'un vrai changement de
+    // carte survolée) — sans ce garde, chaque appel réécrivait l'état et re-rendait TOUTE la bande
+    // de cartes (portraits, jauges…) au fil du geste, source du ralenti constaté au glisser.
+    setDragPreview((prev) =>
+      prev?.activeKey === reorderKey && prev?.overKey === nextOverKey
+        ? prev
+        : { activeKey: reorderKey, overKey: nextOverKey },
+    );
+  };
+  const onDragEnd = (event: DragEndEvent) => {
+    setActiveStatus(null);
+    setDragPreview(null);
+    const statusId = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
+    if (statusId) {
+      const combatantKey = event.over?.id;
+      if (typeof combatantKey !== 'string') return;
+      // Un buff visant le CAMP (PER-104, élargi PER-359) ne se pose pas sur la seule carte visée : sa
+      // règle vise « ses alliés et lui », ou « un allié » qui n'est pas forcément celui-là. Le PORTEUR
+      // (camp + palier pré-rempli) est le personnage dont la capacité confère ce buff (PER-361) — pas
+      // forcément la carte visée par le dépôt, que `openGroupBuff` n'utilise qu'en repli.
+      if (isCampScopedStatus(statusId)) {
+        openGroupBuff(combatantKey, statusId as BeneficialEffectId);
+        return;
+      }
+      // Effet situationnel à DURÉE CALCULÉE (PER-446, ex. Nuée de criquets « 5 + CHA ») : la victime
+      // visée par le dépôt n'est pas le lanceur, donc pas la bonne source pour la caractéristique. On
+      // n'ouvre la fenêtre dédiée que si au moins un personnage réclamé possède la capacité — sinon
+      // rien à calculer, l'effet se pose directement comme avant PER-446.
+      const casters = situationalEffectCasters(claimed, statusId as SituationalEffectId);
+      if (SITUATIONAL_EFFECTS[statusId as SituationalEffectId]?.durationFrom && casters.length > 0) {
+        setSituationalDurationPose({ targetKey: combatantKey, effectId: statusId as SituationalEffectId });
+        return;
+      }
+      applyStatus(combatantKey, statusId);
+      return;
+    }
+    // Réordonnancement libre (PER-436) : la poignée d'une carte glissée sur une AUTRE carte — déjà
+    // zone de drop pour les puces d'état, réutilisée telle quelle — pose la carte visée comme
+    // ANCRE (le combattant glissé est réinséré juste avant elle, cf. `applyManualOrder`).
+    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
+    const beforeKey = event.over?.id;
+    if (reorderKey && typeof beforeKey === 'string' && beforeKey !== reorderKey) {
+      setManualPosition(reorderKey, beforeKey);
+    }
+  };
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      // Auto-défilement de la PAGE pendant le glisser : COUPÉ (PER-301). Il est incompatible avec
+      // une bande COLLANTE — `@dnd-kit` corrige la position des zones de drop du défilement écoulé,
+      // en supposant qu'elles défilent avec la page ; les cartes d'une barre collée, elles, ne
+      // bougent pas d'un pixel. La cible dérivait donc de tout le défilement déclenché en
+      // approchant du bas de l'écran (~200 px mesurés) et le dépôt tombait à côté. Toujours coupé
+      // pour la fenêtre/le document — mais réactivé pour les AUTRES ancêtres défilants (via
+      // `canScroll`) : la bande de cartes du tracker défile elle-même horizontalement
+      // (`overflowX: auto`), donc pas concernée par le bug ci-dessus, et son propre défilement
+      // permet enfin de réordonner vers une carte hors écran (au lieu de se limiter aux voisines).
+      autoScroll={{
+        enabled: true,
+        canScroll: (element) =>
+          element !== document.scrollingElement &&
+          element !== document.documentElement &&
+          element !== document.body,
+        // Zone de déclenchement élargie (défaut `@dnd-kit` : 20 % de la largeur du conteneur
+        // de chaque bord) : trop étroite au doigt sur mobile pour l'atteindre de façon fiable.
+        threshold: { x: 0.35, y: 0.2 },
+      }}
+      // Zones de drop mesurées UNE FOIS avant le glisser plutôt qu'en continu (défaut `@dnd-kit`) :
+      // aucune carte ne change de taille ni ne se réordonne visuellement PENDANT le geste (la
+      // case d'insertion s'écarte par une simple marge, cf. `REORDER_DROP_GAP`), donc pas besoin
+      // de re-mesurer à chaque défilement automatique déclenché par `autoScroll` — un coût réel
+      // vu le nombre de cartes-zones de drop, seconde source du ralenti constaté au glisser.
+      measuring={{ droppable: { strategy: MeasuringStrategy.BeforeDragging } }}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      onDragCancel={() => {
+        setActiveStatus(null);
+        setDragPreview(null);
+      }}
+    >
+      <InitiativeTracker
+        dataTour="gm-screen-tracker"
+        forceExpandedForTour={trackerForcedOpenForTour}
+        rows={initiativeRows}
+        currentTurnKey={currentTurnKey}
+        onCurrentTurnKeyChange={setCurrentTurnKey}
+        roundNumber={roundNumber}
+        onRoundNumberChange={setRoundNumber}
+        onRestartRounds={restartRounds}
+        resetCombatAction={
+          hasCombatants && (
+            <CollapsibleLabelButton
+              variant="outlined"
+              size="small"
+              icon={<RestartAltIcon />}
+              label="Réinitialiser le combat"
+              onClick={onRequestReset}
+              sx={(theme) => glassButtonSx(theme, 'error')}
+            />
+          )
+        }
+        headerAction={
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+            <OpenTrackerWindowButton cid={cid} />
+            <ProjectionLinkControl campaignId={cid} />
+          </Stack>
+        }
+        statusControls={statusControls}
+        orderControls={orderControls}
+        dragPreview={dragPreview}
+        statusPalette={
+          <CombatStatusPalette
+            situationalIds={situationalEffectIds}
+            posedSituationalIds={posedSituationalIds}
+            onClearSituational={(id) => removeStatusesEverywhere([id])}
+            groupBuffIds={groupBuffIds}
+            posedGroupBuffIds={posedGroupBuffIds}
+            onClearGroupBuff={(id) => removeStatusesEverywhere([id])}
+          />
+        }
+        stickyBottom
+      />
+      {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}
+      <DragOverlay>
+        {activeStatus ? <StatusChipVisual id={activeStatus} withTooltip={false} dragging /> : null}
+      </DragOverlay>
+    </DndContext>
+  );
 }
 
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
@@ -545,108 +822,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     },
     [resolveGroupBuffCarrierKey],
   );
-
-  // Glisser-déposer des états (PER-279) : les puces de la palette (`useDraggable`, id préfixé) sont
-  // déposées sur les colonnes du tracker (`useDroppable`, id = clé de combattant). Le capteur pointeur
-  // couvre souris + tactile (l'écran de MJ peut être sur tablette) ; une distance d'activation évite de
-  // déclencher un glisser sur un simple clic. `activeStatus` alimente la surcouche qui suit le curseur.
-  const [activeStatus, setActiveStatus] = useState<AnyStatusEffectId | null>(null);
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor),
-  );
-  // Aperçu EN DIRECT du glisser d'une poignée de réordonnancement (PER-436) : feedback visuel
-  // (espace ouvert + barre lumineuse sur la carte survolée) demandé par le propriétaire — sans lui,
-  // rien ne distinguait un glisser en cours de l'état au repos. Purement transitoire, jamais persisté.
-  const [dragPreview, setDragPreview] = useState<ReorderDragPreview | null>(null);
-  const onDragStart = (event: DragStartEvent) => {
-    const id = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
-    setActiveStatus(id ?? null);
-    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
-    setDragPreview(reorderKey ? { activeKey: reorderKey, overKey: null } : null);
-  };
-  // `statusControls`/`orderControls` mémoïsés (PER-436bis) : construits en objet LITTÉRAL inline
-  // dans le JSX du tracker, ils changeaient de référence à CHAQUE rendu de cette page — y compris à
-  // chaque changement RÉEL de `dragPreview` (une carte survolée en croise une autre pendant le
-  // glisser) — ce qui cassait la mémoïsation posée dans `InitiativeTracker`/`StatusDroppableColumn`
-  // pour TOUTES les colonnes à chaque franchissement, pas seulement au pixel près : la cause du
-  // ralenti qui persistait malgré elle (confirmé en profilant : rafales de coût pile alignées sur
-  // ces franchissements, pas continues).
-  const statusControls = useMemo(
-    () => ({
-      statusesByKey: statuses,
-      situationalIds: situationalEffectIds,
-      groupBuffIds,
-      onApply: applyStatus,
-      onRemove: removeStatus,
-      onOpenGroupBuff: openGroupBuff,
-      onAdjust: adjustStatus,
-      onAdjustDuration: adjustStatusDuration,
-    }),
-    [statuses, situationalEffectIds, groupBuffIds, applyStatus, removeStatus, openGroupBuff, adjustStatus, adjustStatusDuration],
-  );
-  const orderControls = useMemo(
-    () => ({
-      actedKeys,
-      onSetActed: setCombatantActed,
-      manualOrder,
-      pinnedKeys: pinnedOrderKeys,
-      onTogglePin: toggleCombatantPin,
-      onResetOrder: resetCombatantOrder,
-    }),
-    [actedKeys, setCombatantActed, manualOrder, pinnedOrderKeys, toggleCombatantPin, resetCombatantOrder],
-  );
-  const onDragOver = (event: DragOverEvent) => {
-    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
-    if (!reorderKey) return;
-    const overKey = event.over?.id;
-    const nextOverKey = typeof overKey === 'string' && overKey !== reorderKey ? overKey : null;
-    // Coupe-court si rien n'a changé (PER-436bis) : `onDragOver` de `@dnd-kit` retombe à chaque
-    // recalcul de collision pendant le glisser (donc bien plus souvent qu'un vrai changement de
-    // carte survolée) — sans ce garde, chaque appel réécrivait l'état et re-rendait TOUTE la bande
-    // de cartes (portraits, jauges…) au fil du geste, source du ralenti constaté au glisser.
-    setDragPreview((prev) =>
-      prev?.activeKey === reorderKey && prev?.overKey === nextOverKey
-        ? prev
-        : { activeKey: reorderKey, overKey: nextOverKey },
-    );
-  };
-  const onDragEnd = (event: DragEndEvent) => {
-    setActiveStatus(null);
-    setDragPreview(null);
-    const statusId = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
-    if (statusId) {
-      const combatantKey = event.over?.id;
-      if (typeof combatantKey !== 'string') return;
-      // Un buff visant le CAMP (PER-104, élargi PER-359) ne se pose pas sur la seule carte visée : sa
-      // règle vise « ses alliés et lui », ou « un allié » qui n'est pas forcément celui-là. Le PORTEUR
-      // (camp + palier pré-rempli) est le personnage dont la capacité confère ce buff (PER-361) — pas
-      // forcément la carte visée par le dépôt, que `openGroupBuff` n'utilise qu'en repli.
-      if (isCampScopedStatus(statusId)) {
-        openGroupBuff(combatantKey, statusId as BeneficialEffectId);
-        return;
-      }
-      // Effet situationnel à DURÉE CALCULÉE (PER-446, ex. Nuée de criquets « 5 + CHA ») : la victime
-      // visée par le dépôt n'est pas le lanceur, donc pas la bonne source pour la caractéristique. On
-      // n'ouvre la fenêtre dédiée que si au moins un personnage réclamé possède la capacité — sinon
-      // rien à calculer, l'effet se pose directement comme avant PER-446.
-      const casters = situationalEffectCasters(claimed, statusId as SituationalEffectId);
-      if (SITUATIONAL_EFFECTS[statusId as SituationalEffectId]?.durationFrom && casters.length > 0) {
-        setSituationalDurationPose({ targetKey: combatantKey, effectId: statusId as SituationalEffectId });
-        return;
-      }
-      applyStatus(combatantKey, statusId);
-      return;
-    }
-    // Réordonnancement libre (PER-436) : la poignée d'une carte glissée sur une AUTRE carte — déjà
-    // zone de drop pour les puces d'état, réutilisée telle quelle — pose la carte visée comme
-    // ANCRE (le combattant glissé est réinséré juste avant elle, cf. `applyManualOrder`).
-    const reorderKey = event.active.data.current?.reorderKey as string | undefined;
-    const beforeKey = event.over?.id;
-    if (reorderKey && typeof beforeKey === 'string' && beforeKey !== reorderKey) {
-      setManualPosition(reorderKey, beforeKey);
-    }
-  };
 
   // Camp du porteur : un personnage réclamé est toujours du côté des joueurs ; une créature suit son
   // propre camp (absent = adversaire, migration douce). Un MJ peut ainsi bénir une escouade adverse.
@@ -1034,89 +1209,38 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             Depuis PER-301 la palette est RENDUE PAR le tracker (`statusPalette`), pour vivre dans la
             barre collée en bas d'écran : posée ici dans le flux, elle sortait de l'écran au premier
             défilement et le glisser-déposer perdait sa source. */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={pointerWithin}
-          // Auto-défilement de la PAGE pendant le glisser : COUPÉ (PER-301). Il est incompatible avec
-          // une bande COLLANTE — `@dnd-kit` corrige la position des zones de drop du défilement écoulé,
-          // en supposant qu'elles défilent avec la page ; les cartes d'une barre collée, elles, ne
-          // bougent pas d'un pixel. La cible dérivait donc de tout le défilement déclenché en
-          // approchant du bas de l'écran (~200 px mesurés) et le dépôt tombait à côté. Toujours coupé
-          // pour la fenêtre/le document — mais réactivé pour les AUTRES ancêtres défilants (via
-          // `canScroll`) : la bande de cartes du tracker défile elle-même horizontalement
-          // (`overflowX: auto`), donc pas concernée par le bug ci-dessus, et son propre défilement
-          // permet enfin de réordonner vers une carte hors écran (au lieu de se limiter aux voisines).
-          autoScroll={{
-            enabled: true,
-            canScroll: (element) =>
-              element !== document.scrollingElement &&
-              element !== document.documentElement &&
-              element !== document.body,
-            // Zone de déclenchement élargie (défaut `@dnd-kit` : 20 % de la largeur du conteneur
-            // de chaque bord) : trop étroite au doigt sur mobile pour l'atteindre de façon fiable.
-            threshold: { x: 0.35, y: 0.2 },
-          }}
-          // Zones de drop mesurées UNE FOIS avant le glisser plutôt qu'en continu (défaut `@dnd-kit`) :
-          // aucune carte ne change de taille ni ne se réordonne visuellement PENDANT le geste (la
-          // case d'insertion s'écarte par une simple marge, cf. `REORDER_DROP_GAP`), donc pas besoin
-          // de re-mesurer à chaque défilement automatique déclenché par `autoScroll` — un coût réel
-          // vu le nombre de cartes-zones de drop, seconde source du ralenti constaté au glisser.
-          measuring={{ droppable: { strategy: MeasuringStrategy.BeforeDragging } }}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
-          onDragEnd={onDragEnd}
-          onDragCancel={() => {
-            setActiveStatus(null);
-            setDragPreview(null);
-          }}
-        >
-          <InitiativeTracker
-            dataTour="gm-screen-tracker"
-            forceExpandedForTour={trackerForcedOpenForTour}
-            rows={initiativeRows}
-            currentTurnKey={currentTurnKey}
-            onCurrentTurnKeyChange={setCurrentTurnKey}
-            roundNumber={roundNumber}
-            onRoundNumberChange={setRoundNumber}
-            onRestartRounds={restartRounds}
-            resetCombatAction={
-              hasCombatants && (
-                <CollapsibleLabelButton
-                  variant="outlined"
-                  size="small"
-                  icon={<RestartAltIcon />}
-                  label="Réinitialiser le combat"
-                  onClick={() => setResetOpen(true)}
-                  sx={(theme) => glassButtonSx(theme, 'error')}
-                />
-              )
-            }
-            headerAction={
-              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-                <OpenTrackerWindowButton cid={cid} />
-                <ProjectionLinkControl campaignId={cid} />
-              </Stack>
-            }
-            statusControls={statusControls}
-            orderControls={orderControls}
-            dragPreview={dragPreview}
-            statusPalette={
-              <CombatStatusPalette
-                situationalIds={situationalEffectIds}
-                posedSituationalIds={posedSituationalIds}
-                onClearSituational={(id) => removeStatusesEverywhere([id])}
-                groupBuffIds={groupBuffIds}
-                posedGroupBuffIds={posedGroupBuffIds}
-                onClearGroupBuff={(id) => removeStatusesEverywhere([id])}
-              />
-            }
-            stickyBottom
-          />
-          {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}
-          <DragOverlay>
-            {activeStatus ? <StatusChipVisual id={activeStatus} withTooltip={false} dragging /> : null}
-          </DragOverlay>
-        </DndContext>
+        <GmCombatDndArea
+          cid={cid}
+          claimed={claimed}
+          statuses={statuses}
+          situationalEffectIds={situationalEffectIds}
+          posedSituationalIds={posedSituationalIds}
+          groupBuffIds={groupBuffIds}
+          posedGroupBuffIds={posedGroupBuffIds}
+          applyStatus={applyStatus}
+          removeStatus={removeStatus}
+          removeStatusesEverywhere={removeStatusesEverywhere}
+          adjustStatus={adjustStatus}
+          adjustStatusDuration={adjustStatusDuration}
+          actedKeys={actedKeys}
+          setCombatantActed={setCombatantActed}
+          manualOrder={manualOrder}
+          pinnedOrderKeys={pinnedOrderKeys}
+          toggleCombatantPin={toggleCombatantPin}
+          resetCombatantOrder={resetCombatantOrder}
+          setManualPosition={setManualPosition}
+          initiativeRows={initiativeRows}
+          currentTurnKey={currentTurnKey}
+          setCurrentTurnKey={setCurrentTurnKey}
+          roundNumber={roundNumber}
+          setRoundNumber={setRoundNumber}
+          restartRounds={restartRounds}
+          openGroupBuff={openGroupBuff}
+          setSituationalDurationPose={setSituationalDurationPose}
+          hasCombatants={hasCombatants}
+          trackerForcedOpenForTour={trackerForcedOpenForTour}
+          onRequestReset={() => setResetOpen(true)}
+        />
       </Box>
 
       {/* Pose d'un buff de groupe (PER-104) : le camp du porteur, tous cochés par défaut, palier

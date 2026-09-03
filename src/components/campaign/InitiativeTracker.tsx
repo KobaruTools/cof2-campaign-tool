@@ -2918,8 +2918,21 @@ function ReorderGhost({
  * Colonne INTERACTIVE (écran de MJ) : enveloppe `CombatantColumn` d'une zone de drop `@dnd-kit` et
  * gère le menu à cocher des états (repli au clic). Isolée dans son propre composant pour que ses
  * Hooks (`useDroppable`, `useState`) ne soient montés qu'en mode MJ — jamais en projection.
+ *
+ * `dragPreview` réduit à `reorderDragActive` (PER-459, `!!dragPreview`) avant d'arriver ici : passer
+ * l'objet ENTIER (référence NEUVE à chaque franchissement de carte) aurait empêché tout memo utile
+ * sur les AUTRES props de descendre correctement. `memo` posé ici par prudence, mais **pas la vraie
+ * cause du stutter** (mesuré : aucun effet notable) — `useDroppable`/`useDraggable` (`@dnd-kit`)
+ * s'abonnent à un CONTEXTE interne, pas aux props : ce composant se re-rend de toute façon à son
+ * rythme, `memo` ou pas. La vraie cause, bien plus grave, était dans le `useMemo` d'`order` plus
+ * bas : `attributes`/`listeners` d'`useDraggable` y étaient listés comme dépendances alors qu'ils
+ * sont des objets FRAIS à CHAQUE rendu (piège `@dnd-kit`) — `order` se recalculait donc à CHAQUE
+ * pointermove d'un glisser (pas seulement au franchissement), cassant le `memo` de `CombatantColumn`
+ * pour les 14 lignes À CHAQUE pointermove. Confirmé par trace CDP (`Tracing`, pas l'échantillonnage
+ * `Profiler.start` qui avait sous-échantillonné le pic) : `ForwardRef(Box)` 12610×, `AppTooltip`
+ * 4135×, `MuiTooltipPopper` 3332× pendant UN seul glisser. Voir le commentaire sur `order` ci-dessous.
  */
-function StatusDroppableColumn({
+const StatusDroppableColumn = memo(function StatusDroppableColumn({
   row,
   isActive,
   compact,
@@ -2928,7 +2941,7 @@ function StatusDroppableColumn({
   onGiveTurn,
   orderControls,
   nextRowKey,
-  dragPreview,
+  reorderDragActive,
 }: {
   row: InitiativeRow;
   isActive: boolean;
@@ -2947,16 +2960,18 @@ function StatusDroppableColumn({
    */
   nextRowKey: string | null;
   /**
-   * Glisser de réordonnancement EN COURS (PER-436), quel qu'en soit la cible : suppression du
+   * Glisser de réordonnancement EN COURS (PER-436), quelle qu'en soit la cible : suppression du
    * halo bleu `isOver` (pensé pour le dépôt d'une PUCE D'ÉTAT — « appliquer cet état ICI »), qui
    * induisait en erreur sur la carte survolée pendant un réordonnancement (« tu vas remplacer ce
    * combattant », alors que le geste l'insère juste AVANT). L'écart + la barre lumineuse de
    * `applyManualOrder`/le rendu de la bande restent le SEUL indicateur pendant ce glisser-là.
+   * BOOLÉEN (PER-459, cf. commentaire du composant) — jamais l'objet `dragPreview` complet, dont
+   * la référence change à chaque franchissement de carte.
    */
-  dragPreview?: ReorderDragPreview | null;
+  reorderDragActive: boolean;
 }) {
   const { setNodeRef, isOver: isOverRaw } = useDroppable({ id: row.key });
-  const isOver = isOverRaw && !dragPreview;
+  const isOver = isOverRaw && !reorderDragActive;
   // Poignée de glisser-déposer du réordonnancement libre (PER-436) : appelé
   // INCONDITIONNELLEMENT (règle des Hooks), même quand `orderControls` est absent — la poignée
   // n'est alors simplement jamais rendue (cf. `order` plus bas), `useDraggable` reste inerte.
@@ -3012,17 +3027,25 @@ function StatusDroppableColumn({
     // à CHAQUE rendu et annulerait la mémoïsation qu'il vise à obtenir. `transform` EXCLU aussi
     // (délibérément, pas un oubli) : plus rien ne le lit dans `CombatantColumn` depuis que le
     // fantôme suit le curseur en dehors de React (cf. `ReorderGhost`) — seul `isDragging` compte
-    // encore pour son rendu. Le lister ferait recalculer `order`, donc re-rendre TOUTE la carte
-    // glissée, à CHAQUE `pointermove` du geste (`transform` change à chaque pixel), directement
-    // responsable du stutter restant après le premier passage de mémoïsation.
+    // encore pour son rendu.
+    //
+    // PER-459 (bug trouvé APRÈS coup, pas volontaire celui-là) : `attributes` et `listeners`
+    // ci-dessous étaient EUX AUSSI listés comme dépendances — sauf que `useDraggable` (`@dnd-kit`)
+    // les reconstruit en objets FRAIS à CHAQUE rendu, pile comme `reorderDraggable` dans son
+    // ensemble (piège de leur bibliothèque, pas du code ici). Résultat : `order` se recalculait à
+    // CHAQUE pointermove d'un glisser (pas seulement au franchissement d'une carte), cassant le
+    // `memo` de `CombatantColumn` pour les 14 lignes À CHAQUE pointermove — la VRAIE source du
+    // stutter (confirmé par trace CDP : `ForwardRef(Box)` 12610×, `AppTooltip` 4135× pendant UN
+    // seul glisser). Retirés des dépendances ; toujours capturés dans la valeur retournue (via
+    // `reorderDraggable` ci-dessus), juste pas au titre de DÉCLENCHEUR — la poignée reçoit alors des
+    // gestionnaires « d'un rendu de retard » dans le pire cas, sans conséquence : ce sont des
+    // fermetures stables côté `@dnd-kit`, pas des valeurs qui doivent être fraîches à la milliseconde.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       orderControls,
       row.key,
       nextRowKey,
       reorderDraggable.isDragging,
-      reorderDraggable.attributes,
-      reorderDraggable.listeners,
       reorderDraggable.setNodeRef,
       reorderDraggable.setActivatorNodeRef,
     ],
@@ -3062,7 +3085,11 @@ function StatusDroppableColumn({
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         slotProps={{ paper: { sx: { maxHeight: 420 } } }}
       >
-        {buildStatusGroups(controls.situationalIds, groupBuffIds).flatMap((group, groupIndex) => [
+        {/* PER-459 : gardé derrière `anchorEl &&` — ces enfants JSX sont sinon reconstruits (tous les
+            `MenuItem`/icônes du menu, fermé ou pas) à CHAQUE rendu de `StatusDroppableColumn`, qui se
+            re-rend lui-même à chaque `pointermove` d'un glisser (abonnement au contexte interne
+            `@dnd-kit`, cf. commentaire du composant) — un coût réel pour un menu quasi toujours FERMÉ. */}
+        {anchorEl && buildStatusGroups(controls.situationalIds, groupBuffIds).flatMap((group, groupIndex) => [
           // Le groupe des états préjudiciables (toujours en tête) n'a pas de sous-titre : il est
           // universel et implicite. Seul le groupe « Effets situationnels » (conditionnel) en garde un.
           ...(groupIndex === 0
@@ -3091,7 +3118,7 @@ function StatusDroppableColumn({
       </Menu>
     </>
   );
-}
+});
 
 export interface InitiativeTrackerProps {
   rows: InitiativeRow[];
@@ -3226,6 +3253,18 @@ export function InitiativeTracker({
   const displayedRows = projection
     ? rows.filter((r) => !r.hidden)
     : applyManualOrder(relegateSidelined(rows), orderControls?.manualOrder ?? {});
+  /**
+   * Index de la carte survolée pendant un glisser de réordonnancement (PER-459), `-1` hors zone de
+   * drop utile — calculé UNE fois par rendu pour ouvrir le gap visuel (voir plus bas, `shouldShift`)
+   * par `transform` plutôt que par `margin-left` : la version `margin-left` forçait un reflow de
+   * TOUTE la bande à chaque frame de la transition (150 ms), cause du stutter perçu par le
+   * propriétaire (piste identifiée en profilage, cf. handoff PER-459). `transform` est compositor
+   * only, jamais de reflow.
+   */
+  const dropIndex =
+    dragPreview && dragPreview.overKey && dragPreview.activeKey !== dragPreview.overKey
+      ? displayedRows.findIndex((r) => r.key === dragPreview.overKey)
+      : -1;
   // Poignée « donner le tour » stable PAR COMBATTANT (PER-436bis) : construite à la volée dans la
   // boucle de rendu plus bas (`() => onCurrentTurnKeyChange(row.key)`), elle changeait de référence
   // à CHAQUE rendu — même quand `onCurrentTurnKeyChange` lui-même est stable — cassant le `memo` de
@@ -3559,7 +3598,7 @@ export function InitiativeTracker({
                     onGiveTurn={onGiveTurn!}
                     orderControls={orderControls}
                     nextRowKey={displayedRows[i + 1]?.key ?? null}
-                    dragPreview={dragPreview}
+                    reorderDragActive={!!dragPreview}
                   />
                 ) : (
                   <CombatantColumn
@@ -3580,6 +3619,10 @@ export function InitiativeTracker({
                 // sa case d'origine garde sa taille réservée le temps du geste.
                 const isDropTarget =
                   !!dragPreview && dragPreview.overKey === row.key && dragPreview.activeKey !== row.key;
+                // PER-459 : translate (compositor only) plutôt que pousser en `margin-left` — la carte
+                // survolée ET toutes ses voisines de droite (`i >= dropIndex`) glissent ensemble du
+                // même montant, reproduisant le reflow qu'aurait fait le flex SANS jamais le déclencher.
+                const shouldShift = dropIndex >= 0 && i >= dropIndex;
                 return (
                   <Box
                     key={row.key}
@@ -3588,8 +3631,15 @@ export function InitiativeTracker({
                       alignItems: 'stretch',
                       flexShrink: 0,
                       position: 'relative',
-                      ml: isDropTarget ? `${REORDER_DROP_GAP}px` : 0,
-                      transition: 'margin-left 0.15s ease',
+                      transform: shouldShift ? `translateX(${REORDER_DROP_GAP}px)` : 'none',
+                      transition: 'transform 0.15s ease',
+                      // PER-459bis : posé pour toute la DURÉE du glisser (`!!dragPreview`), pas pour la
+                      // seule carte actuellement décalée (`shouldShift`, qui change à CHAQUE
+                      // franchissement de carte) — sinon la promotion/démotion en calque composé se
+                      // refait sur plusieurs cartes à la fois à chaque frame de franchissement, un coût
+                      // que le CPU throttlé x4 en profilage n'a pas révélé (aucun `longtask` dessus,
+                      // c'est un coût GPU) mais que le propriétaire ressent encore sur mobile.
+                      willChange: dragPreview ? 'transform' : undefined,
                     }}
                   >
                     {isDropTarget && (
@@ -3612,6 +3662,13 @@ export function InitiativeTracker({
                 );
               })}
               {/* eslint-enable react-hooks/refs */}
+              {/* Réserve fixe (PER-459) : le `translateX` de `shouldShift` ci-dessus ne pousse RIEN
+                  dans le flux (compositor only, cf. commentaire plus haut) — sans cette gouttière, la
+                  dernière carte translatée pendant un survol de fin de bande déborderait au-delà de
+                  `scrollWidth` et se ferait rogner par l'`overflowX: auto` du conteneur. Taille CONSTANTE
+                  (jamais de reflow au montage/démontage), présente seulement là où le glisser peut
+                  survenir. */}
+              {interactive && <Box aria-hidden sx={{ flexShrink: 0, width: REORDER_DROP_GAP }} />}
             </Box>
             {/* Estompes des deux bords : sur l'écran de MJ ET en projection. */}
             <BandFade side="left" visible={edges.left} />
