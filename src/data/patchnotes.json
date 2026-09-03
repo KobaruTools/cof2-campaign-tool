@@ -71,5 +71,12 @@
       "Optimisation des performances de l'écran du meneur de jeu pour un affichage plus fluide.",
       "Ajout d'indications visuelles pour repérer facilement les capacités, caractéristiques et dés manquants dans les prérequis et descriptions des voies."
     ]
+  },
+  {
+    "id": 7,
+    "date": "2026-09-03",
+    "items": [
+      "Régénération automatique des points de vie et du nombre d'attaques par tour pour certaines créatures du bestiaire (troll, hydre...)."
+    ]
   }
 ]
