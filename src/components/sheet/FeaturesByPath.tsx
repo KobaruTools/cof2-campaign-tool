@@ -192,7 +192,12 @@ import { ActionMarkerHex, FeatureMarkerHexes } from '@/components/FeatureMarkerH
 import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
-import { FeatureText, CapabilityChip, FeatureVerbatimContext } from '@/components/sheet/FeatureRichText';
+import {
+  FeatureText,
+  CapabilityChip,
+  FeatureVerbatimContext,
+  GlossaryRichText,
+} from '@/components/sheet/FeatureRichText';
 import {
   DeclinedFeatureName,
   FeatureDeclensionContext,
@@ -4035,7 +4040,11 @@ function PathBlock({
       <AppTooltip
         title={
           <Box sx={{ maxWidth: 320 }}>
-            {path.note && <Box sx={{ whiteSpace: 'pre-line', mb: 0.75 }}>{path.note}</Box>}
+            {path.note && (
+              <Box sx={{ whiteSpace: 'pre-line', mb: 0.75 }}>
+                <GlossaryRichText>{path.note}</GlossaryRichText>
+              </Box>
+            )}
             <SourceRef page={path.sourcePage} codexHref={codexPathHref(path.id)} />
           </Box>
         }

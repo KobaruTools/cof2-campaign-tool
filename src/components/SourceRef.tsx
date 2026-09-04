@@ -111,6 +111,14 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
     }
   };
 
+  // Empêche le geste d'auto-défilement (« autoscroll ») que Windows/Chrome déclenche par défaut
+  // sur un clic milieu hors d'une vraie ancre `<a href>` : sans ce `preventDefault` sur le
+  // `mousedown`, le navigateur avale le clic milieu pour activer le curseur de défilement au lieu
+  // de laisser `onAuxClick` ouvrir le nouvel onglet.
+  const preventMiddleClickAutoscroll = (e: React.MouseEvent) => {
+    if (e.button === 1) e.preventDefault();
+  };
+
   const open = (e: React.MouseEvent | React.KeyboardEvent) => navigate(e, rulesUrl);
   const openAux = (e: React.MouseEvent) => {
     if (e.button === 1) navigate(e, rulesUrl, true);
@@ -190,6 +198,7 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
         }
         onClick={available ? open : undefined}
         onAuxClick={available ? openAux : undefined}
+        onMouseDown={available ? preventMiddleClickAutoscroll : undefined}
         onKeyDown={
           available
             ? (e: React.KeyboardEvent) => {
@@ -242,6 +251,7 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, codexHr
             title={btn.title}
             onClick={btn.onClick}
             onAuxClick={btn.onAux}
+            onMouseDown={preventMiddleClickAutoscroll}
             onKeyDown={(e: React.KeyboardEvent) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
