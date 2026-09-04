@@ -299,8 +299,20 @@ describe('canAcquireFeature', () => {
   });
 
   it('légal : voie de l’expert pour un profil non hybride (ou hybride de même famille)', () => {
-    const c = makeCharacter({ classId: 'barbare', level: 5, featureIds: ['brute-r1'] });
+    // PER-488 : prérequis rang 2 dans au moins trois voies du même profil (p. 129).
+    const c = makeCharacter({
+      classId: 'barbare',
+      level: 5,
+      featureIds: ['brute-r1', 'brute-r2', 'pagne-r1', 'pagne-r2', 'pourfendeur-r1', 'pourfendeur-r2'],
+    });
     expect(canAcquireFeature(c, 'prestige-expert-r4', ctx).legal).toBe(true);
+  });
+
+  it('illégal : voie de l’expert sans rang 2 dans trois voies (prérequis PER-488)', () => {
+    const c = makeCharacter({ classId: 'barbare', level: 5, featureIds: ['brute-r1'] });
+    const r = canAcquireFeature(c, 'prestige-expert-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/rang 2 dans au moins trois voies/);
   });
 
   it('illégal : voie de peuple d’un autre peuple', () => {
@@ -320,6 +332,126 @@ describe('canAcquireFeature', () => {
     // Barbare : « brute » fait partie de ses 5 voies, ouvrable au rang 1.
     const c = makeCharacter({ classId: 'barbare', featureIds: [] });
     expect(canAcquireFeature(c, 'brute-r1', ctx).legal).toBe(true);
+  });
+});
+
+describe('PER-488 : prérequis des voies de prestige', () => {
+  it("illégal : voie mystique (catégorie) pour un profil d'une autre famille (p. 128)", () => {
+    const c = makeCharacter({ classId: 'barbare', level: 5, featureIds: [] });
+    const r = canAcquireFeature(c, 'prestige-changeforme-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/réservée aux profils de la famille des Mystiques/);
+  });
+
+  it('légal : voie mystique pour un profil de la famille mystique', () => {
+    const c = makeCharacter({ classId: 'druide', level: 5, featureIds: [] });
+    expect(canAcquireFeature(c, 'prestige-changeforme-r4', ctx).legal).toBe(true);
+  });
+
+  it("illégal : voie de mage pour un aventurier qui n'est pas barde (p. 128)", () => {
+    const c = makeCharacter({ classId: 'rodeur', level: 5, featureIds: [] });
+    const r = canAcquireFeature(c, 'prestige-magie-des-mots-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/réservée aux profils de la famille des Mages/);
+  });
+
+  it("légal : voie de la magie des mots pour un barde (dérogation verbatim, p. 162)", () => {
+    const c = makeCharacter({ classId: 'barde', level: 5, featureIds: [] });
+    expect(canAcquireFeature(c, 'prestige-magie-des-mots-r4', ctx).legal).toBe(true);
+  });
+
+  it('illégal : voie du spécialiste sans rang 4 dans une voie du profil principal', () => {
+    const c = makeCharacter({ classId: 'guerrier', level: 5, featureIds: ['combat-r1'] });
+    const r = canAcquireFeature(c, 'prestige-specialiste-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/rang 4 dans une voie de votre profil principal/);
+  });
+
+  it('légal : voie du spécialiste avec rang 4 dans une voie du profil principal', () => {
+    const c = makeCharacter({
+      classId: 'guerrier',
+      level: 5,
+      featureIds: ['combat-r1', 'combat-r2', 'combat-r3', 'combat-r4'],
+    });
+    expect(canAcquireFeature(c, 'prestige-specialiste-r4', ctx).legal).toBe(true);
+  });
+
+  it('illégal : voie du colosse sans +3 en Force', () => {
+    const c = makeCharacter({
+      classId: 'guerrier',
+      level: 5,
+      abilities: { AGI: 0, CON: 0, FOR: 2, PER: 0, CHA: 0, INT: 0, VOL: 0 },
+    });
+    const r = canAcquireFeature(c, 'prestige-colosse-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/au moins \+3 en Force/);
+  });
+
+  it('légal : voie du colosse avec +3 en Force', () => {
+    const c = makeCharacter({
+      classId: 'guerrier',
+      level: 5,
+      abilities: { AGI: 0, CON: 0, FOR: 3, PER: 0, CHA: 0, INT: 0, VOL: 0 },
+    });
+    expect(canAcquireFeature(c, 'prestige-colosse-r4', ctx).legal).toBe(true);
+  });
+
+  it('illégal : voie du chevalier dragon sans Monture fantastique (cavalier-r5)', () => {
+    const c = makeCharacter({ classId: 'guerrier', level: 5, featureIds: [] });
+    const r = canAcquireFeature(c, 'prestige-chevalier-dragon-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/Monture fantastique/);
+  });
+
+  it('légal : voie du chevalier dragon avec Monture fantastique (cavalier-r5)', () => {
+    const c = makeCharacter({ classId: 'guerrier', level: 5, featureIds: ['cavalier-r5'] });
+    expect(canAcquireFeature(c, 'prestige-chevalier-dragon-r4', ctx).legal).toBe(true);
+  });
+
+  it('illégal : voie du guerrier-mage sans voie de mage', () => {
+    const c = makeCharacter({ classId: 'guerrier', level: 5, featureIds: ['combat-r1'] });
+    const r = canAcquireFeature(c, 'prestige-guerrier-mage-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/au moins une voie de combattant et une voie de mage/);
+  });
+
+  it('légal : voie du guerrier-mage avec une voie de combattant et une voie de mage', () => {
+    const c = makeCharacter({ classId: 'guerrier', level: 5, featureIds: ['combat-r1', 'air-r1'] });
+    expect(canAcquireFeature(c, 'prestige-guerrier-mage-r4', ctx).legal).toBe(true);
+  });
+
+  it("illégal : voie de l'enchanteur sans voie de magie au rang 4", () => {
+    const c = makeCharacter({
+      classId: 'magicien',
+      level: 5,
+      featureIds: ['magie-universelle-r1'],
+    });
+    const r = canAcquireFeature(c, 'prestige-enchanteur-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/voie de magie jusqu'au rang 4/);
+  });
+
+  it("légal : voie de l'enchanteur avec une voie de magie au rang 4", () => {
+    const c = makeCharacter({
+      classId: 'magicien',
+      level: 5,
+      featureIds: ['magie-universelle-r1', 'magie-universelle-r2', 'magie-universelle-r3', 'magie-universelle-r4'],
+    });
+    expect(canAcquireFeature(c, 'prestige-enchanteur-r4', ctx).legal).toBe(true);
+  });
+
+  it("illégal : voie de la vision sans accès à la magie universelle/divination/illusions/sombre magie", () => {
+    // Forgesort (mage) n'a aucune des 4 voies requises parmi ses 5 voies propres
+    // (artefacts/elixirs/metal/golem/runes).
+    const c = makeCharacter({ classId: 'forgesort', level: 5, featureIds: [] });
+    const r = canAcquireFeature(c, 'prestige-vision-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/magie universelle, de la divination, des illusions ou de la sombre magie/);
+  });
+
+  it('légal : voie de la vision via un profil qui a accès à une des 4 voies (magicien → magie universelle)', () => {
+    const c = makeCharacter({ classId: 'magicien', level: 5, featureIds: [] });
+    expect(canAcquireFeature(c, 'prestige-vision-r4', ctx).legal).toBe(true);
   });
 });
 

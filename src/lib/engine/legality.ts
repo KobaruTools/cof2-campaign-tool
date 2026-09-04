@@ -25,6 +25,7 @@ import type {
   CharacterClass,
   ProgressionRules,
   Path,
+  PrestigeCategory,
 } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
@@ -96,6 +97,53 @@ export const MAX_NON_ANCESTRY_PATHS = 6;
 
 /** Voie de l'expert (p. 129) : interdite aux profils hybrides multi-familles. */
 export const EXPERT_PATH_ID = 'prestige-expert';
+
+/**
+ * PER-488 — Ids des voies de prestige avec un prérequis mécanique VERBATIM,
+ * distinct du plafond niveau/unicité déjà vérifié plus bas. Voir le champ
+ * `prerequisites` de chaque voie (`src/data/prestige-paths/`) pour le texte
+ * source ; les prérequis purement narratifs/MJ (mordu par un lycanthrope,
+ * héritage draconique caché…) ou déjà couverts ailleurs (danseur de guerre via
+ * `maxArmorId`) ne sont volontairement PAS ici.
+ */
+export const SPECIALIST_PATH_ID = 'prestige-specialiste';
+export const COLOSSUS_PATH_ID = 'prestige-colosse';
+export const DRAGON_KNIGHT_PATH_ID = 'prestige-chevalier-dragon';
+export const WARRIOR_MAGE_PATH_ID = 'prestige-guerrier-mage';
+export const ENCHANTER_PATH_ID = 'prestige-enchanteur';
+export const VISION_PATH_ID = 'prestige-vision';
+/** Voies dont l'accès satisfait le prérequis de la voie de la vision (p. 165). */
+const VISION_ACCESS_PATH_IDS = ['magie-universelle', 'divination', 'illusions', 'sombre-magie'];
+
+/**
+ * Catégorie de voie de prestige (p. 128, tableau récapitulatif) → famille de
+ * profils requise. `'generic'` n'a pas d'entrée : ouverte à toutes les
+ * familles. PER-488 : ce mapping n'était vérifié nulle part avant — un
+ * personnage de n'importe quel profil pouvait choisir n'importe quelle voie de
+ * prestige, y compris celles réservées à une autre famille.
+ */
+const PRESTIGE_CATEGORY_FAMILY: Partial<Record<PrestigeCategory, FamilyId>> = {
+  adventurer: 'adventurers',
+  fighter: 'fighters',
+  mage: 'mages',
+  mystic: 'mystics',
+};
+
+/**
+ * Dérogation VERBATIM (p. 162) : la voie de la magie des mots (catégorie
+ * 'mage') est accessible aux bardes comme s'il s'agissait d'une voie de leur
+ * famille de profil (aventuriers), en plus des mages.
+ *
+ * PER-488 (gap connu, PAS encore couvert ici) : les 4 voies élémentaires
+ * (catégorie 'mystic') ont une dérogation similaire pour les mages qui
+ * maîtrisent un nombre de sorts de l'élément donné — mais aucune donnée
+ * structurée n'identifie l'élément d'un sort dans le catalogue actuel
+ * (`src/data/classes/mages.ts`), contrairement à ce que ce mapping simple
+ * peut vérifier pour la magie des mots. Nécessite un tag dédié avant de
+ * pouvoir coder cette dérogation (même nature que le prérequis « 3 sorts à
+ * DM directs » de la voie du mage de guerre, non couvert non plus).
+ */
+const MAGIE_DES_MOTS_PATH_ID = 'prestige-magie-des-mots';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -216,6 +264,22 @@ export function nativeOwnedRanks(character: Character, pathId: string, ctx: Rule
     if (feature && feature.pathId === pathId) ranks.push(feature.rank);
   }
   return ranks.sort((a, b) => a - b);
+}
+
+/**
+ * Rang natif le plus haut possédé, par voie (regroupement `pathId` → rang max).
+ * PER-488 : sert aux prérequis de voies de prestige exprimés en « rang N dans
+ * au moins X voies » (voie de l'expert, du spécialiste, de l'enchanteur…).
+ */
+function maxNativeRankByPath(character: Character, ctx: RulesContext): Map<string, number> {
+  const max = new Map<string, number>();
+  for (const id of character.featureIds) {
+    const feature = ctx.featureById.get(id);
+    if (!feature) continue;
+    const current = max.get(feature.pathId) ?? 0;
+    if (feature.rank > current) max.set(feature.pathId, feature.rank);
+  }
+  return max;
 }
 
 /**
@@ -392,6 +456,69 @@ export function canAcquireFeature(
         "La voie de l'expert n'est pas accessible aux profils hybrides ayant des voies d'une autre famille que le profil principal (p. 129).",
       );
     }
+    // PER-488 : prérequis rang 2 dans au moins trois voies du même profil (p. 129),
+    // jusqu'ici jamais vérifié (seul le volet « pas d'autre famille » l'était).
+    const rank2FamilyPathCount = [...maxNativeRankByPath(character, ctx)].filter(([pathId, rank]) => {
+      if (rank < 2) return false;
+      const candidate = ctx.pathById.get(pathId);
+      return candidate?.type === 'class' && classPathFamily(candidate, ctx) === characterClass.familyId;
+    }).length;
+    if (rank2FamilyPathCount < 3) {
+      reasons.push(
+        "La voie de l'expert nécessite le rang 2 dans au moins trois voies issues du même profil (p. 129).",
+      );
+    }
+  }
+
+  // PER-488 : prérequis mécaniques VERBATIM des autres voies de prestige, jamais
+  // vérifiés avant (seuls le niveau et l'unicité l'étaient — cf. bloc ci-dessous).
+  if (path.id === SPECIALIST_PATH_ID && characterClass) {
+    const hasMainProfileRank4 = [...maxNativeRankByPath(character, ctx)].some(([pathId, rank]) => {
+      const candidate = ctx.pathById.get(pathId);
+      return rank >= 4 && candidate?.type === 'class' && candidate.classIds.includes(characterClass.id);
+    });
+    if (!hasMainProfileRank4) {
+      reasons.push(
+        'La voie du spécialiste nécessite le rang 4 dans une voie de votre profil principal (p. 129).',
+      );
+    }
+  }
+  if (path.id === COLOSSUS_PATH_ID && character.abilities.FOR < 3) {
+    reasons.push('La voie du colosse nécessite au moins +3 en Force (p. 149).');
+  }
+  if (path.id === DRAGON_KNIGHT_PATH_ID && !character.featureIds.includes('cavalier-r5')) {
+    reasons.push(
+      'La voie du chevalier dragon nécessite la capacité Monture fantastique (voie du cavalier, rang 5) (p. 147).',
+    );
+  }
+  if (path.id === WARRIOR_MAGE_PATH_ID) {
+    const ownedFamilies = classFamiliesWithFeatures(character, ctx);
+    if (!ownedFamilies.has('fighters') || !ownedFamilies.has('mages')) {
+      reasons.push(
+        'La voie du guerrier-mage nécessite au moins une voie de combattant et une voie de mage (p. 151).',
+      );
+    }
+  }
+  if (path.id === ENCHANTER_PATH_ID) {
+    const hasMageRank4 = [...maxNativeRankByPath(character, ctx)].some(([pathId, rank]) => {
+      const candidate = ctx.pathById.get(pathId);
+      return rank >= 4 && candidate?.type === 'class' && classPathFamily(candidate, ctx) === 'mages';
+    });
+    if (!hasMageRank4) {
+      reasons.push("La voie de l'enchanteur nécessite au moins une voie de magie jusqu'au rang 4 (p. 157).");
+    }
+  }
+  if (path.id === VISION_PATH_ID && characterClass) {
+    const hasVisionAccess = VISION_ACCESS_PATH_IDS.some(
+      (pathId) =>
+        effectiveClassPathIds(characterClass, firearmsAllowed).includes(pathId) ||
+        ownedRanks(character, pathId, ctx).length > 0,
+    );
+    if (!hasVisionAccess) {
+      reasons.push(
+        "La voie de la vision nécessite l'accès à la voie de la magie universelle, de la divination, des illusions ou de la sombre magie (p. 165).",
+      );
+    }
   }
 
   // Ordre des rangs : tous les rangs inférieurs de la voie doivent être acquis
@@ -431,6 +558,21 @@ export function canAcquireFeature(
     const startedPrestige = startedPrestigePaths(character, ctx);
     if (startedPrestige.size > 0 && !startedPrestige.has(path.id)) {
       reasons.push('Une seule voie de prestige est autorisée sur toute la carrière.');
+    }
+    // PER-488 : « Il existe des voies de prestige spécifiques à chaque famille de
+    // profils (aventuriers, combattants, mystiques et mages) ainsi que des voies de
+    // prestige génériques » (p. 128) — jamais vérifié avant, n'importe quel profil
+    // pouvait choisir n'importe quelle voie, y compris celles d'une autre famille.
+    const requiredFamily = PRESTIGE_CATEGORY_FAMILY[path.category];
+    if (requiredFamily) {
+      const ownedFamilies = classFamiliesWithFeatures(character, ctx);
+      if (characterClass) ownedFamilies.add(characterClass.familyId);
+      const isMagieDesMotsForBarde = path.id === MAGIE_DES_MOTS_PATH_ID && character.classId === 'barde';
+      if (!ownedFamilies.has(requiredFamily) && !isMagieDesMotsForBarde) {
+        reasons.push(
+          `« ${path.name} » est réservée aux profils de la famille des ${ctx.familyById.get(requiredFamily)?.name ?? requiredFamily} (p. 128).`,
+        );
+      }
     }
   }
 
