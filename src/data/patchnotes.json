@@ -234,5 +234,19 @@
         "tag": "gm-screen"
       }
     ]
+  },
+  {
+    "id": 11,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Le journal des nouveautés regroupe maintenant les entrées par date, avec un format plus clair comme « Vendredi 4 Septembre 2026 ».",
+        "tag": "other"
+      },
+      {
+        "text": "Ajout d'un moyen d'envoyer un retour ou une suggestion directement depuis le haut de l'écran.",
+        "tag": "other"
+      }
+    ]
   }
 ]
