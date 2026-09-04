@@ -14,7 +14,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { HomeBackground } from '@/components/HomeBackground';
-import { getLatestPatchnoteId, patchnotes, type PatchnoteEntry } from '@/lib/patchnotes';
+import { getLatestPatchnoteId, patchnotes, type PatchnoteItem } from '@/lib/patchnotes';
 import { PATCHNOTE_TAGS, PATCHNOTE_TAG_ORDER, type PatchnoteTagId } from '@/data/patchnoteTags';
 import { storageKeys } from '@/lib/storage/keys';
 import { useHeaderContent } from '@/stores/headerContent';
@@ -28,6 +28,16 @@ export default function PatchnotesPage() {
 
   const ordered = [...patchnotes].reverse();
 
+  const groups: { date: string; items: PatchnoteItem[] }[] = [];
+  for (const entry of ordered) {
+    const group = groups.find((g) => g.date === entry.date);
+    if (group) {
+      group.items.push(...entry.items);
+    } else {
+      groups.push({ date: entry.date, items: [...entry.items] });
+    }
+  }
+
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>Nouveautés — Éditeur de personnage CO2</title>
@@ -38,12 +48,12 @@ export default function PatchnotesPage() {
           <Typography variant="h4" component="h1">
             Nouveautés
           </Typography>
-          {ordered.length === 0 ? (
+          {groups.length === 0 ? (
             <Typography variant="body1" color="text.secondary">
               Aucune nouveauté pour le moment.
             </Typography>
           ) : (
-            ordered.map((entry) => <Entry key={entry.id} entry={entry} />)
+            groups.map((group) => <DateGroup key={group.date} date={group.date} items={group.items} />)
           )}
         </Stack>
       </Container>
@@ -51,7 +61,18 @@ export default function PatchnotesPage() {
   );
 }
 
-function Entry({ entry }: { entry: PatchnoteEntry }) {
+/** "2026-09-04" → "Vendredi 4 Septembre 2026" (PER-460). */
+function formatPatchDate(isoDate: string): string {
+  const formatted = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(`${isoDate}T00:00:00`));
+  return formatted.replace(/\p{L}+/gu, (word) => word.charAt(0).toUpperCase() + word.slice(1));
+}
+
+function DateGroup({ date, items }: { date: string; items: PatchnoteItem[] }) {
   return (
     <Paper
       elevation={0}
@@ -65,17 +86,17 @@ function Entry({ entry }: { entry: PatchnoteEntry }) {
       }}
     >
       <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        {entry.date}
+        {formatPatchDate(date)}
       </Typography>
       <Stack spacing={1.5}>
         {PATCHNOTE_TAG_ORDER.map((tag) => {
-          const items = entry.items.filter((item) => item.tag === tag);
-          if (items.length === 0) return null;
+          const tagItems = items.filter((item) => item.tag === tag);
+          if (tagItems.length === 0) return null;
           return (
             <Box key={tag}>
               <TagBadge tag={tag} />
               <Stack spacing={0.5} component="ul" sx={{ m: 0, mt: 0.75, pl: 2.5 }}>
-                {items.map((item, i) => (
+                {tagItems.map((item, i) => (
                   <Typography key={i} component="li" variant="body1" color="text.secondary">
                     {item.text}
                   </Typography>
