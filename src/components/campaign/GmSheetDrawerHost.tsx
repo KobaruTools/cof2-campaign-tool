@@ -12,7 +12,7 @@
  * Ce composant ne rappelle PAS `useGmScreenCombat` : la page le fait déjà et une seconde
  * instance dupliquerait l'état du combat en cours. Tout lui arrive en props.
  */
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Character } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
@@ -32,7 +32,10 @@ export interface GmSheetDrawerHostProps {
   playerById: Map<string, Player>;
 }
 
-export function GmSheetDrawerHost({
+/** `memo` (PER-495, même motif que `GmRumorsDrawerHost`) : évite un rendu inutile de tout ce
+ * panneau à chaque action de combat MJ — `characters`/`playerById` sont déjà stables entre deux
+ * rendus de `GmScreenPage` tant que le roster de joueurs ne change pas lui-même. */
+export const GmSheetDrawerHost = memo(function GmSheetDrawerHost({
   characters,
   campaign,
   playerById,
@@ -72,7 +75,6 @@ export function GmSheetDrawerHost({
   useEffect(() => {
     // Synchronisation ponctuelle d'un instantané d'affichage (pas une boucle) : la condition
     // exclut l'absence de personnage, seul cas où l'effet pourrait se rappeler lui-même.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (character) setLastShown(character);
   }, [character]);
   const shown = sheetId === null ? lastShown : character;
@@ -86,4 +88,4 @@ export function GmSheetDrawerHost({
       onClose={closeSheet}
     />
   );
-}
+});

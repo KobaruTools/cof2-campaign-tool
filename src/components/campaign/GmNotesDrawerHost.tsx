@@ -9,6 +9,7 @@
  * Retour du navigateur ferme le tiroir, un lien direct l'ouvre, et Ctrl/⌘+Clic sur le
  * bouton d'ouverture ouvre l'écran de MJ déjà déplié dans un nouvel onglet.
  */
+import { memo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmNotesDrawer } from './GmNotesDrawer';
 import { NOTES_PARAM } from './gmToolsMenu';
@@ -17,7 +18,9 @@ import { NOTES_PARAM } from './gmToolsMenu';
  * `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à l'API externe. */
 export { NOTES_PARAM };
 
-export function GmNotesDrawerHost({ campaignId }: { campaignId: string }) {
+/** `memo` (PER-495, même motif que `GmRumorsDrawerHost`) : évite un rendu inutile de ce tiroir
+ * à chaque action de combat MJ, sans rapport avec les notes. */
+export const GmNotesDrawerHost = memo(function GmNotesDrawerHost({ campaignId }: { campaignId: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -32,4 +35,4 @@ export function GmNotesDrawerHost({ campaignId }: { campaignId: string }) {
   };
 
   return <GmNotesDrawer campaignId={campaignId} open={open} onClose={close} />;
-}
+});

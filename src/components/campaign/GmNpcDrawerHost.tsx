@@ -9,6 +9,7 @@
  * Retour du navigateur ferme le tiroir, un lien direct l'ouvre, et Ctrl/⌘+Clic sur le
  * bouton d'ouverture ouvre l'écran de MJ déjà déplié dans un nouvel onglet.
  */
+import { memo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmNpcDrawer } from './GmNpcDrawer';
 import { NPC_PARAM } from './gmToolsMenu';
@@ -18,7 +19,9 @@ import type { Campaign } from '@/lib/campaign/types';
  * `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à l'API externe. */
 export { NPC_PARAM };
 
-export function GmNpcDrawerHost({ campaign }: { campaign: Campaign }) {
+/** `memo` (PER-495, même motif que `GmRumorsDrawerHost`) : évite un rendu inutile de ce tiroir
+ * à chaque action de combat MJ, sans rapport avec les PNJ. */
+export const GmNpcDrawerHost = memo(function GmNpcDrawerHost({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -33,4 +36,4 @@ export function GmNpcDrawerHost({ campaign }: { campaign: Campaign }) {
   };
 
   return <GmNpcDrawer campaign={campaign} open={open} onClose={close} />;
-}
+});

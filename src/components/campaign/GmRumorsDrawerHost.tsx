@@ -9,6 +9,7 @@
  * Retour du navigateur ferme le tiroir, un lien direct l'ouvre, et Ctrl/⌘+Clic sur le
  * bouton d'ouverture ouvre l'écran de MJ déjà déplié dans un nouvel onglet.
  */
+import { memo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmRumorsDrawer } from './GmRumorsDrawer';
 import { RUMORS_PARAM } from './gmToolsMenu';
@@ -18,7 +19,14 @@ import type { Campaign } from '@/lib/campaign/types';
  * dans `gmToolsMenu.tsx` (source unique), réexporté ici pour ne rien changer à l'API externe. */
 export { RUMORS_PARAM };
 
-export function GmRumorsDrawerHost({ campaign }: { campaign: Campaign }) {
+/**
+ * `memo` (PER-495) : ce câblage (et les 8 autres tiroirs du menu « Outils du MJ ») vivent en
+ * enfants DIRECTS de `GmScreenPage`, jamais wrappés — sans ce garde, React rappelait leur fonction
+ * (donc tout leur sous-arbre, tiroir fermé compris) à CHAQUE action de combat MJ (tour suivant,
+ * état posé…), alors que leurs props (`campaign`, `campaignId`) ne changent quasiment jamais sur
+ * ces actions. Mesuré : 9 rendus de tiroir évités par clic « Tour suivant » (cf. handoff PER-495).
+ */
+export const GmRumorsDrawerHost = memo(function GmRumorsDrawerHost({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -33,4 +41,4 @@ export function GmRumorsDrawerHost({ campaign }: { campaign: Campaign }) {
   };
 
   return <GmRumorsDrawer campaign={campaign} open={open} onClose={close} />;
-}
+});

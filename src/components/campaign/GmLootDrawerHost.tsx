@@ -16,7 +16,7 @@
  * tiroir est monté hors de sa portée. Motif repris tel quel (capteurs, collision,
  * `DragOverlay`) de `CombatStatusPalette`/`InitiativeTracker`.
  */
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   DndContext,
@@ -92,7 +92,9 @@ function DragGhost({ line }: { line: EquipmentLine }) {
   );
 }
 
-export function GmLootDrawerHost({ campaign }: { campaign: Campaign }) {
+/** `memo` (PER-495, même motif que `GmRumorsDrawerHost`) : évite un rendu inutile de tout ce
+ * tiroir (+ son `DndContext` LOCAL) à chaque action de combat MJ, sans rapport avec le butin. */
+export const GmLootDrawerHost = memo(function GmLootDrawerHost({ campaign }: { campaign: Campaign }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -184,4 +186,4 @@ export function GmLootDrawerHost({ campaign }: { campaign: Campaign }) {
       <DragOverlay zIndex={1400}>{activeDrag ? <DragGhost line={activeDrag.line} /> : null}</DragOverlay>
     </DndContext>
   );
-}
+});

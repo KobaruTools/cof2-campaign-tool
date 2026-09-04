@@ -10,6 +10,7 @@
  * navigateur ferme le tiroir, un lien direct l'ouvre, et Ctrl/⌘+Clic sur le bouton d'ouverture ouvre
  * l'écran de MJ déjà déplié dans un nouvel onglet.
  */
+import { memo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmHistoryDrawer } from './GmHistoryDrawer';
 import { HISTORY_PARAM } from './gmToolsMenu';
@@ -19,7 +20,9 @@ import { HISTORY_PARAM } from './gmToolsMenu';
  * l'API externe. */
 export { HISTORY_PARAM };
 
-export function GmHistoryDrawerHost({ campaignId }: { campaignId: string }) {
+/** `memo` (PER-495, même motif que `GmRumorsDrawerHost`) : évite un rendu inutile de ce tiroir
+ * à chaque action de combat MJ, sans rapport avec l'historique. */
+export const GmHistoryDrawerHost = memo(function GmHistoryDrawerHost({ campaignId }: { campaignId: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -37,4 +40,4 @@ export function GmHistoryDrawerHost({ campaignId }: { campaignId: string }) {
   };
 
   return <GmHistoryDrawer campaignId={campaignId} open={open} onClose={close} />;
-}
+});

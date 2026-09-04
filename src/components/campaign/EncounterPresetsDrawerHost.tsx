@@ -8,6 +8,7 @@
  * L'ouverture passe par l'URL, en VRAIE ancre (`navigation-real-anchors`) : le bouton
  * Retour du navigateur ferme le tiroir, un lien direct l'ouvre.
  */
+import { memo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { EncounterPresetsDrawer } from './EncounterPresetsDrawer';
 import { ENCOUNTER_PRESETS_PARAM } from './gmToolsMenu';
@@ -25,7 +26,14 @@ export interface EncounterPresetsDrawerHostProps {
   onLaunch: (preset: EncounterPreset) => void;
 }
 
-export function EncounterPresetsDrawerHost({ campaign, hasCurrentCombat, onLaunch }: EncounterPresetsDrawerHostProps) {
+/** `memo` (PER-495, même motif que `GmRumorsDrawerHost`) : évite un rendu inutile de ce tiroir
+ * à chaque action de combat MJ — ses props (`campaign`, `hasCurrentCombat`, `onLaunch`) ne
+ * changent que quand le roster passe vide/non-vide, jamais sur un simple tour/état posé. */
+export const EncounterPresetsDrawerHost = memo(function EncounterPresetsDrawerHost({
+  campaign,
+  hasCurrentCombat,
+  onLaunch,
+}: EncounterPresetsDrawerHostProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -48,4 +56,4 @@ export function EncounterPresetsDrawerHost({ campaign, hasCurrentCombat, onLaunc
       onLaunch={onLaunch}
     />
   );
-}
+});

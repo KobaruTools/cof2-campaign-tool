@@ -9,6 +9,7 @@
  * navigateur ferme le tiroir, un lien direct l'ouvre, et Ctrl/⌘+Clic sur le bouton d'ouverture ouvre
  * l'écran de MJ déjà déplié dans un nouvel onglet.
  */
+import { memo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { GmReferenceDrawer } from './GmReferenceDrawer';
 import { REFERENCE_PARAM } from './gmToolsMenu';
@@ -18,7 +19,9 @@ import { REFERENCE_PARAM } from './gmToolsMenu';
  * l'API externe. */
 export { REFERENCE_PARAM };
 
-export function GmReferenceDrawerHost() {
+/** `memo` (PER-495, même motif que `GmRumorsDrawerHost`) : évite un rendu inutile de ce tiroir
+ * à chaque action de combat MJ, sans rapport avec l'aide-mémoire. */
+export const GmReferenceDrawerHost = memo(function GmReferenceDrawerHost() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -36,4 +39,4 @@ export function GmReferenceDrawerHost() {
   };
 
   return <GmReferenceDrawer open={open} onClose={close} />;
-}
+});
