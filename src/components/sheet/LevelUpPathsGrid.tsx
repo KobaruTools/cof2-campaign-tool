@@ -30,6 +30,12 @@
  * à plat du wizard — profil principal + profils déjà engagés, hors hybridation
  * masquée). Une fois choisie, la voie occupe la prochaine colonne libre (l'
  * emplacement n'est pas figé à l'avance, cf. `pathColumns`).
+ *
+ * Colonne PRESTIGE vide (toujours la dernière) : même patron de popover, mais sa propre
+ * liste de candidates (`newPrestigePathOptions`/`newPrestigePathOrder`, rang le plus bas
+ * des voies de prestige légalement accessibles ce niveau et pas encore entamées) — sans
+ * quoi la grille (vue PAR DÉFAUT du wizard) n'offrait aucun moyen de démarrer une voie de
+ * prestige, seule la liste avancée le permettait via son accordéon dédié (PER-486).
  */
 import { useEffect, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
@@ -133,6 +139,11 @@ export interface LevelUpPathsGridProps {
   newPathOptions: string[];
   /** Ordre de priorité (ids de voie) du popover — profil principal → engagés → hybrides par famille. */
   newPathOrder: string[];
+  /** Rangs (les plus bas) des voies de PRESTIGE pas encore entamées — candidates du popover
+   *  de la colonne prestige (PER-486), pendant de `newPathOptions` pour cette colonne dédiée. */
+  newPrestigePathOptions: string[];
+  /** Ordre de priorité (ids de voie) du popover prestige — table récapitulative p. 128. */
+  newPrestigePathOrder: string[];
   /** Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185) — même valeur que celle qui a produit `available`, pour que le motif du cadenas reste cohérent avec la légalité réelle. */
   firearmsAllowed: boolean;
   /** Achète le rang suivant d'une voie entamée, ou le rang 1 d'une voie nouvellement choisie. */
@@ -146,6 +157,8 @@ export function LevelUpPathsGrid({
   locked,
   newPathOptions,
   newPathOrder,
+  newPrestigePathOptions,
+  newPrestigePathOrder,
   firearmsAllowed,
   onSelect,
 }: LevelUpPathsGridProps) {
@@ -154,18 +167,24 @@ export function LevelUpPathsGrid({
   // le `richText` — la case de la grille les affichait bruts.
   const declineFeatureName = useFeatureNameDecliner();
   const columns = pathColumns(character);
-  // Une seule colonne vide ouvre le popover « nouvelle voie » à la fois — la plus à
-  // gauche — pour ne pas éparpiller le bouton « + » sur plusieurs colonnes de profil
-  // vides simultanément. Sans objet pour la voie de PRESTIGE (dernière colonne, hors
-  // `isClassSlot`) : ses propres règles d'éligibilité vivent ailleurs (liste avancée),
-  // pas dans `newPathOptions`/ce popover.
+  // Une seule colonne de PROFIL vide ouvre le popover « nouvelle voie » à la fois — la
+  // plus à gauche — pour ne pas éparpiller le bouton « + » sur plusieurs colonnes vides
+  // simultanément. La colonne PRESTIGE (dernière, hors `isClassSlot`) a son propre
+  // popover indépendant (`prestigeColumnIndex`, PER-486) : les deux peuvent être
+  // « receivable » en même temps, ce sont des voies différentes.
   const firstEmptyClassSlot = columns.findIndex((c, i) => !c && isClassSlot(i));
+  const prestigeColumnIndex = PATH_COLUMN_COUNT - 1;
   const availableIds = new Set(available.map((f) => f.id));
   const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
+  // Quelle liste de candidates alimente le popover actuellement ouvert (`pickerAnchor`) —
+  // colonne de profil (`newPathOptions`) ou colonne prestige (`newPrestigePathOptions`),
+  // posé au clic/appui long en même temps que l'ancre (PER-486).
+  const [pickerKind, setPickerKind] = useState<'class' | 'prestige'>('class');
   // BUG corrigé : le rang 1 d'une nouvelle voie (p. 39, coûte toujours 1 point) n'était
   // jamais confronté à `remaining` — le popover restait ouvrable (et le choix accepté)
   // même à 0 point restant, d'où un dépassement de budget silencieux.
   const canPickNewPath = !locked && remaining > 0 && newPathOptions.length > 0;
+  const canPickNewPrestigePath = !locked && remaining > 0 && newPrestigePathOptions.length > 0;
   const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
   // Aperçu déployé (mobile) : clic sur une case (acquise ou non) — réutilise `PathCard`
   // en lecture seule (`selectable={false}`, pas de case à cocher). La case reste le SEUL
@@ -228,6 +247,8 @@ export function LevelUpPathsGrid({
         }
       } else if (canPickNewPath && c === firstEmptyClassSlot) {
         cells.push({ column: c, row: 0 });
+      } else if (canPickNewPrestigePath && c === prestigeColumnIndex) {
+        cells.push({ column: c, row: 0 });
       }
     }
     return cells;
@@ -289,12 +310,15 @@ export function LevelUpPathsGrid({
         // haut dans ce fichier) — barre verticale à gauche + icône de profil/peuple/
         // prestige, teinte de famille (or pour les voies de prestige génériques).
         const { color: titleColor, classId, ancestryId } = pathVisuals(column?.path, character.classId);
-        // Colonne vide qui ne peut RIEN recevoir ce niveau (ni la « + nouvelle voie » —
-        // réservée à `firstEmptyClassSlot` — ni la voie de prestige, jamais choisissable
-        // depuis cette grille) : ni expansion au survol/tap, ni pulse, atténuée en permanence
-        // (opacité) — même règle et même style des deux côtés (souris ET tactile), rien à y
-        // faire ne doit pas attirer l'œil pour rien.
-        const isReceivableEmptyColumn = !column && columnIndex === firstEmptyClassSlot && canPickNewPath;
+        // Colonne vide qui ne peut RIEN recevoir ce niveau (ni la « + nouvelle voie » de
+        // profil — réservée à `firstEmptyClassSlot` — ni la « + nouvelle voie » de prestige
+        // — réservée à `prestigeColumnIndex`, PER-486) : ni expansion au survol/tap, ni
+        // pulse, atténuée en permanence (opacité) — même règle et même style des deux côtés
+        // (souris ET tactile), rien à y faire ne doit pas attirer l'œil pour rien.
+        const isReceivableEmptyColumn =
+          !column &&
+          ((columnIndex === firstEmptyClassSlot && canPickNewPath) ||
+            (columnIndex === prestigeColumnIndex && canPickNewPrestigePath));
         const isInertColumn = !column && !isReceivableEmptyColumn;
         return (
           <Box
@@ -307,11 +331,11 @@ export function LevelUpPathsGrid({
               setHoveredColumn(columnIndex);
             }}
             onMouseLeave={() => {
-              // Popover « nouvelle voie » ouvert sur cette colonne (seule à pouvoir l'ouvrir,
-              // `firstEmptyClassSlot`) : ne PAS réduire la colonne pendant que le joueur
-              // choisit dans le popover, sinon la souris qui va vers le popover (hors de la
-              // grille) referme la colonne sous ses pieds.
-              if (pickerAnchor && columnIndex === firstEmptyClassSlot) return;
+              // Popover « nouvelle voie » ouvert sur cette colonne (profil OU prestige, seules
+              // à pouvoir l'ouvrir) : ne PAS réduire la colonne pendant que le joueur choisit
+              // dans le popover, sinon la souris qui va vers le popover (hors de la grille)
+              // referme la colonne sous ses pieds.
+              if (pickerAnchor && (columnIndex === firstEmptyClassSlot || columnIndex === prestigeColumnIndex)) return;
               setHoveredColumn(null);
             }}
             sx={{
@@ -408,6 +432,11 @@ export function LevelUpPathsGrid({
               // Case du haut d'une colonne de profil VIDE : déclenche le popover de choix
               // de voie plutôt qu'un achat direct (plusieurs candidates possibles).
               const isNewPathSlot = !column && rowIndex === 0 && columnIndex === firstEmptyClassSlot;
+              // Case du haut de la colonne PRESTIGE vide : même patron, popover dédié (PER-486).
+              const isNewPrestigePathSlot = !column && rowIndex === 0 && columnIndex === prestigeColumnIndex;
+              // Une des deux « + nouvelle voie » est réellement actionnable ce niveau.
+              const canOpenNewPathPicker =
+                (isNewPathSlot && canPickNewPath) || (isNewPrestigePathSlot && canPickNewPrestigePath);
               // Une voie de prestige remplit la case d'un DÉGRADÉ (`linear-gradient(...)`) plutôt
               // qu'une teinte plate — `alpha()` ne sait pas le parser, donc le liseré comme
               // l'atténuation de la teinte passent par une détection de préfixe plutôt qu'un helper
@@ -415,7 +444,7 @@ export function LevelUpPathsGrid({
               const isGradientFill = filled && !!color && color.startsWith('linear-gradient');
               // Case réellement cliquable ce niveau (achat direct OU « + nouvelle voie ») —
               // seule cible du pulse d'incitation ci-dessous.
-              const isInteractiveCta = affordable || (isNewPathSlot && canPickNewPath);
+              const isInteractiveCta = affordable || canOpenNewPathPicker;
               return (
                 <Box
                   key={rowIndex}
@@ -434,7 +463,13 @@ export function LevelUpPathsGrid({
                     if (affordable) {
                       markTutorialSeen();
                       onSelect(feature!.id);
-                    } else if (isNewPathSlot && canPickNewPath) setPickerAnchor(e.currentTarget);
+                    } else if (isNewPathSlot && canPickNewPath) {
+                      setPickerKind('class');
+                      setPickerAnchor(e.currentTarget);
+                    } else if (isNewPrestigePathSlot && canPickNewPrestigePath) {
+                      setPickerKind('prestige');
+                      setPickerAnchor(e.currentTarget);
+                    }
                   }}
                   onPointerDown={(e) => {
                     pointerTypeRef.current = e.pointerType as 'mouse' | 'touch' | 'pen';
@@ -464,6 +499,16 @@ export function LevelUpPathsGrid({
                         longPressFiredRef.current = true;
                         setPressedCell(null);
                         markTutorialSeen();
+                        setPickerKind('class');
+                        setPickerAnchor(target);
+                      }, LONG_PRESS_MS);
+                    } else if (isNewPrestigePathSlot && canPickNewPrestigePath) {
+                      setPressedCell({ column: columnIndex, row: rowIndex });
+                      longPressTimerRef.current = setTimeout(() => {
+                        longPressFiredRef.current = true;
+                        setPressedCell(null);
+                        markTutorialSeen();
+                        setPickerKind('prestige');
                         setPickerAnchor(target);
                       }, LONG_PRESS_MS);
                     }
@@ -589,10 +634,10 @@ export function LevelUpPathsGrid({
                       </Box>
                     </AppTooltip>
                   )}
-                  {isNewPathSlot && canPickNewPath && (
+                  {canOpenNewPathPicker && (
                     <AddIcon sx={{ position: 'relative', zIndex: 1, fontSize: 14, color: 'rgba(255, 255, 255, 0.5)' }} />
                   )}
-                  {isNewPathSlot && canPickNewPath && (
+                  {canOpenNewPathPicker && (
                     <Typography
                       noWrap
                       variant="caption"
@@ -843,13 +888,14 @@ export function LevelUpPathsGrid({
       >
         <Box sx={{ p: 1.5, width: 320 }}>
           <FeaturePathAutocomplete
-            options={newPathOptions}
-            pathOrder={newPathOrder}
+            options={pickerKind === 'prestige' ? newPrestigePathOptions : newPathOptions}
+            pathOrder={pickerKind === 'prestige' ? newPrestigePathOrder : newPathOrder}
             value={null}
             onChange={(id) => {
               // Filet de sécurité : le popover ne s'ouvre normalement plus à 0 point restant
-              // (`canPickNewPath`), mais il peut rester ouvert d'un rendu précédent pendant
-              // qu'un autre clic vient d'épuiser `remaining` — recontrôlé ici avant d'ajouter.
+              // (`canPickNewPath`/`canPickNewPrestigePath`), mais il peut rester ouvert d'un
+              // rendu précédent pendant qu'un autre clic vient d'épuiser `remaining` —
+              // recontrôlé ici avant d'ajouter.
               const feature = id ? featureById.get(id) : undefined;
               if (feature && featureCost(feature, progression) <= remaining) {
                 markTutorialSeen();
@@ -857,7 +903,7 @@ export function LevelUpPathsGrid({
               }
               setPickerAnchor(null);
             }}
-            label="Nouvelle voie de profil"
+            label={pickerKind === 'prestige' ? 'Nouvelle voie de prestige' : 'Nouvelle voie de profil'}
           />
         </Box>
       </Popover>

@@ -1227,6 +1227,14 @@ export function LevelUpDialog({
         prestigeCategoryOrder(a) - prestigeCategoryOrder(b) ||
         voieSortKey(groupName(a)).localeCompare(voieSortKey(groupName(b)), 'fr'),
     );
+  // Rangs (les plus bas) des voies de PRESTIGE pas encore entamées — pendant, pour la
+  // colonne prestige de la grille simplifiée (`LevelUpPathsGrid`), du `newPathOptions`
+  // des voies de profil : sans cette liste, la grille (vue PAR DÉFAUT du wizard) n'offrait
+  // aucun moyen de démarrer une voie de prestige, seule la liste avancée le permettait via
+  // l'accordéon ci-dessus (PER-486).
+  const newPrestigeGroups = prestigeGroups.filter((g) => g.path && !startedPaths.has(g.path.id));
+  const newPrestigePathOptions = newPrestigeGroups.flatMap((g) => g.features.map((f) => f.id));
+  const newPrestigePathOrder = newPrestigeGroups.map((g) => g.pathId);
   // Couleur du badge de niveau : toujours celle du profil d'origine (pas de
   // surcharge voie de prestige — retour propriétaire).
   const levelBadgeColor = classColor(character.classId);
@@ -2135,6 +2143,8 @@ export function LevelUpDialog({
                 locked={divineLock}
                 newPathOptions={newPathOptions}
                 newPathOrder={newPathOrder}
+                newPrestigePathOptions={newPrestigePathOptions}
+                newPrestigePathOrder={newPrestigePathOrder}
                 firearmsAllowed={firearmsAllowed}
                 onSelect={add}
               />
