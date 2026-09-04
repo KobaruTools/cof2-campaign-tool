@@ -3058,17 +3058,26 @@ const StatusDroppableColumn = memo(function StatusDroppableColumn({
   // référence d'objet paraît toujours « changée » même à contenu identique. Dépendances sur les
   // CHAMPS individuels de `reorderDraggable`/`setNodeRef` (pas l'objet englobant, recréé lui aussi à
   // chaque rendu par `useDraggable`/`useDroppable`, cf. leur source).
+  //
+  // PER-491 : `acted`/`pinned`/`hasManualPosition` calculés HORS du `useMemo` (primitifs, pas de
+  // coût mesurable sur ~18 lignes) puis listés comme dépendances À LA PLACE de l'objet `orderControls`
+  // entier. `orderControls` (mémoïsé côté page sur TOUT le combat, cf. `GmCombatDndArea`) change de
+  // référence dès qu'UN SEUL combattant change d'état — le lister directement recalculait `order`
+  // (donc cassait le `memo` de `CombatantColumn`) sur les ~18 lignes à chaque action MJ, même les
+  // ~17 non concernées. Un booléen inchangé, lui, ne fait pas recalculer `useMemo`.
+  const acted = orderControls ? orderControls.actedKeys.includes(row.key) : false;
+  const pinned = orderControls ? orderControls.pinnedKeys.includes(row.key) : false;
+  const hasManualPosition = orderControls ? row.key in orderControls.manualOrder : false;
   const order: ColumnOrderRender | undefined = useMemo(
     () =>
       orderControls
         ? {
-            acted: orderControls.actedKeys.includes(row.key),
-            onToggleActed: () =>
-              orderControls.onSetActed(row.key, !orderControls.actedKeys.includes(row.key)),
+            acted,
+            onToggleActed: () => orderControls.onSetActed(row.key, !acted),
             dragHandle: reorderDraggable,
-            pinned: orderControls.pinnedKeys.includes(row.key),
+            pinned,
             onTogglePin: () => orderControls.onTogglePin(row.key, nextRowKey),
-            hasManualPosition: row.key in orderControls.manualOrder,
+            hasManualPosition,
             onResetOrder: () => orderControls.onResetOrder(row.key),
           }
         : undefined,
@@ -3077,7 +3086,8 @@ const StatusDroppableColumn = memo(function StatusDroppableColumn({
     // à CHAQUE rendu et annulerait la mémoïsation qu'il vise à obtenir. `transform` EXCLU aussi
     // (délibérément, pas un oubli) : plus rien ne le lit dans `CombatantColumn` depuis que le
     // fantôme suit le curseur en dehors de React (cf. `ReorderGhost`) — seul `isDragging` compte
-    // encore pour son rendu.
+    // encore pour son rendu. `orderControls` lui-même EXCLU depuis PER-491 (voir commentaire
+    // ci-dessus) : seuls `onSetActed`/`onTogglePin`/`onResetOrder` (callbacks stables) en sont tirés.
     //
     // PER-459 (bug trouvé APRÈS coup, pas volontaire celui-là) : `attributes` et `listeners`
     // ci-dessous étaient EUX AUSSI listés comme dépendances — sauf que `useDraggable` (`@dnd-kit`)
@@ -3086,13 +3096,19 @@ const StatusDroppableColumn = memo(function StatusDroppableColumn({
     // CHAQUE pointermove d'un glisser (pas seulement au franchissement d'une carte), cassant le
     // `memo` de `CombatantColumn` pour les 14 lignes À CHAQUE pointermove — la VRAIE source du
     // stutter (confirmé par trace CDP : `ForwardRef(Box)` 12610×, `AppTooltip` 4135× pendant UN
-    // seul glisser). Retirés des dépendances ; toujours capturés dans la valeur retournue (via
+    // seul glisser). Retirés des dépendances ; toujours capturés dans la valeur retournée (via
     // `reorderDraggable` ci-dessus), juste pas au titre de DÉCLENCHEUR — la poignée reçoit alors des
     // gestionnaires « d'un rendu de retard » dans le pire cas, sans conséquence : ce sont des
     // fermetures stables côté `@dnd-kit`, pas des valeurs qui doivent être fraîches à la milliseconde.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      orderControls,
+      !!orderControls,
+      orderControls?.onSetActed,
+      orderControls?.onTogglePin,
+      orderControls?.onResetOrder,
+      acted,
+      pinned,
+      hasManualPosition,
       row.key,
       nextRowKey,
       reorderDraggable.isDragging,
@@ -3300,9 +3316,18 @@ export function InitiativeTracker({
   // Ordre manuel du MJ (PER-436) : DERNIÈRE couche avant rendu, appliquée par-dessus la
   // relégation — commodité d'AFFICHAGE, elle ne change ni l'initiative ni la relégation, mais
   // replace les combattants explicitement glissés par le MJ. Jamais en projection.
-  const displayedRows = projection
-    ? rows.filter((r) => !r.hidden)
-    : applyManualOrder(relegateSidelined(rows), orderControls?.manualOrder ?? {});
+  // Mémoïsé (PER-491) : `InitiativeTracker` n'est pas lui-même `memo`, donc recalculait
+  // `relegateSidelined`/`applyManualOrder` sur TOUTE la bande à chaque rendu du parent, quel qu'en
+  // soit le déclencheur (y compris des changements sans rapport avec `rows`/`manualOrder`, comme
+  // `dragPreview`). Dépendance sur `manualOrder` seul (pas `orderControls` entier, cf. `order` dans
+  // `StatusDroppableColumn` plus bas) : les autres champs de `orderControls` n'influencent pas l'ordre affiché.
+  const displayedRows = useMemo(
+    () =>
+      projection
+        ? rows.filter((r) => !r.hidden)
+        : applyManualOrder(relegateSidelined(rows), orderControls?.manualOrder ?? {}),
+    [projection, rows, orderControls?.manualOrder],
+  );
   /**
    * Index de la carte survolée pendant un glisser de réordonnancement (PER-459), `-1` hors zone de
    * drop utile — calculé UNE fois par rendu pour ouvrir le gap visuel (voir plus bas, `shouldShift`)
