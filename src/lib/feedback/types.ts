@@ -5,6 +5,9 @@
  */
 export type FeedbackKind = 'bug' | 'rule-error' | 'idea';
 
+/** Ordre canonique, réutilisé par la validation serveur et le stepper UI (PER-465). */
+export const FEEDBACK_KINDS: FeedbackKind[] = ['bug', 'rule-error', 'idea'];
+
 export type FeedbackZone =
   | 'character-sheet'
   | 'creation-level-up'
@@ -15,6 +18,26 @@ export type FeedbackZone =
   | 'reference-sheet'
   | 'account'
   | 'other';
+
+/** Ordre canonique, réutilisé par la validation serveur et le stepper UI (PER-465). */
+export const FEEDBACK_ZONES: FeedbackZone[] = [
+  'character-sheet',
+  'creation-level-up',
+  'codex',
+  'bestiary',
+  'gm-screen',
+  'campaign',
+  'reference-sheet',
+  'account',
+  'other',
+];
+
+/** Zones où l'attachement d'un personnage (export JSON) a du sens (PER-465). */
+export const FEEDBACK_ZONES_WITH_CHARACTER: FeedbackZone[] = [
+  'character-sheet',
+  'creation-level-up',
+  'codex',
+];
 
 export interface FeedbackInput {
   kind: FeedbackKind;

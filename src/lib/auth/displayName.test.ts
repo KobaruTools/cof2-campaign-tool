@@ -29,4 +29,8 @@ describe('displayNameOf', () => {
   it('replie sur un libellé générique sans nom ni email', () => {
     expect(displayNameOf(user({}))).toBe('Compte');
   });
+
+  it('replie sur un libellé générique si l’email est une chaîne vide (utilisateur anonyme Supabase)', () => {
+    expect(displayNameOf(user({ email: '' }))).toBe('Compte');
+  });
 })

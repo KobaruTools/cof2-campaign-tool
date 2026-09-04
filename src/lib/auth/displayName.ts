@@ -12,5 +12,8 @@ export function displayNameOf(user: Pick<User, 'email' | 'user_metadata'>): stri
   if (typeof raw === 'string' && raw.trim() !== '') {
     return raw.trim();
   }
-  return user.email ?? 'Compte';
+  // `??` ne rattrape pas une chaîne VIDE (cas d'un utilisateur anonyme Supabase, dont
+  // `email` vaut `''` plutôt que `null` — reproduit en testant le formulaire de retour
+  // (PER-465) sous une session anonyme).
+  return user.email && user.email.trim() !== '' ? user.email : 'Compte';
 }

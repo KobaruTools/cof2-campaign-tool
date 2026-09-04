@@ -21,7 +21,8 @@ const KIND_LABEL: Record<FeedbackKind, FeedbackLabelId> = {
   idea: 'feature',
 };
 
-const ZONE_LABEL: Record<FeedbackInput['zone'], string> = {
+/** Libellés français des zones, réutilisés par le dialogue de retour (PER-465). */
+export const ZONE_LABEL: Record<FeedbackInput['zone'], string> = {
   'character-sheet': 'Fiche perso',
   'creation-level-up': 'Création/Montée',
   codex: 'Codex',

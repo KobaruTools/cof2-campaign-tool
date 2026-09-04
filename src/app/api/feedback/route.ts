@@ -4,21 +4,14 @@ import { displayNameOf } from '@/lib/auth/displayName';
 import { roleOfUser } from '@/lib/auth/sessionRole';
 import { buildFeedbackIssue } from '@/lib/feedback/buildFeedbackIssue';
 import { attachFileToIssue, createLinearIssue, type FeedbackFile } from '@/lib/feedback/linearClient';
-import type { FeedbackInput, FeedbackKind, FeedbackZone } from '@/lib/feedback/types';
+import {
+  FEEDBACK_KINDS,
+  FEEDBACK_ZONES,
+  type FeedbackInput,
+  type FeedbackKind,
+  type FeedbackZone,
+} from '@/lib/feedback/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-
-const FEEDBACK_KINDS: FeedbackKind[] = ['bug', 'rule-error', 'idea'];
-const FEEDBACK_ZONES: FeedbackZone[] = [
-  'character-sheet',
-  'creation-level-up',
-  'codex',
-  'bestiary',
-  'gm-screen',
-  'campaign',
-  'reference-sheet',
-  'account',
-  'other',
-];
 
 interface FeedbackRequestBody extends FeedbackInput {
   /** Route/page courante côté client (le serveur ne voit que `/api/feedback`). */

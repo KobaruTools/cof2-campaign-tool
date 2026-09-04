@@ -17,6 +17,7 @@ import { AppBreadcrumbs } from '@/components/AppBreadcrumbs';
 import { AppHeaderBrand } from '@/components/AppHeaderBrand';
 import { AppHeaderNavDrawer } from '@/components/AppHeaderNavDrawer';
 import { CodexSplitButton } from '@/components/CodexSplitButton';
+import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 import { FriendsWidget } from '@/components/friends/FriendsWidget';
 import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { HeaderNavButton } from '@/components/HeaderNavButton';
@@ -225,6 +226,8 @@ export function AppHeaderShell() {
           )}
           {sessionIndicator}
           <FriendsWidget enabled={showOwnerLinks} />
+          {/* Réservé aux sessions connectées (owner/player) — pas de visiteur anonyme (PER-465). */}
+          {!isAnonymous && <FeedbackButton />}
           <AccountMenu sessionRole={sessionRole} />
           {/* Visiteur sans session : seul appel à l'action de l'en-tête. Libellé
               TOUJOURS visible (contrairement aux boutons de nav qui se replient) —

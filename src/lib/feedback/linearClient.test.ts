@@ -39,6 +39,7 @@ describe('createLinearIssue', () => {
     expect(init.headers.Authorization).toBe('test-key');
     const body = JSON.parse(init.body);
     expect(body.variables.input.teamId).toBe('61a44dcb-8d5b-4dea-bb37-b97c936746b0');
+    expect(body.variables.input.projectId).toBe('ce1d9541-40da-42c8-abed-6af5db509bca');
     expect(body.variables.input.stateId).toBe('895f4308-868e-47bb-9e7e-294a378cc893');
     expect(body.variables.input.labelIds).toEqual([
       '3871021b-53da-403b-8014-80d73a54ccd6',
@@ -108,7 +109,10 @@ describe('attachFileToIssue', () => {
     const [putUrl, putInit] = fetchMock.mock.calls[1];
     expect(putUrl).toBe('https://upload.linear.app/signed-url');
     expect(putInit.method).toBe('PUT');
-    expect(putInit.headers).toEqual({ 'x-amz-foo': 'bar' });
+    expect(putInit.headers).toEqual({
+      'Content-Type': 'application/json',
+      'x-amz-foo': 'bar',
+    });
     expect(putInit.body).toBe(content);
 
     const [attachUrl, attachInit] = fetchMock.mock.calls[2];

@@ -4,6 +4,8 @@ import type { FeedbackIssuePayload, FeedbackLabelId } from './buildFeedbackIssue
 const TEAM_ID = '61a44dcb-8d5b-4dea-bb37-b97c936746b0';
 /** Statut Triage de l'équipe Perso. */
 const TRIAGE_STATE_ID = '895f4308-868e-47bb-9e7e-294a378cc893';
+/** Projet COF2, pour que le ticket apparaisse filtré dans ce projet (pas seulement l'équipe). */
+const PROJECT_ID = 'ce1d9541-40da-42c8-abed-6af5db509bca';
 
 const LABEL_IDS: Record<FeedbackLabelId, string> = {
   bug: '3871021b-53da-403b-8014-80d73a54ccd6',
@@ -98,6 +100,7 @@ export async function createLinearIssue(
   }>(apiKey, CREATE_ISSUE_MUTATION, {
     input: {
       teamId: TEAM_ID,
+      projectId: PROJECT_ID,
       stateId: TRIAGE_STATE_ID,
       title: payload.title,
       description: payload.description,
@@ -144,9 +147,17 @@ export async function attachFileToIssue(issueId: string, file: FeedbackFile): Pr
   }
   const { uploadUrl, assetUrl, headers } = uploadFile.uploadFile;
 
+  // L'URL signée (GCS) est signée en incluant `content-type` parmi les en-têtes couverts
+  // par la signature (`X-Goog-SignedHeaders`) — Linear ne le renvoie PAS dans `headers`
+  // (seulement `x-goog-content-length-range` + `Content-Disposition`), pourtant son absence
+  // fait échouer le PUT en 403 (signature invalide). Il doit correspondre EXACTEMENT au
+  // `contentType` déclaré à `fileUpload` ci-dessus.
   const putResponse = await fetch(uploadUrl, {
     method: 'PUT',
-    headers: Object.fromEntries(headers.map((h) => [h.key, h.value])),
+    headers: {
+      'Content-Type': file.contentType,
+      ...Object.fromEntries(headers.map((h) => [h.key, h.value])),
+    },
     body: file.content,
   });
   if (!putResponse.ok) {

@@ -54,15 +54,28 @@ export async function resolveTransferContext(character: Character): Promise<Tran
   return { campaign, player };
 }
 
-/** Résout le contexte, enveloppe le personnage et déclenche le téléchargement JSON. */
-export async function downloadCharacterExport(character: Character): Promise<void> {
+/**
+ * Résout le contexte et enveloppe le personnage en `Blob` JSON nommé, sans
+ * déclencher de téléchargement — réutilisé par `downloadCharacterExport` (accueil,
+ * page campagne) et par la pièce jointe « personnage » du formulaire de retour
+ * utilisateur (PER-464/465).
+ */
+export async function buildCharacterExportBlob(
+  character: Character,
+): Promise<{ blob: Blob; filename: string }> {
   const context = await resolveTransferContext(character);
   const file = buildExportFile(character, context);
   const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
+  return { blob, filename: `${fileSlug(character.name)}.json` };
+}
+
+/** Résout le contexte, enveloppe le personnage et déclenche le téléchargement JSON. */
+export async function downloadCharacterExport(character: Character): Promise<void> {
+  const { blob, filename } = await buildCharacterExportBlob(character);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${fileSlug(character.name)}.json`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
