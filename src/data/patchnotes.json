@@ -210,5 +210,19 @@
         "tag": "other"
       }
     ]
+  },
+  {
+    "id": 9,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Vous pouvez désormais joindre des fichiers (captures d'écran, images...) à vos retours et suggestions.",
+        "tag": "other"
+      },
+      {
+        "text": "Correction de l'orthographe de plusieurs noms de dieux dans les textes.",
+        "tag": "reference-sheet"
+      }
+    ]
   }
 ]
