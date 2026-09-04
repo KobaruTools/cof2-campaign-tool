@@ -248,5 +248,15 @@
         "tag": "other"
       }
     ]
+  },
+  {
+    "id": 12,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Les voies de prestige sont désormais accessibles directement depuis la grille de montée de niveau.",
+        "tag": "creation-levelup"
+      }
+    ]
   }
 ]
