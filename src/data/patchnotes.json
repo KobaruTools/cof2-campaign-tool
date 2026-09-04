@@ -278,5 +278,19 @@
         "tag": "codex"
       }
     ]
+  },
+  {
+    "id": 15,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Correction du calcul des points de vie par niveau pour les voies de prestige qui suivent une règle spéciale.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Optimisation des performances pour réduire les ralentissements de l'écran de suivi de combat.",
+        "tag": "gm-screen"
+      }
+    ]
   }
 ]
