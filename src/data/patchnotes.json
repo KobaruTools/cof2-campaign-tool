@@ -224,5 +224,15 @@
         "tag": "reference-sheet"
       }
     ]
+  },
+  {
+    "id": 10,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Nouvel outil pour créer une créature sur mesure côté MJ : dés bonus selon les caractéristiques, icônes pour repérer les créatures d'un coup d'œil, agilité harmonisée et capacités disponibles jusqu'au niveau 30.",
+        "tag": "gm-screen"
+      }
+    ]
   }
 ]
