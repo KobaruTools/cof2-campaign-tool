@@ -36,7 +36,7 @@ export const PATCHNOTE_TAG_ORDER: PatchnoteTagId[] = [
 
 export const PATCHNOTE_TAGS: Record<PatchnoteTagId, PatchnoteTagDef> = {
   'character-sheet': { id: 'character-sheet', label: 'Fiche perso', color: '#5B8DEF' },
-  'creation-levelup': { id: 'creation-levelup', label: 'Création & montée', color: '#4CAF6D' },
+  'creation-levelup': { id: 'creation-levelup', label: 'Création personnage & montée de niveau', color: '#4CAF6D' },
   codex: { id: 'codex', label: 'Codex', color: '#9B6BD9' },
   bestiary: { id: 'bestiary', label: 'Bestiaire', color: '#C9793D' },
   'gm-screen': { id: 'gm-screen', label: 'Écran MJ', color: '#E0575A' },
