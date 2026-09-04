@@ -312,5 +312,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 18,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Le menu Outils du MJ ne recharge plus inutilement ses 9 tiroirs à chaque ouverture, pour un affichage plus fluide.",
+        "tag": "gm-screen"
+      }
+    ]
   }
 ]
