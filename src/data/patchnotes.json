@@ -268,5 +268,15 @@
         "tag": "creation-levelup"
       }
     ]
+  },
+  {
+    "id": 14,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Le texte des notes de voies s'affiche désormais correctement avec sa mise en forme, et le bouton du codex répond aussi au clic milieu (ouverture dans un nouvel onglet).",
+        "tag": "codex"
+      }
+    ]
   }
 ]
