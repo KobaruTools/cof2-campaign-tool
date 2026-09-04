@@ -11,9 +11,9 @@ import { GOD_SYMBOL_CREDITS } from '@/data/gods/godSymbolCredits';
 const GOD_BACKGROUND_SYMBOL_FILE: Partial<Record<string, string>> = {
   arshran: 'ashran nb.svg', // fichier "ashran" (sans le second r) — coquille du fan-art
   axender: 'axender nb.svg',
-  gaeln: 'gaelm nb.svg', // fichier "gaelm" — coquille du fan-art
+  gaeln: 'gaelm nb.svg', // fichier "gaelm" = bonne orthographe (le nom du dieu est « Gaëlm », l'id reste « gaeln »)
   jeweln: 'jeweln nb.svg',
-  mephistre: 'mephistere nb.svg', // fichier "mephistere" — coquille du fan-art
+  mephistre: 'mephistere nb.svg', // fichier "mephistere" = bonne orthographe (le nom du dieu est « Méphistère », l'id reste « mephistre »)
   mirandia: 'mirandia nb.svg',
   orbis: 'orbis nb.svg',
   oumaros: 'oumaros nb - dessiné par KYR.svg',

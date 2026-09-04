@@ -14,7 +14,7 @@ export interface GodOrigin {
   pathId: string;
   pathName: string;
   /** Regroupement pour `shadeForIndex` : le PROFIL, pas la voie (`classColor()` est identique
-   * pour toutes les voies d'un même profil, ex. Orbis/Tyriolth tous deux forgesort). */
+   * pour toutes les voies d'un même profil, ex. Orbis/Tyriolith tous deux forgesort). */
   colorKey: string;
   baseColor: string;
   kind: 'class' | 'mage' | 'other';

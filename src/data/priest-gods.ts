@@ -15,9 +15,9 @@
  *  - ⁵ faux : ou rouleau à pâtisserie ou poêle au choix, même DM.
  *
  * Coquilles du livre confirmées (le NOM de capacité, lui, est sans ambiguïté) :
- *  - Périnde « voie des végétaux — prêtre » → druide (`vegetaux-r2`) ;
- *  - Tyriolth « voie du feu » → voie des élixirs (`elixirs-r2`) ;
- *  - Tulsadün « voie de la survie » → voie de la nature (`nature-r2`).
+ *  - Perinde « voie des végétaux — prêtre » → druide (`vegetaux-r2`) ;
+ *  - Tyriolith « voie du feu » → voie des élixirs (`elixirs-r2`) ;
+ *  - Tulsadüm « voie de la survie » → voie de la nature (`nature-r2`).
  *
  * Convention (CLAUDE.md) : `id` = slug (clé de contenu) ; textes en français.
  */
@@ -62,9 +62,9 @@ export const priestGods: PriestGod[] = [
   },
   {
     id: 'axender',
-    name: 'Axénder',
+    name: 'Axënder',
     domain: 'dieu du devoir et de l’honneur',
-    symbol: 'une épée',
+    symbol: 'un heaume',
     sacredWeaponIds: ['epee-longue'],
     divineFeatureId: 'meneur-d-hommes-r1', // sans peur (voie du meneur d'hommes — chevalier)
     sourcePage: 126,
@@ -80,7 +80,7 @@ export const priestGods: PriestGod[] = [
   },
   {
     id: 'ceres',
-    name: 'Cérès',
+    name: 'Céres',
     domain: 'dieu de l’agriculture et du travail',
     symbol: 'un épi de blé',
     sacredWeaponIds: ['faux', 'rouleau-a-patisserie', 'poele'], // ²/⁵
@@ -116,7 +116,7 @@ export const priestGods: PriestGod[] = [
   },
   {
     id: 'gaeln',
-    name: 'Gaëln',
+    name: 'Gaëlm',
     domain: 'dieu des arts et des artistes',
     symbol: 'une lyre',
     sacredWeaponIds: ['rapiere'],
@@ -188,7 +188,7 @@ export const priestGods: PriestGod[] = [
   },
   {
     id: 'mephistre',
-    name: 'Méphistre',
+    name: 'Méphistère',
     domain: 'dieu de l’ombre et des secrets',
     symbol: 'un masque',
     sacredWeaponIds: ['dague'],
@@ -206,7 +206,7 @@ export const priestGods: PriestGod[] = [
   },
   {
     id: 'mondovael',
-    name: 'Mondovaël',
+    name: 'Möndovaël',
     domain: 'dieu des nomades et du voyage',
     symbol: 'une botte',
     sacredWeaponIds: ['baton'],
@@ -242,7 +242,7 @@ export const priestGods: PriestGod[] = [
   },
   {
     id: 'perinde',
-    name: 'Périnde',
+    name: 'Perinde',
     domain: 'déesse de la fertilité et des mères',
     symbol: 'une femme enceinte',
     sacredWeaponIds: ['baton'],
@@ -287,7 +287,7 @@ export const priestGods: PriestGod[] = [
   },
   {
     id: 'tulsadun',
-    name: 'Tulsadün',
+    name: 'Tulsadüm',
     domain: 'dieu de la jungle et des reptiles',
     symbol: 'un serpent qui se mord la queue',
     sacredWeaponIds: ['arc-court'],
@@ -296,7 +296,7 @@ export const priestGods: PriestGod[] = [
   },
   {
     id: 'tyriolth',
-    name: 'Tyriolth',
+    name: 'Tyriolith',
     domain: 'dieu du combat contre le chaos et du feu purificateur',
     symbol: 'une flamme',
     sacredWeaponIds: ['masse'],

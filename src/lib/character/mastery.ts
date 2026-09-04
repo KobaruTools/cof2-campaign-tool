@@ -94,7 +94,7 @@ export function masteredClassIds(character: Character, ctx: RulesContext): Set<s
  * prêtre ne manie normalement que les armes contondantes à une main + le bâton
  * ferré (interdiction de faire couler le sang, p. 122) ; mais le héraut d'un seul
  * dieu MAÎTRISE l'arme sacrée de ce dieu, même tranchante ou perçante (épée longue
- * d'Axénder, dague de Méphistre, faux de Morn…, table p. 126-127). Les variantes
+ * d'Axënder, dague de Méphistère, faux de Morn…, table p. 126-127). Les variantes
  * « au choix » (arc long/court, faux/rouleau/poêle) sont toutes retenues. Chaque
  * arme est étendue à sa famille (`WEAPON_FAMILIES`) pour rester cohérent avec le
  * reste de la maîtrise (bâton ⇄ bâton ferré). Ensemble vide pour un généraliste ou

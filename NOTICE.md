@@ -101,11 +101,11 @@ L'affichage passe par le composant `src/components/GodDomainIcon.tsx`.
 | --- | --- | --- | --- |
 | Arshran | feu et forgerons | `lorc/anvil.svg` | Lorc |
 | Dénora | compassion et guérison | `delapouite/heart-wings.svg` | Delapouite |
-| Axénder | devoir et honneur | `lorc/laurel-crown.svg` | Lorc |
+| Axënder | devoir et honneur | `lorc/laurel-crown.svg` | Lorc |
 | Irrion | ordre et noblesse | `lorc/crown.svg` | Lorc |
 | Vorona | justice et loi | `lorc/scales.svg` | Lorc |
 | Trenner | temps et ancêtres | `lorc/hourglass.svg` | Lorc |
-| Tulsadün | jungle et reptiles | `lorc/snake.svg` | Lorc |
+| Tulsadüm | jungle et reptiles | `lorc/snake.svg` | Lorc |
 | Sélenne | lune et liberté | `lorc/moon.svg` | Lorc |
 | Mirandia | sommeil et rêves | `delapouite/night-sleep.svg` | Delapouite |
 | Solar | lumière et savoir | `lorc/sun.svg` | Lorc |
@@ -113,11 +113,11 @@ L'affichage passe par le composant `src/components/GodDomainIcon.tsx`.
 | Forthur | courage et exploits | `lorc/punch.svg` | Lorc |
 | Gorom | pierre et architectes | `lorc/stone-block.svg` | Lorc |
 | Mélenna | forêts et animaux | `lorc/paw.svg` | Lorc |
-| Méphistre | ombre et secrets | `lorc/drama-masks.svg` | Lorc |
-| Cérès | agriculture et travail | `delapouite/grain-bundle.svg` | Delapouite |
+| Méphistère | ombre et secrets | `lorc/drama-masks.svg` | Lorc |
+| Céres | agriculture et travail | `delapouite/grain-bundle.svg` | Delapouite |
 | Oumaros | air et cieux | `lorc/feather.svg` | Lorc |
 | Ellona | perception et vérité | `lorc/octogonal-eye.svg` | Lorc |
-| Tyriolth | chaos et feu purificateur | `lorc/fireball.svg` | Lorc |
+| Tyriolith | chaos et feu purificateur | `lorc/fireball.svg` | Lorc |
 
 ## Icône « Points de violence »
 

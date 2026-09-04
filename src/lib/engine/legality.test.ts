@@ -69,7 +69,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
 }
 
 describe('capacité divine du prêtre spécialiste — pas d’hybridation (p. 122)', () => {
-  // foi-r1 remplacée par la capacité divine d'Axénder (meneur-d-hommes-r1, famille
+  // foi-r1 remplacée par la capacité divine d'Axënder (meneur-d-hommes-r1, famille
   // « combattants »), prêtre spécialiste.
   const priest = makeCharacter({
     classId: 'pretre',

@@ -2303,7 +2303,7 @@ const DIVINE_FEATURE_ABILITY_SUBSTITUTIONS: Partial<Record<string, AbilityId>> =
   'magie-universelle-r1': 'INT', // Lumière (Solar) — durée INT heures
   'magie-des-arcanes-r2': 'INT', // Lévitation (Oumaros) — durée INT minutes
   'mort-r2': 'INT', // Masque mortuaire (Morn) — durée INT minutes
-  'vegetaux-r2': 'PER', // Prison végétale (Périnde) — durée PER minutes
+  'vegetaux-r2': 'PER', // Prison végétale (Perinde) — durée PER minutes
   'poing-r1': 'FOR', // Poings de fer (Sélenne) — s'ajoute au best-of FOR/AGI existant
 };
 

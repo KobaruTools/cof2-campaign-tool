@@ -23,10 +23,10 @@ const FORUM_URL = 'https://black-book-editions.fr/forums.php?topic_id=24891';
 export const GOD_SYMBOL_CREDITS: GodSymbolCredit[] = [
   { file: 'abalath nb.png', god: 'Abalath', author: 'Badiail', source: FORUM_URL },
   { file: 'ashran nb.png', god: 'Ashran', author: 'Badiail', source: FORUM_URL },
-  { file: 'axender nb.png', god: 'Axender', author: 'Badiail', source: FORUM_URL },
+  { file: 'axender nb.png', god: 'Axënder', author: 'Badiail', source: FORUM_URL },
   { file: 'delia nb.png', god: 'Delia', author: 'Badiail', source: FORUM_URL },
   { file: 'desdemone nb.png', god: 'Desdemone', author: 'Badiail', source: FORUM_URL },
-  { file: 'gaelm nb.png', god: 'Gaelm', author: 'Badiail', source: FORUM_URL },
+  { file: 'gaelm nb.png', god: 'Gaëlm', author: 'Badiail', source: FORUM_URL },
   { file: 'jeweln nb.png', god: 'Jeweln', author: 'Badiail', source: FORUM_URL },
   { file: 'livine nb.png', god: 'Livine', author: 'Badiail', source: FORUM_URL },
   {
@@ -36,7 +36,7 @@ export const GOD_SYMBOL_CREDITS: GodSymbolCredit[] = [
     source: FORUM_URL,
     note: "À confirmer : Badiail a produit des versions maléfique et neutre, Kyr a aussi produit une version neutre. Fichier unique récupéré, version non identifiable.",
   },
-  { file: 'mephistere nb.png', god: 'Mephistère', author: 'Badiail', source: FORUM_URL },
+  { file: 'mephistere nb.png', god: 'Méphistère', author: 'Badiail', source: FORUM_URL },
   {
     file: 'miesserith nb.png',
     god: 'Miesserith',

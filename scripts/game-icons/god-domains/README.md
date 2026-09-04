@@ -7,7 +7,7 @@ les nettoie (fond retiré, couleur neutralisée en `currentColor`) et régénèr
 Même chaîne que `scripts/game-icons/derived-stats`, mais **volontairement partiel** :
 une entrée par dieu du panthéon d'Osgild (`src/data/priest-gods.ts`) dont le domaine a un
 match assez littéral sur game-icons.net. Les dieux absents de `map.tsv` retombent sur
-l'icône de la VOIE d'origine de leur capacité divine (`CodexGodsBrowser.tsx`) — ex. Périnde
+l'icône de la VOIE d'origine de leur capacité divine (`CodexGodsBrowser.tsx`) — ex. Perinde
 (fertilité/mères), aucun thème correspondant trouvé sur le site source.
 
 ## Correspondance

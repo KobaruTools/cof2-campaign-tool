@@ -1,9 +1,9 @@
 {
   "schemaVersion": 17,
   "id": "recette-per96-pretre-axender-epee-sacree",
-  "name": "Recette PER-96 — Prêtre spécialiste d’Axénder (épée longue sacrée)",
+  "name": "Recette PER-96 — Prêtre spécialiste d’Axënder (épée longue sacrée)",
   "identity": {
-    "description": "ATTENDU : l’épée longue (arme sacrée d’Axénder, TRANCHANTE) est MAÎTRISÉE — pas de badge « Non maîtrisée · dé malus » dessus, malgré l’interdiction de sang du prêtre. La dague en main secondaire (autre tranchante, NON sacrée) reste NON maîtrisée → badge dé malus attendu."
+    "description": "ATTENDU : l’épée longue (arme sacrée d’Axënder, TRANCHANTE) est MAÎTRISÉE — pas de badge « Non maîtrisée · dé malus » dessus, malgré l’interdiction de sang du prêtre. La dague en main secondaire (autre tranchante, NON sacrée) reste NON maîtrisée → badge dé malus attendu."
   },
   "campaignId": null,
   "playerId": null,

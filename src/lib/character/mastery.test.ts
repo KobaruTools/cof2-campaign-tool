@@ -155,7 +155,7 @@ describe('sacredWeaponMasteryIds (arme sacrée du prêtre spécialiste, PER-96)'
     expect(sacredWeaponMasteryIds(magicien).size).toBe(0);
   });
 
-  it('spécialiste d’Axénder : l’épée longue (tranchante) devient sacrée', () => {
+  it('spécialiste d’Axënder : l’épée longue (tranchante) devient sacrée', () => {
     const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'axender' } });
     expect(sacredWeaponMasteryIds(pretre).has('epee-longue')).toBe(true);
   });
@@ -184,7 +184,7 @@ describe('isWeaponMastered avec arme sacrée (PER-96)', () => {
     expect(isWeaponMastered(weapon('epee-longue'), pretreIds, ctx, true)).toBe(false);
   });
 
-  it('spécialiste : son arme sacrée est maîtrisée même tranchante (Axénder / épée longue)', () => {
+  it('spécialiste : son arme sacrée est maîtrisée même tranchante (Axënder / épée longue)', () => {
     const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'axender' } });
     const sacred = sacredWeaponMasteryIds(pretre);
     expect(isWeaponMastered(weapon('epee-longue'), pretreIds, ctx, true, sacred)).toBe(true);

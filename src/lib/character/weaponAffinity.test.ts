@@ -20,7 +20,7 @@ describe('weaponAffinities (PER-218)', () => {
     expect(aff).toHaveLength(1);
     expect(aff[0].kind).toBe('sacred-weapon');
     expect(aff[0].label).toContain('maîtrisée');
-    expect(aff[0].tooltip).toContain('Axénder');
+    expect(aff[0].tooltip).toContain('Axënder');
     expect(aff[0].tooltip).toContain('(p. 122)');
   });
 

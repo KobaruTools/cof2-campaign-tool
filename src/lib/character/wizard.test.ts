@@ -203,7 +203,7 @@ describe('capacité divine du prêtre spécialiste (p. 122)', () => {
   });
 
   it('divineHostComplete : une divine de rang 1 exige une voie d’accueil parmi les voies choisies', () => {
-    // Axénder → meneur-d-hommes-r1 (rang 1).
+    // Axënder → meneur-d-hommes-r1 (rang 1).
     expect(divineHostComplete(draft({ priestVocation: { mode: 'specialist', godId: 'axender' } }))).toBe(false);
     // hostPathId hors des voies choisies → incomplet.
     expect(

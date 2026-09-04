@@ -58,6 +58,7 @@ import type { Weapon, Armor, Shield, Gear } from './schema';
 export const weapons: Weapon[] = [
   {
     id: 'mains-nues',
+    encumbrance: 0,
     name: 'Mains nues',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -73,6 +74,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'baton',
+    encumbrance: 1,
     name: 'Bâton',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -87,6 +89,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'baton-ferre',
+    encumbrance: 1,
     name: 'Bâton ferré',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -101,6 +104,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'dague',
+    encumbrance: 0,
     name: 'Dague',
     category: 'weapon',
     weaponCategory: 'light',
@@ -118,6 +122,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'epee-a-deux-mains',
+    encumbrance: 2,
     name: 'Épée à deux mains',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -132,6 +137,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'epee-batarde',
+    encumbrance: 1,
     name: 'Épée bâtarde',
     category: 'weapon',
     weaponCategory: 'oneOrTwoHands',
@@ -148,6 +154,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'epee-courte',
+    encumbrance: 0,
     name: 'Épée courte',
     category: 'weapon',
     weaponCategory: 'light',
@@ -162,6 +169,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'epee-longue',
+    encumbrance: 1,
     name: 'Épée longue',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -176,6 +184,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'epieu',
+    encumbrance: 1,
     name: 'Épieu',
     category: 'weapon',
     weaponCategory: 'oneOrTwoHands',
@@ -194,6 +203,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'fleau',
+    encumbrance: 1,
     name: 'Fléau',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -209,6 +219,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'fleau-a-deux-mains',
+    encumbrance: 2,
     name: 'Fléau à deux mains',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -224,6 +235,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'gourdin',
+    encumbrance: 1,
     name: 'Gourdin',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -238,6 +250,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'hache',
+    encumbrance: 1,
     name: 'Hache',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -252,6 +265,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'hache-a-deux-mains',
+    encumbrance: 2,
     name: 'Hache à deux mains',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -266,6 +280,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'lance',
+    encumbrance: 1,
     name: 'Lance',
     category: 'weapon',
     weaponCategory: 'oneOrTwoHands',
@@ -283,6 +298,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'lance-de-cavalerie',
+    encumbrance: 2,
     name: 'Lance de cavalerie',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -298,6 +314,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'marteau',
+    encumbrance: 1,
     name: 'Marteau',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -315,6 +332,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'masse',
+    encumbrance: 1,
     name: 'Masse',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -329,6 +347,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'pique',
+    encumbrance: 2,
     name: 'Pique',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -344,6 +363,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'rapiere',
+    encumbrance: 0,
     name: 'Rapière',
     category: 'weapon',
     weaponCategory: 'light',
@@ -360,6 +380,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'stylet',
+    encumbrance: 0,
     name: 'Stylet',
     category: 'weapon',
     weaponCategory: 'light',
@@ -374,6 +395,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'vivelame',
+    encumbrance: 2,
     name: 'Vivelame',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -397,6 +419,7 @@ export const weapons: Weapon[] = [
   // -------------------------------------------------------------------------
   {
     id: 'faux',
+    encumbrance: 2,
     name: 'Faux',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -406,11 +429,12 @@ export const weapons: Weapon[] = [
     price: null,
     damageType: 'slashing',
     properties:
-      'Type de DM : tranchants. Arme à deux mains. Arme sacrée (prêtre spécialiste) de Cérès et de Morn — table des dieux p. 127, note 2 (« arme à deux mains, d10 DM »).',
+      'Type de DM : tranchants. Arme à deux mains. Arme sacrée (prêtre spécialiste) de Céres et de Morn — table des dieux p. 127, note 2 (« arme à deux mains, d10 DM »).',
     sourcePage: 127,
   },
   {
     id: 'pioche',
+    encumbrance: 2,
     name: 'Pioche',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -425,6 +449,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'trident',
+    encumbrance: 1,
     name: 'Trident',
     category: 'weapon',
     weaponCategory: 'oneOrTwoHands',
@@ -441,6 +466,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'rouleau-a-patisserie',
+    encumbrance: 2,
     name: 'Rouleau à pâtisserie',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -455,6 +481,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'poele',
+    encumbrance: 2,
     name: 'Poêle',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -473,6 +500,7 @@ export const weapons: Weapon[] = [
   // -------------------------------------------------------------------------
   {
     id: 'arbalete-de-poing',
+    encumbrance: 0,
     name: 'Arbalète de poing',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -489,6 +517,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'arbalete-legere',
+    encumbrance: 1,
     name: 'Arbalète légère',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -506,6 +535,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'arbalete-lourde',
+    encumbrance: 2,
     name: 'Arbalète lourde',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -523,6 +553,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'arc-court',
+    encumbrance: 2,
     name: 'Arc court',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -538,6 +569,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'arc-long',
+    encumbrance: 2,
     name: 'Arc long',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -554,6 +586,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'couteaux-de-lancer',
+    encumbrance: 0,
     name: 'Couteaux de lancer',
     category: 'weapon',
     weaponCategory: 'light',
@@ -571,6 +604,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'dague-de-lancer',
+    encumbrance: 0,
     name: 'Dague (de lancer)',
     category: 'weapon',
     weaponCategory: 'light',
@@ -588,6 +622,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'fronde',
+    encumbrance: 0,
     name: 'Fronde',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -603,6 +638,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'hachette',
+    encumbrance: 0,
     name: 'Hachette',
     category: 'weapon',
     weaponCategory: 'light',
@@ -620,6 +656,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'javelot',
+    encumbrance: 0,
     name: 'Javelot',
     category: 'weapon',
     weaponCategory: 'light',
@@ -637,6 +674,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'lance-de-lancer',
+    encumbrance: 1,
     name: 'Lance (lancée)',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -654,6 +692,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'lance-pierre',
+    encumbrance: 0,
     name: 'Lance-pierre',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -669,6 +708,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'petoire',
+    encumbrance: 1,
     name: 'Pétoire',
     category: 'weapon',
     weaponCategory: 'oneHand',
@@ -688,6 +728,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'mousquet',
+    encumbrance: 2,
     name: 'Mousquet',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -714,6 +755,7 @@ export const weapons: Weapon[] = [
   // arrivée automatique dans l'inventaire à l'acquisition du rang (cf. `Feature.grantsEquipment`).
   {
     id: 'couleuvrine',
+    encumbrance: 2,
     name: 'Couleuvrine',
     category: 'weapon',
     // INTERPRÉTATION : le livre ne donne pas de catégorie d'arme pour la couleuvrine. « Un petit
@@ -749,6 +791,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'baliste',
+    encumbrance: 2,
     name: 'Baliste',
     category: 'weapon',
     weaponCategory: 'twoHands',
@@ -879,6 +922,7 @@ export const armors: Armor[] = [
 export const shields: Shield[] = [
   {
     id: 'petit-bouclier',
+    encumbrance: 1,
     name: 'Petit bouclier',
     icon: 'small-shield',
     category: 'shield',
@@ -888,6 +932,7 @@ export const shields: Shield[] = [
   },
   {
     id: 'grand-bouclier',
+    encumbrance: 2,
     name: 'Grand bouclier',
     icon: 'large-shield',
     category: 'shield',
@@ -906,6 +951,7 @@ export const gear: Gear[] = [
   // --- Matériel (table « Prix du matériel », p. 190) ---
   {
     id: 'briquet-a-silex',
+    encumbrance: 0,
     name: 'Briquet à silex',
     icon: 'tinderbox',
     category: 'gear',
@@ -914,6 +960,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'carquois-de-20-fleches',
+    encumbrance: 0,
     name: 'Carquois de 20 flèches',
     icon: 'quiver',
     category: 'gear',
@@ -925,6 +972,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'corde-15-m',
+    encumbrance: 1,
     name: 'Corde 15 m',
     icon: 'rope',
     category: 'gear',
@@ -933,6 +981,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'couverture',
+    encumbrance: 1,
     name: 'Couverture',
     icon: 'blanket',
     category: 'gear',
@@ -941,6 +990,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'grappin',
+    encumbrance: 1,
     name: 'Grappin',
     icon: 'grapple',
     category: 'gear',
@@ -949,6 +999,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'lanterne-a-huile',
+    encumbrance: 1,
     name: 'Lanterne à huile',
     icon: 'lantern',
     category: 'gear',
@@ -959,6 +1010,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'materiel-decriture',
+    encumbrance: 1,
     name: 'Matériel d’écriture',
     icon: 'writing-kit',
     category: 'gear',
@@ -967,6 +1019,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'huile-pour-lanterne',
+    encumbrance: 0,
     name: 'Huile pour lanterne',
     icon: 'lamp-oil',
     category: 'gear',
@@ -975,6 +1028,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'torches-x3',
+    encumbrance: 1,
     name: 'Torches (x3)',
     icon: 'torch',
     category: 'gear',
@@ -985,6 +1039,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'outils-de-crochetage',
+    encumbrance: 0,
     name: 'Outils de crochetage',
     icon: 'lockpicks',
     category: 'gear',
@@ -994,6 +1049,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'potion-de-soins',
+    encumbrance: 0,
     name: 'Potion de Soins (1d4° PV)',
     icon: 'potion',
     category: 'gear',
@@ -1005,6 +1061,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'ration-1-semaine',
+    encumbrance: 2,
     name: 'Ration (1 semaine)',
     icon: 'ration',
     category: 'gear',
@@ -1013,6 +1070,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'sac-a-dos',
+    encumbrance: 1,
     name: 'Sac à dos',
     icon: 'backpack',
     category: 'gear',
@@ -1036,6 +1094,7 @@ export const gear: Gear[] = [
   // --- Équipement exotique (p. 193-195) — exemples de matériaux ---
   {
     id: 'durium',
+    encumbrance: 1,
     name: 'Durium',
     icon: 'precious-metal',
     category: 'gear',
@@ -1046,6 +1105,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'chope-en-hybberium',
+    encumbrance: 0,
     name: 'Chope en hybberium',
     icon: 'mug',
     category: 'gear',
@@ -1056,6 +1116,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'pnoulpe',
+    encumbrance: 1,
     name: 'Pnoulpe',
     icon: 'octopus',
     category: 'gear',
@@ -1074,6 +1135,7 @@ export const gear: Gear[] = [
   // `adventurerPack` au lieu de rester `itemId: null`.
   {
     id: 'grimoire-de-sorts',
+    encumbrance: 1,
     name: 'Grimoire de sorts',
     icon: 'spellbook',
     category: 'gear',
@@ -1086,6 +1148,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'instrument-de-musique',
+    encumbrance: 1,
     name: 'Instrument de musique',
     icon: 'instrument',
     category: 'gear',
@@ -1098,6 +1161,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'torche',
+    encumbrance: 0,
     name: 'Torche',
     icon: 'torch',
     category: 'gear',
@@ -1110,6 +1174,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'outre',
+    encumbrance: 0,
     name: 'Outre',
     icon: 'waterskin',
     category: 'gear',
@@ -1120,6 +1185,7 @@ export const gear: Gear[] = [
   },
   {
     id: 'gamelle',
+    encumbrance: 0,
     name: 'Gamelle',
     icon: 'mess-kit',
     category: 'gear',

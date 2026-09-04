@@ -13,7 +13,7 @@
  * Rythme visuel (retours propriétaire) : le nom du dieu ET l'icône reprennent la couleur/icône de
  * la VOIE d'origine de sa capacité divine (plutôt qu'un texte neutre + `holy-symbol` répété 32
  * fois). Plusieurs dieux partagent le même PROFIL (`classColor()` identique même si leurs voies
- * diffèrent, ex. Orbis/artefacts et Tyriolth/elixirs sont tous deux forgesort) — `shadeForIndex`
+ * diffèrent, ex. Orbis/artefacts et Tyriolith/elixirs sont tous deux forgesort) — `shadeForIndex`
  * dédie une teinte par dieu du même groupe (`GodOrigin.colorKey`, cf. `godTheme.ts`) pour
  * rester distinguables sans changer de famille de couleur. UNIQUEMENT plus clair (jamais plus
  * sombre, retour propriétaire) : sur le fond noir des cartes, une teinte assombrie perd trop de
