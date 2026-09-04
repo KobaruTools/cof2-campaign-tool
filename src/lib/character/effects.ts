@@ -960,6 +960,22 @@ export function resolveValue(
 }
 
 /**
+ * Une option `optionId` est-elle retenue au choix `choiceIndex` de la capacité `choiceFeatureId`,
+ * dans un sac de sélections `featureChoices[id][i]` (`Character.featureChoices` ou son miroir
+ * `EffectContext.featureChoices`) ? Factorisé pour `requiresChoiceOption` (même capacité) ET son
+ * miroir cross-capacité `requiresChoiceOptionFrom` (PER-490).
+ */
+function choiceOptionSelected(
+  featureChoices: Record<string, FeatureChoiceSelection[]> | undefined,
+  choiceFeatureId: string,
+  choiceIndex: number,
+  optionId: string,
+): boolean {
+  const sel = featureChoices?.[choiceFeatureId]?.[choiceIndex];
+  return Array.isArray(sel) ? sel.includes(optionId) : sel === optionId;
+}
+
+/**
  * Un effet conditionnel est-il actif ? L'interrupteur manuel du personnage prime ;
  * à défaut, on retombe sur l'état par défaut déclaré (`activeByDefault`).
  */
@@ -973,10 +989,17 @@ function isConditionalActive(
   // l'option requise n'est PAS retenue, l'effet est inactif quoi qu'il arrive (même déclencheur riding
   // ou état ON résiduel). Miroir, côté `EffectContext`, de `conditionalOptionGateMet`.
   const gate = effect.requiresChoiceOption;
-  if (gate) {
-    const sel = ctx?.featureChoices?.[featureId]?.[gate.choiceIndex];
-    const met = Array.isArray(sel) ? sel.includes(gate.optionId) : sel === gate.optionId;
-    if (!met) return false;
+  if (gate && !choiceOptionSelected(ctx?.featureChoices, featureId, gate.choiceIndex, gate.optionId)) {
+    return false;
+  }
+  // Miroir CROSS-CAPACITÉ (PER-490, sang-dragon r6 : l'interrupteur « Arme enduite » n'existe que si
+  // l'ascendance démoniaque a été choisie au rang 4, une AUTRE capacité).
+  const gateFrom = effect.requiresChoiceOptionFrom;
+  if (
+    gateFrom &&
+    !choiceOptionSelected(ctx?.featureChoices, gateFrom.choiceFeatureId, gateFrom.choiceIndex, gateFrom.optionId)
+  ) {
+    return false;
   }
   if (ridingForcesActivation(effect, ctx?.ridingOptionIds)) return true;
   // PER-328bis — second déclencheur déduit d'un AUTRE effet (« dans le noir » → « à l'abri du soleil »).
@@ -1563,10 +1586,10 @@ export function conditionalAbilityTestBonus(
 }
 
 /**
- * L'option requise par `requiresChoiceOption` d'un effet conditionnel est-elle retenue ? Renvoie true
- * s'il n'y a pas de gating. Le choix visé est porté par la MÊME capacité (`featureId`) : on lit
- * directement sa sélection dans `Character.featureChoices` (`string | string[] | null`). Partagé par
- * `isEffectActive` (moteur) et le filtrage des interrupteurs affichés (`FeatureEffectToggles`).
+ * Les options requises par `requiresChoiceOption` (même capacité) ET `requiresChoiceOptionFrom`
+ * (cross-capacité, PER-490) d'un effet conditionnel sont-elles retenues ? Renvoie true s'il n'y a
+ * aucun gating. Partagé par `isEffectActive` (moteur) et le filtrage des interrupteurs affichés
+ * (`FeatureEffectToggles`).
  */
 export function conditionalOptionGateMet(
   character: Character,
@@ -1574,9 +1597,17 @@ export function conditionalOptionGateMet(
   effect: ConditionalStatBonusEffect,
 ): boolean {
   const gate = effect.requiresChoiceOption;
-  if (!gate) return true;
-  const sel = character.featureChoices?.[featureId]?.[gate.choiceIndex];
-  return Array.isArray(sel) ? sel.includes(gate.optionId) : sel === gate.optionId;
+  if (gate && !choiceOptionSelected(character.featureChoices, featureId, gate.choiceIndex, gate.optionId)) {
+    return false;
+  }
+  const gateFrom = effect.requiresChoiceOptionFrom;
+  if (
+    gateFrom &&
+    !choiceOptionSelected(character.featureChoices, gateFrom.choiceFeatureId, gateFrom.choiceIndex, gateFrom.optionId)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /** L'interrupteur du i-ème effet d'une capacité est-il actif pour ce personnage ? */
@@ -3563,6 +3594,19 @@ export function damageReductionSources(character: Character): DamageReductionSou
     const rank = pathRanks[rankPathId] ?? 0;
     for (const dr of entries) {
       if (!featureActive && !dr.alwaysActive) continue;
+      // Gating par OPTION de choix, potentiellement CROSS-CAPACITÉ (PER-490) : cette entrée n'existe
+      // que si l'ascendance/branche voulue est retenue — ex. sang-dragon r8 : « Écailles » (dragon) vs
+      // « traits démoniaques » (démon), selon le choix fait au rang 4 (cf. `DamageReduction.requiresChoiceOption`).
+      if (
+        dr.requiresChoiceOption &&
+        !choiceOptionSelected(
+          character.featureChoices,
+          dr.requiresChoiceOption.choiceFeatureId,
+          dr.requiresChoiceOption.choiceIndex,
+          dr.requiresChoiceOption.optionId,
+        )
+      )
+        continue;
       // Gating CROSS-CAPACITÉ (PER-74) : RD active seulement si l'interrupteur d'une AUTRE capacité
       // (la forme porteuse) est actif — ex. la RD hybride de r7 suit l'interrupteur de r4 (Forme hybride).
       if (

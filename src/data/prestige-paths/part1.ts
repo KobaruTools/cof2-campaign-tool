@@ -241,7 +241,11 @@ const FAMILIAR_OPTION_LIST: FeatureChoiceOption[] = [
     },
     // Pantin et Poupée : deux choix DISTINCTS aux statistiques identiques (familier artificiel,
     // type non-vivant). Pouvoirs R4/R5/R7 communs : entité `FantasticFamiliar` 'pantin-ou-poupee'.
-    // RD 5 NON modélisée : interprétation « s’ajoute à la RD du rang 6 » à trancher (PER-176).
+    // RD 5 propre au pantin : coquille tranchée (PER-176, décision proprio 2026-09-04) — le livre
+    // dit qu'elle « s'ajoute à celle obtenue à partir du rang 6 », mais aucune RD ne provient du
+    // rang 6 ; seule Résistance (rang 5) scale. Lue comme « rang 5 » : la RD 5 propre au pantin/
+    // poupée se cumule avec la RD scalante de Résistance dès l'acquisition du rang 5 (modélisée
+    // sur le MAÎTRE via `prestige-familier-fantastique-r5.damageReduction`, `requiresChoiceOption`).
     {
       id: 'pantin',
       label: 'Pantin',
@@ -442,7 +446,11 @@ export const prestigePaths1: PrestigePath[] = [
       'prestige-sang-dragon-r7',
       'prestige-sang-dragon-r8',
     ],
-    note: "Les dragons les plus puissants sont capables de prendre forme humaine et parfois, pour des raisons qui leur sont propres, certains d'entre eux se sont assurés d'avoir une descendance parmi les hommes ou les elfes. Cet héritage peut sommeiller durant plusieurs générations et ressurgir sans explication, mais, aussi lointain qu'il soit, lorsque le sang du dragon se révèle, sa magie reste toujours aussi puissante.\n\nASCENDANCE DÉMONIAQUE\nIl est possible de décliner cette voie avec d'autres types d'ascendance, par exemple, ascendance démoniaque. Dans ce cas, la résistance du rang 4 s'applique au choix à l'acide ou au feu. Le souffle du dragon est remplacé par la capacité de couvrir son arme d'acide ou de l'enflammer pour infliger +{1d4°} DM supplémentaire par attaque pendant [rang] rounds. Au rang 8, l'armure naturelle se traduit par des caractéristiques démoniaques (cornes, queue, pupilles verticales, etc.) et la résistance aux armes qui ne sont pas bénies contre les démons.",
+    // PER-490 — l'encadré « ASCENDANCE DÉMONIAQUE » (mécanique complète : choix d'origine, RD acide/feu,
+    // arme démoniaque enduite, traits+résistance démoniaques) est désormais PORTÉ par les capacités
+    // elles-mêmes (choix « Origine de l'ascendance » sur `prestige-sang-dragon-r4`, branches gérées
+    // cross-capacité sur r6/r8) — ce paragraphe se réduit à un renvoi, comme prévu par le ticket.
+    note: "Les dragons les plus puissants sont capables de prendre forme humaine et parfois, pour des raisons qui leur sont propres, certains d'entre eux se sont assurés d'avoir une descendance parmi les hommes ou les elfes. Cet héritage peut sommeiller durant plusieurs générations et ressurgir sans explication, mais, aussi lointain qu'il soit, lorsque le sang du dragon se révèle, sa magie reste toujours aussi puissante.\n\nASCENDANCE DÉMONIAQUE\nCette voie peut être déclinée avec une origine démoniaque plutôt que draconique : voir le choix « Origine de l'ascendance » au rang 4, qui adapte les rangs 4, 6 et 8 en conséquence.",
     sourcePage: 131,
   },
   {
@@ -1073,8 +1081,11 @@ export const prestigeFeatures1: Feature[] = [
     rank: 4,
     isSpell: false,
     actionTypes: [],
+    // PER-490 — déclinaison « Ascendance démoniaque » (p. 131) : 2 paragraphes préfixés par le libellé
+    // de leur option (`strikeUnchosenParagraphs` sur le choix 0 ci-dessous), la vision dans le noir
+    // restant commune aux deux (répétée dans chaque paragraphe, patron drakonide-r4).
     text:
-      "Choisissez une couleur de dragon pour l'ascendance de votre personnage. Il obtient une réduction des DM de 5 (qui passe à 10 au rang 8 de la voie), correspondant au type d'énergie utilisé par le souffle du dragon. De plus, le personnage devient capable de voir dans le noir total comme si c'était de la pénombre jusqu'à 20 m.",
+      "Ascendance draconique : Choisissez une couleur de dragon pour l'ascendance de votre personnage. Il obtient une réduction des DM de 5 (qui passe à 10 au rang 8 de la voie), correspondant au type d'énergie utilisé par le souffle du dragon. De plus, le personnage devient capable de voir dans le noir total comme si c'était de la pénombre jusqu'à 20 m.\n\nAscendance démoniaque : Choisissez l'acide ou le feu pour l'ascendance de votre personnage. Il obtient une réduction des DM de 5 (qui passe à 10 au rang 8 de la voie) contre ce type de dégâts. De plus, le personnage devient capable de voir dans le noir total comme si c'était de la pénombre jusqu'à 20 m.",
     // PER-138 : le joueur choisit UNE FOIS la couleur de dragon de son ascendance (« Choisissez une
     // couleur de dragon… »). C'est un CHOIX PERMANENT de construction (pas un état échangeable à la table) :
     // `choices` option → `Character.featureChoices`, rendu en « choix à faire » orange, immuable hors mode
@@ -1083,7 +1094,21 @@ export const prestigeFeatures1: Feature[] = [
     // la correspondance officielle CO2 (source communautaire, validée par le propriétaire le 2026-07-19) :
     // rouge=feu, bleu=foudre, vert=acide, noir=poison, blanc=froid (glace). On modélise le TYPE D'ÉNERGIE
     // du souffle (mécanique), la couleur figurant en libellé.
+    // PER-490 — choix 0 « Origine de l'ascendance » AJOUTÉ en tête (dragon/démon), qui pilote via
+    // `visibleIfOption` lequel des 2 choix d'énergie suivants est proposé (5 couleurs vs acide/feu
+    // seuls, fidèle au texte : « la résistance du rang 4 s'applique au choix à l'acide ou au feu »).
+    // Pilote aussi r6/r8 en cross-capacité (`strikeUnchosenParagraphsFromChoice`/`requiresChoiceOptionFrom`).
     choices: [
+      {
+        kind: 'option',
+        prompt: "Origine de l'ascendance",
+        options: [
+          { id: 'dragon', label: 'Ascendance draconique' },
+          { id: 'demon', label: 'Ascendance démoniaque' },
+        ],
+        strikeUnchosenParagraphs: true,
+        nameFromChosenOption: true,
+      },
       {
         kind: 'option',
         prompt: "Type d'énergie du souffle (couleur de dragon)",
@@ -1094,24 +1119,52 @@ export const prestigeFeatures1: Feature[] = [
           { id: 'acid', label: 'Acide (dragon vert)' },
           { id: 'poison', label: 'Poison (dragon noir)' },
         ],
+        visibleIfOption: { choiceIndex: 0, optionId: 'dragon' },
+      },
+      {
+        kind: 'option',
+        prompt: "Type d'énergie (ascendance démoniaque)",
+        options: [
+          { id: 'acid', label: 'Acide' },
+          { id: 'fire', label: 'Feu' },
+        ],
+        visibleIfOption: { choiceIndex: 0, optionId: 'demon' },
       },
     ],
-    // RD PERMANENTE plate contre le SEUL type d'énergie choisi ci-dessus (`scopeFromChoice: 0` → 1er choix).
-    // Valeur scalante par le rang de voie : 5, puis 10 au rang 8 (Écailles de dragon acquise → rang 8). RD
-    // DISTINCTE de celle du rang 8 (Écailles, tous types, sous la moitié des PV) : pas de double comptage,
-    // ce sont deux entrées.
-    damageReduction: {
-      kind: 'flat',
-      value: {
-        scale: 'stepped',
-        by: 'path-rank',
-        steps: [
-          { min: 4, value: 5 },
-          { min: 8, value: 10 },
-        ],
+    // RD PERMANENTE plate contre le SEUL type d'énergie choisi (choix 1 pour le dragon, choix 2 pour le
+    // démon — `scopeFromChoice`), chaque entrée gatée par l'ascendance retenue au choix 0
+    // (`requiresChoiceOption`, PER-490) pour qu'une seule des deux compte jamais, même si une sélection
+    // périmée traîne sur le choix devenu invisible. Valeur scalante par le rang de voie : 5, puis 10 au
+    // rang 8 (Écailles de dragon/traits démoniaques acquis → rang 8). RD DISTINCTE de celle du rang 8
+    // (tous types/against démons, sous la moitié des PV) : pas de double comptage, deux entrées.
+    damageReduction: [
+      {
+        kind: 'flat',
+        value: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 4, value: 5 },
+            { min: 8, value: 10 },
+          ],
+        },
+        scopeFromChoice: 1,
+        requiresChoiceOption: { choiceFeatureId: 'prestige-sang-dragon-r4', choiceIndex: 0, optionId: 'dragon' },
       },
-      scopeFromChoice: 0,
-    },
+      {
+        kind: 'flat',
+        value: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 4, value: 5 },
+            { min: 8, value: 10 },
+          ],
+        },
+        scopeFromChoice: 2,
+        requiresChoiceOption: { choiceFeatureId: 'prestige-sang-dragon-r4', choiceIndex: 0, optionId: 'demon' },
+      },
+    ],
     sourcePage: 131,
   },
   {
@@ -1121,6 +1174,14 @@ export const prestigeFeatures1: Feature[] = [
     rank: 5,
     isSpell: false,
     actionTypes: ['L'],
+    // PER-490 — le corps de texte ne nomme JAMAIS le dragon (griffes = imagerie neutre, qui va aussi
+    // bien à une ascendance démoniaque), seul le NOM de la capacité change : simple table croisée
+    // (`nameFromChoice`), pas de fork de paragraphe/rayage nécessaire ici (contrairement à r6/r7/r8).
+    nameFromChoice: {
+      choiceFeatureId: 'prestige-sang-dragon-r4',
+      choiceIndex: 0,
+      names: { dragon: 'Griffes du dragon', demon: 'Griffes démoniaques' },
+    },
     text:
       "Une fois par combat, le personnage voit ses muscles se développer de façon spectaculaire pendant [rang] rounds tandis que des griffes poussent subitement au bout de ses doigts. Pendant toute la durée de la transformation, il obtient un bonus de +2 en FOR (attaque et DM) et une attaque de contact de griffes par round en action gratuite (G) infligeant [1d6°+FOR] DM.",
     // PER-74 : durée en quantité (`[=rang] rounds`) + DM des griffes conféré (`[1d6° + FOR]`). Le
@@ -1131,44 +1192,122 @@ export const prestigeFeatures1: Feature[] = [
   },
   {
     id: 'prestige-sang-dragon-r6',
-    name: 'Souffle du dragon',
+    // Fallback affiché tant que l'ascendance n'est pas choisie au rang 4 ; une fois le choix fait, le
+    // nom devient « Souffle du dragon » OU « Arme démoniaque » (`nameFromChoice` ci-dessous) — jamais
+    // le nom combiné (retour propriétaire : le nom combiné reste correct pré-choix, mais gênant une
+    // fois l'ascendance connue).
+    name: 'Souffle du dragon (ou arme démoniaque)',
     pathId: 'prestige-sang-dragon',
     rank: 6,
     isSpell: false,
     actionTypes: ['L'],
+    nameFromChoice: {
+      choiceFeatureId: 'prestige-sang-dragon-r4',
+      choiceIndex: 0,
+      names: { dragon: 'Souffle du dragon', demon: 'Arme démoniaque' },
+    },
+    // PER-490 — déclinaison « Ascendance démoniaque » (p. 131) : le souffle conique devient un
+    // enduit d'arme temporaire. 2 paragraphes préfixés par le libellé de l'option choisie au rang 4
+    // (rayage cross-capacité via `strikeUnchosenParagraphsFromChoice` ci-dessous, pas de choix propre ici).
     text:
-      "Une fois par combat, le personnage peut produire un souffle létal correspondant à son ascendance. Ce souffle couvre une zone conique de 5 m de long sur 5 m de large à son extrémité et inflige 5d4° DM. Les victimes peuvent diviser les DM par 2 à condition de réussir un test d'AGI difficulté [8 + rang].",
+      "Ascendance draconique : Une fois par combat, le personnage peut produire un souffle létal correspondant à son ascendance. Ce souffle couvre une zone conique de 5 m de long sur 5 m de large à son extrémité et inflige 5d4° DM. Les victimes peuvent diviser les DM par 2 à condition de réussir un test d'AGI difficulté [8 + rang].\n\nAscendance démoniaque : Une fois par combat, le personnage peut couvrir son arme d'acide ou l'enflammer, selon l'énergie choisie au rang 4. Pendant [rang] rounds, cette arme inflige +1d4° DM supplémentaire par attaque.",
     // PER-74 : dé de DM autonome (`{5d4°}`) + difficulté du jet d'AGI (`[8 + rang]`). Dimensions de
-    // zone « 5 m » littérales ; « test d'AGI » auto-glosé.
+    // zone « 5 m » littérales ; « test d'AGI » auto-glosé. PER-490 : durée en quantité (`[=rang] rounds`)
+    // + dé bonus d'arme (`{1d4°}`) pour la branche démoniaque.
     richText:
-      "Une fois par combat, le personnage peut produire un souffle létal correspondant à son ascendance. Ce souffle couvre une zone conique de 5 m de long sur 5 m de large à son extrémité et inflige {5d4°} DM. Les victimes peuvent diviser les DM par 2 à condition de réussir un test d'AGI difficulté [8 + rang].",
+      "Ascendance draconique : Une fois par combat, le personnage peut produire un souffle létal correspondant à son ascendance. Ce souffle couvre une zone conique de 5 m de long sur 5 m de large à son extrémité et inflige {5d4°} DM. Les victimes peuvent diviser les DM par 2 à condition de réussir un test d'AGI difficulté [8 + rang].\n\nAscendance démoniaque : Une fois par combat, le personnage peut couvrir son arme d'acide ou l'enflammer, selon l'énergie choisie au rang 4. Pendant [=rang] rounds, cette arme inflige +{1d4°} DM supplémentaire par attaque.",
+    strikeUnchosenParagraphsFromChoice: { choiceFeatureId: 'prestige-sang-dragon-r4', choiceIndex: 0 },
+    // Patron EXACT d'Affinité au poison (`prestige-vermines-r7`, PER-381) pour le coating temporaire
+    // d'arme : interrupteur `conditional-stat-bonus` (marqueur, consomme le compteur à l'activation) +
+    // `weapon-damage-bonus` gaté dessus (`requiresActiveEffectIndex: 0`, `situational: true` —
+    // sinon `weaponDamageBonuses` ignore silencieusement un `dice` non situationnel). L'interrupteur
+    // lui-même n'existe QUE sous ascendance démoniaque (`requiresChoiceOptionFrom`, PER-490) : un
+    // personnage à ascendance draconique ne voit même pas le contrôle.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        requiresChoiceOptionFrom: { choiceFeatureId: 'prestige-sang-dragon-r4', choiceIndex: 0, optionId: 'demon' },
+        activation: {
+          kind: 'temporary',
+          // Fallback si l'énergie démoniaque (choix 2 sur r4) n'est pas encore résolue — ne devrait
+          // jamais s'afficher en pratique (ce toggle n'existe déjà que sous ascendance démoniaque).
+          label: 'Arme enduite (acide ou feu)',
+          // PER-490 (retour propriétaire) — l'énergie EST déjà connue (choisie au rang 4) : dire
+          // « acide ou feu » fait deviner au joueur laquelle s'applique, alors qu'une seule est
+          // possible pour CE personnage. Résout en « Arme enduite (acide) » ou « (feu) ».
+          labelFromChoice: {
+            choiceFeatureId: 'prestige-sang-dragon-r4',
+            choiceIndex: 2,
+            names: { acid: 'Arme enduite (acide)', fire: 'Arme enduite (feu)' },
+          },
+          activeByDefault: false,
+        },
+      },
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: { label: 'arme enduite' },
+        requiresActiveEffectIndex: 0,
+        situational: true,
+      },
+    ],
+    usageCounter: {
+      max: 1,
+      resetOn: 'combat',
+      label: 'Arme démoniaque (enduire une arme)',
+      hideFromStatusPanel: true,
+    },
     sourcePage: 131,
   },
   {
     id: 'prestige-sang-dragon-r7',
-    name: 'Ailes de dragon',
+    // Fallback pré-choix (cf. r6 ci-dessus) ; devient « Ailes de dragon » ou « Ailes démoniaques ».
+    name: 'Ailes de dragon (ou démoniaques)',
     pathId: 'prestige-sang-dragon',
     rank: 7,
     isSpell: false,
     actionTypes: ['L'],
+    nameFromChoice: {
+      choiceFeatureId: 'prestige-sang-dragon-r4',
+      choiceIndex: 0,
+      names: { dragon: 'Ailes de dragon', demon: 'Ailes démoniaques' },
+    },
+    // PER-490 — contrairement à r5 (Griffes, imagerie déjà neutre), ce corps de texte nomme
+    // explicitement « des ailes de dragon » : fork nécessaire pour la branche démoniaque (ailes
+    // membraneuses). Mécanique IDENTIQUE dans les deux branches (durée, vitesse) — seul le visuel change.
     text:
-      "Une fois par combat, le personnage déploie des ailes de dragon pendant CON minutes (minimum 1 min). Ces ailes lui permettent de se déplacer en vol à une vitesse de 15 m par action de mouvement. Faire du surplace est une action de mouvement.",
+      "Ascendance draconique : Une fois par combat, le personnage déploie des ailes de dragon pendant CON minutes (minimum 1 min). Ces ailes lui permettent de se déplacer en vol à une vitesse de 15 m par action de mouvement. Faire du surplace est une action de mouvement.\n\nAscendance démoniaque : Une fois par combat, le personnage déploie de larges ailes membraneuses pendant CON minutes (minimum 1 min). Ces ailes lui permettent de se déplacer en vol à une vitesse de 15 m par action de mouvement. Faire du surplace est une action de mouvement.",
     // PER-74 : durée en quantité brute (`[=CON] minutes` → « 5 minutes »). Vitesses « 15 m » littérales.
     richText:
-      "Une fois par combat, le personnage déploie des ailes de dragon pendant [=CON] minutes (minimum 1 min). Ces ailes lui permettent de se déplacer en vol à une vitesse de 15 m par action de mouvement. Faire du surplace est une action de mouvement.",
+      "Ascendance draconique : Une fois par combat, le personnage déploie des ailes de dragon pendant [=CON] minutes (minimum 1 min). Ces ailes lui permettent de se déplacer en vol à une vitesse de 15 m par action de mouvement. Faire du surplace est une action de mouvement.\n\nAscendance démoniaque : Une fois par combat, le personnage déploie de larges ailes membraneuses pendant [=CON] minutes (minimum 1 min). Ces ailes lui permettent de se déplacer en vol à une vitesse de 15 m par action de mouvement. Faire du surplace est une action de mouvement.",
+    strikeUnchosenParagraphsFromChoice: { choiceFeatureId: 'prestige-sang-dragon-r4', choiceIndex: 0 },
     sourcePage: 132,
   },
   {
     id: 'prestige-sang-dragon-r8',
-    name: 'Écailles de dragon',
+    // Fallback pré-choix (cf. r6/r7 ci-dessus) ; devient « Écailles de dragon » ou « Traits démoniaques ».
+    name: 'Écailles de dragon (ou traits démoniaques)',
     pathId: 'prestige-sang-dragon',
     rank: 8,
     isSpell: false,
     actionTypes: [],
+    nameFromChoice: {
+      choiceFeatureId: 'prestige-sang-dragon-r4',
+      choiceIndex: 0,
+      names: { dragon: 'Écailles de dragon', demon: 'Traits démoniaques' },
+    },
+    // PER-490 — déclinaison « Ascendance démoniaque » (p. 131) : l'armure naturelle devient des traits
+    // démoniaques + résistance ciblée. 2 paragraphes préfixés par le libellé de l'option choisie au
+    // rang 4 (rayage cross-capacité, comme r6 ci-dessus).
     text:
-      "Le corps du personnage se renforce et se couvre d'écailles lorsqu'il reçoit des blessures graves. Lorsque le personnage passe sous la moitié de ses PV, il gagne une réduction des DM de 5 face à tous les types de dommages.",
-    // PER-137 : RD −5 sur TOUS les DM, CONDITIONNELLE (sous la moitié des PV). Marqueur d'état :
-    // le suivi des PV courants n'est pas automatisé → interrupteur manuel.
+      "Ascendance draconique : Le corps du personnage se renforce et se couvre d'écailles lorsqu'il reçoit des blessures graves. Lorsque le personnage passe sous la moitié de ses PV, il gagne une réduction des DM de 5 face à tous les types de dommages.\n\nAscendance démoniaque : Le corps du personnage se pare de caractéristiques démoniaques (cornes, queue, pupilles verticales, etc.) lorsqu'il reçoit des blessures graves. Lorsque le personnage passe sous la moitié de ses PV, il gagne une réduction des DM de 5 contre les démons armés d'une arme qui n'est pas bénie.",
+    strikeUnchosenParagraphsFromChoice: { choiceFeatureId: 'prestige-sang-dragon-r4', choiceIndex: 0 },
+    // PER-137 : RD −5, CONDITIONNELLE (sous la moitié des PV). Marqueur d'état : le suivi des PV
+    // courants n'est pas automatisé → interrupteur manuel. Déclencheur COMMUN aux deux ascendances
+    // (RAW ne dit rien qui distingue le seuil d'activation, seule la PORTÉE de la RD change) : un seul
+    // `conditional-stat-bonus`, les 2 entrées de `damageReduction` ci-dessous s'y accrochent toutes les
+    // deux (aucune `alwaysActive` nécessaire, contrairement à Affinité au poison où la RD était innée).
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -1176,7 +1315,22 @@ export const prestigeFeatures1: Feature[] = [
         activation: { kind: 'condition', label: 'Sous la moitié des PV', activeByDefault: false },
       },
     ],
-    damageReduction: { kind: 'flat', value: 5 },
+    // Gating par ascendance (`requiresChoiceOption`, PER-490) : « Écailles » (tous DM) contre « traits
+    // démoniaques » (against démons armés sans bénédiction — `againstAggressors`, patron EXACT du
+    // templier r8, PER-380 : 1er `kind:'flat'` avec ce champ).
+    damageReduction: [
+      {
+        kind: 'flat',
+        value: 5,
+        requiresChoiceOption: { choiceFeatureId: 'prestige-sang-dragon-r4', choiceIndex: 0, optionId: 'dragon' },
+      },
+      {
+        kind: 'flat',
+        value: 5,
+        againstAggressors: "les démons armés d'une arme qui n'est pas bénie",
+        requiresChoiceOption: { choiceFeatureId: 'prestige-sang-dragon-r4', choiceIndex: 0, optionId: 'demon' },
+      },
+    ],
     sourcePage: 132,
   },
 
@@ -1226,8 +1380,32 @@ export const prestigeFeatures1: Feature[] = [
     // ENTITÉ (écart au RAW assumé, décision proprio 2026-07-25) : le livre p. 133 dit « Le FAMILIER obtient
     // une RD » (la créature, par contraste avec R4/R6/R7 « confère au personnage ») ; on la modélise sur le
     // MAÎTRE (RD peu utile sur un familier minuscule, plus lisible côté joueur). Le `text` reste verbatim.
-    // INDÉPENDANTE du familier choisi. RD 5 propre au pantin/poupée laissée sur la créature (PER-176 différé).
-    damageReduction: { kind: 'flat', value: { scale: 'path-rank-count', factor: 1 } },
+    // INDÉPENDANTE du familier choisi.
+    // PANTIN/POUPÉE (PER-176, décision proprio 2026-09-04) : RD 5 propre à ces deux familiers (p. 136),
+    // cumulée à celle-ci dès le rang 5 (coquille du livre « rang 6 » lue comme « rang 5 » — aucune RD ne
+    // provient du rang 6). Gating `requiresChoiceOption` cross-capacité vers le choix du R3 (les deux
+    // options PARTAGENT la même entité `FantasticFamiliar` mais restent deux `optionId` distincts).
+    damageReduction: [
+      { kind: 'flat', value: { scale: 'path-rank-count', factor: 1 } },
+      {
+        kind: 'flat',
+        value: 5,
+        requiresChoiceOption: {
+          choiceFeatureId: 'prestige-familier-fantastique-r3',
+          choiceIndex: 0,
+          optionId: 'pantin',
+        },
+      },
+      {
+        kind: 'flat',
+        value: 5,
+        requiresChoiceOption: {
+          choiceFeatureId: 'prestige-familier-fantastique-r3',
+          choiceIndex: 0,
+          optionId: 'poupee',
+        },
+      },
+    ],
     // PER-74 : APPRENTISSAGE DE SORT (2e volet R5). « Le personnage apprend un sort de rang 1 ou 2 de son
     // choix d'un profil indiqué dans la description du familier » → choix `feature-from-path` scoppé
     // DYNAMIQUEMENT au profil de magie du familier retenu au rang 3 (`familiarSpellProfile`), rangs 1-2,

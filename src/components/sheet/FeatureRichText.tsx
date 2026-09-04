@@ -1709,6 +1709,18 @@ export function FeatureText({
   const struckCharacter = character ?? contextCharacter;
   const struckOptionLabels = ((): string[] => {
     if (!struckCharacter) return [];
+    // Cross-capacité (PER-490, `Feature.strikeUnchosenParagraphsFromChoice`) : le choix qui pilote le
+    // rayage est porté par une AUTRE capacité (ex. sang-dragon r6/r8 lisent l'ascendance choisie au
+    // rang 4). Prioritaire sur le choix propre ci-dessous — une capacité n'a jamais les deux.
+    const from = feature.strikeUnchosenParagraphsFromChoice;
+    if (from) {
+      const sourceFeature = featureById.get(from.choiceFeatureId);
+      const choice = sourceFeature?.choices?.[from.choiceIndex];
+      if (choice?.kind !== 'option') return [];
+      const selected = getOptionSelections(struckCharacter, from.choiceFeatureId, from.choiceIndex);
+      if (selected.length === 0) return [];
+      return choice.options.filter((o) => !selected.includes(o.id)).map((o) => o.label);
+    }
     const idx = feature.choices?.findIndex(
       (c): c is OptionFeatureChoice => c.kind === 'option' && c.strikeUnchosenParagraphs === true,
     );

@@ -25,6 +25,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import type { ConditionalStatBonusEffect } from '@/data/schema';
 import { featureById, testDomainById } from '@/data';
 import { declineForFeature } from '@/lib/character/dragonElement';
+import { getOptionSelections } from '@/lib/character/choices';
 import { characterRecoveryDiceMax } from '@/lib/character/hp';
 import { currentRecoveryDice } from '@/lib/character/gauges';
 import { rulesContext } from '@/lib/character/rulesContext';
@@ -75,12 +76,19 @@ function effectLabel(
     parts.push(`dé bonus : ${labels}`);
   }
   const joined = parts.join(', ');
+  // PER-490 — libellé RÉSOLU par option retenue à un choix d'une AUTRE capacité (ex. sang-dragon r6 :
+  // « Arme enduite (acide ou feu) » générique devient « Arme enduite (acide) » une fois l'énergie
+  // démoniaque choisie au rang 4). Vérifié AVANT la déclinaison par élément ci-dessous : les deux sont
+  // indépendants (aucune capacité n'a jamais les deux à la fois dans ce catalogue).
+  const fromChoice = effect.activation.labelFromChoice;
+  const selectedOptionId = fromChoice
+    ? getOptionSelections(character, fromChoice.choiceFeatureId, fromChoice.choiceIndex)[0]
+    : undefined;
+  const resolvedLabel = (selectedOptionId && fromChoice?.names[selectedOptionId]) || effect.activation.label;
   // PER-74 — déclinaison du déclencheur selon l'élément draconique (« épée %swordAdj% » → « épée
   // électrifiée »), pour que l'interrupteur du panneau d'états dise la même chose que la carte du rang.
   const feature = featureById.get(featureId);
-  const trigger = feature
-    ? declineForFeature(character, feature, effect.activation.label)
-    : effect.activation.label;
+  const trigger = feature ? declineForFeature(character, feature, resolvedLabel) : resolvedLabel;
   return joined ? `${joined} — ${trigger}` : trigger;
 }
 

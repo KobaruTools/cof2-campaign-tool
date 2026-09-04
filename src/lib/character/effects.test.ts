@@ -1717,11 +1717,13 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
   });
 
   it('Ascendance draconique (prestige-sang-dragon-r4) : RD sur l’énergie du CHOIX PERMANENT, 5 puis 10 au rang 8', () => {
-    // Aucune énergie choisie (choix de construction non fait) → pas de RD.
+    // Aucune ascendance/énergie choisie (choix de construction non fait) → pas de RD.
     expect(damageReductionSources(char(['prestige-sang-dragon-r4']))).toEqual([]);
-    // Énergie « feu » retenue au choix permanent (featureChoices), rang 4 de la voie → RD plate 5 sur le feu.
+    // Ascendance draconique (choix 0) + énergie « feu » (choix 1), rang 4 → RD plate 5 sur le feu.
     const r4 = damageReductionSources(
-      char(['prestige-sang-dragon-r4'], { featureChoices: { 'prestige-sang-dragon-r4': ['fire'] } }),
+      char(['prestige-sang-dragon-r4'], {
+        featureChoices: { 'prestige-sang-dragon-r4': ['dragon', 'fire'] },
+      }),
     );
     expect(r4).toHaveLength(1);
     expect(r4[0].reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['fire'] });
@@ -1729,7 +1731,7 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     // (conditionnelle « sous la moitié des PV », interrupteur éteint) → pas de double comptage.
     const r8 = damageReductionSources(
       char(['prestige-sang-dragon-r4', 'prestige-sang-dragon-r8'], {
-        featureChoices: { 'prestige-sang-dragon-r4': ['cold'] },
+        featureChoices: { 'prestige-sang-dragon-r4': ['dragon', 'cold'] },
       }),
     );
     expect(r8).toHaveLength(1);
@@ -1737,9 +1739,76 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     // Choix invalide → ignoré (pas de RD).
     expect(
       damageReductionSources(
-        char(['prestige-sang-dragon-r4'], { featureChoices: { 'prestige-sang-dragon-r4': ['xyz'] } }),
+        char(['prestige-sang-dragon-r4'], { featureChoices: { 'prestige-sang-dragon-r4': ['dragon', 'xyz'] } }),
       ),
     ).toEqual([]);
+  });
+
+  it('Ascendance démoniaque (PER-490, prestige-sang-dragon-r4/r6/r8) : branches croisées gatées par le choix 0', () => {
+    // Ascendance démoniaque (choix 0) + énergie « acide » (choix 2, PAS le choix 1 dragon) → RD plate 5.
+    const r4Demon = damageReductionSources(
+      char(['prestige-sang-dragon-r4'], {
+        featureChoices: { 'prestige-sang-dragon-r4': ['demon', null, 'acid'] },
+      }),
+    );
+    expect(r4Demon).toHaveLength(1);
+    expect(r4Demon[0].reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['acid'] });
+    // Une sélection PÉRIMÉE sur le choix dragon (index 1, devenu invisible) ne fuite pas en RD
+    // supplémentaire : un seul r4 démon compte, jamais les deux branches ensemble.
+    const r4Stale = damageReductionSources(
+      char(['prestige-sang-dragon-r4'], {
+        featureChoices: { 'prestige-sang-dragon-r4': ['demon', 'fire', 'acid'] },
+      }),
+    );
+    expect(r4Stale).toHaveLength(1);
+    expect(r4Stale[0].reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['acid'] });
+    // r8 démon : RD contre les démons armés sans bénédiction (`againstAggressors`), pas « tous DM ».
+    // Le personnage possède aussi r4 (source d'une 2e RD, sur le feu) : on filtre sur r8 pour isoler
+    // l'entrée qui nous intéresse ici.
+    const r8DemonAll = damageReductionSources(
+      char(['prestige-sang-dragon-r4', 'prestige-sang-dragon-r8'], {
+        featureChoices: { 'prestige-sang-dragon-r4': ['demon', null, 'fire'] },
+        effectToggles: { 'prestige-sang-dragon-r8': [true] },
+      }),
+    );
+    const r8Demon = r8DemonAll.filter((r) => r.featureId === 'prestige-sang-dragon-r8');
+    expect(r8Demon).toHaveLength(1);
+    expect(r8Demon[0].reduction).toMatchObject({
+      kind: 'flat',
+      value: 5,
+      againstAggressors: "les démons armés d'une arme qui n'est pas bénie",
+    });
+    // r8 dragon (même interrupteur) : RD tous DM, comportement inchangé par PER-490.
+    const r8DragonAll = damageReductionSources(
+      char(['prestige-sang-dragon-r4', 'prestige-sang-dragon-r8'], {
+        featureChoices: { 'prestige-sang-dragon-r4': ['dragon', 'fire'] },
+        effectToggles: { 'prestige-sang-dragon-r8': [true] },
+      }),
+    );
+    const r8Dragon = r8DragonAll.filter((r) => r.featureId === 'prestige-sang-dragon-r8');
+    expect(r8Dragon).toHaveLength(1);
+    expect(r8Dragon[0].reduction).toMatchObject({ kind: 'flat', value: 5, scopes: undefined });
+  });
+
+  it('Ascendance démoniaque (PER-490, prestige-sang-dragon-r6) : arme enduite gatée cross-capacité', () => {
+    // Toggle inexistant pour un personnage à ascendance draconique : jamais actif, quel que soit
+    // l'état résiduel dans `effectToggles`.
+    expect(
+      isEffectActive(
+        char(['prestige-sang-dragon-r4', 'prestige-sang-dragon-r6'], {
+          featureChoices: { 'prestige-sang-dragon-r4': ['dragon', 'fire'] },
+          effectToggles: { 'prestige-sang-dragon-r6': [true] },
+        }),
+        'prestige-sang-dragon-r6',
+        0,
+      ),
+    ).toBe(false);
+    // Ascendance démoniaque + interrupteur activé → le bonus de DM d'arme compte.
+    const demonChar = char(['prestige-sang-dragon-r4', 'prestige-sang-dragon-r6'], {
+      featureChoices: { 'prestige-sang-dragon-r4': ['demon', null, 'fire'] },
+      effectToggles: { 'prestige-sang-dragon-r6': [true] },
+    });
+    expect(isEffectActive(demonChar, 'prestige-sang-dragon-r6', 0)).toBe(true);
   });
 
   it('Magnétisme (metal-r3) : RD conditionnelle masquée tant que l’interrupteur est éteint', () => {
@@ -2389,6 +2458,19 @@ describe('Voie du familier fantastique — rangs R5/R6/R7 (PER-74)', () => {
     // Voie complète (r3→r7) = 5 rangs acquis → RD 5 (et NON 7, le numéro du rang max).
     const full = damageReductionSources(char([R3, R4, R5, R6, R7]));
     expect(full[0].reduction).toMatchObject({ kind: 'flat', value: 5 });
+  });
+
+  it('R5 « Résistance » : pantin/poupée cumulent une RD 5 propre dès le rang 5 (PER-176, coquille tranchée)', () => {
+    // Sans pantin/poupée choisi au R3 : une seule source (la RD scalante).
+    expect(damageReductionSources(char([R3, R4, R5], { [R3]: ['dragon-feerique'] }))).toHaveLength(1);
+    // Pantin choisi : RD scalante (3 au rang 5) + RD 5 propre au pantin = 2 sources cumulées.
+    const pantin = damageReductionSources(char([R3, R4, R5], { [R3]: ['pantin'] }));
+    expect(pantin).toHaveLength(2);
+    expect(pantin.map((s) => s.reduction.value)).toEqual(expect.arrayContaining([3, 5]));
+    // Poupée (même entité, optionId distinct) : même comportement.
+    const poupee = damageReductionSources(char([R3, R4, R5], { [R3]: ['poupee'] }));
+    expect(poupee).toHaveLength(2);
+    expect(poupee.map((s) => s.reduction.value)).toEqual(expect.arrayContaining([3, 5]));
   });
 
   it('R6 « Inséparables » : +1 point de chance (indépendant du familier)', () => {

@@ -396,9 +396,11 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     id: 'pantin-ou-poupee',
     name: 'Pantin ou poupée',
     pathId: 'prestige-familier-fantastique',
-    // TODO(extraction) : p. 136 — le livre dit que la RD 5 du pantin « s'ajoute à celle
-    // obtenue à partir du rang 6 », alors que la RD de la voie provient du rang 5
-    // (capacité Résistance). Possible coquille du livre ; conservé verbatim, à confirmer.
+    // PER-176 (décision proprio 2026-09-04) : le livre dit que la RD 5 du pantin « s'ajoute à
+    // celle obtenue à partir du rang 6 » — coquille, lue comme « rang 5 » (capacité Résistance,
+    // la seule à scaler dans cette voie). Cumul mécanisé dans `prestige-familier-fantastique-r5`
+    // (part1.ts, `damageReduction[].requiresChoiceOption`). Le `description` ci-dessous reste
+    // verbatim (texte affiché tel quel dans le codex).
     description:
       "Le personnage obtient un familier artificiel, qui peut être une poupée de chiffon, une merveille de miniaturisation et d'engrenages, ou encore une statuette s'animant par magie. Le pantin ou la poupée peut être un ancien familier transformé ou une nouvelle créature. Le familier acquiert le type « non-vivant » et tous les avantages qui en découlent. Le pantin possède une RD 5. Celle-ci s'ajoute à celle obtenue à partir du rang 6.",
     minorPower: {

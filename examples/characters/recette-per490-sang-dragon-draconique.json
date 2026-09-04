@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 25,
+  "id": "recette-per490-sang-dragon-draconique",
+  "name": "Recette PER-490 — sang-dragon (ascendance draconique)",
+  "identity": {
+    "description": "ATTENDU (non-régression) : r4 RD 10 sur le feu (rang 8 atteint) ; r6 pas de toggle \"Arme enduite\" ; r8 RD 5 tous DM sous la moitié des PV."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "prestige-sang-dragon-r4",
+    "prestige-sang-dragon-r5",
+    "prestige-sang-dragon-r6",
+    "prestige-sang-dragon-r7",
+    "prestige-sang-dragon-r8"
+  ],
+  "featureChoices": {
+    "prestige-sang-dragon-r4": [
+      "dragon",
+      "fire"
+    ]
+  },
+  "effectToggles": {
+    "prestige-sang-dragon-r8": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "transformationDerivedStats": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "dague",
+      "quantity": 1,
+      "worn": {
+        "slot": "main-hand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-490 — branche draconique, doit se comporter EXACTEMENT comme avant le ticket.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

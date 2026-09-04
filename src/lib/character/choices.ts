@@ -175,8 +175,19 @@ export function getOptionSelections(
  * marqué `nameFromChosenOption` ET qu'UNE seule option est retenue, renvoie le libellé de cette option
  * (ex. « Fureur drakonide ») pour REMPLACER le nom générique « X / Y ». `null` si aucun tel choix,
  * aucune sélection, ou sélection multiple. Résolu par `useDeclinedFeatureName` (source unique du nom).
+ *
+ * PER-490 — `Feature.nameFromChoice` (cross-capacité, mutuellement exclusif avec `choices` propre
+ * ci-dessous) est vérifié en PREMIER : la capacité n'a alors AUCUN choix propre nommant, le nom vient
+ * d'une table dédiée résolue contre le choix d'une AUTRE capacité (ex. sang-dragon r6/r8 lisent
+ * l'ascendance choisie au rang 4, mais leur nom n'est PAS le libellé de l'option source).
  */
 export function chosenOptionName(character: Character, feature: Feature): string | null {
+  const cross = feature.nameFromChoice;
+  if (cross) {
+    const selected = getOptionSelections(character, cross.choiceFeatureId, cross.choiceIndex);
+    if (selected.length !== 1) return null;
+    return cross.names[selected[0]] ?? null;
+  }
   const choices = feature.choices;
   if (!choices) return null;
   const index = choices.findIndex(

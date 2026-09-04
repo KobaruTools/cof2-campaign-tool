@@ -76,7 +76,8 @@ describe('DRAGON_ELEMENTS — table couleur → énergie (p. 147, mutualisée av
   });
 
   it('la correspondance est la MÊME que celle d’Ascendance draconique (source unique de vérité)', () => {
-    const choice = featureById.get('prestige-sang-dragon-r4')!.choices![0];
+    // PER-490 : choix 0 = ascendance (dragon/démon) ; choix 1 = énergie dragon (5 couleurs, cette table).
+    const choice = featureById.get('prestige-sang-dragon-r4')!.choices![1];
     const ancestryIds = choice.kind === 'option' ? choice.options.map((o) => o.id) : [];
     expect([...ancestryIds].sort()).toEqual(DRAGON_ELEMENTS.map((e) => e.id).sort());
   });

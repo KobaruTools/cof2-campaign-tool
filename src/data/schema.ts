@@ -820,6 +820,15 @@ export interface EffectActivation {
   /** Description française du déclencheur, ex. « une arme dans chaque main ». */
   label: string;
   /**
+   * Libellé de l'interrupteur en TABLE PAR OPTION retenue au choix `option` d'une AUTRE capacité
+   * (PER-490), sur le patron cross-capacité de `Feature.nameFromChoice` — ex. sang-dragon r6 : le
+   * `label` générique « Arme enduite (acide ou feu) » devient « Arme enduite (acide) » une fois
+   * l'énergie démoniaque retenue au rang 4, sans faire deviner au joueur laquelle des deux s'applique.
+   * `names` mappe chaque id d'option source vers le libellé complet de CET interrupteur. Absent, ou
+   * aucune option (valide) retenue → repli sur `label` ci-dessus (fallback neutre).
+   */
+  labelFromChoice?: { choiceFeatureId: string; choiceIndex: number; names: Record<string, string> };
+  /**
    * L'effet compte-t-il tant que le joueur n'a pas explicitement basculé son
    * interrupteur ? Défaut `false` (un effet conditionnel est inactif par défaut).
    */
@@ -1002,6 +1011,17 @@ export interface ConditionalStatBonusEffect {
    * être un `OptionFeatureChoice` porté par la même capacité.
    */
   requiresChoiceOption?: { choiceIndex: number; optionId: string };
+  /**
+   * Miroir CROSS-CAPACITÉ de `requiresChoiceOption` (PER-490) : cet effet (et son interrupteur)
+   * n'existe que si l'option `optionId` est retenue au choix `choiceIndex` d'une AUTRE capacité
+   * (`choiceFeatureId`), sur le patron cross-capacité d'`elementFromChoice`. Sert un rang dont le
+   * contenu entier dépend d'un choix fait à un rang ANTÉRIEUR de la même voie — ex. sang-dragon r6 :
+   * l'interrupteur « Arme enduite » (ascendance démoniaque) n'existe que si l'ascendance choisie au
+   * rang 4 vaut `demon` ; un personnage à ascendance draconique ne voit même pas le contrôle. Exclusif
+   * en pratique avec `requiresChoiceOption` (l'un référence sa propre capacité, l'autre une capacité
+   * distincte) mais rien n'empêche techniquement de poser les deux. Absent = aucun gating cross-capacité.
+   */
+  requiresChoiceOptionFrom?: { choiceFeatureId: string; choiceIndex: number; optionId: string };
   /** Déclencheur (condition / durée) et état par défaut de l'interrupteur. */
   activation: EffectActivation;
   /**
@@ -2784,6 +2804,17 @@ export interface DamageReduction {
    * entrées `requiresElement` différentes peuvent coexister sur la même capacité (une par branche).
    */
   requiresElement?: ResistibleDamageType;
+  /**
+   * Gating par OPTION de choix `option`, potentiellement CROSS-CAPACITÉ (PER-490) : cette entrée ne
+   * compte que si l'option `optionId` est retenue au choix `choiceIndex` de la capacité `choiceFeatureId`
+   * (sa propre capacité hôte OU une AUTRE, sur le patron d'`elementFromChoice`). Sert une capacité qui
+   * porte PLUSIEURS entrées de RD alternatives selon un choix fait à un rang antérieur de la même voie —
+   * ex. sang-dragon r8 : « Écailles de dragon » (RD 5 tous DM) contre « traits démoniaques » (RD 5 contre
+   * les démons armés sans bénédiction), selon l'ascendance choisie au rang 4. Distinct de
+   * `scopeFromChoice` (qui dérive la PORTÉE d'un choix, sans en conditionner l'EXISTENCE). Absent =
+   * aucun gating par option (cas général).
+   */
+  requiresChoiceOption?: { choiceFeatureId: string; choiceIndex: number; optionId: string };
   /**
    * Gating CROSS-CAPACITÉ (PER-74) : cette entrée de RD n'est ACTIVE que si l'interrupteur
    * (`conditional-stat-bonus`) d'une AUTRE capacité est actif. Ex. lycanthrope « Résistance
@@ -4598,6 +4629,32 @@ export interface Feature {
    * le nom fixe du profil de l'option (jamais un champ blanc affiché comme nom de créature).
    */
   creatureNameFromChoice?: { choiceFeatureId: string; choiceIndex: number };
+  /**
+   * Rayage des paragraphes NON retenus (même rendu que `OptionFeatureChoice.strikeUnchosenParagraphs`
+   * — préfixe « <libellé option> : … » barré + grisé), mais piloté par le choix `option` d'une AUTRE
+   * capacité (PER-490) — cross-capacité, sur le patron d'`elementFromChoice`/`creatureNameFromChoice`.
+   * Sert les rangs d'une voie de prestige DONT LE CONTENU BIFURQUE ENTIÈREMENT selon un choix fait à
+   * un rang ANTÉRIEUR (ex. sang-dragon r6/r8, PER-490 : « Souffle du dragon » vs arme démoniaque
+   * enduite, selon l'ascendance choisie au rang 4) — trop éloigné de la simple déclinaison de mots
+   * d'`elementFromChoice` pour réutiliser ses tokens, mais chaque branche reste un paragraphe complet
+   * préfixé par le libellé de son option, comme `strikeUnchosenParagraphs`. Résolu par
+   * `featureById.get(choiceFeatureId)` pour retrouver le choix visé (`choices[choiceIndex]`, doit être
+   * `kind: 'option'`) et ses libellés d'options. Absent = pas de rayage cross-capacité (repli sur
+   * `OptionFeatureChoice.strikeUnchosenParagraphs` si porté par un choix propre, sinon aucun).
+   */
+  strikeUnchosenParagraphsFromChoice?: { choiceFeatureId: string; choiceIndex: number };
+  /**
+   * NOM affiché de la capacité, en TABLE DE LIBELLÉS par option retenue au choix `option` d'une AUTRE
+   * capacité (PER-490) — cross-capacité, miroir de `strikeUnchosenParagraphsFromChoice`, mais pour le
+   * NOM plutôt que le rayage. Distinct d'`OptionFeatureChoice.nameFromChosenOption` (même capacité,
+   * réutilise le LIBELLÉ de l'option telle quelle) : ici le nom de CETTE capacité diverge du libellé de
+   * l'option source — ex. sang-dragon r6 : l'option retenue au rang 4 s'appelle « Ascendance
+   * démoniaque », mais le rang 6 doit alors s'appeler « Arme démoniaque » (le rang lui-même n'est pas
+   * une ascendance). `names` mappe chaque id d'option de la capacité source vers le nom voulu pour
+   * CETTE capacité. Absent, ou aucune option (valide) retenue → repli sur `Feature.name` (fallback
+   * neutre affiché avant que le choix source ne soit fait).
+   */
+  nameFromChoice?: { choiceFeatureId: string; choiceIndex: number; names: Record<string, string> };
   /**
    * Coût de base en points de mana pour LANCER ce sort — DÉROGATION explicite au
    * coût standard (PER-65). La règle générale (p. 228) est : « Lancer un sort

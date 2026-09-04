@@ -6,6 +6,7 @@ import { SCHEMA_VERSION, type Character } from './types';
 import {
   allowedAbilitiesForChoice,
   borrowedFeatureIds,
+  chosenOptionName,
   effectiveFeatureIdsForMods,
   eligibleDivineHostPaths,
   eligibleFeaturesForChoice,
@@ -913,5 +914,40 @@ describe('free-text choice (PER-175) — type d’animal du familier fantastique
   it('OPTIONNEL : jamais compté « à faire », même visible et vide', () => {
     const c = makeCharacter({ featureIds: [R3], featureChoices: { [R3]: ['familier-celeste'] } });
     expect(unmadeChoiceIndexes(c, R3)).not.toContain(1);
+  });
+});
+
+describe('chosenOptionName — nom affiché dérivé d’un choix (PER-490 : cross-capacité)', () => {
+  const R4 = 'prestige-sang-dragon-r4';
+  const R5 = 'prestige-sang-dragon-r5';
+  const R6 = 'prestige-sang-dragon-r6';
+  const R7 = 'prestige-sang-dragon-r7';
+  const R8 = 'prestige-sang-dragon-r8';
+  const featureIds = [R4, R5, R6, R7, R8];
+
+  it('r4 (choix PROPRE, nameFromChosenOption) : « Ascendance draconique »/« Ascendance démoniaque »', () => {
+    const dragon = makeCharacter({ featureIds, featureChoices: { [R4]: ['dragon', 'fire'] } });
+    expect(chosenOptionName(dragon, featureById.get(R4)!)).toBe('Ascendance draconique');
+    const demon = makeCharacter({ featureIds, featureChoices: { [R4]: ['demon', null, 'acid'] } });
+    expect(chosenOptionName(demon, featureById.get(R4)!)).toBe('Ascendance démoniaque');
+  });
+
+  it('r5/r6/r7/r8 (choix CROISÉ, nameFromChoice) : suivent l’ascendance choisie au rang 4', () => {
+    const dragon = makeCharacter({ featureIds, featureChoices: { [R4]: ['dragon', 'fire'] } });
+    expect(chosenOptionName(dragon, featureById.get(R5)!)).toBe('Griffes du dragon');
+    expect(chosenOptionName(dragon, featureById.get(R6)!)).toBe('Souffle du dragon');
+    expect(chosenOptionName(dragon, featureById.get(R7)!)).toBe('Ailes de dragon');
+    expect(chosenOptionName(dragon, featureById.get(R8)!)).toBe('Écailles de dragon');
+
+    const demon = makeCharacter({ featureIds, featureChoices: { [R4]: ['demon', null, 'acid'] } });
+    expect(chosenOptionName(demon, featureById.get(R5)!)).toBe('Griffes démoniaques');
+    expect(chosenOptionName(demon, featureById.get(R6)!)).toBe('Arme démoniaque');
+    expect(chosenOptionName(demon, featureById.get(R7)!)).toBe('Ailes démoniaques');
+    expect(chosenOptionName(demon, featureById.get(R8)!)).toBe('Traits démoniaques');
+  });
+
+  it('aucune ascendance choisie → null (repli sur le `Feature.name` statique, pas géré ici)', () => {
+    const noChoice = makeCharacter({ featureIds });
+    expect(chosenOptionName(noChoice, featureById.get(R6)!)).toBeNull();
   });
 });
