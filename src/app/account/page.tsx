@@ -44,6 +44,7 @@ import Typography from '@mui/material/Typography';
 import { AccountUnlockSection } from '@/components/account/AccountUnlockSection';
 import { useToast } from '@/components/toast/ToastProvider';
 import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
+import { PatchnotesNotificationsToggle } from '@/components/PatchnotesNotificationsToggle';
 import { storageKeys } from '@/lib/storage/keys';
 import { describeStorageKey, isProtectedStorageKey } from '@/lib/storage/keyDescriptions';
 import { listLegacyKeyPairs } from '@/lib/storage/migrateLegacyKeys';
@@ -407,6 +408,17 @@ export default function AccountPage() {
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                 Réglage propre à cet appareil. Le suivi de la souris reste coupé si ton
                 système demande de réduire les animations.
+              </Typography>
+            </Section>
+
+            {/* Notifications (PER-494) : pilote le toast de nouveautés (`PatchnotesNotifier`)
+                dans les deux sens — reflète le choix fait dans sa modale de premier close,
+                et peut l'écraser sans jamais repasser par elle. Réglage par appareil. */}
+            <Section title="Notifications">
+              <PatchnotesNotificationsToggle />
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                Réglage propre à cet appareil. Coupe le toast qui signale les nouvelles mises
+                à jour du site.
               </Typography>
             </Section>
 

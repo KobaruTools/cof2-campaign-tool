@@ -89,6 +89,7 @@ export const storageKeys = {
   },
   patchnotes: {
     lastSeenId: key('patchnotes', 'last-seen-id'),
+    prefs: key('patchnotes', 'prefs'),
   },
   campaign: {
     archivedOpen: key('campaign', 'archived-open'),

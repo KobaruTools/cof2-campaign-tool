@@ -34,6 +34,7 @@ const RULES: readonly Rule[] = [
   { match: 'cof2-preferences', describe: 'Préférences générales de l’appli — ancienne clé' },
   { match: storageKeys.auth.lastMethod, describe: 'Dernier mode de connexion utilisé' },
   { match: 'cof2:last-auth-method', describe: 'Dernier mode de connexion utilisé — ancienne clé' },
+  { match: storageKeys.patchnotes.prefs, describe: 'Notifications de nouveautés activées ou non' },
 
   { match: storageKeys.sheet.pinAbilities, describe: 'Fiche : caractéristiques épinglées' },
   { match: 'sheet:pin-abilities', describe: 'Fiche : caractéristiques épinglées — ancienne clé' },
