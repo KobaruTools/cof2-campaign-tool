@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createLinearIssue } from './linearClient';
+import { attachFileToIssue, createLinearIssue } from './linearClient';
 
 const originalFetch = globalThis.fetch;
 const originalEnv = process.env.LINEAR_API_KEY;
@@ -56,6 +56,121 @@ describe('createLinearIssue', () => {
 
     await expect(
       createLinearIssue({ title: 't', description: 'd', labelIds: ['bug', 'retour-joueur'] }),
+    ).rejects.toThrow();
+  });
+});
+
+describe('attachFileToIssue', () => {
+  it("obtient l'URL signée, PUT le fichier, puis le rattache au ticket", async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            fileUpload: {
+              success: true,
+              uploadFile: {
+                uploadUrl: 'https://upload.linear.app/signed-url',
+                assetUrl: 'https://uploads.linear.app/asset-1',
+                headers: [{ key: 'x-amz-foo', value: 'bar' }],
+              },
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { attachmentCreate: { success: true } } }),
+      });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const content = new TextEncoder().encode('{"hello":"world"}').buffer;
+    await attachFileToIssue('issue-1', {
+      filename: 'personnage.json',
+      contentType: 'application/json',
+      content,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const [uploadUrl, uploadInit] = fetchMock.mock.calls[0];
+    expect(uploadUrl).toBe('https://api.linear.app/graphql');
+    const uploadVariables = JSON.parse(uploadInit.body).variables;
+    expect(uploadVariables).toEqual({
+      contentType: 'application/json',
+      filename: 'personnage.json',
+      size: content.byteLength,
+    });
+
+    const [putUrl, putInit] = fetchMock.mock.calls[1];
+    expect(putUrl).toBe('https://upload.linear.app/signed-url');
+    expect(putInit.method).toBe('PUT');
+    expect(putInit.headers).toEqual({ 'x-amz-foo': 'bar' });
+    expect(putInit.body).toBe(content);
+
+    const [attachUrl, attachInit] = fetchMock.mock.calls[2];
+    expect(attachUrl).toBe('https://api.linear.app/graphql');
+    const attachVariables = JSON.parse(attachInit.body).variables;
+    expect(attachVariables).toEqual({
+      input: {
+        issueId: 'issue-1',
+        url: 'https://uploads.linear.app/asset-1',
+        title: 'personnage.json',
+      },
+    });
+  });
+
+  it("lève une erreur si l'obtention de l'URL d'upload échoue", async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { fileUpload: { success: false, uploadFile: null } } }),
+    }) as unknown as typeof fetch;
+
+    await expect(
+      attachFileToIssue('issue-1', {
+        filename: 'x.png',
+        contentType: 'image/png',
+        content: new ArrayBuffer(0),
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('lève une erreur si le rattachement au ticket échoue', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            fileUpload: {
+              success: true,
+              uploadFile: {
+                uploadUrl: 'https://upload.linear.app/signed-url',
+                assetUrl: 'https://uploads.linear.app/asset-1',
+                headers: [],
+              },
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { attachmentCreate: { success: false } } }),
+      });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      attachFileToIssue('issue-1', {
+        filename: 'x.png',
+        contentType: 'image/png',
+        content: new ArrayBuffer(0),
+      }),
     ).rejects.toThrow();
   });
 });

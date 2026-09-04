@@ -21,9 +21,66 @@ const CREATE_ISSUE_MUTATION = `
   }
 `;
 
+const FILE_UPLOAD_MUTATION = `
+  mutation FeedbackFileUpload($contentType: String!, $filename: String!, $size: Int!) {
+    fileUpload(contentType: $contentType, filename: $filename, size: $size) {
+      success
+      uploadFile {
+        uploadUrl
+        assetUrl
+        headers { key value }
+      }
+    }
+  }
+`;
+
+const ATTACHMENT_CREATE_MUTATION = `
+  mutation FeedbackAttachmentCreate($input: AttachmentCreateInput!) {
+    attachmentCreate(input: $input) {
+      success
+    }
+  }
+`;
+
 export interface CreatedLinearIssue {
   id: string;
   url: string;
+}
+
+/** Fichier à joindre à un ticket (screenshot ou export JSON de personnage), PER-464. */
+export interface FeedbackFile {
+  filename: string;
+  contentType: string;
+  content: ArrayBuffer;
+}
+
+function requireApiKey(): string {
+  const apiKey = process.env.LINEAR_API_KEY;
+  if (!apiKey) {
+    throw new Error('LINEAR_API_KEY manquante');
+  }
+  return apiKey;
+}
+
+async function callLinearGraphQL<T>(
+  apiKey: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
+  const response = await fetch('https://api.linear.app/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: apiKey,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Linear a répondu ${response.status}`);
+  }
+
+  return (await response.json()) as T;
 }
 
 /**
@@ -34,39 +91,19 @@ export interface CreatedLinearIssue {
 export async function createLinearIssue(
   payload: FeedbackIssuePayload,
 ): Promise<CreatedLinearIssue> {
-  const apiKey = process.env.LINEAR_API_KEY;
-  if (!apiKey) {
-    throw new Error('LINEAR_API_KEY manquante');
-  }
+  const apiKey = requireApiKey();
 
-  const response = await fetch('https://api.linear.app/graphql', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: apiKey,
-    },
-    body: JSON.stringify({
-      query: CREATE_ISSUE_MUTATION,
-      variables: {
-        input: {
-          teamId: TEAM_ID,
-          stateId: TRIAGE_STATE_ID,
-          title: payload.title,
-          description: payload.description,
-          labelIds: payload.labelIds.map((id) => LABEL_IDS[id]),
-        },
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Linear a répondu ${response.status}`);
-  }
-
-  const body = (await response.json()) as {
+  const body = await callLinearGraphQL<{
     data?: { issueCreate?: { success: boolean; issue: CreatedLinearIssue | null } };
-    errors?: unknown;
-  };
+  }>(apiKey, CREATE_ISSUE_MUTATION, {
+    input: {
+      teamId: TEAM_ID,
+      stateId: TRIAGE_STATE_ID,
+      title: payload.title,
+      description: payload.description,
+      labelIds: payload.labelIds.map((id) => LABEL_IDS[id]),
+    },
+  });
 
   const result = body.data?.issueCreate;
   if (!result?.success || !result.issue) {
@@ -74,4 +111,55 @@ export async function createLinearIssue(
   }
 
   return result.issue;
+}
+
+/**
+ * Upload un fichier vers l'infrastructure Linear (URL signée obtenue via
+ * `fileUpload`, puis PUT direct) et le rattache au ticket via
+ * `attachmentCreate` (PER-464).
+ */
+export async function attachFileToIssue(issueId: string, file: FeedbackFile): Promise<void> {
+  const apiKey = requireApiKey();
+
+  const uploadBody = await callLinearGraphQL<{
+    data?: {
+      fileUpload?: {
+        success: boolean;
+        uploadFile: {
+          uploadUrl: string;
+          assetUrl: string;
+          headers: { key: string; value: string }[];
+        } | null;
+      };
+    };
+  }>(apiKey, FILE_UPLOAD_MUTATION, {
+    contentType: file.contentType,
+    filename: file.filename,
+    size: file.content.byteLength,
+  });
+
+  const uploadFile = uploadBody.data?.fileUpload;
+  if (!uploadFile?.success || !uploadFile.uploadFile) {
+    throw new Error("Échec de l'obtention de l'URL d'upload Linear");
+  }
+  const { uploadUrl, assetUrl, headers } = uploadFile.uploadFile;
+
+  const putResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: Object.fromEntries(headers.map((h) => [h.key, h.value])),
+    body: file.content,
+  });
+  if (!putResponse.ok) {
+    throw new Error(`Upload du fichier vers Linear a répondu ${putResponse.status}`);
+  }
+
+  const attachBody = await callLinearGraphQL<{
+    data?: { attachmentCreate?: { success: boolean } };
+  }>(apiKey, ATTACHMENT_CREATE_MUTATION, {
+    input: { issueId, url: assetUrl, title: file.filename },
+  });
+
+  if (!attachBody.data?.attachmentCreate?.success) {
+    throw new Error('Échec du rattachement du fichier au ticket Linear');
+  }
 }

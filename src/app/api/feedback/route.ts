@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { displayNameOf } from '@/lib/auth/displayName';
 import { roleOfUser } from '@/lib/auth/sessionRole';
 import { buildFeedbackIssue } from '@/lib/feedback/buildFeedbackIssue';
-import { createLinearIssue } from '@/lib/feedback/linearClient';
+import { attachFileToIssue, createLinearIssue, type FeedbackFile } from '@/lib/feedback/linearClient';
 import type { FeedbackInput, FeedbackKind, FeedbackZone } from '@/lib/feedback/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -36,6 +36,43 @@ function parseBody(body: unknown): FeedbackRequestBody | null {
 }
 
 /**
+ * Parse le corps de la requête, en JSON (texte seul) ou en `multipart/form-data`
+ * (avec pièces jointes : screenshots + export JSON de personnage, PER-464).
+ */
+async function parseRequest(
+  request: NextRequest,
+): Promise<{ body: FeedbackRequestBody; files: FeedbackFile[] } | null> {
+  const contentType = request.headers.get('content-type') ?? '';
+
+  if (contentType.includes('multipart/form-data')) {
+    const form = await request.formData().catch(() => null);
+    if (!form) return null;
+    const body = parseBody({
+      kind: form.get('kind'),
+      zone: form.get('zone'),
+      description: form.get('description'),
+      path: form.get('path'),
+    });
+    if (!body) return null;
+
+    const files: FeedbackFile[] = [];
+    for (const entry of form.getAll('files')) {
+      if (entry instanceof File) {
+        files.push({
+          filename: entry.name,
+          contentType: entry.type || 'application/octet-stream',
+          content: await entry.arrayBuffer(),
+        });
+      }
+    }
+    return { body, files };
+  }
+
+  const body = parseBody(await request.json().catch(() => null));
+  return body ? { body, files: [] } : null;
+}
+
+/**
  * Crée un ticket Linear (équipe Perso, Triage) depuis le formulaire de retour
  * intégré à l'application. Réservé aux sessions owner/player — pas de
  * visiteur anonyme, pas d'observateur de projection (PER-463).
@@ -51,10 +88,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Session requise' }, { status: 401 });
   }
 
-  const body = parseBody(await request.json().catch(() => null));
-  if (!body) {
+  const parsed = await parseRequest(request);
+  if (!parsed) {
     return NextResponse.json({ error: 'Payload invalide' }, { status: 400 });
   }
+  const { body, files } = parsed;
 
   const issuePayload = buildFeedbackIssue(
     { kind: body.kind, zone: body.zone, description: body.description },
@@ -68,6 +106,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const issue = await createLinearIssue(issuePayload);
+    // Best-effort : le ticket est déjà créé, un échec d'upload isolé ne doit pas
+    // faire échouer toute la requête (PER-464).
+    await Promise.allSettled(files.map((file) => attachFileToIssue(issue.id, file)));
     return NextResponse.json({ url: issue.url });
   } catch {
     return NextResponse.json({ error: 'Échec de création du ticket' }, { status: 502 });
