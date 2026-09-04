@@ -292,5 +292,15 @@
         "tag": "gm-screen"
       }
     ]
+  },
+  {
+    "id": 16,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Vous pouvez maintenant fermer les notifications d'un simple clic sur une croix, et choisir si vous préférez les garder affichées ou les masquer automatiquement.",
+        "tag": "other"
+      }
+    ]
   }
 ]
