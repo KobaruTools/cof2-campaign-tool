@@ -258,5 +258,15 @@
         "tag": "creation-levelup"
       }
     ]
+  },
+  {
+    "id": 13,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Les voies de prestige vérifient maintenant correctement les conditions requises avant de pouvoir être choisies.",
+        "tag": "creation-levelup"
+      }
+    ]
   }
 ]
