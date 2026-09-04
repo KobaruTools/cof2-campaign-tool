@@ -178,6 +178,7 @@ export const prestigePaths2: PrestigePath[] = [
     category: 'fighter',
     prerequisites:
       "Exceptionnellement, cette voie donne seulement 4 PV par niveau. Il est nécessaire d'avoir acquis au moins une voie de combattant et une voie de mage.",
+    hpPerLevel: 4,
     featureIds: [
       'prestige-guerrier-mage-r4',
       'prestige-guerrier-mage-r5',

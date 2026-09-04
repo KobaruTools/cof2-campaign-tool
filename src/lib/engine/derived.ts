@@ -50,6 +50,14 @@ export interface HpLevelGain {
    * absent/`false` = gain fixe habituel.
    */
   rolled?: boolean;
+  /**
+   * PER-493 — `familyGain` provient de la DÉROGATION `PrestigePath.hpPerLevel` de
+   * cette voie de prestige (ex. sang-dragon : 5 PV/niveau, p. 131) plutôt que de la
+   * famille du profil principal. `pathName`/`pathSourcePage` servent l'affichage
+   * (breakdown des PV) ; absent = gain fixe habituel de la famille.
+   */
+  pathName?: string;
+  pathSourcePage?: number;
 }
 
 /** Contribution de l'équipement porté au calcul de la défense. */

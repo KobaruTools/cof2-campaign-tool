@@ -252,6 +252,74 @@ describe('hpLevelGains', () => {
     expect(maxHp(3, fighters, 2, {}, familyHpGains(c, ctx))).toBe(29);
   });
 
+  it('PER-493 : voie de prestige avec hpPerLevel dérogatoire (sang-dragon 5 PV/niveau) écrase la famille', () => {
+    // Mage (famille = 3 PV/niveau) qui prend la voie du sang-dragon (p. 131 : « 5 PV
+    // par niveau », category generic donc ouverte à tout profil). Le niveau 5, composé
+    // UNIQUEMENT d'une capacité de cette voie, doit valoir 5 (dérogation), pas 3 (mage).
+    const c = makeCharacter({
+      classId: 'magicien',
+      level: 5,
+      levelUpHistory: history(
+        { level: 1, chosenFeatureIds: [] },
+        { level: 2, chosenFeatureIds: [] },
+        { level: 3, chosenFeatureIds: [] },
+        { level: 4, chosenFeatureIds: [] },
+        { level: 5, chosenFeatureIds: ['prestige-sang-dragon-r4'] },
+      ),
+    });
+    const gains = hpLevelGains(c, ctx);
+    expect(gains.at(-1)).toEqual({
+      level: 5,
+      familyIds: ['mages'],
+      familyGain: 5,
+      pathName: 'Voie du sang-dragon',
+      pathSourcePage: 131,
+    });
+    expect(familyHpGains(c, ctx).at(-1)).toBe(5);
+  });
+
+  it('PER-493 : voie de prestige avec hpPerLevel dérogatoire (guerrier-mage, 4 PV « exceptionnellement »)', () => {
+    // Combattant (famille = 5 PV/niveau) : la voie du guerrier-mage (p. 151) plafonne
+    // explicitement à 4 PV/niveau, en dérogation à la famille combattant.
+    const c = makeCharacter({
+      classId: 'barbare',
+      level: 5,
+      levelUpHistory: history(
+        { level: 1, chosenFeatureIds: ['brute-r1'] },
+        { level: 2, chosenFeatureIds: [] },
+        { level: 3, chosenFeatureIds: [] },
+        { level: 4, chosenFeatureIds: [] },
+        { level: 5, chosenFeatureIds: ['prestige-guerrier-mage-r4'] },
+      ),
+    });
+    expect(hpLevelGains(c, ctx).at(-1)).toEqual({
+      level: 5,
+      familyIds: ['fighters'],
+      familyGain: 4,
+      pathName: 'Voie du guerrier-mage',
+      pathSourcePage: 151,
+    });
+  });
+
+  it('PER-493 : niveau mixte voie de prestige + autre capacité → pas de dérogation (repli famille)', () => {
+    // Un niveau qui combine une capacité de la voie de prestige avec une capacité de
+    // voie de peuple n'est pas « pur » : la dérogation ne s'applique pas, on retombe
+    // sur la famille du profil principal (mage = 3), comme avant PER-493.
+    const c = makeCharacter({
+      classId: 'magicien',
+      ancestryPathId: 'humain',
+      level: 5,
+      levelUpHistory: history(
+        { level: 1, chosenFeatureIds: [] },
+        { level: 2, chosenFeatureIds: [] },
+        { level: 3, chosenFeatureIds: [] },
+        { level: 4, chosenFeatureIds: [] },
+        { level: 5, chosenFeatureIds: ['prestige-sang-dragon-r4', 'humain-r2'] },
+      ),
+    });
+    expect(hpLevelGains(c, ctx).at(-1)).toEqual({ level: 5, familyIds: ['mages'], familyGain: 3 });
+  });
+
   it('capacité divine : pas de niveau mixte (empruntée mais rattachée à la voie d’accueil, p. 122)', () => {
     // Prêtre (mystics, 4 PV) spécialiste de Forthur : divine = brute-r2 (combattants,
     // 5 PV), acquise au niveau 3. Sans l'exception, ce niveau serait moyenné (4,5).

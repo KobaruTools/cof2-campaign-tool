@@ -16,7 +16,7 @@
  * compatibilité parfaite avec les personnages mono-famille existants (le résultat
  * est identique à la formule fermée de `maxHp`).
  */
-import type { FamilyId, Family } from '@/data/schema';
+import type { FamilyId, Family, PrestigePath } from '@/data/schema';
 import type { HpLevelGain, RulesContext } from '@/lib/engine';
 import { classPathFamily, maxHp as computeMaxHp, recoveryDiceCount as computeRecoveryDiceCount } from '@/lib/engine';
 import type { Character } from './types';
@@ -66,6 +66,35 @@ export function levelFamilies(
 }
 
 /**
+ * Dérogation `PrestigePath.hpPerLevel` (PER-493) applicable à ce niveau : n'existe
+ * que si TOUTES les capacités choisies à ce niveau (hors capacité divine empruntée)
+ * proviennent de la MÊME voie de prestige et que celle-ci porte un `hpPerLevel`. Un
+ * niveau qui mélange une capacité de cette voie avec une autre famille (ou une
+ * capacité d'une voie de peuple/mage) n'est PAS considéré comme « pur » et retombe
+ * sur le comportement par défaut (famille du profil principal / moyenne mixte).
+ */
+function prestigePathOverrideForLevel(
+  featureIds: string[],
+  ctx: RulesContext,
+  divineId?: string,
+): { name: string; sourcePage: number; hpPerLevel: number } | undefined {
+  let found: PrestigePath | undefined;
+  let sawAny = false;
+  for (const id of featureIds) {
+    if (id === divineId) continue;
+    const feature = ctx.featureById.get(id);
+    if (!feature) continue;
+    const path = ctx.pathById.get(feature.pathId);
+    if (!path || path.type !== 'prestige') return undefined;
+    sawAny = true;
+    if (found && found.id !== path.id) return undefined;
+    found = path;
+  }
+  if (!sawAny || !found || found.hpPerLevel === undefined) return undefined;
+  return { name: found.name, sourcePage: found.sourcePage, hpPerLevel: found.hpPerLevel };
+}
+
+/**
  * Composition du gain de PV de chaque niveau (du 2 au niveau courant), dans
  * l'ordre — l'arrondi alterné des demi-PV en dépend. Pour chaque niveau : les
  * familles concernées et le gain « famille » (hors CON). Source de vérité du
@@ -103,6 +132,17 @@ export function hpLevelGains(character: Character, ctx: RulesContext): HpLevelGa
     if (rolled !== undefined) {
       const familyIds = families.size >= 1 ? [...families] : [mainFamily.id];
       result.push({ level, familyIds, familyGain: rolled, rolled: true });
+      continue;
+    }
+    const prestigeOverride = prestigePathOverrideForLevel(idsByLevel.get(level) ?? [], ctx, divineId);
+    if (prestigeOverride) {
+      result.push({
+        level,
+        familyIds: [mainFamily.id],
+        familyGain: prestigeOverride.hpPerLevel,
+        pathName: prestigeOverride.name,
+        pathSourcePage: prestigeOverride.sourcePage,
+      });
       continue;
     }
     if (families.size <= 1) {

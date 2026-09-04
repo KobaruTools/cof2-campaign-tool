@@ -513,6 +513,20 @@ export interface PrestigePath extends PathBase {
    * Absent = aucune variante mage annoncée par cette voie.
    */
   mageAlternateAbility?: AbilityId;
+  /**
+   * PER-493 — DÉROGATION verbatim au PV/niveau de la famille du profil principal (p. 39), annoncée
+   * en toutes lettres dans le texte de prérequis de CETTE voie (ex. sang-dragon p. 131, lycanthrope
+   * p. 130 : « Le personnage obtient 5 PV par niveau » ; familier fantastique p. 131 : 4 PV/niveau ;
+   * guerrier-mage p. 151 : « Exceptionnellement, cette voie donne seulement 4 PV par niveau »).
+   * Recensement PER-493 : la plupart des voies de prestige ne précisent rien et suivent le défaut
+   * (p. 129, voies spécialiste/expert : « Les PV obtenus correspondent au profil principal ») — cette
+   * dérogation est une exception ponctuelle du livre, pas la règle générale. Consommé par
+   * `hpLevelGains` (`hp.ts`) : un niveau composé UNIQUEMENT de capacités de cette voie utilise ce
+   * chiffre au lieu de celui de la famille du profil principal ; un niveau mixte (capacités d'une
+   * autre famille au même niveau) retombe sur la moyenne existante, la voie n'étant qu'une famille
+   * parmi d'autres dans ce cas. Absent = comportement actuel (famille du profil principal).
+   */
+  hpPerLevel?: number;
 }
 
 export type Path = ClassPath | AncestryPath | MagePath | PrestigePath;

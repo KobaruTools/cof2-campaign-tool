@@ -416,6 +416,7 @@ export const prestigePaths1: PrestigePath[] = [
     category: 'generic',
     prerequisites:
       "Cette voie peut être ouverte à n'importe quel profil si le personnage a été mordu par un lycanthrope. Dans ce dernier cas, reportez-vous à l'encadré grand méchant loup. Le personnage obtient 5 PV par niveau.",
+    hpPerLevel: 5,
     featureIds: [
       'prestige-lycanthrope-r4',
       'prestige-lycanthrope-r5',
@@ -433,6 +434,7 @@ export const prestigePaths1: PrestigePath[] = [
     category: 'generic',
     prerequisites:
       "cette voie de prestige peut donner lieu à une aventure particulière ou à la découverte d'éléments cachés de l'histoire de la lignée du personnage. Le personnage obtient 5 PV par niveau.",
+    hpPerLevel: 5,
     featureIds: [
       'prestige-sang-dragon-r4',
       'prestige-sang-dragon-r5',
@@ -450,6 +452,7 @@ export const prestigePaths1: PrestigePath[] = [
     category: 'generic',
     prerequisites:
       "Cette voie est accessible à tout personnage qui s'est attaché les services d'un familier. Le MJ peut aussi souhaiter organiser la rencontre du héros avec son compagnon lors de l'aventure suivante, dès lors que le joueur a investi les points pour faire l'acquisition du rang 1 de la voie. Chaque familier apporte des pouvoirs magiques à son maître. Le personnage obtient 4 PV par niveau.",
+    hpPerLevel: 4,
     featureIds: [
       'prestige-familier-fantastique-r3',
       'prestige-familier-fantastique-r4',

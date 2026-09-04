@@ -117,7 +117,10 @@ export function derivedStatBreakdown(
       // force le détail niveau par niveau pour l'expliciter (sinon l'affichage compact
       // afficherait un gain « famille » fixe qui ne correspond pas au total).
       const hasRolledLevel = levelGains.some((g) => g.rolled);
-      const detailed = isHybridLevel1 || hasMixedLevel || hasRolledLevel;
+      // PER-493 : un niveau de voie de prestige au PV/niveau dérogatoire a un gain propre
+      // (ex. sang-dragon 5 PV/niveau) → mêmes raisons que le dé de vie, on force le détail.
+      const hasPrestigeOverride = levelGains.some((g) => g.pathName);
+      const detailed = isHybridLevel1 || hasMixedLevel || hasRolledLevel || hasPrestigeOverride;
       const con = abilities.CON;
       const conLabel = con >= 0 ? `+ CON ${con}` : `− CON ${Math.abs(con)}`;
       const familyName = (id: FamilyId): string => familyById.get(id)?.name ?? id;
@@ -168,6 +171,10 @@ export function derivedStatBreakdown(
               }
               const direction = g.familyGain < rawAverage ? 'inférieur' : 'supérieur';
               return `niveau mixte : moyenne ${detail} = ${frenchNum(rawAverage)} → arrondi à ${g.familyGain} (demi-PV ${direction}, alterné), ${conLabel} (p. 177)`;
+            }
+            if (g.pathName) {
+              const pageRef = g.pathSourcePage ? ` (p. ${g.pathSourcePage})` : '';
+              return `${g.pathName} (${g.familyGain} PV)${pageRef}, ${conLabel}`;
             }
             return `${familyName(g.familyIds[0])} (${g.familyGain} PV), ${conLabel} (p. 39)`;
           };
