@@ -302,5 +302,15 @@
         "tag": "other"
       }
     ]
+  },
+  {
+    "id": 17,
+    "date": "2026-09-04",
+    "items": [
+      {
+        "text": "Le pantin (poupée) accumule désormais sa réduction de dégâts jusqu'au rang 5, et les sang-dragon peuvent choisir une ascendance démoniaque.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
