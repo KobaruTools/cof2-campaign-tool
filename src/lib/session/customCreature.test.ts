@@ -5,6 +5,7 @@ import {
   CUSTOM_CREATURE_FALLBACK_NAME,
   CUSTOM_CREATURE_SLUG,
   CUSTOM_LIST_MAX_LENGTH,
+  CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH,
   CUSTOM_TEXT_MAX_LENGTH,
   customCreatureBlob,
   customCreatureFromBestiary,
@@ -79,6 +80,16 @@ describe('normalizeCustomCreature', () => {
     expect(custom?.specialAbilities?.[0].text).toHaveLength(CUSTOM_TEXT_MAX_LENGTH);
   });
 
+  it('borne les capacités spéciales à son propre plafond, plus large que celui des attaques', () => {
+    expect(CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH).toBeGreaterThan(CUSTOM_LIST_MAX_LENGTH);
+    const specialAbilities = Array.from({ length: CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH + 5 }, (_v, i) => ({
+      name: `Capacité ${i}`,
+      text: 'x',
+    }));
+    const custom = normalizeCustomCreature({ ...BASE, specialAbilities });
+    expect(custom?.specialAbilities).toHaveLength(CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH);
+  });
+
   it('ne conserve que les caractéristiques renseignées (PER-455)', () => {
     const custom = normalizeCustomCreature({
       ...BASE,
@@ -101,6 +112,16 @@ describe('normalizeCustomCreature', () => {
   it('omet la RD sans valeur numérique', () => {
     expect(normalizeCustomCreature({ ...BASE, damageReduction: { scope: 'fire' } })?.damageReduction).toBeUndefined();
     expect(normalizeCustomCreature({ ...BASE, damageReduction: {} })?.damageReduction).toBeUndefined();
+  });
+
+  it('normalise les caracs à dé bonus, en écartant les ids inconnus et les doublons', () => {
+    expect(normalizeCustomCreature({ ...BASE, bonusDieAbilities: ['CON', 'PER', 'CON', 'xyz'] })
+      ?.bonusDieAbilities).toEqual(['CON', 'PER']);
+  });
+
+  it('omet les caracs à dé bonus quand la liste est vide ou absente', () => {
+    expect(normalizeCustomCreature({ ...BASE, bonusDieAbilities: [] })?.bonusDieAbilities).toBeUndefined();
+    expect(normalizeCustomCreature(BASE)?.bonusDieAbilities).toBeUndefined();
   });
 });
 
@@ -140,6 +161,17 @@ describe('customCreatureBlob', () => {
     const blob = customCreatureBlob(BASE);
     expect(blob.abilities).toBeUndefined();
     expect(blob.damageReduction).toBeUndefined();
+  });
+
+  it('projette les caracs à dé bonus', () => {
+    const blob = customCreatureBlob({ ...BASE, abilities: { CON: 1 }, bonusDieAbilities: ['CON', 'PER'] });
+    expect(blob.bonusDieAbilities).toEqual(['CON', 'PER']);
+  });
+
+  it('affiche quand même la grille (à 0) si un dé bonus est coché sans aucune valeur chiffrée', () => {
+    const blob = customCreatureBlob({ ...BASE, bonusDieAbilities: ['PER'] });
+    expect(blob.abilities).toEqual({ FOR: 0, CON: 0, AGI: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 });
+    expect(blob.bonusDieAbilities).toEqual(['PER']);
   });
 });
 

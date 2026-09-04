@@ -29,8 +29,15 @@ export const CUSTOM_FIELD_MAX_LENGTH = 60;
 /** Longueur maximale d'un texte long saisi à la main (description, texte de capacité). */
 export const CUSTOM_TEXT_MAX_LENGTH = 1000;
 
-/** Nombre maximal d'attaques / de capacités saisissables (garde-fou de saisie). */
+/** Nombre maximal d'attaques saisissables (garde-fou de saisie). */
 export const CUSTOM_LIST_MAX_LENGTH = 10;
+
+/**
+ * Nombre maximal de capacités spéciales saisissables — plafond distinct et plus large que
+ * `CUSTOM_LIST_MAX_LENGTH` (retour propriétaire : une créature manuelle costaude peut aligner
+ * plus de 10 capacités, contrairement aux attaques, toujours peu nombreuses en pratique).
+ */
+export const CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH = 30;
 
 /** Attaque saisie à la main. Seul le mode (`name`) est requis ; le reste est verbatim libre. */
 export interface CustomCreatureAttack {
@@ -92,6 +99,12 @@ export interface CustomCreature {
    * que `AbilityCompactGrid` (micro-fiches Joueurs/Compagnons de l'écran de MJ).
    */
   abilities?: Partial<Record<AbilityId, number>>;
+  /**
+   * Caractéristiques dont les tests bénéficient d'un DÉ BONUS INNÉ (notées « * » dans le livre,
+   * icône double-d20 `BonusDieBadge`) — même champ que `Creature.bonusDieAbilities` du bestiaire.
+   * Facultatif, indépendant de `abilities` : le MJ peut marquer un dé bonus sans chiffrer la carac.
+   */
+  bonusDieAbilities?: AbilityId[];
   /** Réduction de dégâts simple (PER-455). Facultative. */
   damageReduction?: CustomCreatureDamageReduction;
 }
@@ -138,7 +151,7 @@ function normalizeAbilities(raw: unknown): CustomCreatureAbility[] | undefined {
     const text = cleanText(entry.text, CUSTOM_TEXT_MAX_LENGTH);
     if (!name && !text) continue;
     out.push({ name: name ?? '', text: text ?? '' });
-    if (out.length === CUSTOM_LIST_MAX_LENGTH) break;
+    if (out.length === CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH) break;
   }
   return out.length > 0 ? out : undefined;
 }
@@ -153,6 +166,14 @@ function normalizeAbilityScores(raw: unknown): Partial<Record<AbilityId, number>
     if (value !== undefined) out[id] = value;
   }
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Liste de caracs à dé bonus normalisée : ids inconnus écartés, doublons fusionnés. */
+function normalizeBonusDieAbilities(raw: unknown): AbilityId[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const known = new Set<AbilityId>(ABILITY_IDS);
+  const out = Array.from(new Set(raw.filter((id): id is AbilityId => known.has(id as AbilityId))));
+  return out.length > 0 ? out : undefined;
 }
 
 /** RD normalisée : `undefined` sans valeur numérique ; `scope` écarté s'il n'est pas un type connu. */
@@ -188,6 +209,7 @@ export function normalizeCustomCreature(raw: unknown): CustomCreature | undefine
   const attacks = normalizeAttacks(entry.attacks);
   const specialAbilities = normalizeAbilities(entry.specialAbilities);
   const abilities = normalizeAbilityScores(entry.abilities);
+  const bonusDieAbilities = normalizeBonusDieAbilities(entry.bonusDieAbilities);
   const damageReduction = normalizeDamageReduction(entry.damageReduction);
   return {
     initiative,
@@ -200,6 +222,7 @@ export function normalizeCustomCreature(raw: unknown): CustomCreature | undefine
     ...(attacks ? { attacks } : {}),
     ...(specialAbilities ? { specialAbilities } : {}),
     ...(abilities ? { abilities } : {}),
+    ...(bonusDieAbilities ? { bonusDieAbilities } : {}),
     ...(damageReduction ? { damageReduction } : {}),
   };
 }
@@ -233,13 +256,16 @@ export function customCreatureBlob(
     initiative: custom.initiative,
     ...(custom.attacks ? { attacks: custom.attacks } : {}),
     ...(custom.specialAbilities ? { specialAbilities: custom.specialAbilities } : {}),
-    ...(custom.abilities
+    ...(custom.abilities || custom.bonusDieAbilities
       ? {
+          // Grille complète même si seul un dé bonus est coché sans aucune valeur chiffrée :
+          // sinon la grille (et donc le badge double-d20 qui s'y accroche) ne s'afficherait pas.
           abilities: Object.fromEntries(
             ABILITY_IDS.map((id) => [id, custom.abilities?.[id] ?? 0]),
           ) as Record<AbilityId, number>,
         }
       : {}),
+    ...(custom.bonusDieAbilities ? { bonusDieAbilities: custom.bonusDieAbilities } : {}),
     ...(custom.damageReduction
       ? {
           damageReduction: {

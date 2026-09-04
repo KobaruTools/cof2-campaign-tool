@@ -10,9 +10,11 @@
  *    l'« invoquer » dans le combat.
  *  - **Créée à la main** : le MJ saisit lui-même un bloc minimal pour un adversaire qui n'est
  *    dans aucun livre (PNJ improvisé, variante bricolée). Seuls **initiative, PV et défense**
- *    sont obligatoires ; agilité, NC, description, attaques, capacités, les 7 caractéristiques
- *    et une RD simple (PER-455) sont facultatifs. Le bloc saisi est copié sur l'instance de
- *    combat, donc affiché partout (écran de MJ, projection, écran joueur) sans rien charger.
+ *    sont obligatoires ; NC, description, attaques, capacités, les 7 caractéristiques et une RD
+ *    simple (PER-455) sont facultatifs. Pas de champ « Agilité » séparé : le départage
+ *    d'initiative lit directement la carac AGI du cadre « Caractéristiques ». Le bloc saisi est
+ *    copié sur l'instance de combat, donc affiché partout (écran de MJ, projection, écran
+ *    joueur) sans rien charger.
  *
  * PER-295 : on peut donner à la créature un **nom personnalisé** (« Grishnak le borgne »,
  * « Garde du corps » — obligatoire pour une créature créée à la main) et un **nombre
@@ -36,8 +38,12 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -59,8 +65,10 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { ABILITY_IDS, RESISTIBLE_DAMAGE_TYPES, type AbilityId, type ResistibleDamageType } from '@/data/schema';
 import { useBestiaryStore } from '@/stores/bestiary';
+import { AbilityIcon } from '@/components/AbilityIcon';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
 import { RichTextEditor } from '@/components/sheet/RichTextEditor';
@@ -77,6 +85,7 @@ import {
   normalizeCustomCreature,
   CUSTOM_FIELD_MAX_LENGTH,
   CUSTOM_LIST_MAX_LENGTH,
+  CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH,
   type CustomCreature,
 } from '@/lib/session/customCreature';
 import { CreatureCatalogAutocomplete } from './CreatureCatalogAutocomplete';
@@ -236,7 +245,6 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
   const [initiative, setInitiative] = useState(numberField(editingCustom?.initiative));
   const [hitPoints, setHitPoints] = useState(numberField(editingCustom?.hitPoints));
   const [defense, setDefense] = useState(numberField(editingCustom?.defense));
-  const [agility, setAgility] = useState(numberField(editingCustom?.agility));
   const [nc, setNc] = useState(editingCustom?.nc ?? '');
   const [description, setDescription] = useState(editingCustom?.description ?? '');
   const [attacks, setAttacks] = useState<AttackDraft[]>(() =>
@@ -251,12 +259,23 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
     (editingCustom?.specialAbilities ?? []).map((a) => ({ name: a.name, text: a.text })),
   );
   // Les 7 caractéristiques (PER-455), facultatives — même patron « texte tenu, entier parsé à la
-  // validation » que le reste du socle numérique.
+  // validation » que le reste du socle numérique. AGI double aussi de champ de départage
+  // d'initiative (`CustomCreature.agility`) : plus de champ « Agilité » séparé dans le socle de
+  // combat, un seul cadre AGI. Repli sur l'ancien `agility` autonome pour ne pas perdre la valeur
+  // d'une créature éditée depuis avant cette fusion.
   const [abilityScores, setAbilityScores] = useState<Record<AbilityId, string>>(
     () =>
       Object.fromEntries(
-        ABILITY_IDS.map((id) => [id, numberField(editingCustom?.abilities?.[id])]),
+        ABILITY_IDS.map((id) => [
+          id,
+          numberField(id === 'AGI' ? (editingCustom?.abilities?.AGI ?? editingCustom?.agility) : editingCustom?.abilities?.[id]),
+        ]),
       ) as Record<AbilityId, string>,
+  );
+  // Caracs à dé bonus (notées « * » dans le livre, icône double-d20) — indépendant des valeurs
+  // chiffrées ci-dessus : le MJ peut cocher un dé bonus sans renseigner la carac.
+  const [bonusDieAbilities, setBonusDieAbilities] = useState<Set<AbilityId>>(
+    () => new Set(editingCustom?.bonusDieAbilities ?? []),
   );
   // RD simple (PER-455) : une valeur plate + un type de dégât optionnel (liste fermée du jeu).
   const [damageReductionValue, setDamageReductionValue] = useState(
@@ -293,7 +312,9 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
         initiative: parseIntegerField(initiative),
         hitPoints: parseIntegerField(hitPoints),
         defense: parseIntegerField(defense),
-        agility: parseIntegerField(agility),
+        // Départage d'initiative : reflète directement la carac AGI saisie ci-dessous, plus de
+        // champ séparé (cf. commentaire sur `abilityScores`).
+        agility: parseIntegerField(abilityScores.AGI),
         nc,
         description,
         attacks,
@@ -301,6 +322,7 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
         abilities: Object.fromEntries(
           ABILITY_IDS.map((id) => [id, parseIntegerField(abilityScores[id])]),
         ),
+        bonusDieAbilities: Array.from(bonusDieAbilities),
         damageReduction: {
           value: parseIntegerField(damageReductionValue),
           scope: damageReductionScope || undefined,
@@ -310,12 +332,12 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
       initiative,
       hitPoints,
       defense,
-      agility,
       nc,
       description,
       attacks,
       abilities,
       abilityScores,
+      bonusDieAbilities,
       damageReductionValue,
       damageReductionScope,
     ],
@@ -512,6 +534,13 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
                     value={initiative}
                     onChange={(e) => setInitiative(e.target.value)}
                     sx={{ flex: '1 1 120px', minWidth: 110 }}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <BoltOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+                        ),
+                      },
+                    }}
                   />
                   <TextField
                     type="number"
@@ -521,7 +550,14 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
                     value={hitPoints}
                     onChange={(e) => setHitPoints(e.target.value)}
                     sx={{ flex: '1 1 120px', minWidth: 110 }}
-                    slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                    slotProps={{
+                      htmlInput: { min: 0, step: 1 },
+                      input: {
+                        startAdornment: (
+                          <FavoriteBorderIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+                        ),
+                      },
+                    }}
                   />
                   <TextField
                     type="number"
@@ -531,15 +567,13 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
                     value={defense}
                     onChange={(e) => setDefense(e.target.value)}
                     sx={{ flex: '1 1 120px', minWidth: 110 }}
-                  />
-                  <TextField
-                    type="number"
-                    size="small"
-                    label="Agilité"
-                    value={agility}
-                    onChange={(e) => setAgility(e.target.value)}
-                    helperText="Départage les égalités"
-                    sx={{ flex: '1 1 120px', minWidth: 110 }}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <ShieldOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+                        ),
+                      },
+                    }}
                   />
                   <TextField
                     size="small"
@@ -548,7 +582,14 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
                     onChange={(e) => setNc(e.target.value)}
                     helperText="Facultatif"
                     sx={{ flex: '0 1 100px', minWidth: 90 }}
-                    slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                    slotProps={{
+                      htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH },
+                      input: {
+                        startAdornment: (
+                          <WarningAmberOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+                        ),
+                      },
+                    }}
                   />
                 </Stack>
               </Stack>
@@ -558,20 +599,56 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
               <Stack spacing={0.75}>
                 <FieldLabel>Caractéristiques</FieldLabel>
                 <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-                  {ABILITY_IDS.map((id) => (
-                    <TextField
-                      key={id}
-                      type="number"
-                      size="small"
-                      label={ABILITY_NAMES[id]}
-                      value={abilityScores[id]}
-                      onChange={(e) =>
-                        setAbilityScores((prev) => ({ ...prev, [id]: e.target.value }))
-                      }
-                      helperText="Facultatif"
-                      sx={{ flex: '1 1 110px', minWidth: 100 }}
-                    />
-                  ))}
+                  {ABILITY_IDS.map((id) => {
+                    const hasBonusDie = bonusDieAbilities.has(id);
+                    return (
+                      <TextField
+                        key={id}
+                        type="number"
+                        size="small"
+                        label={id}
+                        value={abilityScores[id]}
+                        onChange={(e) =>
+                          setAbilityScores((prev) => ({ ...prev, [id]: e.target.value }))
+                        }
+                        helperText={id === 'AGI' ? 'Départage les égalités d’initiative' : 'Facultatif'}
+                        sx={{ flex: '1 1 110px', minWidth: 100 }}
+                        slotProps={{
+                          input: {
+                            startAdornment: (
+                              <AbilityIcon ability={id} title size={18} sx={{ mr: 0.5 }} />
+                            ),
+                            endAdornment: (
+                              <AppTooltip
+                                title={
+                                  hasBonusDie
+                                    ? `Dé bonus (« * ») aux tests de ${ABILITY_NAMES[id]} — cliquer pour retirer`
+                                    : `Marquer un dé bonus (« * » du livre) aux tests de ${ABILITY_NAMES[id]}`
+                                }
+                              >
+                                <IconButton
+                                  size="small"
+                                  aria-label={`Dé bonus aux tests de ${ABILITY_NAMES[id]}`}
+                                  aria-pressed={hasBonusDie}
+                                  onClick={() =>
+                                    setBonusDieAbilities((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(id)) next.delete(id);
+                                      else next.add(id);
+                                      return next;
+                                    })
+                                  }
+                                  sx={{ opacity: hasBonusDie ? 1 : 0.35 }}
+                                >
+                                  <BonusDieBadge ability={ABILITY_NAMES[id]} size={14} noTooltip />
+                                </IconButton>
+                              </AppTooltip>
+                            ),
+                          },
+                        }}
+                      />
+                    );
+                  })}
                 </Stack>
               </Stack>
 
@@ -713,7 +790,7 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
                   <Button
                     size="small"
                     startIcon={<AddIcon />}
-                    disabled={abilities.length >= CUSTOM_LIST_MAX_LENGTH}
+                    disabled={abilities.length >= CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH}
                     onClick={() => setAbilities((prev) => [...prev, { ...EMPTY_ABILITY }])}
                   >
                     Ajouter une capacité
