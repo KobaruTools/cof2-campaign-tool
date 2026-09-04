@@ -18,6 +18,13 @@
  */
 
 const PAID_CONTENT_TERMS = [
+  // La notion même de « contenu payant »/« gating » est un leak à elle seule :
+  // même sans nommer d'entité précise, ça révèle au repo public qu'un
+  // chantier de contenu payant existe et qu'un mécanisme le cache. Cf.
+  // incident du 2026-09-04 : le patchnote décrivant CETTE fonctionnalité de
+  // filtrage citait lui-même « le contenu payant ».
+  'contenu payant',
+  'payant',
   // Le sourcebook lui-même. Forme PARENTHÉSÉE uniquement : « compagnon » seul
   // (ou « le compagnon ») est un terme de jeu générique très fréquent pour
   // un compagnon animal/invoqué (« tourbillon pour le compagnon », etc.) —
