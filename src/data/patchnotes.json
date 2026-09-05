@@ -1,6 +1,1348 @@
 [
   {
     "id": 1,
+    "date": "2026-06-13",
+    "items": [
+      {
+        "text": "Ajout du wizard de création de personnage : étapes Peuple, Profil, Caractéristiques, Identité et Récapitulatif.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Wizard : illustrations de peuples et de profils, badges de caractéristiques par profil.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Wizard : étape Profil avec liste claire des armures et armes autorisées par classe.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Wizard : étape Identité avec âge/taille/poids par peuple (infobulles) et générateur de noms.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Wizard : étape Récapitulatif avec capacités acquises et détail des statistiques dérivées.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Ajout du dé évolutif (d4°) avec badge dédié, et nettoyage des libellés d'équipement.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "date": "2026-06-14",
+    "items": [
+      {
+        "text": "Ajout de la fiche de personnage : lecture et édition permissive.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Fiche : illustrations en filigrane dans l'en-tête, avec choix de l'illustration de profil (standard/alternative).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des avertissements de conformité et de la surcharge des statistiques dérivées.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la montée de niveau (wizard) et de l'historique des niveaux.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Voies : vue en colonnes calquée sur la fiche, avec alignement des rangs.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des profils hybrides, dès la création et à la montée de niveau, avec des points de vigueur fidèles.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Ajout du budget de points de capacité avec avertissement de sur-dépense.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Liste des personnages : code couleur et icône par profil.",
+        "tag": "other"
+      },
+      {
+        "text": "Recensement et classification des 656 capacités du jeu.",
+        "tag": "codex"
+      },
+      {
+        "text": "Ajout du coût en mana affiché sur chaque sort, avec badge dédié.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des choix portés par une capacité (ex : options du Golem).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Finitions : messages d'erreur, retours d'action et confirmation de création. Premier passage responsive sur mobile.",
+        "tag": "other"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "date": "2026-06-15",
+    "items": [
+      {
+        "text": "Ajout des effets conditionnels/temporaires/évolutifs (interrupteurs manuels) sur les capacités.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Population complète de la famille des mages (textes, effets, choix, coûts en mana).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Rendu enrichi des textes de règles : glossaire des acronymes et lecture automatique des formules.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la mini-fiche de créature/compagnon, réutilisable.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Voies de prestige regroupées dans un accordéon à la montée de niveau.",
+        "tag": "creation-levelup"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "date": "2026-06-16",
+    "items": [
+      {
+        "text": "Le titre de l'onglet affiche maintenant le nom du personnage.",
+        "tag": "other"
+      },
+      {
+        "text": "Ajout du dé bonus aux tests et du modificateur de caractéristique par capacité.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Renommage de « Points de vie » en « Points de vigueur ».",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Prise en compte des caractéristiques effectives dans certaines capacités (ex : Grosse tête).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "date": "2026-06-18",
+    "items": [
+      {
+        "text": "Ajout des bonus aux tests et des domaines de compétence.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "date": "2026-06-20",
+    "items": [
+      {
+        "text": "Population complète de la famille des mystiques (compteurs d'usage, Forme animale, notes).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "date": "2026-06-22",
+    "items": [
+      {
+        "text": "Voies : nom de la voie et icône de profil ajoutés aux titres.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de dés dynamiques évolutifs selon le rang de voie (ex : Transe de guérison).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Compétences & tests : les domaines sans bonus sont masqués par défaut.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des choix de caractéristique sur certaines capacités (ex : Projection mentale, Passe-muraille).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "La fiche garde son en-tête visible au défilement (sticky).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de buffs conditionnels aux tests de caractéristique (ex : Bénédiction, Vêtements sacrés).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "date": "2026-06-23",
+    "items": [
+      {
+        "text": "Ajout du bonus de dégâts plat cross-voie (ex : Marteau de la foi) et du panthéon des 32 dieux du prêtre.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "date": "2026-06-24",
+    "items": [
+      {
+        "text": "Ajout du choix généraliste/spécialiste du prêtre et de la sélection du dieu, dans le wizard.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Prêtre spécialiste : la capacité divine de rang 1 est acquise dès la création et remplace la voie d'accueil.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la conversion des points de capacité orphelins, tracée dans l'historique.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Ajout du feedback « ce qu'il reste à faire » dans le wizard.",
+        "tag": "creation-levelup"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "date": "2026-06-25",
+    "items": [
+      {
+        "text": "Ajout d'un générateur d'historique de niveau et regroupement des niveaux consécutifs identiques dans le détail des points de vigueur.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Population complète du voleur, du barde, du rôdeur et de l'arquebusier (effets, choix, textes, bonus de test).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'affichage de la capacité empruntée en case décalée.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "date": "2026-06-26",
+    "items": [
+      {
+        "text": "Population complète du barbare (effets, choix, textes).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la consommation de la rage/furie du berserk à l'activation.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la réduction de dégâts et des immunités sur toutes les voies, avec refonte de l'affichage Défense.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la plage de critique élargie (affichage cross-profil).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Empêche le référencement de l'app (privée) par les moteurs de recherche.",
+        "tag": "other"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "date": "2026-06-27",
+    "items": [
+      {
+        "text": "Wizard : cartes de voie cochables directement dans la création.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Renommage du libellé « Sexe » en « Genre » (wizard et fiche).",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Ajout des badges de caractéristique neutres et personnalisés pour les modificateurs de peuple.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Population complète des 5 voies du guerrier.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la réduction de dégâts « zone » de Défense pour le bouclier du guerrier.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du choix consolidé « Armes de prédilection » (maître d'armes).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Masquage des choix répétables tant qu'aucun palier n'est atteint.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "date": "2026-07-01",
+    "items": [
+      {
+        "text": "Ajout d'icônes dédiées pour les immunités d'état sur le bloc Défense.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Correctifs de recette sur les voies de peuple (elfe haut, elfe sylvain).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Affichage enrichi des capacités empruntées (points de mana, marqueurs, concentration) et de leurs choix propres.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "date": "2026-07-02",
+    "items": [
+      {
+        "text": "Ajout du bloc « État du personnage » : barre de vie, jauge de mana, et jauges de ressources de capacité (rage, charges…).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des compteurs d'usages quotidiens des capacités (moine, soins, élixirs) avec réinitialisation au repos.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du système d'élixirs : réserve suivie, création par sort, et ajout direct à l'équipement.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Fiche : édition par bloc avec un crayon dédié par section.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du repos court (dépense d'un dé de récupération) et du repos long (option de soin à la valeur max).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'identité visuelle propre à la voie du mage.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "date": "2026-07-03",
+    "items": [
+      {
+        "text": "Ajout de l'Artefact étrange : sorts empruntés en puces avec système « Utiliser »/« Briser ».",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la bourse (argent en pièces d'or/d'argent/de cuivre) avec animation de scintillement.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Le repos long purge maintenant les élixirs préparés.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "date": "2026-07-04",
+    "items": [
+      {
+        "text": "Ajout de la conversion par flèches entre unités de monnaie (or/argent/cuivre).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la jauge de points de chance dans « État du personnage ».",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la bascule « Texte d'origine » pour voir le verbatim brut du livre.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "date": "2026-07-05",
+    "items": [
+      {
+        "text": "Ajout de l'import de personnage par glisser-déposer (modale JSON).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des fondations Campagne/Joueur, avec la campagne comme point d'entrée de navigation.",
+        "tag": "campaign"
+      },
+      {
+        "text": "Ajout de la connexion (Google/Discord) et de la persistance des personnages dans le cloud.",
+        "tag": "account"
+      },
+      {
+        "text": "Fiche : suivi de la souris sur les illustrations d'en-tête et verre dépoli uniforme sur les sections.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du footer global (crédits, mentions légales, citation).",
+        "tag": "other"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "date": "2026-07-06",
+    "items": [
+      {
+        "text": "Ajout de la page de gestion de compte.",
+        "tag": "account"
+      },
+      {
+        "text": "Ajout du téléversement d'un personnage local vers le cloud.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Campagnes : vue actifs/archivés, page de réglages, et statut de personnage (vivant/retraité/mort).",
+        "tag": "campaign"
+      },
+      {
+        "text": "Ajout de la page « À propos ».",
+        "tag": "other"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "date": "2026-07-07",
+    "items": [
+      {
+        "text": "Ajout de la page Politique de vie privée (RGPD) et de l'export self-service des données personnelles.",
+        "tag": "account"
+      },
+      {
+        "text": "Ajout de l'assistant de création de campagne (multi-étapes) et de l'invitation des joueurs.",
+        "tag": "campaign"
+      },
+      {
+        "text": "Ajout de l'espace joueur : voir/éditer/créer/réclamer sa fiche en ligne.",
+        "tag": "campaign"
+      },
+      {
+        "text": "Accueil : regroupement par campagne, animation et aperçu au survol des personnages.",
+        "tag": "other"
+      },
+      {
+        "text": "Ajout du reskin permanent du druide en « bâton noueux ».",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "date": "2026-07-08",
+    "items": [
+      {
+        "text": "Ajout de l'action « Réclamer » un personnage sur l'espace joueur, avec aperçu et confirmation.",
+        "tag": "campaign"
+      },
+      {
+        "text": "Ajout du roster en lecture seule pour voir les fiches des autres joueurs de la campagne.",
+        "tag": "campaign"
+      },
+      {
+        "text": "Ajout du dé de vie à la montée de niveau (règle maison).",
+        "tag": "creation-levelup"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "date": "2026-07-09",
+    "items": [
+      {
+        "text": "Ajout du modèle d'équipement porté, avec interface équiper/déséquiper et détection des conflits de mains.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la maîtrise des armes/armures avec indicateur de dé malus.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du balisage automatique des états préjudiciables dans les textes de capacités.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout d'une icône par titre de section de la fiche de personnage.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "date": "2026-07-10",
+    "items": [
+      {
+        "text": "Ajout du plafond de port d'armure/bouclier par profil.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "date": "2026-07-14",
+    "items": [
+      {
+        "text": "Ajout de l'écran de MJ avec aperçus des personnages réclamés par les joueurs.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout du bouton « Utiliser » réservé aux consommables, et de l'accès à l'armure amélioré par un rang de voie.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Remplacement des indicateurs de chargement (spinners) par des squelettes visuels.",
+        "tag": "other"
+      },
+      {
+        "text": "Ajout de l'import multi-fichiers de personnages.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Navigation interne en vraies ancres (ouverture en nouvel onglet).",
+        "tag": "other"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "date": "2026-07-15",
+    "items": [
+      {
+        "text": "Ajout du bonus magique d'armure (Défense mondaine vs totale).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "date": "2026-07-16",
+    "items": [
+      {
+        "text": "Correction de la saisie des valeurs négatives (boutons −/+) pour les caractéristiques en édition.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "date": "2026-07-17",
+    "items": [
+      {
+        "text": "Ajout du surcoût de mana des sorts lancés en armure non autorisée.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la restriction fine d'usage d'armure par capacité d'origine.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des variantes d'objet et d'un résolveur de statistique effective pour l'équipement.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des icônes de type d'objet dans l'inventaire et d'une modale unifiée de création/édition d'objet.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "date": "2026-07-18",
+    "items": [
+      {
+        "text": "Correction : la chance revient à 100% à la montée de niveau et les points de vigueur ont un plancher à 0.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 28,
+    "date": "2026-07-19",
+    "items": [
+      {
+        "text": "Ajout du retrait effectif des bonus des capacités désactivées par le port d'une armure trop lourde.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la teinte propre par caractéristique sur les icônes et badges.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du modèle structuré de dégâts d'arme et du bouton « Deux mains ».",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du dé malus du combat à deux armes (avec exception Combattant héroïque).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du bonus de Défense magique généralisé à tout objet équipé.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "date": "2026-07-20",
+    "items": [
+      {
+        "text": "Ajout du combat à mains nues : bascule arme⇄mains nues sur la carte d'attaque au contact.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la plage de critique intrinsèque de l'arme, câblée automatiquement au type d'arme porté.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'affichage de la distance et de la couche d'effet « +DM » sur les dégâts d'arme.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du radar de caractéristiques (les 7 caractéristiques, base vs effectif).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du bonus plat aux dégâts avec détail de sa source.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "date": "2026-07-21",
+    "items": [
+      {
+        "text": "Passage de l'app en responsive : typographie adaptative, modales et wizard adaptés au mobile.",
+        "tag": "other"
+      },
+      {
+        "text": "Écran de MJ et cartes de personnage adaptés au mobile.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout des limitations d'armure sur les capacités empruntées (Touche-à-tout, Talent pour la magie).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "date": "2026-07-22",
+    "items": [
+      {
+        "text": "Ajout de la section « Compagnons » sur la fiche, avec les invocations (zombies multi-instances…).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du réordonnancement manuel de l'inventaire par glisser-déposer, et de la bascule liste/colonnes.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la conformité data-driven des armes à feu et du choix d'arme de départ de l'arquebusier.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Premier jet d'un combat tracker pour le MJ (créatures + ordre d'initiative).",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 32,
+    "date": "2026-07-23",
+    "items": [
+      {
+        "text": "Ajout du Bestiaire : extraction des 85 créatures du livre de base, avec page de consultation, tri et filtres.",
+        "tag": "bestiary"
+      },
+      {
+        "text": "Ajout du combat en cours persisté par campagne, sur l'écran de MJ.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de la barre de navigation globale à deux étages.",
+        "tag": "other"
+      },
+      {
+        "text": "Première version du visualiseur PDF, avec renvois cliquables vers le livre de règles.",
+        "tag": "reference-sheet"
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "date": "2026-07-24",
+    "items": [
+      {
+        "text": "Ajout des 12 familiers fantastiques, unifiés avec les compagnons.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du cache local (hors-ligne) du Bestiaire, avec invalidation par version.",
+        "tag": "bestiary"
+      },
+      {
+        "text": "Écran de MJ : ajout de n'importe quelle créature du bestiaire au combat, et fenêtre d'initiative détachable synchronisée.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout du mode projection du tracker (sans points de vigueur ni NC, pour l'écran des joueurs) et de la visibilité des créatures (œil).",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de la recherche plein-texte et des pages sources cliquables dans le visualiseur PDF.",
+        "tag": "reference-sheet"
+      }
+    ]
+  },
+  {
+    "id": 34,
+    "date": "2026-07-25",
+    "items": [
+      {
+        "text": "Écran de MJ : distinction créatures alliées/adverses en 3 grilles (joueurs/alliés/adversaires).",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 35,
+    "date": "2026-07-26",
+    "items": [
+      {
+        "text": "Ajout du rang 5 du familier fantastique (réduction de dégâts, sort appris).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 36,
+    "date": "2026-07-27",
+    "items": [
+      {
+        "text": "Ajout des voies de prestige génériques Expert et Spécialiste.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Bestiaire : ajout du filtre par livre source.",
+        "tag": "bestiary"
+      },
+      {
+        "text": "Ajout d'un style dédié aux voies de prestige (bordure en dégradé).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "date": "2026-07-28",
+    "items": [
+      {
+        "text": "Ajout des montures et véhicules possédés par le personnage (hors inventaire).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du visualiseur PDF en défilement continu du livre entier.",
+        "tag": "reference-sheet"
+      },
+      {
+        "text": "Population des voies de prestige du lycanthrope et de l'archer arcanique.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la couleur des voies de prestige par famille.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Bestiaire : remontée des traits défensifs en badges dans le cadre Défense.",
+        "tag": "bestiary"
+      },
+      {
+        "text": "Écran de MJ : ajout d'un panneau latéral pour consulter la fiche d'un joueur.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Population de la voie de prestige de l'espion.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 38,
+    "date": "2026-07-29",
+    "items": [
+      {
+        "text": "Ajout de la session de table synchronisée en temps réel (présence, états de jeu, équipement, montures, combat).",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Population des voies de prestige du casse-cou, des ombres, du chasseur de prime, du duelliste et du flibustier.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des bonus/malus de caractéristiques et de statistiques dérivées sur les objets enchantés.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des modificateurs chiffrés structurés sur les états de combat, synchronisés en session.",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "date": "2026-07-30",
+    "items": [
+      {
+        "text": "Écran de MJ : ajout des badges d'état avec ajustement automatique de la Défense/attaque sur les cartes du tracker.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de la répercussion des états de combat sur la fiche du joueur en session, et en projection.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Population des voies de prestige du tueur à gages, du touche-à-tout, du pacte féerique et des armes à deux mains.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du suivi des munitions des armes à feu.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du compteur de manche « Tour N » réinitialisable dans l'ordre d'initiative.",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 40,
+    "date": "2026-07-31",
+    "items": [
+      {
+        "text": "Écran de MJ : départage des égalités d'initiative dans le tracker.",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 41,
+    "date": "2026-08-03",
+    "items": [
+      {
+        "text": "Population de la voie de prestige du chevalier dragon (drake en monture).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des objets à charges génériques (« Utiliser »/« Recharger »).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'écran distant d'ordre d'initiative pour les joueurs.",
+        "tag": "campaign"
+      },
+      {
+        "text": "Écran de MJ : nom personnalisé et ajout en lot de créatures, et nouvel état « Combat aquatique ».",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 42,
+    "date": "2026-08-04",
+    "items": [
+      {
+        "text": "Population des voies de prestige du chevalier dragon (par couleur de drake), du combattant des tunnels et du combat du mal.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'aide-mémoire : schéma de données, extraction des règles de combat, de résolution des tests et de l'environnement.",
+        "tag": "reference-sheet"
+      },
+      {
+        "text": "Écran de MJ : lien de projection dédié en lecture seule avec barres de vie/mana des joueurs.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Écran de MJ : pilotage du tour au clavier, mode compact du tracker (~8 combattants) et bande d'initiative collée en bas.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de l'immunité situationnelle conditionnée à l'agresseur.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 43,
+    "date": "2026-08-05",
+    "items": [
+      {
+        "text": "Population des voies de prestige du danseur de guerre et de l'écorcheur.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'aide-mémoire des manœuvres de combat pour les joueurs, en panneaux colorés à onglets.",
+        "tag": "reference-sheet"
+      },
+      {
+        "text": "Écran de MJ : sections Joueurs/Alliés/Adversaires repliables, duplication d'une créature, et butin custom piochable dans le tiroir MJ.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Écran de MJ : rumeurs de taverne dans un tiroir d'outils, et voyant de session compact.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de la projection : distinction assommé/mort, et révélation de l'état affaibli des alliés.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout du modèle d'objet magique (niveau de magie) qui agit réellement en jeu.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Fiche : onglets d'en-tête de section et ordre d'initiative collé en bas de la fiche.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "En-tête responsive avec paliers icône seule et menu burger.",
+        "tag": "other"
+      }
+    ]
+  },
+  {
+    "id": 44,
+    "date": "2026-08-06",
+    "items": [
+      {
+        "text": "Ajout du générateur d'objets magiques « selon le livre », avec origine narrative optionnelle.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Population des voies de prestige du guerrier-mage, de l'ours, du porteur de bouclier, du tueur de géants, de l'archimage et du chaos.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la page d'accueil publique (vitrine) avec démonstrations manipulables, ouverte aux visiteurs sans compte.",
+        "tag": "other"
+      },
+      {
+        "text": "Ajout du repos de groupe proposé par le MJ à toute la table, et de la pause demandée par un joueur.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout des buffs de groupe qui se posent sur tout le camp en une fois, levés d'un clic par le MJ.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Bestiaire : ajout d'une catégorie dédiée aux PNJ de l'annexe.",
+        "tag": "bestiary"
+      },
+      {
+        "text": "Ajout de l'octroi fixe d'un sort d'une autre voie (voie de peuple).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 45,
+    "date": "2026-08-07",
+    "items": [
+      {
+        "text": "Le sort octroyé par une voie de peuple se rend correctement, et apparaît en carte native quand déjà possédé.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 46,
+    "date": "2026-08-08",
+    "items": [
+      {
+        "text": "Ajout de la voie des cristaux et de la voie de l'élémentaliste.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des objets magiques en plusieurs exemplaires, avec réserve MJ/joueur dédiée.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout du bouton mobile de transfert entre les réserves de butin.",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 47,
+    "date": "2026-08-09",
+    "items": [
+      {
+        "text": "Écran de MJ : barre d'actions collée sous l'en-tête, et générateur de butin de combat en lot.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de l'indicateur du dé de soin bonus (Survie) à côté des dés de récupération.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Population de la voie de prestige de l'élémentaliste (suite).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la possibilité, pour un joueur, d'annoncer un effet de groupe que le MJ adopte d'un clic.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Écran de MJ : le tiroir « Fiche » montre désormais les états posés et leur delta.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout du choix du type de Grand félin (druide) avec nom personnalisé.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du portrait de personnage personnalisé (upload).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 48,
+    "date": "2026-08-10",
+    "items": [
+      {
+        "text": "Population des voies de prestige de l'enchanteur et du gel.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du menu de choix du portrait de personnage (fiche + création), avec recadrage et aperçu avant envoi.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du don d'objet entre joueurs sans validation du MJ.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Population de la voie de prestige de l'invocation majeure (montures passager).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Écran de MJ : affichage des compagnons dans l'ordre d'initiative et roster dédié.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de dés personnalisés (simple/double/custom) sur les objets magiques à effet élémentaire.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Écran de MJ : ajout des effets situationnels Maudit et En flammes.",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 49,
+    "date": "2026-08-11",
+    "items": [
+      {
+        "text": "Ajout des potions consommables custom (énergie configurable, dé évolutif d4°).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Population des voies de prestige du mage de guerre et de la magie de l'esprit.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Population de la voie de prestige de la magie des mots.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'éditeur de texte riche sur les descriptions d'objet et les notes de personnage.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du système d'amis (recherche, demandes).",
+        "tag": "account"
+      },
+      {
+        "text": "Ajout de la barre condensée collée à l'en-tête (caractéristiques/statistiques/points de vigueur-mana).",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 50,
+    "date": "2026-08-12",
+    "items": [
+      {
+        "text": "Fiche : persistance du choix de disposition (colonnes/lignes) des voies au rechargement.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du curseur de durée choisie pour Fuite en avant.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Wizard : grille de vignettes illustrées pour le choix de peuple, avec renvoi de page source sur le nom du peuple.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Population de la voie de prestige du maître des sorts.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 51,
+    "date": "2026-08-13",
+    "items": [
+      {
+        "text": "Wizard : portrait en défilement infini pour la carte détail Peuple.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Population de la voie de prestige de la vision.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 52,
+    "date": "2026-08-14",
+    "items": [
+      {
+        "text": "Ajout du non-cumul rage/furie du berserk avec 6 autres voies (règle du livre).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Anime le mini-wizard de montée de niveau (capacités choisies, roulette de points de vigueur).",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Population des voies de prestige de l'armure sacrée et des éléments (feu, terre).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du dégradé animé sur les voies de prestige (titre, ligne, icônes, cartes empruntées).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'historique des parties de campagne, ouvert en lecture aux joueurs.",
+        "tag": "campaign"
+      },
+      {
+        "text": "Ajout du graphe simplifié des voies au wizard de montée de niveau, avec appui long pour l'aperçu de rang.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Migration de la nomenclature des clés de stockage local de l'app.",
+        "tag": "other"
+      }
+    ]
+  },
+  {
+    "id": 53,
+    "date": "2026-08-15",
+    "items": [
+      {
+        "text": "Ajout du bloc « Données stockées sur cet appareil » et de son nettoyage, dans le compte.",
+        "tag": "account"
+      },
+      {
+        "text": "Agrandissement des icônes et chiffres (dés, caractéristiques, statistiques) sur mobile.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout d'un tiroir Historique des parties à l'écran de MJ, avec présences et récap partagé.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout des notes de session, côté MJ et côté joueur.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la bibliothèque de règles Codex (sous-page Voies).",
+        "tag": "codex"
+      },
+      {
+        "text": "Ajout du moteur de tour guidé, avec un premier tutoriel sur la création d'objet.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de la réinitialisation des tutoriels par page, dans le compte.",
+        "tag": "account"
+      },
+      {
+        "text": "Ajout d'URLs lisibles pour les personnages et campagnes.",
+        "tag": "other"
+      },
+      {
+        "text": "Population de la voie de prestige élémentaire de l'air.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout du tour guidé sur l'écran MJ.",
+        "tag": "gm-screen"
+      }
+    ]
+  },
+  {
+    "id": 54,
+    "date": "2026-08-16",
+    "items": [
+      {
+        "text": "Ajout du socle des PNJ créés à la volée par le MJ (créer/lister/supprimer, fiche complète).",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de la sous-page Objets magiques du Codex.",
+        "tag": "codex"
+      },
+      {
+        "text": "Population de la voie de prestige élémentaire de l'eau.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 55,
+    "date": "2026-08-17",
+    "items": [
+      {
+        "text": "PNJ : ajout du genre, d'un générateur de nom, de catégories/tri/recherche et des statistiques de combat optionnelles.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout du tour guidé de la fiche de personnage.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout des sous-pages Dieux du prêtre, et Familiers et montures, du Codex.",
+        "tag": "codex"
+      },
+      {
+        "text": "Ajout du badge « a déjà joué » et du réordonnancement libre de l'ordre d'initiative.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Population de la voie de prestige liée à la Forme d'arbre du druide.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 56,
+    "date": "2026-08-18",
+    "items": [
+      {
+        "text": "Ajout d'un sélecteur d'animal réel pour Forme animale, et population de la voie du changeforme.",
+        "tag": "codex"
+      },
+      {
+        "text": "Codex : séparation des familiers, montures, véhicules et bardes en pages dédiées avec grilles.",
+        "tag": "codex"
+      },
+      {
+        "text": "Campagne : illustration de PNJ visible par toute la table, alignée sur le tiroir Butin.",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Ajout de la sous-page Équipement du Codex (tableau triable/filtrable).",
+        "tag": "codex"
+      },
+      {
+        "text": "Ajout du bouton Codex sur les renvois de page liés à un rang de voie.",
+        "tag": "codex"
+      },
+      {
+        "text": "Prêtre : la capacité divine du spécialiste peut se baser sur la meilleure de deux caractéristiques.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 57,
+    "date": "2026-08-19",
+    "items": [
+      {
+        "text": "Bestiaire : ajout du filtre par catégorie multi-sélection et du sous-filtre taxonomique des animaux.",
+        "tag": "bestiary"
+      },
+      {
+        "text": "Ajout du choix répétable Forme de voyage (voie du changeforme).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Population des voies de prestige du guérisseur et du maître de la nature.",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout de l'état MJ « En concentration ».",
+        "tag": "gm-screen"
+      },
+      {
+        "text": "Montures fantastiques : vraies caractéristiques du bestiaire une fois débloquées.",
+        "tag": "character-sheet"
+      }
+    ]
+  },
+  {
+    "id": 58,
+    "date": "2026-08-20",
+    "items": [
+      {
+        "text": "Ajout d'un badge cadenas expliquant le blocage sur un rang de voie verrouillé.",
+        "tag": "creation-levelup"
+      },
+      {
+        "text": "Ajout de l'aperçu des capacités empruntées dans la grille de montée de niveau.",
+        "tag": "creation-levelup"
+      }
+    ]
+  },
+  {
+    "id": 59,
+    "date": "2026-08-21",
+    "items": [
+      {
+        "text": "Codex : grille à 3 colonnes avec illustrations et survol, sur la page d'index.",
+        "tag": "codex"
+      },
+      {
+        "text": "Population de la voie de prestige du maître de la nature (roster bestiaire, monture géante).",
+        "tag": "character-sheet"
+      },
+      {
+        "text": "Ajout d'une icône Codex dédiée par sous-page, sur les cartes d'équipement.",
+        "tag": "codex"
+      }
+    ]
+  },
+  {
+    "id": 60,
     "date": "2026-09-03",
     "items": [
       {
@@ -122,7 +1464,7 @@
     ]
   },
   {
-    "id": 2,
+    "id": 61,
     "date": "2026-09-03",
     "items": [
       {
@@ -132,7 +1474,7 @@
     ]
   },
   {
-    "id": 3,
+    "id": 62,
     "date": "2026-09-03",
     "items": [
       {
@@ -150,7 +1492,7 @@
     ]
   },
   {
-    "id": 4,
+    "id": 63,
     "date": "2026-09-03",
     "items": [
       {
@@ -160,7 +1502,7 @@
     ]
   },
   {
-    "id": 5,
+    "id": 64,
     "date": "2026-09-03",
     "items": [
       {
@@ -170,7 +1512,7 @@
     ]
   },
   {
-    "id": 6,
+    "id": 65,
     "date": "2026-09-03",
     "items": [
       {
@@ -184,7 +1526,7 @@
     ]
   },
   {
-    "id": 7,
+    "id": 66,
     "date": "2026-09-03",
     "items": [
       {
@@ -194,7 +1536,7 @@
     ]
   },
   {
-    "id": 8,
+    "id": 67,
     "date": "2026-09-04",
     "items": [
       {
@@ -212,7 +1554,7 @@
     ]
   },
   {
-    "id": 9,
+    "id": 68,
     "date": "2026-09-04",
     "items": [
       {
@@ -226,7 +1568,7 @@
     ]
   },
   {
-    "id": 10,
+    "id": 69,
     "date": "2026-09-04",
     "items": [
       {
@@ -236,7 +1578,7 @@
     ]
   },
   {
-    "id": 11,
+    "id": 70,
     "date": "2026-09-04",
     "items": [
       {
@@ -250,7 +1592,7 @@
     ]
   },
   {
-    "id": 12,
+    "id": 71,
     "date": "2026-09-04",
     "items": [
       {
@@ -260,7 +1602,7 @@
     ]
   },
   {
-    "id": 13,
+    "id": 72,
     "date": "2026-09-04",
     "items": [
       {
@@ -270,7 +1612,7 @@
     ]
   },
   {
-    "id": 14,
+    "id": 73,
     "date": "2026-09-04",
     "items": [
       {
@@ -280,7 +1622,7 @@
     ]
   },
   {
-    "id": 15,
+    "id": 74,
     "date": "2026-09-04",
     "items": [
       {
@@ -294,7 +1636,7 @@
     ]
   },
   {
-    "id": 16,
+    "id": 75,
     "date": "2026-09-04",
     "items": [
       {
@@ -304,7 +1646,7 @@
     ]
   },
   {
-    "id": 17,
+    "id": 76,
     "date": "2026-09-04",
     "items": [
       {
@@ -314,7 +1656,7 @@
     ]
   },
   {
-    "id": 18,
+    "id": 77,
     "date": "2026-09-04",
     "items": [
       {
@@ -324,7 +1666,7 @@
     ]
   },
   {
-    "id": 19,
+    "id": 78,
     "date": "2026-09-05",
     "items": [
       {
@@ -334,7 +1676,7 @@
     ]
   },
   {
-    "id": 20,
+    "id": 79,
     "date": "2026-09-05",
     "items": [
       {
@@ -344,7 +1686,7 @@
     ]
   },
   {
-    "id": 21,
+    "id": 80,
     "date": "2026-09-05",
     "items": [
       {
@@ -354,7 +1696,7 @@
     ]
   },
   {
-    "id": 22,
+    "id": 81,
     "date": "2026-09-05",
     "items": [
       {
@@ -364,7 +1706,7 @@
     ]
   },
   {
-    "id": 23,
+    "id": 82,
     "date": "2026-09-05",
     "items": [
       {
@@ -374,7 +1716,7 @@
     ]
   },
   {
-    "id": 24,
+    "id": 83,
     "date": "2026-09-05",
     "items": [
       {
@@ -384,7 +1726,7 @@
     ]
   },
   {
-    "id": 25,
+    "id": 84,
     "date": "2026-09-05",
     "items": [
       {
@@ -394,7 +1736,7 @@
     ]
   },
   {
-    "id": 26,
+    "id": 85,
     "date": "2026-09-05",
     "items": [
       {
@@ -404,7 +1746,7 @@
     ]
   },
   {
-    "id": 27,
+    "id": 86,
     "date": "2026-09-05",
     "items": [
       {
@@ -414,7 +1756,7 @@
     ]
   },
   {
-    "id": 28,
+    "id": 87,
     "date": "2026-09-05",
     "items": [
       {
@@ -424,7 +1766,7 @@
     ]
   },
   {
-    "id": 29,
+    "id": 88,
     "date": "2026-09-05",
     "items": [
       {
