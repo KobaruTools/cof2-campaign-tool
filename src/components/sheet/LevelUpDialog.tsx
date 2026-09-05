@@ -82,7 +82,7 @@ import { PathCard } from '@/components/PathCard';
 import { RankBadge } from '@/components/RankBadge';
 import { SourceRef } from '@/components/SourceRef';
 import { featureCodexHref } from '@/lib/ui/codex';
-import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
+import { groupFeaturesByPath, type FeatureGroup } from '@/lib/character/pathGrouping';
 import { LevelUpPathsGrid } from '@/components/sheet/LevelUpPathsGrid';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { RichInline, FeatureText } from '@/components/sheet/FeatureRichText';

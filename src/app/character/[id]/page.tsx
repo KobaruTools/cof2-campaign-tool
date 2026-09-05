@@ -13,6 +13,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -119,6 +120,7 @@ import {
   type PortraitCropRect,
 } from '@/lib/storage/characterPortrait';
 import { useToast } from '@/components/toast/ToastProvider';
+import { downloadCampaignEditorPdf } from '@/lib/character/pdfExport/downloadCampaignEditorPdf';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
 import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
@@ -776,42 +778,60 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             />
           ),
           subtitleVisible: scrolledPastHeader,
-          // Icône de relance du tour guidé (PER-426) + bouton « Modifier »/« Terminer » : COMPOSÉS
-          // dans un même `Stack` plutôt que l'un écrasant l'autre (retour propriétaire, PER-425) —
-          // l'icône d'aide reste absente en lecture seule sous mobile/tactile (tour désactivé).
-          action:
-            tour.helpVisible || !readOnly ? (
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                {tour.helpVisible && (
-                  <AppTooltip title="Revoir le tutoriel" disableInteractive>
-                    <span>
-                      <IconButton
-                        aria-label="Revoir le tutoriel"
-                        onClick={tour.replay}
-                        disabled={!tourReady}
-                        size="small"
-                      >
-                        <HelpOutlineIcon fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </AppTooltip>
-                )}
-                {!readOnly && (
-                  <Button
-                    data-tour="character-sheet-modify-page"
-                    color="inherit"
-                    size="small"
-                    startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
-                    onClick={toggleAllEditing}
-                    // Compact : n'impose pas la hauteur du sous-header (sinon la hauteur de ce
-                    // bouton devient le plancher et `minHeight` de la barre n'a plus d'effet).
-                    sx={{ py: 0.25, minHeight: 0 }}
-                  >
-                    {allEditing ? 'Terminer' : 'Modifier'}
-                  </Button>
-                )}
-              </Stack>
-            ) : undefined,
+          // Icône de relance du tour guidé (PER-426) + export PDF (PER-201) + bouton « Modifier »/
+          // « Terminer » : COMPOSÉS dans un même `Stack` plutôt que l'un écrasant l'autre (retour
+          // propriétaire, PER-425) — l'icône d'aide reste absente en lecture seule sous mobile/
+          // tactile (tour désactivé) ; l'export PDF, lui, reste toujours proposé.
+          action: (
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+              {tour.helpVisible && (
+                <AppTooltip title="Revoir le tutoriel" disableInteractive>
+                  <span>
+                    <IconButton
+                      aria-label="Revoir le tutoriel"
+                      onClick={tour.replay}
+                      disabled={!tourReady}
+                      size="small"
+                    >
+                      <HelpOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </AppTooltip>
+              )}
+              <AppTooltip title="Exporter en PDF">
+                <IconButton
+                  aria-label="Exporter en PDF"
+                  size="small"
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        await downloadCampaignEditorPdf(character);
+                        showToast('PDF exporté.', 'success');
+                      } catch {
+                        showToast("Échec de l'export PDF.", 'error');
+                      }
+                    })();
+                  }}
+                >
+                  <PictureAsPdfOutlinedIcon fontSize="small" />
+                </IconButton>
+              </AppTooltip>
+              {!readOnly && (
+                <Button
+                  data-tour="character-sheet-modify-page"
+                  color="inherit"
+                  size="small"
+                  startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
+                  onClick={toggleAllEditing}
+                  // Compact : n'impose pas la hauteur du sous-header (sinon la hauteur de ce
+                  // bouton devient le plancher et `minHeight` de la barre n'a plus d'effet).
+                  sx={{ py: 0.25, minHeight: 0 }}
+                >
+                  {allEditing ? 'Terminer' : 'Modifier'}
+                </Button>
+              )}
+            </Stack>
+          ),
         },
   );
 

@@ -210,7 +210,7 @@ import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocompl
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { crossOutAfterSx } from '@/lib/ui/crossOut';
-import { artilleurFeatureDisplay } from '@/lib/character/artilleurDisplay';
+import { groupFeaturesByPath, type FeatureGroup } from '@/lib/character/pathGrouping';
 
 /**
  * Snapshot dénormalisé de la créature choisie pour « Forme animale » (animaux-r5), transmis via
@@ -247,18 +247,6 @@ function nativeFeatureAbilitySubstitutions(character: Character | undefined, fea
 const ARMOR_RESTRICTED_BARS_SX = crossOutAfterSx();
 
 /**
- * Ordre d'affichage des voies par type, de gauche à droite sur la fiche :
- * la voie du peuple (ou du mage, qui la remplace) à gauche, les voies de
- * profil au milieu, la voie de prestige tout à droite.
- */
-const PATH_TYPE_ORDER: Record<Path['type'], number> = {
-  ancestry: 0,
-  mage: 0,
-  class: 1,
-  prestige: 2,
-};
-
-/**
  * Colonnes des voies ORDINAIRES : la voie de peuple (ou du mage, qui la remplace)
  * + 5 voies de profil (p. 42). La voie de PRESTIGE n'en fait PAS partie : elle
  * occupe une 7ᵉ colonne DÉDIÉE et réservée, à part (cf. `PRESTIGE_COLUMN`), qu'on
@@ -276,62 +264,6 @@ const PRESTIGE_COLUMN = PROFILE_COLUMN_COUNT + 1;
 
 /** Nombre de rangs (lignes de capacités) par voie. */
 const PATH_RANK_COUNT = 5;
-
-export interface FeatureGroup {
-  path: Path | undefined;
-  pathId: string;
-  features: Feature[];
-}
-
-/**
- * Regroupe les capacités d'un personnage par voie, triées par rang croissant.
- * Les groupes sont ordonnés par type de voie (voie de peuple à gauche, voies de
- * profil au milieu, voie de prestige à droite) puis, à l'intérieur d'un même
- * type, dans l'**ordre d'acquisition** (première capacité acquise de la voie),
- * et non par ordre alphabétique. Les ids inconnus sont ignorés ici (signalés par
- * les avertissements de conformité, PER-47).
- */
-export function groupFeaturesByPath(
-  featureIds: string[],
-  /**
-   * Relocalisation d'affichage : `featureId → pathId d'accueil`. Sert au prêtre
-   * spécialiste, dont la capacité divine (d'un autre profil) occupe le slot d'une
-   * voie de prêtre — on l'affiche sous cette voie d'accueil, pas sous sa voie d'origine.
-   */
-  pathOverride?: Map<string, string>,
-  /**
-   * Autorisation EFFECTIVE des armes à feu (PER-178) : applique le reskin d'affichage
-   * `artilleurFeatureDisplay` (voie de l'artilleur → « Arbalétrier ») à chaque capacité résolue.
-   * Absent/`true` → capacités renvoyées telles quelles (texte source verbatim).
-   */
-  firearmsAllowed?: boolean,
-): FeatureGroup[] {
-  const byPath = new Map<string, Feature[]>();
-  const acquisitionOrder: string[] = [];
-  for (const id of featureIds) {
-    const rawFeature = featureById.get(id);
-    if (!rawFeature) continue;
-    const feature = artilleurFeatureDisplay(rawFeature, firearmsAllowed);
-    const pathId = pathOverride?.get(id) ?? feature.pathId;
-    if (!byPath.has(pathId)) acquisitionOrder.push(pathId);
-    const list = byPath.get(pathId) ?? [];
-    list.push(feature);
-    byPath.set(pathId, list);
-  }
-  const acquisitionIndex = new Map(acquisitionOrder.map((pathId, i) => [pathId, i]));
-  const groups: FeatureGroup[] = [...byPath.entries()].map(([pathId, features]) => ({
-    pathId,
-    path: pathById.get(pathId),
-    features: features.slice().sort((a, b) => a.rank - b.rank),
-  }));
-  groups.sort((a, b) => {
-    const ta = a.path ? PATH_TYPE_ORDER[a.path.type] : 99;
-    const tb = b.path ? PATH_TYPE_ORDER[b.path.type] : 99;
-    if (ta !== tb) return ta - tb;
-    return (acquisitionIndex.get(a.pathId) ?? 0) - (acquisitionIndex.get(b.pathId) ?? 0);
-  });
-  return groups;
-}
 
 /** Remplacement de slot par une capacité divine (prêtre spécialiste, p. 122). */
 interface SlotReplacement {
