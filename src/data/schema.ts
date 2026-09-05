@@ -1739,6 +1739,8 @@ export const SITUATIONAL_EFFECT_IDS = [
   'sighted',
   'goaded',
   'confused',
+  'sang-bleeding',
+  'blade-vulnerability',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -2065,6 +2067,25 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Désorientée pendant CHA rounds. À son tour, elle lance 1d6 : sur 1-3 elle n'agit pas, sur 4-6 elle attaque la créature la plus proche (au hasard). Elle peut mettre fin à l'effet prématurément en réussissant un test de VOL difficulté [12 + CHA de l'ensorceleur].",
     sourcePage: 94,
+  },
+  // « Saignements » (sorcier, voie du sang, r1, p. 110, PER-504). DoT PUR déclenché par un test
+  // d'attaque magique (aucun malus de test) : rien à chiffrer (même traitement que `bleeding` /
+  // `internal-hemorrhage`, PER-288). Condition d'arrêt différente de `bleeding` (fixe à INT rounds,
+  // pas de soins/test d'AGI) → id dédié plutôt que réutilisation.
+  'sang-bleeding': {
+    label: 'Saignements',
+    effect: "La victime subit 1d4 DM par round pendant INT rounds.",
+    sourcePage: 110,
+  },
+  // « Rituel de sang » (sorcier, voie du sang, r4, p. 111, PER-504, optionnel/priorité basse). Inverse
+  // de `grievous-wounds` : au lieu de réduire les soins reçus, augmente les DM subis par la cible sur
+  // les attaques tranchantes/perçantes. Aucun modifier chiffré (le moteur ne majore pas les DM subis
+  // par une cible tierce sous condition d'arme) — verbatim seul, rappel pour le MJ.
+  'blade-vulnerability': {
+    label: 'Vulnérabilité aux lames',
+    effect:
+      "Tous les DM infligés à la cible par des armes tranchantes ou perçantes (griffes et crocs inclus) augmentent de +1d4 pendant INT rounds.",
+    sourcePage: 111,
   },
 };
 

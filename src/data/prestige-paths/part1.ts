@@ -1876,6 +1876,9 @@ export const prestigeFeatures1: Feature[] = [
       "Sur un test d'attaque au contact réussi avec une arme contondante ou le pommeau d'une épée (dague, etc.), si la cible est de niveau (ou NC) inférieur au niveau du personnage et qu'elle porte la marque du chasseur, elle est assommée pour 1d4° min. Sinon, elle est étourdie pour un round. La cible ne peut subir cet effet qu'une seule fois par combat.",
     richText:
       "Sur un test d'attaque au contact réussi avec une arme contondante ou le pommeau d'une épée (dague, etc.), si la cible est de niveau (ou NC) inférieur au niveau du personnage et qu'elle porte la marque du chasseur, elle est assommée pour {1d4°} min. Sinon, elle est étourdie pour un round. La cible ne peut subir cet effet qu'une seule fois par combat.",
+    // Branche « assommée » réutilise l'id partagé `unconscious` (4e consommateur après chaos r4/r7 +
+    // magie de l'esprit r7, PER-504). Branche « étourdie 1 round » = état de base auto-glosé, sans tag.
+    situationalEffectIds: ['unconscious'],
     sourcePage: 140,
   },
   {

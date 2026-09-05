@@ -225,6 +225,35 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     expect(r5?.situationalEffectIds).toEqual(['mind-controlled']);
   });
 
+  it("« Peur » (voie de la mort r4, p. 109, PER-504) référence l'id partagé « frightened »", () => {
+    const r4 = featureById.get('mort-r4');
+    expect(r4?.situationalEffectIds).toEqual(['frightened']);
+  });
+
+  it("« Saignements » est catalogué (voie du sang r1, p. 110, PER-504) et référencé par la capacité", () => {
+    const entry = SITUATIONAL_EFFECTS['sang-bleeding'];
+    expect(entry.label).toBe('Saignements');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(110);
+    expect(entry.modifiers).toBeUndefined();
+    const r1 = featureById.get('sang-r1');
+    expect(r1?.situationalEffectIds).toEqual(['sang-bleeding']);
+  });
+
+  it("« Rituel de sang » (voie du sang r4, p. 111, PER-504) référence l'id dédié « blade-vulnerability »", () => {
+    const entry = SITUATIONAL_EFFECTS['blade-vulnerability'];
+    expect(entry.label).toBe('Vulnérabilité aux lames');
+    expect(entry.sourcePage).toBe(111);
+    expect(entry.modifiers).toBeUndefined();
+    const r4 = featureById.get('sang-r4');
+    expect(r4?.situationalEffectIds).toEqual(['blade-vulnerability']);
+  });
+
+  it("« Assommer » (chasseur de prime r5, p. 140, PER-504) référence l'id partagé « unconscious »", () => {
+    const r5 = featureById.get('prestige-chasseur-de-prime-r5');
+    expect(r5?.situationalEffectIds).toEqual(['unconscious']);
+  });
+
   it('« Strangulation » (sombre magie r3, p. 111) ne référence AUCUN effet situationnel : réductible à Affaibli (PER-105/288)', () => {
     const r3 = featureById.get('sombre-magie-r3');
     expect(r3?.situationalEffectIds ?? []).toEqual([]);

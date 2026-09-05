@@ -2148,6 +2148,9 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée de fuite « pendant [=INT] rounds ».
     richText:
       "Le sorcier effectue un test opposé d’attaque magique contre une cible (portée 20 m). S’il l’emporte, la victime fuit aussi loin du sorcier que possible pendant [=INT] rounds (il lui faut généralement autant de temps pour revenir !). Les créatures dont le NC est supérieur ou égal au niveau du sorcier ne fuient qu’un seul round. Le sorcier peut choisir de lancer ce sort en action limitée et toutes les créatures à son contact sont affectées (faire un test d’attaque magique par adversaire).",
+    // « Peur » réutilise l'id partagé `frightened` (voie de l'ours r4, p. 151) : même mécanique de
+    // fuite forcée, verbatim/durée propres à CETTE capacité (PER-504, même précédent que PER-503).
+    situationalEffectIds: ['frightened'],
     sourcePage: 109,
   },
   {
@@ -2285,6 +2288,8 @@ export const mageFeatures: Feature[] = [
     // DM {1d4°} par round ; durée [=INT] rounds.
     richText:
       "Le sorcier doit réussir un test d’attaque magique (portée 10 m) contre une difficulté de 10 + @CON de la cible. Du sang s’écoule de la bouche, du nez, des oreilles et même des yeux de la victime, qui subit {1d4°} DM par round pendant [=INT] rounds.",
+    // DoT dédié `sang-bleeding` (PER-504) : condition d'arrêt fixe à INT rounds, distincte de `bleeding`.
+    situationalEffectIds: ['sang-bleeding'],
     sourcePage: 110,
   },
   {
@@ -2335,6 +2340,8 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : sacrifice {1d4°} PV ; bonus de DM +{1d4°} ; durée [=INT] rounds.
     richText:
       "Le sorcier s’ouvre les veines et sacrifie {1d4°} PV pour cibler une créature vivante (portée 20 m), la victime saigne à la moindre blessure. Tous les DM infligés à la cible par des armes tranchantes ou perçantes (griffes et crocs inclus) augmentent de +{1d4°} pendant [=INT] rounds.",
+    // Vulnérabilité dédiée `blade-vulnerability` (PER-504) : inverse de `grievous-wounds`.
+    situationalEffectIds: ['blade-vulnerability'],
     sourcePage: 111,
   },
   {
