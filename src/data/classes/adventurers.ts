@@ -857,10 +857,13 @@ export const adventurerFeatures: Feature[] = [
     text:
       "Si son arme à poudre est chargée et tenue en main, l'arquebusier peut tirer avec un bonus de +5 à son Initiative. De plus, il ne subit plus de dé malus lorsqu'il tire avec une arme à poudre ou une arbalète en étant engagé en combat au contact (sauf avec la couleuvrine).",
     // PER-71 / PER-121 : le « +5 à son Initiative » ne s'applique QU'À l'attaque de tir (pas à une action
-    // longue ni à un mouvement) → inexprimable comme bonus d'Initiative de fiche (même conditionnel : il
-    // fausserait l'Init dès que le perso ne tire pas). Laissé VERBATIM ; le cas « +5 Init seulement si
-    // l'action est un tir » est reporté au tracker de combat (PER-121, milestone Rencontres). La
-    // suppression du dé malus en tirant engagé au contact relève de l'exception au dé malus (PER-116).
+    // longue ni à un mouvement) → inexprimable comme bonus d'Initiative PERMANENT de fiche (même
+    // conditionnel : il fausserait l'Init dès que le perso ne tire pas). Reste donc VERBATIM ici ; le
+    // chiffrage vit dans le catalogue `SITUATIONAL_EFFECTS` du tracker de combat (`quick-draw`), posé/
+    // retiré à la main par le MJ (qui juge « arme chargée en main » + « c'est un tir »), même répartition
+    // que Feinte/Visé. La suppression du dé malus en tirant engagé au contact relève de l'exception au
+    // dé malus (PER-116).
+    situationalEffectIds: ['quick-draw'],
     sourcePage: 65,
   },
   {
@@ -872,6 +875,7 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Après avoir raté une attaque à distance, l'arquebusier déclare qu'il s'agissait d'un tir de réglage. Il obtient +5 sur le test de sa prochaine attaque à distance, si son prochain tir vise la même cible avant la fin du prochain round.",
+    situationalEffectIds: ['sighted'],
     sourcePage: 65,
   },
   {
@@ -1052,6 +1056,7 @@ export const adventurerFeatures: Feature[] = [
     // prose (avec son exemple) → laissé littéral (cf. rich-text-format.md § 7).
     richText:
       "Le barde effectue une attaque fictive pour déséquilibrer son adversaire et réalise ensuite une attaque mortelle. Faites un test opposé de CHA contre la @PER de votre adversaire à ce round. Au round suivant, vous obtenez un bonus en attaque égal au double de votre rang dans la voie de l'escrime (+4 au rang 2, par exemple) sur votre première attaque au contact contre cet adversaire et, si votre feinte a réussi, +{2d4°} aux DM.",
+    situationalEffectIds: ['feinted'],
     sourcePage: 66,
   },
   {
@@ -1190,6 +1195,7 @@ export const adventurerFeatures: Feature[] = [
     // cible (DEF auto-détectée, non calculée). Coût mana = rang.
     richText:
       "Le barde joue une gigue endiablée aux effets magiques. S'il réussit un test d'attaque magique opposé contre sa cible (portée 10 m), celle-ci se met à danser pendant [1d4° + CHA] rounds, elle subit un dé malus aux tests d'attaque et -5 en DEF. Si la cible est d'un niveau (NC) supérieur ou égal au barde, elle ne danse qu'un seul round.",
+    situationalEffectIds: ['dancing'],
     sourcePage: 67,
   },
 

@@ -1442,6 +1442,18 @@ export interface StatusModifiers {
    */
   attackTestsMalusDie?: boolean;
   /**
+   * DÉ BONUS (« 2d20, garde le meilleur ») à TOUS les tests — symétrique de `allTestsMalusDie`
+   * (PER-496). Ex. Meneur d'hommes (voie de prestige du héros, `prestige-heros-r8`, p. 142) : « tous
+   * ses alliés bénéficient d'un dé bonus … pour toute la scène à venir ». Absent = pas de dé bonus.
+   */
+  allTestsBonusDie?: boolean;
+  /**
+   * DÉ BONUS limité aux tests d'ATTAQUE — symétrique de `attackTestsMalusDie` (PER-496). Ex. Exemplaire
+   * (chevalier, `meneur-d-hommes-r3`, p. 86, un seul allié) et Charge fantastique (`meneur-d-hommes-r4`,
+   * p. 86, tout le groupe). Absent = pas de dé bonus d'attaque.
+   */
+  attackTestsBonusDie?: boolean;
+  /**
    * Modificateur CHIFFRÉ PLAT (pas un dé) à TOUS les tests, PAR PALIER d'intensité. SIGNÉ : négatif pour
    * un préjudice — Attaque invalidante (p. 140, « -1 à tous les tests … jusqu'à -3 »), combiné à
    * `stacking: { max: 3 }`, donne −1/−2/−3 —, POSITIF pour un buff (PER-104) — Chant des héros (p. 67)
@@ -1460,6 +1472,13 @@ export interface StatusModifiers {
    * d'Arme de lumière p. 123) n'est PAS exprimable ici et reste, à ce jour, du verbatim.
    */
   damageDealt?: number;
+  /**
+   * Bonus aux DM infligés en DÉ plutôt qu'en valeur plate — symétrique de `damageDealt` (PER-496).
+   * Ex. Charge fantastique (`meneur-d-hommes-r4`, p. 86 : « +1d4° DM à toutes leurs attaques »). Même
+   * forme que `WeaponDamageBonusEffect.dice` (capacités permanentes) pour réutiliser le même badge de
+   * bonus de DM situationnel. Absent = pas de bonus de DM en dé.
+   */
+  damageDealtDice?: { count: number; die: DamageDie; evolving?: boolean };
   /**
    * Bonus/malus CHIFFRÉ PLAT limité à certains DOMAINES de test (PER-359), PAR PALIER d'intensité —
    * là où `allTestsFlat` frappe TOUS les tests sans distinction. Deux capacités du livre en ont besoin,
@@ -1712,6 +1731,13 @@ export const SITUATIONAL_EFFECT_IDS = [
   'whirling-winds',
   'whirling-leaves',
   'concentrating',
+  'dancing',
+  'daunted',
+  'sapped',
+  'feinted',
+  'quick-draw',
+  'sighted',
+  'goaded',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1938,6 +1964,97 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     sourcePage: 171,
     hideDurationInProjection: true,
   },
+  // « Danse irrésistible » (barde, voie du musicien, r5, p. 67, PER-105 — l'exemple cité par le
+  // ticket). Même combo que « Combat en milieu aquatique » (`ENVIRONMENTAL_EFFECTS`, p. 215) : dé
+  // malus aux tests d'attaque + -5 en DEF chiffrés ; aucun état de base ne réunit les deux → mécanique
+  // PROPRE, admissible (PER-288). Durée [1d4° + CHA] rounds : PAS de `durationFrom` (base à ROLLER, pas
+  // un flat + carac — le MJ lance le dé à la table puis tape le résultat, comme toute autre durée sans
+  // formule pré-remplissable). La clause « NC ≥ barde ⇒ ne danse qu'un round » reste comportementale.
+  dancing: {
+    label: 'Dansant',
+    effect:
+      "Le barde joue une gigue endiablée aux effets magiques. S'il réussit un test d'attaque magique opposé contre sa cible (portée 10 m), celle-ci se met à danser pendant 1d4° + CHA rounds, elle subit un dé malus aux tests d'attaque et -5 en DEF. Si la cible est d'un niveau (NC) supérieur ou égal au barde, elle ne danse qu'un seul round.",
+    sourcePage: 67,
+    modifiers: { attackTestsMalusDie: true, derived: { def: -5 } },
+  },
+  // « Cri de guerre » (barbare, voie de la rage, r1, p. 82, PER-105). Dé malus aux tests d'attaque au
+  // contact SEUL (pas de restriction de déplacement, à la différence d'Immobilisé) → mécanique PROPRE,
+  // admissible (PER-288). Effet de GROUPE côté ennemis (tous les adversaires à FOR inférieure dans le
+  // rayon) : posé une fois par cible qualifiée, comme n'importe quel état situationnel. Le bonus de
+  // compétence du barbare lui-même (« sans peur », `fear-resistance`) est chiffré à part (`effects`,
+  // sur la capacité) — cette entrée ne porte QUE le malus infligé aux adversaires.
+  daunted: {
+    label: 'Ébranlé',
+    effect:
+      "Les adversaires dont la FOR est inférieure à celle du barbare subissent un dé malus à leurs tests d'attaque au contact durant leur prochain tour.",
+    sourcePage: 82,
+    modifiers: { attackTestsMalusDie: true },
+  },
+  // « Saper les forces » (magicien, voie de la magie destructrice, r2, p. 103, PER-105). Malus PLAT
+  // scopé à des tests précis (FOR / attaque au contact / DM), qu'aucun état de base ne réplique →
+  // mécanique PROPRE, admissible (PER-288). Chiffré PARTIELLEMENT : l'attaque au contact et les DM sont
+  // des stats dérivées (`meleeAttack`, `damageDealt`) ; le malus au test de FOR (caractéristique brute,
+  // pas une stat dérivée) n'a AUCUNE primitive de ciblage par caractéristique — reste verbatim seul,
+  // même limite que « Strangulation » ci-dessous pour la part non chiffrable. Non cumulable (le texte
+  // l'exclut explicitement) : pas de `stacking`.
+  sapped: {
+    label: 'Forces sapées',
+    effect:
+      "Le magicien choisit une cible vivante située à une distance maximum de 10 m. S'il réussit un test opposé d'attaque magique, la cible subit un malus de -2 à ses tests de FOR, d'attaque au contact et aux DM, jusqu'à la fin du combat. Le sort n'est pas cumulable plusieurs fois sur la même cible.",
+    sourcePage: 103,
+    modifiers: { derived: { meleeAttack: -2 }, damageDealt: -2 },
+  },
+  // « Feinte » (barde, voie de l'escrime, r2, p. 66, PER-105 — proposition d'élargissement du ticket
+  // au MARQUEUR pur). Aucune stat de la cible n'est modifiée : le bonus (+2×rang en attaque, +2d4° DM)
+  // profite au LANCEUR, à SA prochaine attaque, SEULEMENT s'il vise à nouveau cette même cible au round
+  // suivant — inexprimable comme `StatusModifiers` (qui portent sur le porteur, quel que soit son
+  // attaquant). PUREMENT comportemental : un badge posé sur la cible feintée sert de pense-bête au MJ
+  // pour appliquer le bonus à la table le moment venu (patron des états purement informatifs, ex.
+  // Muet/Fasciné). `escrime-r3` (Intelligence du combat) référence déjà cette réussite dans son propre
+  // texte, confirmant que « feinté » est un état à suivre d'un round sur l'autre.
+  feinted: {
+    label: 'Feinté',
+    effect:
+      "Le barde effectue une attaque fictive pour déséquilibrer son adversaire et réalise ensuite une attaque mortelle. Faites un test opposé de CHA contre la PER de votre adversaire à ce round. Au round suivant, vous obtenez un bonus en attaque égal au double de votre rang dans la voie de l'escrime (+4 au rang 2, par exemple) sur votre première attaque au contact contre cet adversaire et, si votre feinte a réussi, +2d4° aux DM.",
+    sourcePage: 66,
+  },
+  // « Plus vite que son ombre » (arquebusier, voie du pistolero, r1, p. 65, PER-121). À la différence
+  // de ses voisines du catalogue, le bonus (+5 à l'Initiative) est bien CHIFFRABLE en `StatusModifiers`
+  // (`derived.initiative`, même canal qu'Aveuglé en négatif) : seule sa CONDITION reste hors de portée
+  // du moteur — « si son arme à poudre est chargée et tenue en main », ET seulement pour l'attaque de
+  // TIR (pas une action longue ni un mouvement). Le tracker ne connaissant ni l'arme en main ni
+  // l'action choisie au tour, le badge reste posé/retiré à la main par le MJ, qui applique la condition
+  // à la table — même répartition verbatim/chiffré que Feinte et Visé ci-dessus. La suppression du dé
+  // malus en tirant engagé au contact (seconde phrase de la capacité) relève de l'exception au dé malus
+  // (PER-116) et reste hors de ce badge.
+  'quick-draw': {
+    label: 'Plus vite que son ombre',
+    effect:
+      "Si son arme à poudre est chargée et tenue en main, l'arquebusier peut tirer avec un bonus de +5 à son Initiative. De plus, il ne subit plus de dé malus lorsqu'il tire avec une arme à poudre ou une arbalète en étant engagé en combat au contact (sauf avec la couleuvrine).",
+    sourcePage: 65,
+    modifiers: { derived: { initiative: 5 } },
+  },
+  // « Ajuster le tir » (arquebusier, voie du pistolero, r2, p. 65, PER-105 — même patron marqueur que
+  // Feinte). Le bonus (+5) profite au LANCEUR sur SA prochaine attaque à distance, seulement s'il vise
+  // à nouveau la même cible avant la fin du round suivant : inexprimable en `StatusModifiers`, PUREMENT
+  // comportemental — badge pense-bête posé sur la cible ratée.
+  sighted: {
+    label: 'Visé',
+    effect:
+      "Après avoir raté une attaque à distance, l'arquebusier déclare qu'il s'agissait d'un tir de réglage. Il obtient +5 sur le test de sa prochaine attaque à distance, si son prochain tir vise la même cible avant la fin du prochain round.",
+    sourcePage: 65,
+  },
+  // « Piqûre de rappel » (guerrier, voie du soldat, r3, p. 90, PER-105 — marqueur posé sur un ADVERSAIRE,
+  // pas sur soi). Aucune stat modifiée : la cible est seulement CONTRAINTE (comportementalement) à
+  // attaquer le porteur de la capacité à son prochain tour — inexprimable en `StatusModifiers`.
+  // PUREMENT comportemental, même traitement que Feinte/Ajuster le tir. Condition d'apparition (INT
+  // négative de l'adversaire) laissée au verbatim, comme pour tout le reste de la capacité.
+  goaded: {
+    label: 'Provoqué',
+    effect:
+      "Si l'INT de cet adversaire est négative et que vous lui infligez des DM sur l'attaque en action gratuite déclenchée par Piqûre de rappel, il vous prend automatiquement pour cible lors de sa prochaine attaque.",
+    sourcePage: 90,
+  },
 };
 
 /** Libellés français des effets situationnels (affichés au joueur). Dérivé de `SITUATIONAL_EFFECTS`. */
@@ -2005,11 +2122,17 @@ export const ENVIRONMENTAL_EFFECT_LABELS: Record<EnvironmentalEffectId, string> 
  *
  * RECENSEMENT (PER-359) : les 665 capacités ont été balayées à la recherche de tout ce qui touche
  * autrui (« allié », « le groupe », « ses compagnons », « à portée de voix »…), soit 52 capacités
- * classées. Sont entrées ici les seules dont le chiffre tient dans les canaux du moteur. Restent
- * DEHORS, faute de canal, toutes celles qui donnent un DÉ BONUS (Charge fantastique p. 86, Exemplaire
- * p. 86, Meneur d'hommes p. 142, Arme de lumière p. 123) ou un bonus de DM en DÉ : `StatusModifiers`
- * ne connaît que des dés MALUS et des DM plats. Restent également dehors, par nature, les soins, les
- * déplacements, les compagnons, et tout ce qui vise un ADVERSAIRE (canal `situationalEffectIds`).
+ * classées. Sont entrées ici les seules dont le chiffre tient dans les canaux du moteur.
+ *
+ * DÉ BONUS (PER-496) : le gap identifié par PER-359 (aucun canal pour un DÉ BONUS ni un bonus de DM en
+ * DÉ) est comblé par `allTestsBonusDie`/`attackTestsBonusDie`/`damageDealtDice`, qui ont permis d'ajouter
+ * Exemplaire (`exemplary`, p. 86), Charge fantastique (`phantom-charge`, p. 86) et Meneur d'hommes
+ * (`leader-of-men`, p. 142). Reste DEHORS, faute d'un canal différent : Arme de lumière (prêtre,
+ * `foi-r3`, p. 123) — ce n'est pas un buff de camp mais un enchantement d'ARME qui ne profite qu'à
+ * DÉMONS/MORTS-VIVANTS pour cible (aucun canal ne conditionne un bonus au TYPE de la cible visée), et
+ * qui ne se pose sur l'arme d'un allié qu'à partir du rang 5 — un sort à composante matérielle, pas un
+ * état de camp posable par le MJ. Reste dehors, par nature, les soins, les déplacements, les
+ * compagnons, et tout ce qui vise un ADVERSAIRE (canal `situationalEffectIds`).
  */
 export const BENEFICIAL_EFFECT_IDS = [
   'heroes-song',
@@ -2021,6 +2144,9 @@ export const BENEFICIAL_EFFECT_IDS = [
   'precision-strike',
   'frouin-stench',
   'templar-protection',
+  'exemplary',
+  'phantom-charge',
+  'leader-of-men',
 ] as const;
 export type BeneficialEffectId = (typeof BENEFICIAL_EFFECT_IDS)[number];
 
@@ -2187,6 +2313,56 @@ export const BENEFICIAL_EFFECTS: Record<BeneficialEffectId, StatusEffectEntry> =
     sourcePage: 174,
     modifiers: { statusImmunities: ['mind-control', 'paralyzed', 'weakened', 'drain'] },
     scope: 'single-ally',
+  },
+  // « Exemplaire » (chevalier, meneur-d-hommes-r3, p. 86). PREMIER buff du canal DÉ BONUS (PER-496).
+  // CIBLE UNIQUE, SANS excludesCarrier (le livre ne parle pas du chevalier lui-même, mais il n'est pas
+  // non plus explicitement écarté — comme Coup au but/Résistance au mal).
+  //
+  // ÉCART ASSUMÉ : le livre restreint le dé bonus à une attaque AU CONTACT et à un allié à la fois
+  // (« une fois par round »). Aucun canal ne sait viser un seul MODE d'attaque ni limiter l'usage :
+  // `attackTestsBonusDie` s'applique aux trois attaques tant que l'état est posé, comme `shield-ally`/
+  // `precision-strike` avant lui. Au MJ de lever l'état après l'attaque effectivement concernée.
+  exemplary: {
+    label: 'Exemplaire',
+    effect:
+      "Une fois par round, le chevalier donne un dé bonus à un allié qui attaque un adversaire à son contact. Le dé bonus doit être attribué avant de lancer les dés.",
+    sourcePage: 86,
+    modifiers: { attackTestsBonusDie: true },
+    scope: 'single-ally',
+  },
+  // « Charge fantastique » (chevalier, meneur-d-hommes-r4, p. 86). Groupe ET porteur (« tous ses
+  // alliés en vue et LUI »), donc SANS excludesCarrier. Verbatim GARDE le +10 m de déplacement (hors
+  // canal, purement descriptif) et l'incompatibilité avec Exemplaire/Ordre de bataille — deux clauses
+  // que rien ne modélise, laissées au MJ.
+  //
+  // DEUXIÈME canal DÉ BONUS (PER-496) : dé bonus + PREMIER usage de `damageDealtDice` (+1d4° DM,
+  // évolutif comme la Rage du barbare). ÉCART ASSUMÉ (même famille que ci-dessus) : le livre borne
+  // l'usage à UN COMBAT ; l'état vaut tant qu'il est posé, au MJ de le retirer après usage.
+  'phantom-charge': {
+    label: 'Charge fantastique',
+    effect:
+      "Une fois par combat, lorsque le chevalier déclare l'utilisation de cette capacité, tous ses alliés en vue et lui obtiennent 10 m de déplacement supplémentaire au début de leur tour puis un dé bonus et +1d4° DM à toutes leurs attaques. Ne se cumule ni avec exemplaire ni avec ordre de bataille.",
+    sourcePage: 86,
+    modifiers: { attackTestsBonusDie: true, damageDealtDice: { count: 1, die: 'd4', evolving: true } },
+    scope: 'group',
+  },
+  // « Meneur d'hommes » (voie de prestige du héros, prestige-heros-r8, p. 142). « TOUS ses alliés »
+  // (pas « et lui ») → excludesCarrier, même patron que Aura du chef de guerre. TROISIÈME canal DÉ
+  // BONUS (PER-496), mais `allTestsBonusDie` cette fois : la harangue vaut pour « un combat, un bal ou
+  // une réception, une scène de meurtre à étudier… », pas seulement l'attaque — bien plus large que
+  // les deux capacités du chevalier ci-dessus.
+  //
+  // ÉCART ASSUMÉ : activation UNE FOIS PAR JOUR puis dé bonus consommé UNE FOIS PAR ROUND pendant
+  // toute la scène — aucun compteur d'usage n'existe pour un dé bonus (contrairement aux compteurs de
+  // capacité classiques). L'état se pose pour la scène, le MJ gère le rythme d'utilisation à l'oral.
+  'leader-of-men': {
+    label: "Meneur d'hommes",
+    effect:
+      "Une fois par jour, le personnage peut haranguer ses compagnons, les motiver et les conseiller pour attaquer un adversaire particulier. Tous ses alliés bénéficient d'un dé bonus une fois par round pour toute la scène à venir (un combat, un bal ou une réception, une scène de meurtre à étudier, etc.).",
+    sourcePage: 142,
+    modifiers: { allTestsBonusDie: true },
+    scope: 'group',
+    excludesCarrier: true,
   },
 };
 

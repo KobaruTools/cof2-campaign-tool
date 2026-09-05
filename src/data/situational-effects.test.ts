@@ -144,6 +144,72 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     expect(r6?.situationalEffectIds).toEqual(['hypnotized']);
   });
 
+  it('« Dansant » est catalogué (barde, musicien r5, p. 67) : dé malus attaque + -5 DEF, référencé (PER-105)', () => {
+    const entry = SITUATIONAL_EFFECTS['dancing'];
+    expect(entry.label).toBe('Dansant');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(67);
+    expect(entry.modifiers?.attackTestsMalusDie).toBe(true);
+    expect(entry.modifiers?.derived).toEqual({ def: -5 });
+    const r5 = featureById.get('musicien-r5');
+    expect(r5?.situationalEffectIds).toEqual(['dancing']);
+  });
+
+  it('« Ébranlé » est catalogué (barbare, rage r1, p. 82) : dé malus attaque au contact, référencé (PER-105)', () => {
+    const entry = SITUATIONAL_EFFECTS['daunted'];
+    expect(entry.label).toBe('Ébranlé');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(82);
+    expect(entry.modifiers?.attackTestsMalusDie).toBe(true);
+    expect(entry.modifiers?.derived).toBeUndefined();
+    const r1 = featureById.get('rage-r1');
+    expect(r1?.situationalEffectIds).toEqual(['daunted']);
+  });
+
+  it('« Forces sapées » est catalogué (magicien, magie destructrice r2, p. 103) : malus partiel chiffré, référencé (PER-105)', () => {
+    const entry = SITUATIONAL_EFFECTS['sapped'];
+    expect(entry.label).toBe('Forces sapées');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(103);
+    expect(entry.modifiers?.derived).toEqual({ meleeAttack: -2 });
+    expect(entry.modifiers?.damageDealt).toBe(-2);
+    expect(entry.stacking).toBeUndefined();
+    const r2 = featureById.get('magie-destructrice-r2');
+    expect(r2?.situationalEffectIds).toEqual(['sapped']);
+  });
+
+  it('« Plus vite que son ombre » est catalogué (pistolero r1, p. 65) : +5 Initiative chiffré, référencé (PER-121)', () => {
+    const entry = SITUATIONAL_EFFECTS['quick-draw'];
+    expect(entry.label).toBe('Plus vite que son ombre');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(65);
+    expect(entry.modifiers?.derived).toEqual({ initiative: 5 });
+    expect(entry.stacking).toBeUndefined();
+    const r1 = featureById.get('pistolero-r1');
+    expect(r1?.situationalEffectIds).toEqual(['quick-draw']);
+  });
+
+  it('« Feinté », « Visé » et « Provoqué » sont catalogués comme marqueurs PURS (PER-105, sans modifiers)', () => {
+    for (const [id, label, featureId, page] of [
+      ['feinted', 'Feinté', 'escrime-r2', 66],
+      ['sighted', 'Visé', 'pistolero-r2', 65],
+      ['goaded', 'Provoqué', 'soldat-r3', 90],
+    ] as const) {
+      const entry = SITUATIONAL_EFFECTS[id];
+      expect(entry.label, id).toBe(label);
+      expect(entry.effect.trim().length, id).toBeGreaterThan(0);
+      expect(entry.sourcePage, id).toBe(page);
+      expect(entry.modifiers, id).toBeUndefined();
+      const feature = featureById.get(featureId);
+      expect(feature?.situationalEffectIds, featureId).toEqual([id]);
+    }
+  });
+
+  it('« Strangulation » (sombre magie r3, p. 111) ne référence AUCUN effet situationnel : réductible à Affaibli (PER-105/288)', () => {
+    const r3 = featureById.get('sombre-magie-r3');
+    expect(r3?.situationalEffectIds ?? []).toEqual([]);
+  });
+
   it('tout situationalEffectIds posé sur une capacité pointe une entrée connue du catalogue', () => {
     const known = new Set<string>(SITUATIONAL_EFFECT_IDS);
     for (const f of featureById.values()) {
