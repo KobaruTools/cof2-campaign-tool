@@ -362,5 +362,15 @@
         "tag": "gm-screen"
       }
     ]
+  },
+  {
+    "id": 23,
+    "date": "2026-09-05",
+    "items": [
+      {
+        "text": "Correction d'un bug qui pouvait annuler une montée de niveau par erreur : votre niveau est désormais bien rétabli.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
