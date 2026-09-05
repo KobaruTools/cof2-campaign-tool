@@ -631,6 +631,11 @@ export const mageFeatures: Feature[] = [
       "Une fois par combat, l’ensorceleur vise une zone de 10 m de diamètre à une portée maximale de 20 m. Le sort affecte jusqu’à [1d4° + CHA] créatures vivantes de NC inférieur à 1. Le sort affecte les créatures de NC inférieur à 2 au rang 4 puis à 3 au rang 5. Les créatures perdent conscience pendant [=CHA] minutes. Il est possible de les réveiller en les cognant violemment (action d’attaque, 1 DM).",
     // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
     usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
+    // Perte de conscience → catalogue `situationalEffectIds: ['unconscious']` (même id que « Arc-en-ciel »
+    // voie du chaos r4/r7 et « Attaque mentale » magie de l'esprit r7, PER-503/288 : aucun des 10 états de
+    // base ne réduit l'inconscience — les autres consommateurs de cet id ont déjà des durées/causes
+    // différentes du verbatim catalogue, la fidélité mécanique reste dans le texte de LA capacité).
+    situationalEffectIds: ['unconscious'],
     sourcePage: 94,
   },
   {
@@ -646,6 +651,7 @@ export const mageFeatures: Feature[] = [
     // celui de la VICTIME (référence) ; la difficulté [12 + CHA] utilise la CHA du joueur.
     richText:
       "En réussissant un test opposé d’attaque magique contre sa cible (portée 20 m), l’ensorceleur désoriente sa victime pendant [=CHA] rounds. Au tour de la victime, celui qui l’incarne lance {1d6} : sur 1‑3 la victime n’agit pas, sur 4‑6 elle attaque la créature la plus proche (au hasard). À la fin de son tour, elle peut mettre fin au sort prématurément en réussissant un test de @VOL difficulté [12 + CHA].",
+    situationalEffectIds: ['confused'],
     sourcePage: 94,
   },
   {
@@ -675,6 +681,12 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée [=CHA] minutes ; DM de contrecoup {1d4°} (×2).
     richText:
       "En réussissant un test opposé d’attaque magique contre une cible de niveau ou NC inférieur au sien (portée 20 m), l’ensorceleur prend contrôle de sa cible pendant [=CHA] minutes. Son propre corps devient inactif et s’écroule au sol. Si la créature meurt pendant la domination, l’ensorceleur réintègre son corps et subit {1d4°} DM. Si la cible est d’un niveau trop élevé, il peut la forcer à faire une seule action de son choix (mouvement ou attaque) ; ensuite, il est éjecté et subit {1d4°} DM.",
+    // Contrôle total → catalogue `situationalEffectIds: ['mind-controlled']` (même id que « Contrôle
+    // mental » magie de l'esprit r8, PER-503/288 : aucun état de base ne représente une prise de contrôle
+    // totale). Durée/contrecoup différents du verbatim catalogue — même principe de réutilisation qu'avec
+    // `unconscious` (ci-dessus, r2) : le détail mécanique propre à CETTE capacité reste dans son propre
+    // texte/richText, le catalogue ne sert qu'au suivi générique à l'écran MJ.
+    situationalEffectIds: ['mind-controlled'],
     sourcePage: 94,
   },
 

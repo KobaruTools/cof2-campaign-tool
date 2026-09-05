@@ -205,6 +205,26 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     }
   });
 
+  it("« Confus » est catalogué (envoûteur r3, p. 94, PER-503) et référencé par la capacité", () => {
+    const entry = SITUATIONAL_EFFECTS['confused'];
+    expect(entry.label).toBe('Confus');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(94);
+    expect(entry.modifiers).toBeUndefined();
+    const r3 = featureById.get('envouteur-r3');
+    expect(r3?.situationalEffectIds).toEqual(['confused']);
+  });
+
+  it("« Sommeil » (envoûteur r2, p. 94, PER-503) référence l'id partagé « unconscious »", () => {
+    const r2 = featureById.get('envouteur-r2');
+    expect(r2?.situationalEffectIds).toEqual(['unconscious']);
+  });
+
+  it("« Domination » (envoûteur r5, p. 94, PER-503) référence l'id partagé « mind-controlled »", () => {
+    const r5 = featureById.get('envouteur-r5');
+    expect(r5?.situationalEffectIds).toEqual(['mind-controlled']);
+  });
+
   it('« Strangulation » (sombre magie r3, p. 111) ne référence AUCUN effet situationnel : réductible à Affaibli (PER-105/288)', () => {
     const r3 = featureById.get('sombre-magie-r3');
     expect(r3?.situationalEffectIds ?? []).toEqual([]);

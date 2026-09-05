@@ -1738,6 +1738,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'quick-draw',
   'sighted',
   'goaded',
+  'confused',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -2054,6 +2055,16 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Si l'INT de cet adversaire est négative et que vous lui infligez des DM sur l'attaque en action gratuite déclenchée par Piqûre de rappel, il vous prend automatiquement pour cible lors de sa prochaine attaque.",
     sourcePage: 90,
+  },
+  // « Confusion » (voie de l'envoûteur, ensorceleur, r3, p. 94, PER-503). Comportement erratique
+  // piloté par un jet de dé chaque round (aucun état de base du glossaire ne représente une action
+  // partiellement aléatoire) → mécanique PROPRE, admissible (PER-288). Le jet {1d6} et la difficulté
+  // [12 + CHA] du test de fin anticipée restent dans le verbatim/richText de la capacité source.
+  confused: {
+    label: 'Confus',
+    effect:
+      "Désorientée pendant CHA rounds. À son tour, elle lance 1d6 : sur 1-3 elle n'agit pas, sur 4-6 elle attaque la créature la plus proche (au hasard). Elle peut mettre fin à l'effet prématurément en réussissant un test de VOL difficulté [12 + CHA de l'ensorceleur].",
+    sourcePage: 94,
   },
 };
 
