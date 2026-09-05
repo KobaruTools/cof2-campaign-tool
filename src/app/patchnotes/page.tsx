@@ -20,7 +20,7 @@ import { storageKeys } from '@/lib/storage/keys';
 import { useHeaderContent } from '@/stores/headerContent';
 
 export default function PatchnotesPage() {
-  useHeaderContent({ breadcrumbs: [{ label: 'Nouveautés' }] });
+  useHeaderContent({ breadcrumbs: [{ label: 'Notes de mise à jour' }] });
 
   useEffect(() => {
     window.localStorage.setItem(storageKeys.patchnotes.lastSeenId, String(getLatestPatchnoteId()));
@@ -40,13 +40,13 @@ export default function PatchnotesPage() {
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
-      <title>Nouveautés — Éditeur de personnage CO2</title>
+      <title>Notes de mise à jour — Éditeur de personnage CO2</title>
       <HomeBackground />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>
           <Typography variant="h4" component="h1">
-            Nouveautés
+            Notes de mise à jour
           </Typography>
           {groups.length === 0 ? (
             <Typography variant="body1" color="text.secondary">
