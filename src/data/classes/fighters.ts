@@ -798,12 +798,14 @@ export const fighterFeatures: Feature[] = [
       'Une fois par combat, le barbare pousse un hurlement qui effraie ses adversaires dans un rayon de 10 m. Les adversaires dont la FOR est inférieure à celle du barbare subissent un dé malus à leurs tests d’attaque au contact durant leur prochain tour. De plus, le barbare est sans peur, il ajoute son rang + 2 à tous les tests de VOL destinés à résister à la peur.',
     // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-128 : bonus de compétence
     // INCONDITIONNEL au domaine « résister à la peur » (`fear-resistance`, VOL). Le dé malus infligé
-    // aux ennemis (effet de groupe) relève du tracker de combat (PER-104/105). « Une fois par combat »
-    // → compteur réinitialisé au repos court (resetOn 'combat', PER-73/151).
+    // aux ennemis (effet de groupe) est désormais chiffré via `situationalEffectIds` (PER-105,
+    // `daunted`) — posable sur chaque adversaire qualifié depuis la palette de l'écran de MJ. « Une
+    // fois par combat » → compteur réinitialisé au repos court (resetOn 'combat', PER-73/151).
     richText:
       'Une fois par combat, le barbare pousse un hurlement qui effraie ses adversaires dans un rayon de 10 m. Les adversaires dont la FOR est inférieure à celle du barbare subissent un dé malus à leurs tests d’attaque au contact durant leur prochain tour. De plus, le barbare est sans peur, il ajoute son [rang + 2] à tous les tests de VOL destinés à résister à la peur.',
     effects: [{ kind: 'test-bonus', domains: ['fear-resistance'] }],
     usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
+    situationalEffectIds: ['daunted'],
     sourcePage: 82,
   },
   {
@@ -1432,6 +1434,8 @@ export const fighterFeatures: Feature[] = [
     text:
       'Une fois par round, le chevalier donne un dé bonus à un allié qui attaque un adversaire à son contact. Le dé bonus doit être attribué avant de lancer les dés.',
     sourcePage: 86,
+    // Buff de groupe CIBLE UNIQUE (PER-496) : débloque « Exemplaire » dans la palette de l'écran de MJ.
+    groupBuffIds: ['exemplary'],
   },
   {
     id: 'meneur-d-hommes-r4',
@@ -1443,12 +1447,14 @@ export const fighterFeatures: Feature[] = [
     text:
       'Une fois par combat, lorsque le chevalier déclare l’utilisation de cette capacité, tous ses alliés en vue et lui obtiennent 10 m de déplacement supplémentaire au début de leur tour puis un dé bonus et +1d4° DM à toutes leurs attaques. Ne se cumule ni avec exemplaire ni avec ordre de bataille.',
     // Rendu enrichi (PER-72) : DM {1d4°}. Buff de groupe TEMPORAIRE (le chevalier ET ses alliés) au
-    // déclenchement → relève du tracker de combat (alliés hors périmètre). Pas d'effet structuré.
+    // déclenchement → posé via `groupBuffIds` (PER-496, `phantom-charge`), pas un effet permanent.
     richText:
       'Une fois par combat, lorsque le chevalier déclare l’utilisation de cette capacité, tous ses alliés en vue et lui obtiennent 10 m de déplacement supplémentaire au début de leur tour puis un dé bonus et +{1d4°} DM à toutes leurs attaques. Ne se cumule ni avec exemplaire ni avec ordre de bataille.',
     // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
     usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 86,
+    // Buff de groupe (PER-496) : débloque « Charge fantastique » dans la palette de l'écran de MJ.
+    groupBuffIds: ['phantom-charge'],
   },
   {
     id: 'meneur-d-hommes-r5',
@@ -2105,10 +2111,12 @@ export const fighterFeatures: Feature[] = [
     text:
       'Vous n’admettez pas qu’un adversaire vous ignore. Une fois par round, si un adversaire à votre contact attaque une autre créature que vous, vous obtenez une attaque en action gratuite contre lui. Si l’INT de cet adversaire est négative et que vous lui infligez des DM sur cette attaque, il vous prend automatiquement pour cible lors de sa prochaine attaque.',
     // Rendu enrichi (PER-72) : « l'INT de cet adversaire » = stat d'une CIBLE → référence non calculée
-    // @INT (cf. format §5). L'attaque d'opportunité gratuite et la prise pour cible automatique relèvent
-    // du tracker de combat. Pas d'effet structuré.
+    // @INT (cf. format §5). L'attaque d'opportunité gratuite reste comportementale (aucune primitive
+    // d'attaque déclenchée). La prise pour cible automatique est désormais un marqueur pense-bête
+    // (PER-105, `goaded`) posable sur l'adversaire concerné depuis la palette de l'écran de MJ.
     richText:
       'Vous n’admettez pas qu’un adversaire vous ignore. Une fois par round, si un adversaire à votre contact attaque une autre créature que vous, vous obtenez une attaque en action gratuite contre lui. Si l’@INT de cet adversaire est négative et que vous lui infligez des DM sur cette attaque, il vous prend automatiquement pour cible lors de sa prochaine attaque.',
+    situationalEffectIds: ['goaded'],
     sourcePage: 90,
   },
   {

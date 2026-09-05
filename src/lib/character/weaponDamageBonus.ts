@@ -183,7 +183,7 @@ function resolveConditionLabel(
  * concrète atteinte au niveau du personnage (`scalingDie`), les autres sont rendus tels quels. On
  * garde `evolving` pour que le badge conserve le marqueur `°` (règle p. 43, cf. `DieIcon`).
  */
-function resolveDisplayDice(
+export function resolveDisplayDice(
   dice: NonNullable<WeaponDamageBonusEffect['dice']>,
   level: number,
   tierBonus = 0,

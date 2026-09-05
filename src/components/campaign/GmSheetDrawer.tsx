@@ -101,6 +101,7 @@ import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
 import { effectiveStatuses, statusSheetImpact, type AppliedStatus } from '@/lib/character/statusEffects';
+import { statusDamageDiceBonuses } from '@/lib/character/groupBuffs';
 import { passiveAuraStatusesFor } from '@/lib/character/partyAuras';
 import { mergeMods } from '@/lib/character/orphanPoints';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
@@ -353,9 +354,9 @@ function GmSheetDrawerContent({
       meleeWeaponDamage,
       unarmedCriticalRanges,
       rangedWeaponDamage,
-      meleeSituationalDamage,
-      offHandMeleeSituationalDamage,
-      rangedSituationalDamage,
+      meleeSituationalDamage: meleeSituationalDamageBase,
+      offHandMeleeSituationalDamage: offHandMeleeSituationalDamageBase,
+      rangedSituationalDamage: rangedSituationalDamageBase,
       rangedAttackMagicalSourceId,
       rangedAttackElement,
       rangedReplacingFormAttack,
@@ -379,6 +380,14 @@ function GmSheetDrawerContent({
     masterDerived ? (character.overrides.maxHp ?? masterDerived.maxHp) : undefined,
     statusImpact ?? undefined,
   );
+  // Bonus de DM en DÉ posés par un buff de groupe (PER-496, Charge fantastique) — même badge que les
+  // bonus de DM situationnels des capacités permanentes, sur les deux mains.
+  const statusDamageDice = statusImpact
+    ? statusDamageDiceBonuses(statusImpact.damageDealtDice, character.level)
+    : [];
+  const meleeSituationalDamage = [...meleeSituationalDamageBase, ...statusDamageDice];
+  const offHandMeleeSituationalDamage = [...offHandMeleeSituationalDamageBase, ...statusDamageDice];
+  const rangedSituationalDamage = [...rangedSituationalDamageBase, ...statusDamageDice];
   // Entrée moteur AJUSTÉE par les états : deltas fondus dans `mods` pour que DEF/Init./attaques
   // reflètent le malus, le détail « i » les attribuant à « État : … ». Les jauges restent sur
   // `masterDerived` NON ajusté — un état de combat ne change pas les maxima.

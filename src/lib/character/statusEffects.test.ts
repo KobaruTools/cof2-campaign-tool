@@ -167,8 +167,11 @@ describe('resolveStatusModifiers', () => {
       derived: {},
       allTestsMalusDie: false,
       attackTestsMalusDie: false,
+      allTestsBonusDie: false,
+      attackTestsBonusDie: false,
       allTestsFlat: 0,
       damageDealt: 0,
+      damageDealtDice: [],
       testDomains: {},
       statusImmunities: [],
     });

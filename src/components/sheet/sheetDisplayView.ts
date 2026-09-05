@@ -231,8 +231,20 @@ export function buildSheetDisplayView(
     abilityEquipmentBonuses: abilityBonusSourcesFromEquipment(character.equipment),
     bonusDieSources,
     bonusDieSourcesDetailed,
-    // Dé bonus aux ATTAQUES tant que PV < niveau (flibustier r8) — nécessite `maxHp`, sauté sinon.
-    attackBonusDieSources: maxHp === undefined ? [] : lowHpAttackDieSources(character, maxHp),
+    // Dé bonus aux ATTAQUES : tant que PV < niveau (flibustier r8, nécessite `maxHp`) + états de
+    // combat posés en séance (PER-496, Exemplaire/Charge fantastique/Meneur d'hommes) — même badge,
+    // peu importe la source (capacité permanente ou buff de groupe posé par le MJ). Les cartes
+    // d'attaque ne lisent que `.name` de ces sources (tooltip texte, pas de puce de capacité) : un
+    // `featureId` de repli (le libellé lui-même) suffit à satisfaire le type `BonusDieSource`.
+    attackBonusDieSources: [
+      ...(maxHp === undefined ? [] : lowHpAttackDieSources(character, maxHp)),
+      ...(statusImpact
+        ? [...statusImpact.allTestsBonusDie, ...statusImpact.attackTestsBonusDie].map((name) => ({
+            featureId: name,
+            name,
+          }))
+        : []),
+    ],
     // Dé bonus de l'arme liée (PER-74) : dépend de l'arme en main et du compteur, pas des PV.
     boundWeaponAttackDie: boundWeaponAttackDieSource(character),
     testBonuses: testBonusSources(modFeatureIds, effectContext),

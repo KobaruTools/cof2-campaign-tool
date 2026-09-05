@@ -95,6 +95,7 @@ import { SessionHeaderIndicator } from '@/components/session/SessionHeaderIndica
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import { statusSheetImpact } from '@/lib/character/statusEffects';
+import { statusDamageDiceBonuses } from '@/lib/character/groupBuffs';
 import { passiveAuraStatusesFor } from '@/lib/character/partyAuras';
 import { mergeMods } from '@/lib/character/orphanPoints';
 import { ActiveStatusPanel } from '@/components/sheet/ActiveStatusPanel';
@@ -893,9 +894,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       twoWeaponPenaltyDie,
       unarmedCriticalRanges,
       rangedWeaponDamage,
-      meleeSituationalDamage,
-      offHandMeleeSituationalDamage,
-      rangedSituationalDamage,
+      meleeSituationalDamage: meleeSituationalDamageBase,
+      offHandMeleeSituationalDamage: offHandMeleeSituationalDamageBase,
+      rangedSituationalDamage: rangedSituationalDamageBase,
       meleeAttackNotes,
       rangedAttackNotes,
       rangedAttackMagicalSourceId,
@@ -1435,6 +1436,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     masterDerived ? (character.overrides.maxHp ?? masterDerived.maxHp) : undefined,
     statusImpact ?? undefined,
   );
+  // Bonus de DM en DÉ posés par un buff de groupe (PER-496, Charge fantastique) — même badge que les
+  // bonus de DM situationnels des capacités permanentes, sur les deux mains (« toutes leurs attaques »).
+  const statusDamageDice = statusImpact
+    ? statusDamageDiceBonuses(statusImpact.damageDealtDice, character.level)
+    : [];
+  const meleeSituationalDamage = [...meleeSituationalDamageBase, ...statusDamageDice];
+  const offHandMeleeSituationalDamage = [...offHandMeleeSituationalDamageBase, ...statusDamageDice];
+  const rangedSituationalDamage = [...rangedSituationalDamageBase, ...statusDamageDice];
   // Entrée moteur AJUSTÉE par les états : on FOND les deltas dans `mods` pour que DEF/Init./attaques
   // reflètent le malus, le détail « i » les attribuant à « État : … » (via `display.extraModSources`).
   // Les jauges (PV/mana) restent sur `masterDerived` NON ajusté : un état de combat ne change pas les

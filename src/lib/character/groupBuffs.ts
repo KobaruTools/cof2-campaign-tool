@@ -21,9 +21,11 @@ import {
   type BeneficialEffectId,
 } from '@/data/schema';
 import { featureById } from '@/data/index';
-import { clampIntensity } from './statusEffects';
+import { clampIntensity, statusEntry, type StatusSheetImpact } from './statusEffects';
 import { effectiveFeatureIdsForMods } from './choices';
 import { isEffectActive, pathRanksFromFeatures } from './effects';
+import { resolveDisplayDice } from './weaponDamageBonus';
+import type { SituationalDamageBonus } from './weaponDamageBonus';
 import type { Character } from './types';
 
 /**
@@ -180,6 +182,26 @@ export function groupBuffFeatureId(buffId: string): string | undefined {
     carrierFeatureByBuff = { size: featureById.size, map };
   }
   return carrierFeatureByBuff.map.get(buffId);
+}
+
+/**
+ * Bonus de DM en DÉ (PER-496, `StatusSheetImpact.damageDealtDice`) prêts pour le badge de DM
+ * SITUATIONNEL (`WeaponDamageBonusBadge`) — même forme que les bonus des capacités permanentes
+ * (`weaponDamageBonuses`), avec la capacité RÉELLE qui confère le buff (`groupBuffFeatureId`) comme
+ * `featureId` : la puce de capacité doit nommer « Charge fantastique », pas l'id interne de l'état.
+ * `level` résout la face concrète d'un dé ÉVOLUTIF (même convention que les bonus permanents). Vide
+ * si aucun état actif ne confère de bonus de DM en dé.
+ */
+export function statusDamageDiceBonuses(
+  damageDealtDice: StatusSheetImpact['damageDealtDice'],
+  level: number,
+): SituationalDamageBonus[] {
+  return damageDealtDice.map((d) => ({
+    featureId: groupBuffFeatureId(d.id) ?? d.id,
+    name: d.label,
+    sourcePage: statusEntry(d.id)?.sourcePage,
+    dice: resolveDisplayDice(d.dice, level),
+  }));
 }
 
 /** PER-314 — un interrupteur de fiche SUPPLANTÉ par le même buff posé en séance. */

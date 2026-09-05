@@ -2272,10 +2272,11 @@ export const prestigeFeatures1: Feature[] = [
     text:
       "Une fois par jour, le personnage peut haranguer ses compagnons, les motiver et les conseiller pour attaquer un adversaire particulier. Tous ses alliés bénéficient d'un dé bonus une fois par round pour toute la scène à venir (un combat, un bal ou une réception, une scène de meurtre à étudier, etc.).",
     // « Une fois par jour » → compteur 1×/jour (masqué du panneau d'état, jauge à 1 point). Le dé bonus
-    // profite aux ALLIÉS (une fois par round, toute la scène) → pas de badge sur la fiche du personnage ;
-    // seuls le compteur d'usage et le verbatim (action limitée) portent la mécanique.
+    // profite aux ALLIÉS (une fois par round, toute la scène) : posé via `groupBuffIds` (PER-496,
+    // `leader-of-men`), le compteur d'usage ne portant que le DÉCLENCHEMENT (action limitée, 1×/jour).
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true, label: "Harangue du meneur" },
     sourcePage: 142,
+    groupBuffIds: ['leader-of-men'],
   },
 
   // ===== Voie du maître des poisons (p. 143) =====

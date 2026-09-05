@@ -201,6 +201,7 @@ import {
   COMPACT_GAUGE_ROW_GAP,
 } from '@/components/sheet/CompactGauges';
 import { MalusDieBadge } from '@/components/MalusDieBadge';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { StatusEffectTooltip } from '@/components/campaign/CombatStatusPalette';
 import {
@@ -725,11 +726,13 @@ function StatPill({
   value,
   lowered,
   malusDie,
+  bonusDie,
 }: {
   glyph: string;
   value: string;
   lowered: boolean;
   malusDie?: boolean;
+  bonusDie?: boolean;
 }) {
   return (
     <Box
@@ -763,6 +766,9 @@ function StatPill({
       >
         {value}
       </Box>
+      {bonusDie && (
+        <BonusDieBadge ability="attaque" tooltipTitle="Dé bonus à toutes les attaques" size={12} noTooltip />
+      )}
       {malusDie && <MalusDieBadge size={12} noTooltip />}
     </Box>
   );
@@ -778,6 +784,9 @@ function CombatStatsRow({ stats, resolved }: { stats: CombatStats; resolved: Res
   const defAdjusted = stats.def + defDelta;
   // Dé malus aux tests d'attaque : Affaibli (tous les tests) OU Immobilisé (tests d'attaque).
   const attackMalusDie = resolved.allTestsMalusDie || resolved.attackTestsMalusDie;
+  // Dé BONUS aux tests d'attaque (PER-496) : Meneur d'hommes (tous les tests) OU Exemplaire/Charge
+  // fantastique (tests d'attaque seuls).
+  const attackBonusDie = resolved.allTestsBonusDie || resolved.attackTestsBonusDie;
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, alignItems: 'center' }}>
       <StatPill glyph={DERIVED_STAT_ICON_PATHS.defense} value={String(defAdjusted)} lowered={defDelta < 0} />
@@ -792,6 +801,7 @@ function CombatStatsRow({ stats, resolved }: { stats: CombatStats; resolved: Res
             value={formatSigned(adjusted)}
             lowered={delta < 0}
             malusDie={attackMalusDie}
+            bonusDie={attackBonusDie}
           />
         );
       })}
@@ -816,6 +826,7 @@ function CompactCombatStatsRow({
 }) {
   const defDelta = resolved.derived.def ?? 0;
   const attackMalusDie = resolved.allTestsMalusDie || resolved.attackTestsMalusDie;
+  const attackBonusDie = resolved.allTestsBonusDie || resolved.attackTestsBonusDie;
   // Attaques ajustées, calculées une fois pour l'info-bulle : même arithmétique que `CombatStatsRow`
   // (delta du type d'attaque + malus plat « à tous les tests »).
   const attacks = stats.attacks.map((atk) => {
@@ -847,6 +858,9 @@ function CompactCombatStatsRow({
                   </Box>
                 </Box>
               ))}
+              {attackBonusDie && (
+                <Box sx={{ mt: 0.5, opacity: 0.8 }}>Dé bonus à toutes les attaques</Box>
+              )}
               {attackMalusDie && (
                 <Box sx={{ mt: 0.5, opacity: 0.8 }}>Dé malus aux tests d&apos;attaque</Box>
               )}
@@ -861,6 +875,7 @@ function CompactCombatStatsRow({
               value="…"
               lowered={anyLowered}
               malusDie={attackMalusDie}
+              bonusDie={attackBonusDie}
             />
           </Box>
         </AppTooltip>

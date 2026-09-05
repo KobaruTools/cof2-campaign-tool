@@ -226,6 +226,78 @@ describe('PER-359 — buffs recensés', () => {
   });
 });
 
+/* --------------------------------------------------------------------------- *
+ * PER-496 — canal DÉ BONUS posable sur les alliés (le gap identifié par PER-359 : `StatusModifiers`
+ * ne savait poser que des dés MALUS et des DM PLATS). Trois nouvelles entrées, un test par capacité.
+ * --------------------------------------------------------------------------- */
+
+describe('PER-496 — canal dé bonus (Exemplaire, Charge fantastique, Meneur d’hommes)', () => {
+  it('« Exemplaire » (p. 86) : dé bonus d’attaque sur UN allié, sans palier', () => {
+    const entry = BENEFICIAL_EFFECTS.exemplary;
+    expect(entry.label).toBe('Exemplaire');
+    expect(entry.sourcePage).toBe(86);
+    expect(entry.effect).toContain('donne un dé bonus à un allié qui attaque');
+    expect(entry.modifiers).toEqual({ attackTestsBonusDie: true });
+    expect(entry.scope).toBe('single-ally');
+    expect(entry.stacking).toBeUndefined();
+    expect(entry.intensityFrom).toBeUndefined();
+    expect(featureById.get('meneur-d-hommes-r3')?.groupBuffIds).toEqual(['exemplary']);
+  });
+
+  it('« Charge fantastique » (p. 86) : dé bonus + DM en dé (+1d4°) sur tout le groupe, LUI compris', () => {
+    const entry = BENEFICIAL_EFFECTS['phantom-charge'];
+    expect(entry.label).toBe('Charge fantastique');
+    expect(entry.sourcePage).toBe(86);
+    expect(entry.effect).toContain('tous ses alliés en vue et lui');
+    expect(entry.modifiers).toEqual({
+      attackTestsBonusDie: true,
+      damageDealtDice: { count: 1, die: 'd4', evolving: true },
+    });
+    expect(entry.scope).toBe('group');
+    // « et lui » : le chevalier profite du buff comme ses alliés, contrairement à l'aura du chef de guerre.
+    expect(entry.excludesCarrier).toBeUndefined();
+    expect(featureById.get('meneur-d-hommes-r4')?.groupBuffIds).toEqual(['phantom-charge']);
+  });
+
+  it('« Meneur d’hommes » (p. 142) : dé bonus à TOUS les tests, groupe SANS le porteur', () => {
+    const entry = BENEFICIAL_EFFECTS['leader-of-men'];
+    expect(entry.label).toBe("Meneur d'hommes");
+    expect(entry.sourcePage).toBe(142);
+    expect(entry.effect).toContain("Tous ses alliés bénéficient d'un dé bonus");
+    expect(entry.modifiers).toEqual({ allTestsBonusDie: true });
+    expect(entry.scope).toBe('group');
+    // « TOUS ses alliés » (pas « et lui ») : le porteur est exclu, même patron que l'aura du chef de guerre.
+    expect(entry.excludesCarrier).toBe(true);
+    expect(featureById.get('prestige-heros-r8')?.groupBuffIds).toEqual(['leader-of-men']);
+  });
+
+  it('resolveStatusModifiers (écran de MJ) : agrège les drapeaux de dé bonus (OU logique)', () => {
+    expect(resolveStatusModifiers([{ id: 'exemplary' }]).attackTestsBonusDie).toBe(true);
+    expect(resolveStatusModifiers([{ id: 'exemplary' }]).allTestsBonusDie).toBe(false);
+    expect(resolveStatusModifiers([{ id: 'leader-of-men' }]).allTestsBonusDie).toBe(true);
+    expect(resolveStatusModifiers([{ id: 'phantom-charge' }]).damageDealtDice).toEqual([
+      { count: 1, die: 'd4', evolving: true },
+    ]);
+  });
+
+  it('statusSheetImpact (fiche) : ventile les libellés et attribue le bonus de DM en dé', () => {
+    const r = statusSheetImpact([{ id: 'phantom-charge' }]);
+    expect(r.attackTestsBonusDie).toEqual(['Charge fantastique']);
+    expect(r.damageDealtDice).toEqual([
+      { id: 'phantom-charge', label: 'Charge fantastique', dice: { count: 1, die: 'd4', evolving: true } },
+    ]);
+
+    const r2 = statusSheetImpact([{ id: 'leader-of-men' }]);
+    expect(r2.allTestsBonusDie).toEqual(["Meneur d'hommes"]);
+  });
+
+  it('un dé bonus et un dé malus se posent SANS s’annuler (deux drapeaux indépendants)', () => {
+    const r = resolveStatusModifiers([{ id: 'exemplary' }, { id: 'immobilized' }]);
+    expect(r.attackTestsBonusDie).toBe(true);
+    expect(r.attackTestsMalusDie).toBe(true);
+  });
+});
+
 /* ---------------------------------------------------------------------------
  * DOUBLE COMPTE CHEZ LE PORTEUR — l'invariant qui décide de `excludesCarrier`.
  *

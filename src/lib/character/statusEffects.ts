@@ -18,6 +18,7 @@ import {
   STATUS_EFFECTS,
   type AbilityId,
   type BeneficialEffectId,
+  type DamageDie,
   type DerivedStatId,
   type EnvironmentalEffectId,
   type ImmunityId,
@@ -175,6 +176,10 @@ export interface ResolvedStatusModifiers {
   allTestsMalusDie: boolean;
   /** Au moins un état impose un dé malus aux tests d'ATTAQUE (Immobilisé). */
   attackTestsMalusDie: boolean;
+  /** Au moins un état confère un dé BONUS à TOUS les tests (Meneur d'hommes, PER-496). */
+  allTestsBonusDie: boolean;
+  /** Au moins un état confère un dé BONUS aux seuls tests d'ATTAQUE (Exemplaire, Charge fantastique). */
+  attackTestsBonusDie: boolean;
   /**
    * Modificateur plat cumulé à tous les tests, SIGNÉ (PER-104) : négatif pour un malus (Attaque
    * invalidante), positif pour un buff de groupe (Chant des héros, Bénédiction). Les deux se
@@ -186,6 +191,13 @@ export interface ResolvedStatusModifiers {
    * positif pour un buff (Aura du chef de guerre p. 161, PER-359).
    */
   damageDealt: number;
+  /**
+   * Bonus de DM en DÉ cumulés (PER-496, Charge fantastique) — LISTE brute (pas de somme : des dés
+   * hétérogènes ne s'additionnent pas en une seule valeur). Sans attribution (contrairement à
+   * `StatusSheetImpact.damageDealtDice`) : ce sac ne sert qu'à un usage agrégé, pas au détail « i ».
+   * Vide si aucun état n'en confère.
+   */
+  damageDealtDice: { count: number; die: DamageDie; evolving?: boolean }[];
   /**
    * Modificateurs plats cumulés PAR DOMAINE de test (PER-359), keyés par id de `test-domains.ts` :
    * Sans peur (`fear-resistance`), Argument de taille (négociation/persuasion/intimidation). Vient
@@ -400,8 +412,11 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
   const derivedTotals: Partial<Record<DerivedStatId, number>> = {};
   let allTestsMalusDie = false;
   let attackTestsMalusDie = false;
+  let allTestsBonusDie = false;
+  let attackTestsBonusDie = false;
   let allTestsFlat = 0;
   let damageDealt = 0;
+  const damageDealtDice: { count: number; die: DamageDie; evolving?: boolean }[] = [];
   const testDomains: Record<string, number> = {};
   const statusImmunities = new Set<ImmunityId>();
 
@@ -418,8 +433,11 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
     }
     if (mods.allTestsMalusDie) allTestsMalusDie = true;
     if (mods.attackTestsMalusDie) attackTestsMalusDie = true;
+    if (mods.allTestsBonusDie) allTestsBonusDie = true;
+    if (mods.attackTestsBonusDie) attackTestsBonusDie = true;
     if (mods.allTestsFlat !== undefined) allTestsFlat += mods.allTestsFlat * intensity;
     if (mods.damageDealt !== undefined) damageDealt += mods.damageDealt * intensity;
+    if (mods.damageDealtDice) damageDealtDice.push(mods.damageDealtDice);
     if (mods.testDomains) {
       const value = mods.testDomains.value * intensity;
       for (const domain of mods.testDomains.domains)
@@ -439,8 +457,11 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
     derived,
     allTestsMalusDie,
     attackTestsMalusDie,
+    allTestsBonusDie,
+    attackTestsBonusDie,
     allTestsFlat,
     damageDealt,
+    damageDealtDice,
     testDomains,
     statusImmunities: [...statusImmunities],
   };
@@ -473,6 +494,10 @@ export interface StatusSheetImpact {
   allTestsMalusDie: string[];
   /** Libellés des états imposant un dé malus aux seuls tests d'ATTAQUE (Immobilisé). Vide = aucun. */
   attackTestsMalusDie: string[];
+  /** Libellés des états conférant un dé BONUS à TOUS les tests (Meneur d'hommes, PER-496). Vide = aucun. */
+  allTestsBonusDie: string[];
+  /** Libellés des états conférant un dé BONUS aux seuls tests d'ATTAQUE (Exemplaire, Charge fantastique). */
+  attackTestsBonusDie: string[];
   /**
    * Ventilation du modificateur plat « à tous les tests » vers les tests de CARACTÉRISTIQUE (PER-104),
    * une ligne par état — même forme que les termes de `modSources`, pour le détail « i » de
@@ -491,6 +516,17 @@ export interface StatusSheetImpact {
    * positif pour un buff (Aura du chef de guerre, PER-359).
    */
   damageDealt: number;
+  /**
+   * Bonus de DM en DÉ ATTRIBUÉS (PER-496, Charge fantastique) — une entrée par état actif, avec la
+   * capacité source RÉELLE (`groupBuffFeatureId`, pas l'id de l'état) pour le badge de DM situationnel
+   * (`WeaponDamageBonusBadge`). Comptée NULLE PART ailleurs. Vide = aucun état n'en confère.
+   */
+  damageDealtDice: {
+    id: AnyStatusEffectId;
+    label: string;
+    dice: { count: number; die: DamageDie; evolving?: boolean };
+    castBy?: string;
+  }[];
   /**
    * Ventilation des bonus/malus PAR DOMAINE de test (PER-359), keyée par id de `test-domains.ts` —
    * une ligne par état, même forme que `abilityTestSources` pour que le détail « i » de
@@ -518,9 +554,12 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
   const modSources: Partial<Record<DerivedStatId, { label: string; value: number }[]>> = {};
   const allTestsMalusDie: string[] = [];
   const attackTestsMalusDie: string[] = [];
+  const allTestsBonusDie: string[] = [];
+  const attackTestsBonusDie: string[] = [];
   const abilityTestSources: StatusSheetImpact['abilityTestSources'] = [];
   const testDomainSources: StatusSheetImpact['testDomainSources'] = {};
   const statusImmunitySources: StatusSheetImpact['statusImmunitySources'] = {};
+  const damageDealtDice: StatusSheetImpact['damageDealtDice'] = [];
   let allTestsFlat = 0;
   let damageDealt = 0;
 
@@ -548,6 +587,15 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
     }
     if (mods.allTestsMalusDie) allTestsMalusDie.push(cat.label);
     if (mods.attackTestsMalusDie) attackTestsMalusDie.push(cat.label);
+    if (mods.allTestsBonusDie) allTestsBonusDie.push(cat.label);
+    if (mods.attackTestsBonusDie) attackTestsBonusDie.push(cat.label);
+    if (mods.damageDealtDice)
+      damageDealtDice.push({
+        id: entry.id,
+        label,
+        dice: mods.damageDealtDice,
+        ...(entry.castBy ? { castBy: entry.castBy } : {}),
+      });
     if (mods.allTestsFlat !== undefined) {
       const flat = mods.allTestsFlat * intensity;
       allTestsFlat += flat;
@@ -601,9 +649,12 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
     modSources,
     allTestsMalusDie,
     attackTestsMalusDie,
+    allTestsBonusDie,
+    attackTestsBonusDie,
     abilityTestSources,
     allTestsFlat,
     damageDealt,
+    damageDealtDice,
     testDomainSources,
     statusImmunitySources,
   };

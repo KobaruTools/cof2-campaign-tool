@@ -4,6 +4,7 @@ import {
   groupBuffIntensityFor,
   groupBuffsOf,
   isBuffToggleSuperseded,
+  statusDamageDiceBonuses,
   supersededBuffToggles,
   unlockedGroupBuffIds,
   withSupersededBuffTogglesOff,
@@ -264,5 +265,36 @@ describe('PER-359 — capacités qui posent un effet sur les autres', () => {
     expect(groupBuffFeatureId('towering-argument')).toBe('brute-r1');
     expect(groupBuffFeatureId('shield-ally')).toBe('bouclier-r1');
     expect(groupBuffFeatureId('warlord-aura')).toBe('prestige-mage-de-guerre-r6');
+  });
+});
+
+// PER-496 — le badge de DM situationnel (`WeaponDamageBonusBadge`) attend la capacité RÉELLE qui
+// confère le buff (« Charge fantastique »), pas l'id interne de l'état (`phantom-charge`).
+describe('statusDamageDiceBonuses (badge de DM situationnel du buffé)', () => {
+  it('résout la capacité source et un dé fixe (non évolutif) tel quel', () => {
+    const bonuses = statusDamageDiceBonuses(
+      [{ id: 'phantom-charge', label: 'Charge fantastique', dice: { count: 1, die: 'd4', evolving: true } }],
+      1,
+    );
+    expect(bonuses).toEqual([
+      {
+        featureId: 'meneur-d-hommes-r4',
+        name: 'Charge fantastique',
+        sourcePage: 86,
+        dice: { count: 1, die: 'd4', evolving: true },
+      },
+    ]);
+  });
+
+  it('résout la face ÉVOLUTIVE au niveau du personnage (comme les bonus de DM permanents)', () => {
+    const bonuses = statusDamageDiceBonuses(
+      [{ id: 'phantom-charge', label: 'Charge fantastique', dice: { count: 1, die: 'd4', evolving: true } }],
+      9,
+    );
+    expect(bonuses[0].dice).toEqual({ count: 1, die: 'd8', evolving: true });
+  });
+
+  it('vide sans état actif', () => {
+    expect(statusDamageDiceBonuses([], 5)).toEqual([]);
   });
 });
