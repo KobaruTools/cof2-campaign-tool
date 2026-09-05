@@ -617,8 +617,9 @@ export function setWeaponModification(
   index: number,
   spec: WeaponModificationLoadout,
   on: boolean,
+  firearmsAllowed?: boolean,
 ): Partial<Character> {
-  const equipment = setWeaponMod(character.equipment, index, spec, on);
+  const equipment = setWeaponMod(character.equipment, index, spec, on, firearmsAllowed);
   return equipment === character.equipment ? {} : { equipment };
 }
 

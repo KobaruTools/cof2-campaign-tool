@@ -1111,12 +1111,12 @@ export function LevelUpDialog({
   };
   const hasHybridOption = available.some(isNewHybridFeature);
   const visible = showHybrid ? available : available.filter((f) => !isNewHybridFeature(f));
-  const availableGroups = groupFeaturesByPath(visible.map((f) => f.id));
+  const availableGroups = groupFeaturesByPath(visible.map((f) => f.id), undefined, firearmsAllowed);
   // La divine prise est présentée dans sa carte dédiée, pas dans la liste « choisies ».
   const pickedNonDivine = pendingDivine
     ? picked.filter((id) => id !== pendingDivine.feature.id)
     : picked;
-  const pickedGroups = groupFeaturesByPath(pickedNonDivine);
+  const pickedGroups = groupFeaturesByPath(pickedNonDivine, undefined, firearmsAllowed);
 
   // Teinte d'une voie = couleur de SON profil (pas du profil principal) ;
   // neutre pour la voie de peuple et les voies de prestige.

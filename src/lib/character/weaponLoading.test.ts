@@ -516,6 +516,20 @@ describe('modifications d’arme au choix du joueur (artilleur-r2 / r4, PER-284)
     );
   });
 
+  it('PER-178 — armes à feu interdites : « Carreau double » accepte les arbalètes, mais pas la baliste', () => {
+    const crossbow: EquipmentLine = { itemId: 'arbalete-lourde', quantity: 1 };
+    const ballista: EquipmentLine = { itemId: 'baliste', quantity: 1 };
+    // Armes à feu autorisées (comportement d'origine, inchangé) : le second canon reste réservé à
+    // la poudre, même en passant explicitement `firearmsAllowed: true`.
+    expect(isModifiableWeapon(crossbow, doubleBarrelSpec, true)).toBe(false);
+    // Armes à feu interdites : l'arbalète devient éligible…
+    expect(isModifiableWeapon(crossbow, doubleBarrelSpec, false)).toBe(true);
+    // …mais la baliste (contrepartie de la couleuvrine, p. 62) reste exclue, à l'identique du livre.
+    expect(isModifiableWeapon(ballista, doubleBarrelSpec, false)).toBe(false);
+    // Le chargeur (`reloadable`) n'est pas affecté : déjà ouvert aux arbalètes quelle que soit la poudre.
+    expect(isModifiableWeapon(crossbow, magazineSpec, false)).toBe(true);
+  });
+
   it('cocher une arme lui pose le chargeur et lui donne la capacité correspondante', () => {
     const char = gunner(3, ['artilleur-r2', 'artilleur-r3'], [{ itemId: 'petoire', quantity: 1 }]);
     const after = setWeaponModification(char.equipment, 0, magazineSpec, true);

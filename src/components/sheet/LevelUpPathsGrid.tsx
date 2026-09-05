@@ -49,6 +49,7 @@ import Typography from '@mui/material/Typography';
 import { featureById, pathById, progression } from '@/data';
 import type { Feature } from '@/data/schema';
 import { canAcquireFeature, featureCost } from '@/lib/engine';
+import { artilleurFeatureDisplay } from '@/lib/character/artilleurDisplay';
 import { borrowedFeaturesOf } from '@/lib/character/choices';
 import { rulesContext } from '@/lib/character/rulesContext';
 import type { Character } from '@/lib/character/types';
@@ -765,7 +766,8 @@ export function LevelUpPathsGrid({
 
       {preview &&
         (() => {
-          const feature = featureById.get(preview.featureId);
+          const rawFeature = featureById.get(preview.featureId);
+          const feature = rawFeature ? artilleurFeatureDisplay(rawFeature, firearmsAllowed) : undefined;
           const path = feature ? pathById.get(feature.pathId) : undefined;
           if (!feature) return null;
           const visuals = pathVisuals(path, character.classId);

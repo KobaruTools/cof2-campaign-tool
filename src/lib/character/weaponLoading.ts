@@ -428,10 +428,17 @@ export function weaponModificationSlots(
 /**
  * La ligne est-elle une arme ÉLIGIBLE à cette modification ? Toute arme que le livre fait recharger
  * pour un chargeur (`reloadable`), les seules armes à poudre pour un second canon (`firearm`).
+ *
+ * PER-178 — variante « Arbalétrier » (armes à feu interdites) : « Canon double » se reformule en
+ * « Carreau double » pour les arbalètes (cf. `artilleurFeatureDisplay`), RÈGLE MAISON sans équivalent
+ * RAW. Pour que ce reskin ait un effet réel (jamais un texte qui promet un effet inerte), la portée
+ * `firearm` s'étend aux arbalètes quand `firearmsAllowed === false` — la baliste (contrepartie de la
+ * couleuvrine) reste exclue via `excludedWeaponModifications`, à l'identique de l'original.
  */
 export function isModifiableWeapon(
   line: EquipmentLine,
   spec: WeaponModificationLoadout,
+  firearmsAllowed?: boolean,
 ): line is EquipmentRef {
   const weapon = reloadableWeapon(line);
   if (!weapon) return false;
@@ -439,7 +446,8 @@ export function isModifiableWeapon(
   // sa contrepartie baliste : « L'arquebusier peut bricoler ses armes à poudre (mais pas une
   // couleuvrine) » (p. 63). Cf. `Weapon.excludedWeaponModifications`.
   if (weapon.excludedWeaponModifications?.includes(spec.modification)) return false;
-  return spec.scope === 'reloadable' || weapon.rangedKind === 'firearm';
+  if (spec.scope === 'reloadable') return true;
+  return weapon.rangedKind === 'firearm' || (firearmsAllowed === false && weapon.rangedKind === 'crossbow');
 }
 
 /** La ligne porte-t-elle déjà cette modification ? */
@@ -475,9 +483,10 @@ export function setWeaponModification(
   index: number,
   spec: WeaponModificationLoadout,
   on: boolean,
+  firearmsAllowed?: boolean,
 ): EquipmentLine[] {
   const line = equipment[index];
-  if (!line || !isModifiableWeapon(line, spec)) return equipment;
+  if (!line || !isModifiableWeapon(line, spec, firearmsAllowed)) return equipment;
   if (hasWeaponModification(line, spec.modification) === on) return equipment;
   if (
     on &&

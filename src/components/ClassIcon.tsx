@@ -48,6 +48,15 @@ export function FirearmsAllowedProvider({
   return <FirearmsAllowedContext.Provider value={value}>{children}</FirearmsAllowedContext.Provider>;
 }
 
+/**
+ * Lit l'autorisation EFFECTIVE des armes à feu fournie par `FirearmsAllowedProvider` (racine de la
+ * fiche, du wizard ou de l'écran de MJ). `undefined` hors de tout provider (armes à feu autorisées
+ * par défaut) — cf. `ClassIcon` pour l'usage jumeau côté icônes.
+ */
+export function useFirearmsAllowed(): boolean | undefined {
+  return useContext(FirearmsAllowedContext);
+}
+
 export interface ClassIconProps {
   /** Id du profil (ex. `'guerrier'`) — clé dans `CLASS_ICON_PATHS`. */
   classId: string;

@@ -190,7 +190,7 @@ import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { ActionMarkerHex, FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
-import { ClassIcon } from '@/components/ClassIcon';
+import { ClassIcon, useFirearmsAllowed } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import {
   FeatureText,
@@ -210,6 +210,7 @@ import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocompl
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { crossOutAfterSx } from '@/lib/ui/crossOut';
+import { artilleurFeatureDisplay } from '@/lib/character/artilleurDisplay';
 
 /**
  * Snapshot dénormalisé de la créature choisie pour « Forme animale » (animaux-r5), transmis via
@@ -298,12 +299,19 @@ export function groupFeaturesByPath(
    * voie de prêtre — on l'affiche sous cette voie d'accueil, pas sous sa voie d'origine.
    */
   pathOverride?: Map<string, string>,
+  /**
+   * Autorisation EFFECTIVE des armes à feu (PER-178) : applique le reskin d'affichage
+   * `artilleurFeatureDisplay` (voie de l'artilleur → « Arbalétrier ») à chaque capacité résolue.
+   * Absent/`true` → capacités renvoyées telles quelles (texte source verbatim).
+   */
+  firearmsAllowed?: boolean,
 ): FeatureGroup[] {
   const byPath = new Map<string, Feature[]>();
   const acquisitionOrder: string[] = [];
   for (const id of featureIds) {
-    const feature = featureById.get(id);
-    if (!feature) continue;
+    const rawFeature = featureById.get(id);
+    if (!rawFeature) continue;
+    const feature = artilleurFeatureDisplay(rawFeature, firearmsAllowed);
     const pathId = pathOverride?.get(id) ?? feature.pathId;
     if (!byPath.has(pathId)) acquisitionOrder.push(pathId);
     const list = byPath.get(pathId) ?? [];
@@ -6301,6 +6309,9 @@ export function FeaturesByPath({
   // nouveau rendu à chaque (re-)fusion, sinon la fiche resterait figée sur « Aucune capacité
   // acquise. » tant qu'un rendu naturel n'a pas lieu.
   useContentVersion();
+  // PER-178 : reskin d'affichage de la voie de l'artilleur (« Arbalétrier ») appliqué par
+  // `groupFeaturesByPath` ci-dessous, sur l'autorisation EFFECTIVE fournie par la fiche/wizard.
+  const firearmsAllowed = useFirearmsAllowed();
   // Confirmation du bouton « Réinitialiser d'après les montées de niveau » (édition libre).
   const [resetOpen, setResetOpen] = useState(false);
   // Prêtre spécialiste : la capacité divine occupe le slot d'une voie de prêtre
@@ -6315,6 +6326,7 @@ export function FeaturesByPath({
     divineReplacement
       ? new Map([[divineReplacement.featureId, divineReplacement.hostPathId]])
       : undefined,
+    firearmsAllowed,
   );
 
   // Voie du mage : elle remplace la voie de peuple mais le personnage conserve

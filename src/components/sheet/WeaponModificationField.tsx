@@ -20,6 +20,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { AppTooltip } from '@/components/AppTooltip';
+import { useFirearmsAllowed } from '@/components/ClassIcon';
 import type { WeaponModificationLoadout } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { setWeaponModification } from '@/lib/character/sheetActions';
@@ -43,13 +44,14 @@ export function WeaponModificationField({
   onUpdate?: (patch: Partial<Character>) => void;
 }) {
   const editable = !!onUpdate;
+  const firearmsAllowed = useFirearmsAllowed();
   const ctx = loadingContext(character);
   const selected = modifiedWeaponCount(character.equipment, spec.modification);
   const atMax = spec.maxWeapons !== undefined && selected >= spec.maxWeapons;
 
   // Armes éligibles de l'inventaire, avec leur index de ligne (les mutations passent par l'index).
   const candidates = character.equipment.flatMap((line, index) => {
-    if (!isModifiableWeapon(line, spec)) return [];
+    if (!isModifiableWeapon(line, spec, firearmsAllowed)) return [];
     const on = hasWeaponModification(line, spec.modification);
     const state = weaponLoadingState(line, ctx);
     return [
@@ -76,7 +78,9 @@ export function WeaponModificationField({
       {candidates.length === 0 ? (
         <Typography variant="caption" color="text.secondary">
           {spec.scope === 'firearm'
-            ? 'Aucune arme à poudre dans l’inventaire.'
+            ? firearmsAllowed === false
+              ? 'Aucune arbalète dans l’inventaire.'
+              : 'Aucune arme à poudre dans l’inventaire.'
             : 'Aucune arme à recharger dans l’inventaire (arbalète ou arme à poudre).'}
         </Typography>
       ) : (
@@ -103,7 +107,13 @@ export function WeaponModificationField({
                       checked={on}
                       disabled={disabled}
                       onChange={(e) => {
-                        const patch = setWeaponModification(character, index, spec, e.target.checked);
+                        const patch = setWeaponModification(
+                          character,
+                          index,
+                          spec,
+                          e.target.checked,
+                          firearmsAllowed,
+                        );
                         if (onUpdate && Object.keys(patch).length > 0) onUpdate(patch);
                       }}
                       sx={{ py: 0.25 }}
