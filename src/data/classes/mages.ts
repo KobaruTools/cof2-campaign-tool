@@ -1546,6 +1546,10 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le magicien choisit une cible vivante située à une distance maximum de 10 m. S’il réussit un test opposé d’attaque magique, la cible subit un malus de ‑2 à ses tests de FOR, d’attaque au contact et aux DM, jusqu’à la fin du combat. Le sort n’est pas cumulable plusieurs fois sur la même cible.",
+    // Malus chiffré via `situationalEffectIds` (PER-105, `sapped`) : contact/DM sont des stats
+    // dérivées, mais le malus au test de FOR (caractéristique brute) n'a aucune primitive de ciblage
+    // par caractéristique et reste verbatim seul (cf. commentaire du catalogue, schema.ts).
+    situationalEffectIds: ['sapped'],
     sourcePage: 103,
   },
   {
@@ -2379,6 +2383,12 @@ export const mageFeatures: Feature[] = [
       "En réussissant un test opposé d’attaque magique (portée 20 m), le sorcier étouffe une créature vivante. La victime subit un dé malus à tous ses tests et [1d4°+INT] DM par round tant que le sorcier maintient sa concentration par une action de mouvement et la dépense de 1 PM par round. Si la victime sort de la portée du sort, il prend fin.",
     // Rendu enrichi (PER-69) : DM [1d4° + INT] par round. Le « 1 PM par round » est un coût
     // d’entretien DYNAMIQUE (par round de concentration), hors coût de base → pas de `manaCost`.
+    // PAS de nouvelle entrée `situationalEffectIds` (revu PER-105) : « dé malus à tous ses tests » se
+    // réduit MÉCANIQUEMENT à l'état de base Affaibli (glossaire p. 214, `weakened`) — critère
+    // d'admission strict de PER-288, qui interdit de dupliquer un état de base déjà chiffré. Le MJ pose
+    // directement le badge « Affaibli » (ligne rouge de la palette, déjà générique) sur la victime et
+    // le retire quand la concentration cesse — aucun tag dédié nécessaire, à la différence de Maudit
+    // (`cursed`), dont la durée EN NOMBRE DE TESTS (pas en rounds) est non réductible à Affaibli.
     richText:
       "En réussissant un test opposé d’attaque magique (portée 20 m), le sorcier étouffe une créature vivante. La victime subit un dé malus à tous ses tests et [1d4° + INT] DM par round tant que le sorcier maintient sa concentration par une action de mouvement et la dépense de 1 PM par round. Si la victime sort de la portée du sort, il prend fin.",
     sourcePage: 111,

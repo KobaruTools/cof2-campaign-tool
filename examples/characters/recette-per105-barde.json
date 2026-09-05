@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 25,
+  "id": "recette-per105-barde",
+  "name": "Recette PER-105 — Barde (Danse irrésistible + Feinte)",
+  "identity": {
+    "description": "ATTENDU : « Dansant » (musicien-r5) ET « Feinté » (escrime-r2) apparaissent tous les deux dans la palette d'états de l'écran de MJ (ligne orange). Personnage jetable qui mélange 2 voies du barde (illégal en jeu, sans importance ici — sert uniquement à faire apparaître les deux badges à la fois)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barde",
+  "level": 12,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 1,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 1,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "musicien-r1",
+    "musicien-r2",
+    "musicien-r3",
+    "musicien-r4",
+    "musicien-r5",
+    "escrime-r1",
+    "escrime-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "transformationDepletion": {},
+  "transformationAbilities": {},
+  "transformationDerivedStats": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-105 — recette visuelle du tracker de combat (Danse irrésistible / Feinte).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
