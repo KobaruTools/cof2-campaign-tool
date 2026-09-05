@@ -8,6 +8,7 @@ import { SCHEMA_VERSION, type Character } from './types';
 import {
   acquirableFeatures,
   applyLevelUp,
+  canRedoLevelUp,
   canUndoLastLevelUp,
   deselectFeature,
   FEATURE_POINTS_PER_LEVEL,
@@ -18,6 +19,7 @@ import {
   manualFeatureIds,
   maxRetrainings,
   recordManualFeatureChange,
+  redoLastLevelUp,
   totalFeatureCost,
   undoLastLevelUp,
 } from './levelUp';
@@ -368,6 +370,40 @@ describe('undoLastLevelUp', () => {
     expect(round.level).toBe(c.level);
     expect(round.featureIds).toEqual(c.featureIds);
     expect(round.levelUpHistory).toEqual(c.levelUpHistory);
+  });
+});
+
+describe('redoLastLevelUp (filet de sécurité contre un clic accidentel, PER-497)', () => {
+  it('rétablit exactement le niveau annulé : capacités, niveau et historique restaurés', () => {
+    const leveled = applyLevelUp(makeCharacter({ level: 1 }), ['rage-r2', 'brute-r1']);
+    const undone = undoLastLevelUp(leveled);
+    expect(canRedoLevelUp(undone)).toBe(true);
+    const redone = redoLastLevelUp(undone);
+    expect(redone.level).toBe(leveled.level);
+    expect(new Set(redone.featureIds)).toEqual(new Set(leveled.featureIds));
+    expect(redone.levelUpHistory).toEqual(leveled.levelUpHistory);
+    expect(canRedoLevelUp(redone)).toBe(false);
+  });
+
+  it('restitue aussi le jet de PV, les points orphelins et le changement d’orientation', () => {
+    const leveled = applyLevelUp(makeCharacter({ level: 1 }), ['pagne-r1'], ['luck'], ['rage-r2'], 7);
+    const redone = redoLastLevelUp(undoLastLevelUp(leveled));
+    expect(redone.levelUpHistory.at(-1)).toEqual(leveled.levelUpHistory.at(-1));
+    expect(new Set(redone.featureIds)).toEqual(new Set(leveled.featureIds));
+  });
+
+  it('sans effet si aucune annulation en attente', () => {
+    const c = makeCharacter({ level: 1 });
+    expect(canRedoLevelUp(c)).toBe(false);
+    expect(redoLastLevelUp(c)).toBe(c);
+  });
+
+  it('une vraie montée de niveau rend caduc le rétablissement en attente', () => {
+    const leveled = applyLevelUp(makeCharacter({ level: 1 }), ['rage-r2']);
+    const undone = undoLastLevelUp(leveled);
+    expect(canRedoLevelUp(undone)).toBe(true);
+    const releveled = applyLevelUp(undone, ['rage-r2']);
+    expect(canRedoLevelUp(releveled)).toBe(false);
   });
 });
 

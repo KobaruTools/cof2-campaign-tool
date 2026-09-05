@@ -65,9 +65,11 @@ import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { useAppSession } from '@/lib/supabase/useAppSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
 import {
+  canRedoLevelUp,
   canUndoLastLevelUp,
   manualFeatureIds,
   recordManualFeatureChange,
+  redoLastLevelUp,
   undoLastLevelUp,
 } from '@/lib/character/levelUp';
 import {
@@ -184,6 +186,7 @@ import { usePaidContentLoading } from '@/lib/content/usePaidContentLoading';
 import { LevelUpDialog } from '@/components/sheet/LevelUpDialog';
 import { LevelHistory } from '@/components/sheet/LevelHistory';
 import { LevelUndoButton } from '@/components/sheet/LevelUndoButton';
+import { LevelRedoButton } from '@/components/sheet/LevelRedoButton';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
@@ -2738,23 +2741,41 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               }
             }}
             action={(collapsed) =>
-              !collapsed && !readOnly && canUndoLastLevelUp(character) ? (
-                <LevelUndoButton
-                  level={character.level}
-                  onUndo={() => upsert(undoLastLevelUp(character))}
-                />
+              !collapsed && !readOnly && (canUndoLastLevelUp(character) || canRedoLevelUp(character)) ? (
+                <Stack direction="row" spacing={1}>
+                  {canRedoLevelUp(character) && (
+                    <LevelRedoButton
+                      level={character.redoLevelUp!.level}
+                      onRedo={() => upsert(redoLastLevelUp(character))}
+                    />
+                  )}
+                  {canUndoLastLevelUp(character) && (
+                    <LevelUndoButton
+                      level={character.level}
+                      onUndo={() => upsert(undoLastLevelUp(character))}
+                    />
+                  )}
+                </Stack>
               ) : null
             }
           >
             <Box data-tour="character-sheet-history">
             <LevelHistory character={character} />
-            {!readOnly && canUndoLastLevelUp(character) && (
-              // Miroir du bouton de l'en-tête, ancré à droite en bas du bloc.
-              <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 2 }}>
-                <LevelUndoButton
-                  level={character.level}
-                  onUndo={() => upsert(undoLastLevelUp(character))}
-                />
+            {!readOnly && (canUndoLastLevelUp(character) || canRedoLevelUp(character)) && (
+              // Miroir des boutons de l'en-tête, ancré à droite en bas du bloc.
+              <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', mt: 2 }}>
+                {canRedoLevelUp(character) && (
+                  <LevelRedoButton
+                    level={character.redoLevelUp!.level}
+                    onRedo={() => upsert(redoLastLevelUp(character))}
+                  />
+                )}
+                {canUndoLastLevelUp(character) && (
+                  <LevelUndoButton
+                    level={character.level}
+                    onUndo={() => upsert(undoLastLevelUp(character))}
+                  />
+                )}
               </Stack>
             )}
             </Box>

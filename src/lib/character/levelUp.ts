@@ -228,6 +228,9 @@ export function applyLevelUp(
     // Une montée de niveau restaure 100 % des points de chance (manque de chance remis à
     // zéro). Les autres jauges transitoires (PV, mana, DR…) relèvent des règles de repos.
     depletion: resetLuck(character.depletion),
+    // Une VRAIE montée de niveau rend caduc un éventuel rétablissement en attente (PER-497) :
+    // rétablir redonnerait un niveau déjà repris entre-temps par d'autres choix.
+    redoLevelUp: undefined,
   };
 }
 
@@ -294,5 +297,38 @@ export function undoLastLevelUp(character: Character): Character {
     level: last.level - 1,
     featureIds,
     levelUpHistory: history.slice(0, -1),
+    // Filet de sécurité contre un clic accidentel (PER-497) : l'entrée retirée reste
+    // disponible pour `redoLastLevelUp`, tant qu'aucune autre montée de niveau n'a eu lieu.
+    redoLevelUp: last,
+  };
+}
+
+/** Vrai si un niveau annulé par erreur peut être rétabli (PER-497). */
+export function canRedoLevelUp(character: Character): boolean {
+  return !!character.redoLevelUp;
+}
+
+/**
+ * Rétablit le dernier niveau annulé par `undoLastLevelUp` : filet de sécurité contre un
+ * clic accidentel sur « Annuler le niveau N ». Remet l'entrée d'historique EXACTEMENT
+ * telle qu'elle était (capacités choisies, jet de PV, points orphelins, changement
+ * d'orientation compris) sans repasser par le wizard, où les mêmes choix précis pourraient
+ * ne pas être reproduits à l'identique. Sans effet si aucune annulation n'est en attente
+ * (`redoLevelUp` absent — déjà rétabli, ou effacé par une vraie montée de niveau depuis).
+ */
+export function redoLastLevelUp(character: Character): Character {
+  const entry = character.redoLevelUp;
+  if (!entry) return character;
+  const forgotten = new Set(entry.forgottenFeatureIds ?? []);
+  const featureIds = character.featureIds.filter((id) => !forgotten.has(id));
+  for (const id of entry.chosenFeatureIds) {
+    if (!featureIds.includes(id)) featureIds.push(id);
+  }
+  return {
+    ...character,
+    level: entry.level,
+    featureIds,
+    levelUpHistory: [...character.levelUpHistory, entry],
+    redoLevelUp: undefined,
   };
 }

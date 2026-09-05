@@ -1219,6 +1219,17 @@ export interface Character {
   /** Historique des montées de niveau (permet « qu'ai-je pris au niveau N ? »). */
   levelUpHistory: LevelUpEntry[];
 
+  /**
+   * Filet de sécurité contre un clic accidentel sur « Annuler le niveau N » (PER-497) :
+   * dernière entrée retirée de `levelUpHistory` par `undoLastLevelUp`, gardée de côté pour
+   * que `redoLastLevelUp` puisse la remettre à l'identique (capacités, jet de PV, points
+   * orphelins, changement d'orientation) sans repasser par le wizard. Vidé dès qu'une
+   * annulation est rétablie ou qu'une VRAIE montée de niveau a lieu (`applyLevelUp`) — un
+   * rétablissement n'a alors plus de sens. Absent = rien à rétablir. Champ additif optionnel
+   * (pas de migration de schéma).
+   */
+  redoLevelUp?: LevelUpEntry;
+
   /** Équipement possédé (références catalogue + objets personnalisés). */
   equipment: EquipmentLine[];
 
