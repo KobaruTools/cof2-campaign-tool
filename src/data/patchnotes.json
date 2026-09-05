@@ -1774,5 +1774,15 @@
         "tag": "codex"
       }
     ]
+  },
+  {
+    "id": 89,
+    "date": "2026-09-05",
+    "items": [
+      {
+        "text": "Ajout de l'historique complet des notes de mise à jour depuis le début du projet.",
+        "tag": "other"
+      }
+    ]
   }
 ]
