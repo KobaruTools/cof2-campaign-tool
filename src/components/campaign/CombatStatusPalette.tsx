@@ -50,6 +50,7 @@ import {
 import { AppTooltip } from '@/components/AppTooltip';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { SourceRef } from '@/components/SourceRef';
+import { GlossaryText } from '@/components/sheet/FeatureRichText';
 
 /** Préfixe des ids `@dnd-kit` des puces de la palette (distinct des clés de combattant droppables). */
 export const STATUS_DRAG_PREFIX = 'status:';
@@ -134,7 +135,7 @@ export function StatusEffectTooltip({
       )}
       {entry?.effect && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-          {entry.effect}
+          <GlossaryText>{entry.effect}</GlossaryText>
         </Typography>
       )}
       {entry?.sourcePage != null && <SourceRef page={entry.sourcePage} term={statusLabel(id)} />}
@@ -151,7 +152,7 @@ export function StatusEffectTooltip({
       {autoReason && (
         <Box sx={{ mt: 0.75 }}>
           <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', color: 'warning.light' }}>
-            État automatique — « {autoReason.text} »
+            État automatique — « <GlossaryText>{autoReason.text}</GlossaryText> »
           </Typography>
           <SourceRef page={autoReason.sourcePage} />
         </Box>
