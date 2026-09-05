@@ -392,5 +392,15 @@
         "tag": "creation-levelup"
       }
     ]
+  },
+  {
+    "id": 26,
+    "date": "2026-09-05",
+    "items": [
+      {
+        "text": "Vous pouvez maintenant exporter votre personnage en PDF au format « Campaign Editor » directement depuis sa fiche.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
