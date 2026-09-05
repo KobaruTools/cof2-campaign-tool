@@ -372,5 +372,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 24,
+    "date": "2026-09-05",
+    "items": [
+      {
+        "text": "Correction du titre de la page « Notes de mise à jour ».",
+        "tag": "other"
+      }
+    ]
   }
 ]
