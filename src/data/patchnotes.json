@@ -412,5 +412,15 @@
         "tag": "codex"
       }
     ]
+  },
+  {
+    "id": 28,
+    "date": "2026-09-05",
+    "items": [
+      {
+        "text": "Le MJ peut maintenant retirer un portrait personnalisé sans avoir à passer en mode édition.",
+        "tag": "gm-screen"
+      }
+    ]
   }
 ]
