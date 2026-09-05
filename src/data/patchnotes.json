@@ -402,5 +402,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 27,
+    "date": "2026-09-05",
+    "items": [
+      {
+        "text": "Ajout de trois nouveaux effets manquants pour les personnages ayant suivi la voie de l'envoûteur.",
+        "tag": "codex"
+      }
+    ]
   }
 ]
