@@ -9,6 +9,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
+import HideImageOutlinedIcon from '@mui/icons-material/HideImageOutlined';
 import HistoryIcon from '@mui/icons-material/History';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
@@ -670,6 +671,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const portraitUploadBlocked = session.resolved && session.role === 'anonymous';
   const [portraitBusy, setPortraitBusy] = useState(false);
   const [portraitError, setPortraitError] = useState<string | null>(null);
+  // Retrait rapide du portrait personnalisé (PER-385) : accessible SANS passer par le mode
+  // « Modifier » de l'Identité (contrairement au reste du menu d'illustration) — confirmation
+  // demandée, la suppression du bucket n'est pas réversible depuis l'app.
+  const [removePortraitConfirmOpen, setRemovePortraitConfirmOpen] = useState(false);
 
   // Tour guidé (PER-426) : les quatre cibles (caractéristiques, statistiques dérivées, voies &
   // capacités, équipement) n'existent que sur la fiche finale — même garde que les deux retours
@@ -1851,6 +1856,21 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </Stack>
             )}
 
+            {/* Retrait rapide du portrait personnalisé (PER-385) : même emplacement que le
+                cluster ci-dessus, mais SANS passer par le mode « Modifier » — le MJ (ou le
+                joueur propriétaire) doit pouvoir l'enlever à tout moment, y compris pour
+                réagir vite à une image inapproprié déposée par un joueur. Masqué en mode
+                édition (le menu d'illustration complet couvre déjà ce geste). */}
+            {!editingBlocks.identity && character.portraitVariant === 'custom' && !readOnly && (
+              <Box sx={{ position: 'absolute', top: 0, right: 0, zIndex: 2 }}>
+                <AppTooltip title="Retirer l’image personnalisée">
+                  <IconButton size="small" onClick={() => setRemovePortraitConfirmOpen(true)}>
+                    <HideImageOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </AppTooltip>
+              </Box>
+            )}
+
             {/* Menu de statut : 3 valeurs fermées ; la valeur courante est cochée. */}
             <Menu
               anchorEl={statusAnchor}
@@ -2918,6 +2938,33 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             }}
           >
             {pendingArchive === 'dead' ? 'Marquer mort' : 'Mettre à la retraite'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation de retrait du portrait personnalisé (PER-385) : la suppression du
+          fichier dans le bucket n'est pas réversible depuis l'app (le joueur devra en
+          redéposer un). Le personnage retombe sur l'illustration standard de son profil. */}
+      <Dialog open={removePortraitConfirmOpen} onClose={() => setRemovePortraitConfirmOpen(false)}>
+        <DialogTitle>Retirer l’image personnalisée ?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            « {character.name || 'Sans nom'} » retrouvera l’illustration standard de son profil.
+            L’image déposée sera définitivement supprimée ; le joueur pourra en redéposer une
+            nouvelle à tout moment.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemovePortraitConfirmOpen(false)}>Annuler</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              handleSelectStaticPortrait('default');
+              setRemovePortraitConfirmOpen(false);
+            }}
+          >
+            Retirer l’image
           </Button>
         </DialogActions>
       </Dialog>
