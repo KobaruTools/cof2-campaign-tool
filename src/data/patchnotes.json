@@ -1874,5 +1874,15 @@
         "tag": "campaign"
       }
     ]
+  },
+  {
+    "id": 99,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "La fiche BBE colle maintenant mieux au modèle de référence.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
