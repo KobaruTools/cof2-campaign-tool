@@ -1824,5 +1824,15 @@
         "tag": "creation-levelup"
       }
     ]
+  },
+  {
+    "id": 94,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Vous pouvez désormais rejoindre une nouvelle campagne sans perdre l'accès à celle où vous jouiez déjà.",
+        "tag": "campaign"
+      }
+    ]
   }
 ]
