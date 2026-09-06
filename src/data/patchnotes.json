@@ -1928,5 +1928,15 @@
         "tag": "other"
       }
     ]
+  },
+  {
+    "id": 104,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Le cadre de la fiche de personnage ne déborde plus au niveau de l'équipement lors de l'export.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
