@@ -1898,5 +1898,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 101,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Le générateur de PNJ à partir du bestiaire copie maintenant toutes les caractéristiques, pas seulement l'agilité.",
+        "tag": "gm-screen"
+      }
+    ]
   }
 ]
