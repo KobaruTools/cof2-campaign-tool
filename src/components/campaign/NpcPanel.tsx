@@ -24,9 +24,11 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import Diversity3Icon from '@mui/icons-material/Diversity3';
+import DownloadIcon from '@mui/icons-material/Download';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -97,6 +99,7 @@ import {
   type Campaign,
   type Npc,
 } from '@/lib/campaign/types';
+import { copyNpcExportToClipboard, downloadNpcExport } from '@/lib/campaign/npcTransferExport';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useCharactersStore } from '@/stores/characters';
 import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
@@ -159,11 +162,15 @@ function NpcCard({
   npc,
   onEdit,
   onDelete,
+  onExport,
+  onCopyJson,
   busy,
 }: {
   npc: Npc;
   onEdit: () => void;
   onDelete: () => void;
+  onExport: () => void;
+  onCopyJson: () => void;
   busy: boolean;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
@@ -264,6 +271,16 @@ function NpcCard({
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
         </AppTooltip>
+        <AppTooltip title="Exporter en JSON">
+          <IconButton size="small" onClick={onExport} disabled={busy}>
+            <DownloadIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
+        <AppTooltip title="Copier le JSON">
+          <IconButton size="small" onClick={onCopyJson} disabled={busy}>
+            <ContentPasteIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
         <AppTooltip title="Supprimer">
           <IconButton size="small" color="error" onClick={onDelete} disabled={busy}>
             <DeleteOutlineIcon fontSize="small" />
@@ -291,6 +308,8 @@ function NpcCategoryGroup({
   onRemoveCategory,
   onEdit,
   onDelete,
+  onExport,
+  onCopyJson,
   busy,
   layout,
 }: {
@@ -303,6 +322,8 @@ function NpcCategoryGroup({
   onRemoveCategory?: () => void;
   onEdit: (npc: Npc) => void;
   onDelete: (id: string) => void;
+  onExport: (npc: Npc) => void;
+  onCopyJson: (npc: Npc) => void;
   busy: boolean;
   /** Affichage des CARTES de cette catégorie — la catégorie elle-même reste toujours en ligne. */
   layout: 'list' | 'columns';
@@ -466,7 +487,15 @@ function NpcCategoryGroup({
             )
           )}
           {npcs.map((npc) => (
-            <NpcCard key={npc.id} npc={npc} onEdit={() => onEdit(npc)} onDelete={() => onDelete(npc.id)} busy={busy} />
+            <NpcCard
+              key={npc.id}
+              npc={npc}
+              onEdit={() => onEdit(npc)}
+              onDelete={() => onDelete(npc.id)}
+              onExport={() => onExport(npc)}
+              onCopyJson={() => onCopyJson(npc)}
+              busy={busy}
+            />
           ))}
         </Box>
       )}
@@ -575,6 +604,20 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
       showToast(`Suppression impossible : ${errorMessage(e)}`, 'error');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleExport = (npc: Npc) => {
+    downloadNpcExport(npc);
+    showToast(`« ${npc.name} » exporté en JSON.`, 'success');
+  };
+
+  const handleCopyJson = async (npc: Npc) => {
+    try {
+      await copyNpcExportToClipboard(npc);
+      showToast(`JSON de « ${npc.name} » copié dans le presse-papier.`, 'success');
+    } catch {
+      showToast('Impossible de copier dans le presse-papier.', 'error');
     }
   };
 
@@ -781,6 +824,8 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
                   npc={npc}
                   onEdit={() => setDialogTarget(npc)}
                   onDelete={() => handleDelete(npc.id)}
+                  onExport={() => handleExport(npc)}
+                  onCopyJson={() => handleCopyJson(npc)}
                   busy={busy}
                 />
               ))}
@@ -803,6 +848,8 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
                 onRemoveCategory={() => handleRemoveCategory(cat.id)}
                 onEdit={(npc) => setDialogTarget(npc)}
                 onDelete={handleDelete}
+                onExport={handleExport}
+                onCopyJson={handleCopyJson}
                 busy={busy}
                 layout={layout}
               />
@@ -815,6 +862,8 @@ export function NpcPanel({ campaign }: { campaign: Campaign }) {
                 npcs={sortNpcs(uncategorized, sortMode)}
                 onEdit={(npc) => setDialogTarget(npc)}
                 onDelete={handleDelete}
+                onExport={handleExport}
+                onCopyJson={handleCopyJson}
                 busy={busy}
                 layout={layout}
               />
