@@ -37,7 +37,7 @@ insert into public.characters (id, owner_id, campaign_id, player_id, schema_vers
 
 -- ── Test 1 : A ne voit QUE ses données ──
 set local role authenticated;
-set local request.jwt.claims to '{"sub":"00000000-0000-0000-0000-0000000000aa","role":"authenticated"}';
+set local request.jwt.claims to '{"sub":"00000000-0000-0000-0000-0000000000aa","role":"authenticated","is_anonymous":false}';
 
 do $$
 begin
@@ -50,7 +50,7 @@ begin
 end $$;
 
 -- ── Test 2 : B ne voit QUE ses données (pas celles de A) ──
-set local request.jwt.claims to '{"sub":"00000000-0000-0000-0000-0000000000bb","role":"authenticated"}';
+set local request.jwt.claims to '{"sub":"00000000-0000-0000-0000-0000000000bb","role":"authenticated","is_anonymous":false}';
 
 do $$
 begin

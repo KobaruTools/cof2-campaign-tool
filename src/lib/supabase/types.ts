@@ -358,6 +358,41 @@ export type Database = {
           },
         ]
       }
+      feedback_submissions: {
+        Row: {
+          created_at: string
+          id: string
+          linear_issue_id: string
+          linear_issue_url: string
+          owner_user_id: string | null
+          player_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          linear_issue_id: string
+          linear_issue_url: string
+          owner_user_id?: string | null
+          player_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          linear_issue_id?: string
+          linear_issue_url?: string
+          owner_user_id?: string | null
+          player_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_submissions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friend_invite_links: {
         Row: {
           created_at: string

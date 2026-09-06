@@ -283,6 +283,35 @@ Provisionnement (en plus du gating PER-242/243 et de la migration 0011) :
    les utilise reste calculée et affichée. Retrait d'accès → au rechargement suivant,
    le cache IndexedDB purge la source (dé-fusion en mémoire seulement au rechargement).
 
+## Suivi soumetteur ↔ ticket Linear (PER-507)
+
+- `migrations/0044_feedback_submissions.sql` — table `feedback_submissions`
+  (`owner_user_id` XOR `player_id`, `linear_issue_id`/`linear_issue_url`,
+  `created_at`) reliant chaque ticket créé par `/api/feedback` à son
+  soumetteur. RLS : un soumetteur ne voit/n'insère que ses propres lignes.
+  Côté joueur, la vérification passe par `owns_player()` (ancrée sur
+  `player_auth_sessions`, PAS le claim JWT actif) : une Identité qui a
+  soumis un retour en tant que Joueur A continue de le voir même après avoir
+  rejoint une 2e campagne (PER-499) et changé de claim actif — cohérence avec
+  `docs/adr/0003-player-membership-rls-via-table-not-jwt-claims.md`.
+- `tests/rls_feedback_submissions.sql` — isolation propriétaire/joueur +
+  cas multi-appartenance (transaction `ROLLBACK`).
+- `migrations/0045_fix_is_member_of_campaign_security_definer.sql` —
+  **correctif de régression** trouvé en testant ce qui précède :
+  `is_member_of_campaign()` (0043, PER-499) était `security invoker`, or
+  `player_auth_sessions` a la RLS activée SANS AUCUNE policy (accès
+  service_role seul) → un `security invoker` n'y voyait jamais aucune ligne,
+  donc la fonction renvoyait TOUJOURS `false`. Conséquence en production
+  depuis PER-499 : **tout joueur réel perdait l'accès en lecture ET écriture
+  à sa fiche/son roster** (les policies `characters`/`players`/`campaigns`
+  qui en dépendent réutilisent la même visibilité pour UPDATE/DELETE). Passer
+  la fonction en `security definer` restaure le comportement voulu, sans
+  élargir la portée (le filtre `auth_user_id = auth.uid()` reste inchangé).
+  `tests/rls_player_isolation.sql`/`rls_player_claim.sql` ont été mis à jour
+  pour peupler `player_auth_sessions` (sans quoi ils ne testaient plus le
+  modèle réel post-0043) ; `tests/rls_isolation.sql` corrigé séparément
+  (claims de test sans `is_anonymous:false`, stale depuis 0003/PER-194).
+
 ## Authentification CLI PAR DOSSIER (pas globale)
 
 `supabase login` stocke un token **global** à la machine : sur un poste qui gère

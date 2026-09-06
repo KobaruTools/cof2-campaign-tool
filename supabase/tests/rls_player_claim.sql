@@ -17,7 +17,8 @@ begin;
 -- ── Fixtures (rôle privilégié : RLS contournée) ──
 insert into auth.users (id, email) values
   ('a0000000-0000-0000-0000-0000000000aa', 'mj-a@test.local'),
-  ('a0000000-0000-0000-0000-0000000000bb', 'mj-b@test.local');
+  ('a0000000-0000-0000-0000-0000000000bb', 'mj-b@test.local'),
+  ('e0000000-0000-0000-0000-0000000000a1', null); -- Identité anonyme du joueur A1
 
 insert into public.campaigns (id, owner_id, name) values
   ('c0000000-0000-0000-0000-0000000000aa', 'a0000000-0000-0000-0000-0000000000aa', 'Campagne de A'),
@@ -27,6 +28,11 @@ insert into public.players (id, campaign_id, name) values
   ('b0000000-0000-0000-0000-0000000000a1', 'c0000000-0000-0000-0000-0000000000aa', 'Joueur A1'),
   ('b0000000-0000-0000-0000-0000000000a2', 'c0000000-0000-0000-0000-0000000000aa', 'Joueur A2'),
   ('b0000000-0000-0000-0000-0000000000b1', 'c0000000-0000-0000-0000-0000000000bb', 'Joueur B1');
+
+-- Autorité d'appartenance (PER-498) : posée au redeem du lien magique en prod ;
+-- sans cette ligne, `is_member_of_campaign()` ne verrait aucune appartenance.
+insert into public.player_auth_sessions (auth_user_id, player_id) values
+  ('e0000000-0000-0000-0000-0000000000a1', 'b0000000-0000-0000-0000-0000000000a1');
 
 -- Fiches (ids en hexadécimal valide) :
 --  d0…00f0 « a-free »  : pré-tiré NON attribué de la campagne A (réclamable par A1).
