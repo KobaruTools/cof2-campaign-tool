@@ -103,6 +103,13 @@ export async function POST(request: NextRequest) {
     // faire échouer toute la requête (PER-464).
     await Promise.allSettled(files.map((file) => attachFileToIssue(issue.id, file)));
 
+    // Purge paresseuse (migration 0046) : pas de vrai TTL en Postgres, et le
+    // projet évite pg_cron par ailleurs — chaque soumission purge donc ses
+    // propres lignes de plus de 15 jours (RLS scope déjà au soumetteur).
+    // Best-effort, comme le reste : un échec ne doit pas bloquer l'envoi.
+    const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+    await supabase.from('feedback_submissions').delete().lt('created_at', fifteenDaysAgo);
+
     // Best-effort également (PER-510) : le ticket existe déjà côté Linear, ne
     // pas faire échouer la requête si le suivi du soumetteur ne s'enregistre
     // pas (RLS de la migration 0044 : owner_user_id XOR player_id).

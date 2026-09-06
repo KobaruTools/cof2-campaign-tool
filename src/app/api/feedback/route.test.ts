@@ -1,15 +1,15 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getUserMock, createLinearIssueMock, attachFileToIssueMock, insertMock, fromMock } = vi.hoisted(
-  () => ({
+const { getUserMock, createLinearIssueMock, attachFileToIssueMock, insertMock, deleteLtMock, fromMock } =
+  vi.hoisted(() => ({
     getUserMock: vi.fn(),
     createLinearIssueMock: vi.fn(),
     attachFileToIssueMock: vi.fn(),
     insertMock: vi.fn(),
+    deleteLtMock: vi.fn(),
     fromMock: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: async () => ({
@@ -44,12 +44,14 @@ afterEach(() => {
   createLinearIssueMock.mockReset();
   attachFileToIssueMock.mockReset();
   insertMock.mockReset();
+  deleteLtMock.mockReset();
   fromMock.mockReset();
 });
 
 beforeEach(() => {
   insertMock.mockResolvedValue({ error: null });
-  fromMock.mockReturnValue({ insert: insertMock });
+  deleteLtMock.mockResolvedValue({ error: null });
+  fromMock.mockReturnValue({ insert: insertMock, delete: () => ({ lt: deleteLtMock }) });
 });
 
 describe('POST /api/feedback', () => {
@@ -97,6 +99,21 @@ describe('POST /api/feedback', () => {
     const payload = createLinearIssueMock.mock.calls[0][0];
     expect(payload.title).toContain('[Bug]');
     expect(payload.description).toContain('mj@x.com');
+  });
+
+  it('purge ses propres lignes feedback_submissions de plus de 15 jours avant insertion (migration 0046)', async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: 'owner-1', app_metadata: {}, email: 'mj@x.com' } },
+    });
+    createLinearIssueMock.mockResolvedValue({ id: 'issue-1', url: 'https://linear.app/x/PER-999' });
+
+    await POST(postRequest(validBody));
+
+    expect(deleteLtMock).toHaveBeenCalledTimes(1);
+    const [column, cutoffIso] = deleteLtMock.mock.calls[0];
+    expect(column).toBe('created_at');
+    const daysAgo = (Date.now() - new Date(cutoffIso).getTime()) / (24 * 60 * 60 * 1000);
+    expect(daysAgo).toBeCloseTo(15, 1);
   });
 
   it('enregistre le suivi feedback_submissions sous owner_user_id pour une session owner (PER-510)', async () => {
