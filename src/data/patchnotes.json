@@ -1804,5 +1804,15 @@
         "tag": "gm-screen"
       }
     ]
+  },
+  {
+    "id": 92,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Première étape pour permettre à un même joueur d'avoir une identité unique partagée entre plusieurs campagnes.",
+        "tag": "account"
+      }
+    ]
   }
 ]
