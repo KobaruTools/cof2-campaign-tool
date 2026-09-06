@@ -106,8 +106,11 @@ interface CharactersState {
    * (Après un rechargement de page, `status` repart à `idle` — `partialize` ne
    * persiste que le staging `characters` et le marqueur `cloudBackedIds`, pas
    * l'état de synchro — donc le fetch cloud initial a toujours lieu.)
+   *
+   * `campaignId` (PER-499) : à passer côté JOUEUR (voir `fetchCharacters`) pour
+   * restreindre le roster à la campagne affichée — le MJ appelle sans ce filtre.
    */
-  load: (opts?: { force?: boolean }) => Promise<void>;
+  load: (opts?: { force?: boolean; campaignId?: string }) => Promise<void>;
   /** Ajoute ou remplace un personnage (par id) ; met à jour `updatedAt`. Flush cloud débouncé si cloud. */
   upsert: (character: Character) => void;
   /**
@@ -322,7 +325,7 @@ export const useCharactersStore = create<CharactersState>()(
           if (!opts?.force && (status === 'ready' || status === 'loading')) return;
           set({ status: 'loading', error: null });
           try {
-            const loaded = await fetchCharacters();
+            const loaded = await fetchCharacters(opts?.campaignId);
             const cloud = loaded.map((l) => l.character);
             const cloudVersions: Record<string, number> = {};
             for (const l of loaded) cloudVersions[l.character.id] = l.version;

@@ -32,9 +32,15 @@ async function assertOwnsPlayer(playerId: string): Promise<void> {
 }
 
 /**
- * Supprime les utilisateurs anonymes rattachés au joueur (révocation des sessions
- * vivantes). La suppression d'un `auth.users` purge sa ligne `player_auth_sessions`
- * par cascade. À appeler AVANT de supprimer le joueur (sinon la liaison est perdue).
+ * Coupe l'accès du joueur aux sessions vivantes. Depuis PER-499 (clé composite
+ * `player_auth_sessions`, migration 0043), une identité peut porter PLUSIEURS
+ * joueurs (campagnes) — supprimer systématiquement l'utilisateur `auth.users`
+ * couperait alors l'accès à TOUTES ses campagnes, pas seulement à celle qu'on
+ * révoque. On ne supprime donc l'utilisateur que si CETTE campagne était sa
+ * dernière ligne ; sinon on retire seulement la liaison à ce joueur (l'identité
+ * garde ses autres campagnes). La suppression d'un `auth.users` purge sa ligne
+ * `player_auth_sessions` par cascade. À appeler AVANT de supprimer le joueur
+ * (sinon la liaison est perdue).
  */
 async function revokePlayerSessions(
   admin: ReturnType<typeof createAdminSupabaseClient>,
@@ -46,8 +52,23 @@ async function revokePlayerSessions(
     .eq('player_id', playerId);
   if (error) throw error;
   for (const session of sessions ?? []) {
-    const { error: delError } = await admin.auth.admin.deleteUser(session.auth_user_id);
-    if (delError) throw delError;
+    const { data: memberships, error: membershipError } = await admin
+      .from('player_auth_sessions')
+      .select('player_id')
+      .eq('auth_user_id', session.auth_user_id);
+    if (membershipError) throw membershipError;
+    const isLastMembership = (memberships ?? []).every((m) => m.player_id === playerId);
+    if (isLastMembership) {
+      const { error: delError } = await admin.auth.admin.deleteUser(session.auth_user_id);
+      if (delError) throw delError;
+    } else {
+      const { error: delRowError } = await admin
+        .from('player_auth_sessions')
+        .delete()
+        .eq('auth_user_id', session.auth_user_id)
+        .eq('player_id', playerId);
+      if (delRowError) throw delRowError;
+    }
   }
 }
 

@@ -18,23 +18,37 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Échange « secret de lien magique → session joueur scopée » (PER-191).
+ * Échange « secret de lien magique → session joueur scopée » (PER-191, étendu
+ * PER-499).
  *
- * Mécanique (design verrouillé au grilling 2026-07-05) : le joueur n'a pas de
- * compte, sa session est un **utilisateur anonyme** Supabase auquel on attache
- * `player_id` + `campaign_id` dans `app_metadata` (posé par la clé secrète → non
- * falsifiable). `getUser()` valide alors un vrai utilisateur (le gating PER-189
- * reste inchangé) et la RLS joueur (migration 0002) scope l'accès via ces claims.
+ * Mécanique (design verrouillé au grilling 2026-07-05, étendu au grilling
+ * 2026-09-05 pour le multi-campagnes) : le joueur n'a pas de compte, sa session
+ * est un **utilisateur anonyme** Supabase (ou un compte réel, si l'identité en a
+ * un) auquel on attache `player_id` + `campaign_id` dans `app_metadata` (posé par
+ * la clé secrète → non falsifiable). `getUser()` valide alors un vrai utilisateur
+ * (le gating PER-189 reste inchangé) et la RLS joueur (migrations 0002/0043)
+ * scope l'accès — la lecture roster via la table `player_auth_sessions`
+ * (source d'autorité, ADR 0003), les autres écritures via ces claims JWT.
+ *
+ * PER-499 : une identité qui a DÉJÀ une session ouverte (anonyme ou compte réel)
+ * ne s'en voit plus attribuer une nouvelle en clic sur un 2e lien magique — la
+ * nouvelle campagne est ATTACHÉE à cette identité (nouvelle ligne
+ * `player_auth_sessions`, clé composite depuis la migration 0043) au lieu de la
+ * remplacer, ce qui préserve l'accès à la 1re campagne. Recliquer un lien déjà
+ * joint par la même identité est idempotent (upsert sans doublon).
  *
  * Étapes :
  *   1. Valider le `join_secret` via le client **admin** (contourne la RLS
  *      propriétaire pour lire `players`). Secret mal formé/inconnu → `invalid`.
- *   2. `signInAnonymously()` via le client **SSR** (pose les cookies de session).
- *   3. `admin.updateUserById` pose `app_metadata` = { player_id, campaign_id }.
- *   4. `refreshSession()` réémet le jeton AVEC les claims (le jeton de l'étape 2
- *      était minté avant le stamp) et réécrit les cookies.
- *   5. Enregistrer la liaison anon↔joueur (`player_auth_sessions`) pour la
- *      révocation forte (régénération du lien → suppression de ces utilisateurs).
+ *   2. Détecter une session déjà ouverte (`getUser()`) ; sinon `signInAnonymously()`
+ *      via le client **SSR** (pose les cookies de session).
+ *   3. Rattacher le Joueur à l'identité (`player_auth_sessions`, upsert idempotent).
+ *   4. `admin.updateUserById` pose `app_metadata` = { player_id, campaign_id } :
+ *      la campagne qu'on vient de (re)rejoindre devient la campagne ACTIVE
+ *      affichée par `/play` — les autres memberships restent lisibles via la RLS
+ *      table (migration 0043), indépendamment de ces claims.
+ *   5. `refreshSession()` réémet le jeton AVEC les claims à jour et réécrit les
+ *      cookies.
  *
  * **À appeler depuis un Route Handler** (l'écriture des cookies de session est
  * interdite dans un Server Component).
@@ -56,27 +70,43 @@ export async function redeemJoinSecret(secret: string): Promise<JoinRedemption> 
     return { status: 'invalid' };
   }
 
-  // 2. Ouvre une session anonyme fraîche (cookies posés par le client SSR).
   const supabase = await createServerSupabaseClient();
-  const { data: anon, error: signInError } = await supabase.auth.signInAnonymously();
-  if (signInError) throw signInError;
-  if (!anon.user) throw new Error('Échec de la création de la session anonyme.');
 
-  // 3. Attache les claims scopés (admin : app_metadata non modifiable par le joueur).
-  const { error: metaError } = await admin.auth.admin.updateUserById(anon.user.id, {
+  // 2. Une identité déjà ouverte (anonyme ou compte réel) est ÉTENDUE, jamais
+  //    remplacée : sinon rejoindre une 2e campagne ferait perdre l'accès à la 1re.
+  const {
+    data: { user: existingUser },
+  } = await supabase.auth.getUser();
+
+  let authUserId: string;
+  if (existingUser) {
+    authUserId = existingUser.id;
+  } else {
+    const { data: anon, error: signInError } = await supabase.auth.signInAnonymously();
+    if (signInError) throw signInError;
+    if (!anon.user) throw new Error('Échec de la création de la session anonyme.');
+    authUserId = anon.user.id;
+  }
+
+  // 3. Rattache le Joueur à l'identité (clé composite `auth_user_id`/`player_id`,
+  //    migration 0043) — upsert plutôt qu'insert : recliquer un lien déjà joint par
+  //    la même identité ne doit ni lever, ni créer de doublon (idempotence PER-499).
+  const { error: mapError } = await admin.from('player_auth_sessions').upsert(
+    { auth_user_id: authUserId, player_id: player.id },
+    { onConflict: 'auth_user_id,player_id', ignoreDuplicates: true },
+  );
+  if (mapError) throw mapError;
+
+  // 4. Attache les claims scopés (admin : app_metadata non modifiable par le joueur)
+  //    — désigne la campagne qu'on vient de (re)rejoindre comme campagne active.
+  const { error: metaError } = await admin.auth.admin.updateUserById(authUserId, {
     app_metadata: { player_id: player.id, campaign_id: player.campaign_id },
   });
   if (metaError) throw metaError;
 
-  // 4. Réémet le jeton pour y intégrer les claims fraîchement posés.
+  // 5. Réémet le jeton pour y intégrer les claims fraîchement posés.
   const { error: refreshError } = await supabase.auth.refreshSession();
   if (refreshError) throw refreshError;
-
-  // 5. Trace la liaison pour la révocation forte (régénération du lien).
-  const { error: mapError } = await admin
-    .from('player_auth_sessions')
-    .insert({ auth_user_id: anon.user.id, player_id: player.id });
-  if (mapError) throw mapError;
 
   // 6. Présence (PER-195) : marque la première activation du lien + l'activité.
   //     Best-effort — un échec ici ne doit jamais casser l'entrée en campagne (le

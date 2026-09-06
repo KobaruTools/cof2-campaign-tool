@@ -79,10 +79,21 @@ export function mergeCharacters(
   return [...byId.values()];
 }
 
-/** Tous les personnages possédés par l'utilisateur courant (RLS), avec leur version. */
-export async function fetchCharacters(): Promise<LoadedCharacter[]> {
+/**
+ * Tous les personnages possédés par l'utilisateur courant (RLS), avec leur version.
+ *
+ * `campaignId` (PER-499) : filtre applicatif optionnel, à passer côté JOUEUR
+ * uniquement. Depuis la migration 0043, la RLS roster (`characters_player_read_roster`)
+ * renvoie un ceiling de TOUTES les campagnes dont l'identité est membre (plus une
+ * seule) — sans ce filtre, `/play` mélangerait les fiches non attribuées de
+ * plusieurs campagnes dans une seule vue. Le MJ (RLS `owner_id`) continue d'appeler
+ * sans filtre : sa portée n'est pas la campagne mais ses propres fiches.
+ */
+export async function fetchCharacters(campaignId?: string): Promise<LoadedCharacter[]> {
   const supabase = createBrowserSupabaseClient();
-  const { data, error } = await supabase.from('characters').select('*');
+  let query = supabase.from('characters').select('*');
+  if (campaignId) query = query.eq('campaign_id', campaignId);
+  const { data, error } = await query;
   if (error) throw error;
   const loaded: LoadedCharacter[] = [];
   for (const row of data ?? []) {

@@ -155,7 +155,11 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   // Charge (et fusionne) le roster de la campagne via la RLS joueur. `finally` marque le
   // premier chargement abouti (succès comme échec) → le squelette ne réapparaît plus ensuite.
   useEffect(() => {
-    void loadCharacters().finally(() => setHasLoadedOnce(true));
+    // PER-499 : filtre explicite par campagne — depuis la migration 0043, la RLS
+    // roster renvoie un ceiling de TOUTES les campagnes membres de l'identité, plus
+    // une seule. Sans ce filtre, les fiches non attribuées de campagnes tierces
+    // fuiteraient dans cette vue.
+    void loadCharacters({ campaignId }).finally(() => setHasLoadedOnce(true));
     void loadPlayers(campaignId);
   }, [loadCharacters, loadPlayers, campaignId]);
 
