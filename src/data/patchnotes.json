@@ -1844,5 +1844,15 @@
         "tag": "gm-screen"
       }
     ]
+  },
+  {
+    "id": 96,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Vous pouvez maintenant exporter votre personnage au format PDF officiel BBE.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
