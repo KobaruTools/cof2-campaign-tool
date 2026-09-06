@@ -1918,5 +1918,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 103,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Les avis envoyés depuis l'application sont maintenant automatiquement effacés après 15 jours pour ne conserver que les plus récents.",
+        "tag": "other"
+      }
+    ]
   }
 ]
