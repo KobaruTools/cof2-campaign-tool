@@ -1794,5 +1794,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 91,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Le MJ peut désormais exporter la fiche d'un PNJ en JSON, soit dans un fichier, soit directement dans le presse-papier.",
+        "tag": "gm-screen"
+      }
+    ]
   }
 ]
