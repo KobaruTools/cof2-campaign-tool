@@ -1908,5 +1908,15 @@
         "tag": "gm-screen"
       }
     ]
+  },
+  {
+    "id": 102,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Le logo de la fiche imprimée est maintenant bien positionné sous le cadre.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
