@@ -23,6 +23,7 @@ import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DownloadIcon from '@mui/icons-material/Download';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import HistoryIcon from '@mui/icons-material/History';
+import LinkIcon from '@mui/icons-material/Link';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Box from '@mui/material/Box';
@@ -344,6 +345,18 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
             href="/play/history"
           >
             Historique des parties
+          </Button>
+          {/* Liaison d'identité (PER-501) : optionnelle, discrète parmi les autres
+              raccourcis plutôt que mise en avant — un joueur qui ne la voit jamais
+              garde le fonctionnement anonyme actuel sans rien perdre. */}
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<LinkIcon />}
+            component={Link}
+            href="/play/account"
+          >
+            Lier mon identité
           </Button>
         </Stack>
       </Box>

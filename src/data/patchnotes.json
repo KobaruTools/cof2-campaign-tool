@@ -1884,5 +1884,19 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 100,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Chaque ticket envoyé garde maintenant le nom de la personne qui l'a créé.",
+        "tag": "other"
+      },
+      {
+        "text": "L'export de fiche est plus soigné visuellement et affiche désormais la famille, le profil et le joueur.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
