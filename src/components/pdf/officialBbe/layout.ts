@@ -113,7 +113,9 @@ export const PAGE1 = {
     bandY: 692.3,
     bandH: 20,
     boxY: 714,
-    boxH: 55,
+    // boxH=55 amenait le bas de la boîte à 769pt, quasi confondu avec le filet bas du cadre
+    // (~769.4pt = H - FRAME_MARGIN - OUTER_INSET) — réduit pour dégager une marge visible.
+    boxH: 46,
     w: 321.5,
   },
 } as const;
