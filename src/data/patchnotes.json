@@ -1814,5 +1814,15 @@
         "tag": "account"
       }
     ]
+  },
+  {
+    "id": 93,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Les prérequis de sorts pour la voie du mage de guerre et les voies élémentaires sont désormais vérifiés correctement.",
+        "tag": "creation-levelup"
+      }
+    ]
   }
 ]
