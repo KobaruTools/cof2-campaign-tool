@@ -11,7 +11,10 @@
 export const PAGE1 = {
   header: {
     logoX: 51,
-    logoY: 22,
+    // Le filet supérieur du cadre passe à y≈22.6 (FRAME_MARGIN + OUTER_INSET, cf.
+    // DecorativeFrame.tsx) : logoY doit rester nettement en dessous, sous peine de chevaucher
+    // le trait (constaté PER-202, le "C" de CHRONIQUES touchait le filet).
+    logoY: 34,
     // Bloc nom centré dans l'espace RESTANT à droite du logo (249.1..572.6pt mesuré), pas au
     // centre de la page entière — d'où nameCenterX ≈ (249.1+572.6)/2, pas 306 (=612/2).
     nameCenterX: 411,
