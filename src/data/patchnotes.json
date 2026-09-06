@@ -1834,5 +1834,15 @@
         "tag": "campaign"
       }
     ]
+  },
+  {
+    "id": 95,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Vous pouvez maintenant exporter ou copier en JSON les créatures ajoutées manuellement, ainsi que celles du bestiaire gratuit.",
+        "tag": "gm-screen"
+      }
+    ]
   }
 ]
