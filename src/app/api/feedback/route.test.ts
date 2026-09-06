@@ -1,15 +1,20 @@
 import { NextRequest } from 'next/server';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getUserMock, createLinearIssueMock, attachFileToIssueMock } = vi.hoisted(() => ({
-  getUserMock: vi.fn(),
-  createLinearIssueMock: vi.fn(),
-  attachFileToIssueMock: vi.fn(),
-}));
+const { getUserMock, createLinearIssueMock, attachFileToIssueMock, insertMock, fromMock } = vi.hoisted(
+  () => ({
+    getUserMock: vi.fn(),
+    createLinearIssueMock: vi.fn(),
+    attachFileToIssueMock: vi.fn(),
+    insertMock: vi.fn(),
+    fromMock: vi.fn(),
+  }),
+);
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: async () => ({
     auth: { getUser: getUserMock },
+    from: fromMock,
   }),
 }));
 
@@ -38,6 +43,13 @@ afterEach(() => {
   getUserMock.mockReset();
   createLinearIssueMock.mockReset();
   attachFileToIssueMock.mockReset();
+  insertMock.mockReset();
+  fromMock.mockReset();
+});
+
+beforeEach(() => {
+  insertMock.mockResolvedValue({ error: null });
+  fromMock.mockReturnValue({ insert: insertMock });
 });
 
 describe('POST /api/feedback', () => {
@@ -87,9 +99,28 @@ describe('POST /api/feedback', () => {
     expect(payload.description).toContain('mj@x.com');
   });
 
-  it('crée aussi le ticket pour une session player', async () => {
+  it('enregistre le suivi feedback_submissions sous owner_user_id pour une session owner (PER-510)', async () => {
     getUserMock.mockResolvedValue({
-      data: { user: { app_metadata: { player_id: 'p1', campaign_id: 'c1' }, email: null } },
+      data: { user: { id: 'owner-1', app_metadata: {}, email: 'mj@x.com' } },
+    });
+    createLinearIssueMock.mockResolvedValue({ id: 'issue-1', url: 'https://linear.app/x/PER-999' });
+
+    const response = await POST(postRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(fromMock).toHaveBeenCalledWith('feedback_submissions');
+    expect(insertMock).toHaveBeenCalledWith({
+      owner_user_id: 'owner-1',
+      linear_issue_id: 'issue-1',
+      linear_issue_url: 'https://linear.app/x/PER-999',
+    });
+  });
+
+  it('crée aussi le ticket pour une session player, et enregistre le suivi sous player_id (PER-510)', async () => {
+    getUserMock.mockResolvedValue({
+      data: {
+        user: { id: 'auth-user-1', app_metadata: { player_id: 'p1', campaign_id: 'c1' }, email: null },
+      },
     });
     createLinearIssueMock.mockResolvedValue({ id: 'issue-2', url: 'https://linear.app/x/PER-998' });
 
@@ -97,6 +128,25 @@ describe('POST /api/feedback', () => {
 
     expect(response.status).toBe(200);
     expect(createLinearIssueMock).toHaveBeenCalledTimes(1);
+    expect(insertMock).toHaveBeenCalledWith({
+      player_id: 'p1',
+      linear_issue_id: 'issue-2',
+      linear_issue_url: 'https://linear.app/x/PER-998',
+    });
+  });
+
+  it("renvoie quand même 200 si l'enregistrement du suivi feedback_submissions échoue (best-effort, PER-510)", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: 'owner-1', app_metadata: {}, email: 'mj@x.com' } },
+    });
+    createLinearIssueMock.mockResolvedValue({ id: 'issue-1', url: 'https://linear.app/x/PER-999' });
+    insertMock.mockResolvedValue({ error: new Error('insert failed') });
+
+    const response = await POST(postRequest(validBody));
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toEqual({ url: 'https://linear.app/x/PER-999' });
   });
 
   it('accepte un multipart/form-data avec des fichiers et les rattache au ticket créé', async () => {

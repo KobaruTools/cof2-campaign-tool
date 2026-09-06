@@ -102,6 +102,23 @@ export async function POST(request: NextRequest) {
     // Best-effort : le ticket est déjà créé, un échec d'upload isolé ne doit pas
     // faire échouer toute la requête (PER-464).
     await Promise.allSettled(files.map((file) => attachFileToIssue(issue.id, file)));
+
+    // Best-effort également (PER-510) : le ticket existe déjà côté Linear, ne
+    // pas faire échouer la requête si le suivi du soumetteur ne s'enregistre
+    // pas (RLS de la migration 0044 : owner_user_id XOR player_id).
+    const submitter =
+      role === 'player'
+        ? { player_id: (user!.app_metadata.player_id as string | undefined) ?? null }
+        : { owner_user_id: user!.id };
+    const { error: submissionError } = await supabase.from('feedback_submissions').insert({
+      ...submitter,
+      linear_issue_id: issue.id,
+      linear_issue_url: issue.url,
+    });
+    if (submissionError) {
+      console.error('Échec de l’enregistrement du suivi feedback_submissions', submissionError);
+    }
+
     return NextResponse.json({ url: issue.url });
   } catch {
     return NextResponse.json({ error: 'Échec de création du ticket' }, { status: 502 });
