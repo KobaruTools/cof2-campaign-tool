@@ -289,11 +289,14 @@ export function customCreatureBlob(
  * bestiaire — arrive pour une entrée GABARIT imprimée sans bloc chiffré (ex. « Zombie »,
  * p. 301) : un tel bloc ne serait de toute façon pas jouable au tracker.
  *
- * Simplifications assumées (perte de fidélité acceptée par le choix de réutiliser
- * `CustomCreature` plutôt qu'un second type de bloc) : `attackCount`/`rider` des
- * attaques et `richText` des capacités ne sont pas repris (`CustomCreatureAttack`/
- * `CustomCreatureAbility` ne les portent pas) ; les badges de réduction de dégâts
- * (`damageReduction`) et la grille de caractéristiques ne sont pas copiés non plus.
+ * Les 7 caractéristiques et les dés bonus (PER-455/PER-513) sont repris tels quels
+ * (mêmes types des deux côtés). Simplifications encore assumées (perte de fidélité
+ * acceptée par le choix de réutiliser `CustomCreature` plutôt qu'un second type de
+ * bloc) : `attackCount`/`rider` des attaques et `richText` des capacités ne sont pas
+ * repris (`CustomCreatureAttack`/`CustomCreatureAbility` ne les portent pas) ; la RD
+ * du bestiaire (`DamageReduction`, scalante/multi-entrées/immunité/division) n'a pas
+ * d'équivalent fidèle dans la RD plate simple de `CustomCreature` et n'est donc pas
+ * copiée.
  */
 export function customCreatureFromBestiary(creature: Creature): CustomCreature | undefined {
   return normalizeCustomCreature({
@@ -301,6 +304,8 @@ export function customCreatureFromBestiary(creature: Creature): CustomCreature |
     hitPoints: creature.hitPoints,
     defense: creature.defense,
     agility: creature.abilities?.AGI,
+    abilities: creature.abilities,
+    bonusDieAbilities: creature.bonusDieAbilities,
     nc: creatureNcLabel(creature) ?? undefined,
     description: creature.description,
     attacks: creature.attacks,

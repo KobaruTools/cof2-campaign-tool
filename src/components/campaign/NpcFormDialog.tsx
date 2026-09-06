@@ -17,13 +17,17 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import Diversity3Icon from '@mui/icons-material/Diversity3';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import LockIcon from '@mui/icons-material/Lock';
 import PublicIcon from '@mui/icons-material/Public';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -45,10 +49,15 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import { ABILITY_IDS, RESISTIBLE_DAMAGE_TYPES, type AbilityId, type ResistibleDamageType } from '@/data/schema';
+import { AbilityIcon } from '@/components/AbilityIcon';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { RichTextEditor } from '@/components/sheet/RichTextEditor';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { SCOPE_SHORT } from '@/lib/ui/damageReduction';
 import { ancestries, ancestryById } from '@/data';
 import type { Character, Sex } from '@/lib/character/types';
 import { pickName } from '@/lib/character/names';
@@ -80,6 +89,7 @@ import {
   normalizeCustomCreature,
   CUSTOM_FIELD_MAX_LENGTH,
   CUSTOM_LIST_MAX_LENGTH,
+  CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH,
   type CustomCreature,
 } from '@/lib/session/customCreature';
 import { useBestiaryStore } from '@/stores/bestiary';
@@ -226,7 +236,6 @@ export function NpcFormDialog({
   const [statsInitiative, setStatsInitiative] = useState(numberField(npc?.stats?.initiative));
   const [statsHitPoints, setStatsHitPoints] = useState(numberField(npc?.stats?.hitPoints));
   const [statsDefense, setStatsDefense] = useState(numberField(npc?.stats?.defense));
-  const [statsAgility, setStatsAgility] = useState(numberField(npc?.stats?.agility));
   const [statsNc, setStatsNc] = useState(npc?.stats?.nc ?? '');
   const [statsDescription, setStatsDescription] = useState(npc?.stats?.description ?? '');
   const [statsAttacks, setStatsAttacks] = useState<AttackDraft[]>(() =>
@@ -239,6 +248,28 @@ export function NpcFormDialog({
   );
   const [statsAbilities, setStatsAbilities] = useState<AbilityDraft[]>(() =>
     (npc?.stats?.specialAbilities ?? []).map((a) => ({ name: a.name, text: a.text })),
+  );
+  // Les 7 caractéristiques + dés bonus (PER-455/PER-513) — même patron que `AddCreatureDialog` :
+  // plus de champ « Agilité » isolé, un seul cadre AGI qui sert aussi au départage d'initiative
+  // (`CustomCreature.agility`). Repli sur l'ancien `agility` autonome pour un PNJ édité depuis
+  // avant cette fusion.
+  const [statsAbilityScores, setStatsAbilityScores] = useState<Record<AbilityId, string>>(
+    () =>
+      Object.fromEntries(
+        ABILITY_IDS.map((id) => [
+          id,
+          numberField(id === 'AGI' ? (npc?.stats?.abilities?.AGI ?? npc?.stats?.agility) : npc?.stats?.abilities?.[id]),
+        ]),
+      ) as Record<AbilityId, string>,
+  );
+  const [statsBonusDieAbilities, setStatsBonusDieAbilities] = useState<Set<AbilityId>>(
+    () => new Set(npc?.stats?.bonusDieAbilities ?? []),
+  );
+  const [statsDamageReductionValue, setStatsDamageReductionValue] = useState(
+    numberField(npc?.stats?.damageReduction?.value),
+  );
+  const [statsDamageReductionScope, setStatsDamageReductionScope] = useState<ResistibleDamageType | ''>(
+    npc?.stats?.damageReduction?.scope ?? '',
   );
 
   const bestiaryList = useBestiaryStore((s) => s.list);
@@ -273,13 +304,35 @@ export function NpcFormDialog({
         initiative: parseIntegerField(statsInitiative),
         hitPoints: parseIntegerField(statsHitPoints),
         defense: parseIntegerField(statsDefense),
-        agility: parseIntegerField(statsAgility),
+        // Départage d'initiative : reflète directement la carac AGI saisie ci-dessous, plus de
+        // champ séparé (cf. commentaire sur `statsAbilityScores`).
+        agility: parseIntegerField(statsAbilityScores.AGI),
         nc: statsNc,
         description: statsDescription,
         attacks: statsAttacks,
         specialAbilities: statsAbilities,
+        abilities: Object.fromEntries(
+          ABILITY_IDS.map((id) => [id, parseIntegerField(statsAbilityScores[id])]),
+        ),
+        bonusDieAbilities: Array.from(statsBonusDieAbilities),
+        damageReduction: {
+          value: parseIntegerField(statsDamageReductionValue),
+          scope: statsDamageReductionScope || undefined,
+        },
       }),
-    [statsInitiative, statsHitPoints, statsDefense, statsAgility, statsNc, statsDescription, statsAttacks, statsAbilities],
+    [
+      statsInitiative,
+      statsHitPoints,
+      statsDefense,
+      statsNc,
+      statsDescription,
+      statsAttacks,
+      statsAbilities,
+      statsAbilityScores,
+      statsBonusDieAbilities,
+      statsDamageReductionValue,
+      statsDamageReductionScope,
+    ],
   );
 
   const effectiveStatsDraft = statsSource === 'bestiary' ? bestiaryDraft : manualDraft;
@@ -300,7 +353,6 @@ export function NpcFormDialog({
       setStatsInitiative(numberField(bestiaryDraft.initiative));
       setStatsHitPoints(numberField(bestiaryDraft.hitPoints));
       setStatsDefense(numberField(bestiaryDraft.defense));
-      setStatsAgility(numberField(bestiaryDraft.agility));
       setStatsNc(bestiaryDraft.nc ?? '');
       setStatsDescription(bestiaryDraft.description ?? '');
       setStatsAttacks(
@@ -312,6 +364,15 @@ export function NpcFormDialog({
         })),
       );
       setStatsAbilities((bestiaryDraft.specialAbilities ?? []).map((a) => ({ name: a.name, text: a.text })));
+      setStatsAbilityScores(
+        Object.fromEntries(
+          ABILITY_IDS.map((id) => [
+            id,
+            numberField(id === 'AGI' ? (bestiaryDraft.abilities?.AGI ?? bestiaryDraft.agility) : bestiaryDraft.abilities?.[id]),
+          ]),
+        ) as Record<AbilityId, string>,
+      );
+      setStatsBonusDieAbilities(new Set(bestiaryDraft.bonusDieAbilities ?? []));
     }
     setStatsSource(next);
   };
@@ -674,6 +735,13 @@ export function NpcFormDialog({
                           value={statsInitiative}
                           onChange={(e) => setStatsInitiative(e.target.value)}
                           sx={{ flex: '1 1 120px', minWidth: 110 }}
+                          slotProps={{
+                            input: {
+                              startAdornment: (
+                                <BoltOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+                              ),
+                            },
+                          }}
                         />
                         <TextField
                           type="number"
@@ -682,7 +750,14 @@ export function NpcFormDialog({
                           value={statsHitPoints}
                           onChange={(e) => setStatsHitPoints(e.target.value)}
                           sx={{ flex: '1 1 120px', minWidth: 110 }}
-                          slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                          slotProps={{
+                            htmlInput: { min: 0, step: 1 },
+                            input: {
+                              startAdornment: (
+                                <FavoriteBorderIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+                              ),
+                            },
+                          }}
                         />
                         <TextField
                           type="number"
@@ -691,15 +766,13 @@ export function NpcFormDialog({
                           value={statsDefense}
                           onChange={(e) => setStatsDefense(e.target.value)}
                           sx={{ flex: '1 1 120px', minWidth: 110 }}
-                        />
-                        <TextField
-                          type="number"
-                          size="small"
-                          label="Agilité"
-                          value={statsAgility}
-                          onChange={(e) => setStatsAgility(e.target.value)}
-                          helperText="Départage les égalités"
-                          sx={{ flex: '1 1 120px', minWidth: 110 }}
+                          slotProps={{
+                            input: {
+                              startAdornment: (
+                                <ShieldOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+                              ),
+                            },
+                          }}
                         />
                         <TextField
                           size="small"
@@ -708,8 +781,108 @@ export function NpcFormDialog({
                           onChange={(e) => setStatsNc(e.target.value)}
                           helperText="Facultatif"
                           sx={{ flex: '0 1 100px', minWidth: 90 }}
-                          slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                          slotProps={{
+                            htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH },
+                            input: {
+                              startAdornment: (
+                                <WarningAmberOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />
+                              ),
+                            },
+                          }}
                         />
+                      </Stack>
+                    </Stack>
+
+                    {/* Les 7 caractéristiques (PER-455/PER-513), facultatives — même patron que
+                        `AddCreatureDialog` : une entrée non renseignée compte pour 0 à l'aperçu. */}
+                    <Stack spacing={0.75}>
+                      <StatsFieldLabel>Caractéristiques</StatsFieldLabel>
+                      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                        {ABILITY_IDS.map((id) => {
+                          const hasBonusDie = statsBonusDieAbilities.has(id);
+                          return (
+                            <TextField
+                              key={id}
+                              type="number"
+                              size="small"
+                              label={id}
+                              value={statsAbilityScores[id]}
+                              onChange={(e) =>
+                                setStatsAbilityScores((prev) => ({ ...prev, [id]: e.target.value }))
+                              }
+                              helperText={id === 'AGI' ? 'Départage les égalités d’initiative' : 'Facultatif'}
+                              sx={{ flex: '1 1 110px', minWidth: 100 }}
+                              slotProps={{
+                                input: {
+                                  startAdornment: (
+                                    <AbilityIcon ability={id} title size={18} sx={{ mr: 0.5 }} />
+                                  ),
+                                  endAdornment: (
+                                    <AppTooltip
+                                      title={
+                                        hasBonusDie
+                                          ? `Dé bonus (« * ») aux tests de ${ABILITY_NAMES[id]} — cliquer pour retirer`
+                                          : `Marquer un dé bonus (« * » du livre) aux tests de ${ABILITY_NAMES[id]}`
+                                      }
+                                    >
+                                      <IconButton
+                                        size="small"
+                                        aria-label={`Dé bonus aux tests de ${ABILITY_NAMES[id]}`}
+                                        aria-pressed={hasBonusDie}
+                                        onClick={() =>
+                                          setStatsBonusDieAbilities((prev) => {
+                                            const next = new Set(prev);
+                                            if (next.has(id)) next.delete(id);
+                                            else next.add(id);
+                                            return next;
+                                          })
+                                        }
+                                        sx={{ opacity: hasBonusDie ? 1 : 0.35 }}
+                                      >
+                                        <BonusDieBadge ability={ABILITY_NAMES[id]} size={14} noTooltip />
+                                      </IconButton>
+                                    </AppTooltip>
+                                  ),
+                                },
+                              }}
+                            />
+                          );
+                        })}
+                      </Stack>
+                    </Stack>
+
+                    {/* RD simple (PER-455/PER-513) — même patron que `AddCreatureDialog`. */}
+                    <Stack spacing={0.75}>
+                      <StatsFieldLabel>Réduction de dégâts</StatsFieldLabel>
+                      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                        <TextField
+                          type="number"
+                          size="small"
+                          label="RD"
+                          value={statsDamageReductionValue}
+                          onChange={(e) => setStatsDamageReductionValue(e.target.value)}
+                          helperText="Facultatif"
+                          sx={{ flex: '0 1 100px', minWidth: 90 }}
+                          slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                        />
+                        <TextField
+                          select
+                          size="small"
+                          label="Type de dégât"
+                          value={statsDamageReductionScope}
+                          onChange={(e) =>
+                            setStatsDamageReductionScope(e.target.value as ResistibleDamageType | '')
+                          }
+                          helperText="Facultatif — vide = tous les DM"
+                          sx={{ flex: '1 1 180px', minWidth: 160 }}
+                        >
+                          <MenuItem value="">Tous les DM</MenuItem>
+                          {RESISTIBLE_DAMAGE_TYPES.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {SCOPE_SHORT[type]}
+                            </MenuItem>
+                          ))}
+                        </TextField>
                       </Stack>
                     </Stack>
 
@@ -816,7 +989,7 @@ export function NpcFormDialog({
                         <Button
                           size="small"
                           startIcon={<AddIcon />}
-                          disabled={statsAbilities.length >= CUSTOM_LIST_MAX_LENGTH}
+                          disabled={statsAbilities.length >= CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH}
                           onClick={() => setStatsAbilities((prev) => [...prev, { ...EMPTY_ABILITY }])}
                         >
                           Ajouter une capacité

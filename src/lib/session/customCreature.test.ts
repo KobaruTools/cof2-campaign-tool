@@ -191,18 +191,24 @@ describe('customCreatureFromBestiary', () => {
     sourcePage: 274,
   };
 
-  it('copie le socle et les champs facultatifs, sans lien vers la créature d’origine', () => {
+  it('copie le socle, les 7 caractéristiques et les champs facultatifs, sans lien vers la créature d’origine', () => {
     const custom = customCreatureFromBestiary(CREATURE);
     expect(custom).toEqual({
       initiative: 8,
       hitPoints: 15,
       defense: 13,
       agility: 3,
+      abilities: { AGI: 3, CON: 1, FOR: 1, PER: 1, CHA: -1, INT: -4, VOL: 0 },
       nc: '½',
       description: 'Un loup famélique.',
       attacks: [{ name: 'Morsure', bonus: '+3', damage: '1d6+1' }],
       specialAbilities: [{ name: 'Odorat', text: 'Détecte au flair.' }],
     });
+  });
+
+  it('reprend aussi les dés bonus de caractéristiques', () => {
+    const custom = customCreatureFromBestiary({ ...CREATURE, bonusDieAbilities: ['AGI'] });
+    expect(custom?.bonusDieAbilities).toEqual(['AGI']);
   });
 
   it('renvoie undefined pour une entrée gabarit sans socle chiffré', () => {
