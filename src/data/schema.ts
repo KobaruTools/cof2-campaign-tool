@@ -4979,6 +4979,36 @@ export interface Feature {
    */
   criticalRange?: CriticalRange;
   /**
+   * Sort (mage) qui inflige des DM directs à une cible via un test d'attaque (PER-489, prérequis
+   * de la voie du mage de guerre, p. 161 : « connaître au moins trois sorts qui infligent des DM
+   * directs »). Le livre ne définit ce terme nulle part (confirmé par recherche plein texte) — le
+   * critère retenu, volontairement ÉTROIT plutôt que thématique (retour propriétaire 2026-09-06,
+   * cf. mémoire de session) : les 3 sorts cités NOMMÉMENT par le livre (Projectile de mana,
+   * Explosion de feu, Foudre) + tout autre sort dont le texte affirme SANS AMBIGUÏTÉ qu'une cible
+   * « subit »/« inflige » des DM chiffrés sur un test d'attaque qui lui est directement destiné.
+   * Exclus volontairement (hors critère, pas absents par oubli) : les enchantements d'arme dont les
+   * DM viennent d'une attaque ultérieure (Morsure de la forge, Arme élémentaire, Rituel de sang), les
+   * DM de riposte/réaction (Sang mordant), les effets configurables où le DM n'est qu'une option
+   * parmi d'autres (Rune de garde), les effets sans jet de DM (Exécution mentale, 0 PV direct), et
+   * les DM incidents à un usage annexe (Télékinésie, Métal hurlant contre une structure). Absent =
+   * non tagué (soit le sort n'inflige pas de DM directs, soit c'est un cas exclu ci-dessus).
+   */
+  dealsDirectDamage?: boolean;
+  /**
+   * Élément CLASSIQUE (feu/terre/air/eau) explicitement nommé dans le texte VERBATIM du sort ou son
+   * nom (PER-489, dérogation mage sur les 4 voies élémentaires mystiques, p. 167-169 : « un mage qui
+   * maîtrise au moins N sorts de [élément] »). Critère volontairement LITTÉRAL (présence du mot dans
+   * `name`/`text`), PAS une lecture thématique du sujet du sort (retour propriétaire 2026-09-06,
+   * cf. mémoire de session — une première passe thématique, ex. classer Armée des morts en « terre »
+   * parce que les squelettes émergent du sol, a été jugée pas assez intuitive et rejetée). Distinct de
+   * `ResistibleDamageType` (feu/froid/électricité/acide, système de RD) : ce champ ne couvre QUE les
+   * 4 éléments classiques des voies mystiques, dont seul « feu » recoupe l'autre système. Absent =
+   * aucun des 4 mots n'apparaît explicitement, ou le sort laisse l'élément au choix libre du joueur
+   * (Maîtrise des éléments, Arme élémentaire : le texte dit explicitement que l'élément est
+   * interchangeable, donc pas de maîtrise d'UN élément précis).
+   */
+  classicalElement?: 'fire' | 'earth' | 'air' | 'water';
+  /**
    * AMÉLIORATION propagée à une CRÉATURE liée directement par cette capacité (PER-94) — cross-voie
    * possible via `targetPaths`. Ex. Runes de défense (`runes-r1`) qui octroie au golem le même bonus
    * de DEF `stepped` qu'à son maître. Cumulée par `applyCreatureUpgrades` avec les améliorations

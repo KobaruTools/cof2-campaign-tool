@@ -455,6 +455,55 @@ describe('PER-488 : prérequis des voies de prestige', () => {
   });
 });
 
+describe('PER-489 : voie du mage de guerre et dérogation élémentaire (sorts tagués)', () => {
+  it('illégal : voie du mage de guerre avec moins de 3 sorts à DM directs', () => {
+    const c = makeCharacter({ classId: 'magicien', level: 5, featureIds: ['magie-universelle-r1'] });
+    const r = canAcquireFeature(c, 'prestige-mage-de-guerre-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/au moins 3 sorts qui infligent des DM directs/);
+  });
+
+  it('légal : voie du mage de guerre avec 3 sorts à DM directs', () => {
+    const c = makeCharacter({
+      classId: 'magicien',
+      level: 5,
+      featureIds: ['magie-des-arcanes-r1', 'magie-destructrice-r1', 'invocation-r1'],
+    });
+    expect(canAcquireFeature(c, 'prestige-mage-de-guerre-r4', ctx).legal).toBe(true);
+  });
+
+  it('illégal : voie élémentaire du feu pour un mage sans sort de feu (catégorie mystique)', () => {
+    const c = makeCharacter({ classId: 'magicien', level: 5, featureIds: [] });
+    const r = canAcquireFeature(c, 'prestige-elementaire-du-feu-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/réservée aux profils de la famille des Mystiques/);
+  });
+
+  it('illégal : voie élémentaire du feu pour un mage avec un seul sort de feu (seuil = 2)', () => {
+    const c = makeCharacter({ classId: 'magicien', level: 5, featureIds: ['magie-destructrice-r1'] });
+    expect(canAcquireFeature(c, 'prestige-elementaire-du-feu-r4', ctx).legal).toBe(false);
+  });
+
+  it('légal : voie élémentaire du feu pour un mage avec 2 sorts de feu (dérogation, p. 167)', () => {
+    const c = makeCharacter({
+      classId: 'magicien',
+      level: 5,
+      featureIds: ['magie-destructrice-r1', 'magie-destructrice-r4'],
+    });
+    expect(canAcquireFeature(c, 'prestige-elementaire-du-feu-r4', ctx).legal).toBe(true);
+  });
+
+  it('légal : voie élémentaire de la terre pour un mage avec 1 sort de terre (dérogation, p. 167)', () => {
+    const c = makeCharacter({ classId: 'sorcier', level: 5, featureIds: ['outre-tombe-r4'] });
+    expect(canAcquireFeature(c, 'prestige-elementaire-de-la-terre-r4', ctx).legal).toBe(true);
+  });
+
+  it("légal : voie élémentaire de l'eau pour un mage avec 1 sort d'eau (dérogation, p. 169)", () => {
+    const c = makeCharacter({ classId: 'magicien', level: 5, featureIds: ['magie-elementaire-r4'] });
+    expect(canAcquireFeature(c, 'prestige-elementaire-de-l-eau-r4', ctx).legal).toBe(true);
+  });
+});
+
 describe('checkCompliance', () => {
   it('Lhagva niveau 1 (capacités réelles) : aucun avertissement', () => {
     const c = makeCharacter({

@@ -412,6 +412,8 @@ export const mageFeatures: Feature[] = [
     // sort (qui suit le coût standard du rang) → pas de `manaCost`.
     richText:
       "L’ensorceleur se charge d’énergie électrique pour [=CHA] minutes. Pendant toute la durée du sort, une créature qui le blesse par une attaque de contact ou le touche reçoit une décharge infligeant {1d4°} DM. De plus, il peut utiliser une action d’attaque à chaque round pour délivrer une décharge électrique (test d’attaque magique contre DEF de la cible, portée 10 m) infligeant [1d4° + CHA] DM (aucun coût de mana).",
+    // PER-489 : attaque active à DM directs chiffrés (décharge électrique sur test réussi).
+    dealsDirectDamage: true,
     sourcePage: 93,
   },
   {
@@ -428,6 +430,10 @@ export const mageFeatures: Feature[] = [
     // dé de chute {1d6}.
     richText:
       "L’ensorceleur peut déplacer dans les airs un objet inerte (qui n’est pas tenu par un adversaire) ou une cible volontaire (par exemple lui‑même) dont le poids n’excède pas [=50 × rang] kg, à une portée de 20 m et pendant [=CHA] minutes. L’objet peut être maintenu en l’air ou déplacé de 5 m par action de mouvement. Il est possible de faire tomber un objet sur une cible surprise (test d’attaque magique, DM {1d6} par tranche de 50 kg).",
+    // PER-489 : « maintenu en l'air » — mot littéral, pas une lecture thématique (critère
+    // propriétaire du 2026-09-06). Le DM à une cible reste incident à un usage annexe
+    // (faire tomber un objet) → pas de `dealsDirectDamage`.
+    classicalElement: 'air',
     sourcePage: 93,
   },
   {
@@ -444,6 +450,8 @@ export const mageFeatures: Feature[] = [
     // joueur (calculée).
     richText:
       "L’ensorceleur produit un éclair sur une ligne de 10 m. Toutes les créatures sur la trajectoire subissent [4d4° + CHA] DM ou seulement la moitié pour celles qui réussissent un test d’@AGI difficulté [10 + CHA].",
+    // PER-489 : sort explicitement cité par le livre comme exemple de « DM directs » (p. 161).
+    dealsDirectDamage: true,
     sourcePage: 93,
   },
   {
@@ -738,6 +746,9 @@ export const mageFeatures: Feature[] = [
     // difficulté [10 + CHA] (CHA du joueur).
     richText:
       "L’ensorceleur lance un sort d’attaque qui n’est qu’une illusion. Il inflige [3d4° + CHA] DM contre une seule cible ou [2d4° + CHA] DM contre un maximum de cibles égal au [#rang]. Le joueur peut décrire la nature du sort à sa guise (une Explosion de feu, une nuée de criquets, une lance de glace, etc.), son imagination demeurant sa seule limite. Chaque cible peut faire un test de @PER difficulté [10 + CHA] pour ne subir aucun DM. Les créatures sans esprit (créatures artificielles, certaines plantes et morts‑vivants) sont immunisées à ce sort. Les PV perdus de cette façon se récupèrent normalement.",
+    // PER-489 : DM directs chiffrés (l'apparence du sort, « Explosion de feu » ou autre, est un
+    // choix de FLAVEUR libre du joueur — verbatim — donc AUCUN `classicalElement` fixe).
+    dealsDirectDamage: true,
     sourcePage: 95,
   },
   {
@@ -781,6 +792,8 @@ export const mageFeatures: Feature[] = [
     // courant) + CHA résolu ; `@FOR` est mise en avant comme référence de stat.
     richText:
       "Si l’ensorceleur réussit un test d’attaque magique réussi contre la DEF de son adversaire situé à une portée de 20 m, il lui inflige [1d4° + CHA] DM. Si la cible a un NC inférieur au rang atteint par l’ensorceleur dans la voie, elle doit réussir un test de @FOR difficulté 10 pour ne pas être renversée.",
+    // PER-489 : DM directs chiffrés sur test d'attaque magique réussi.
+    dealsDirectDamage: true,
     sourcePage: 96,
   },
   {
@@ -833,6 +846,9 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée « pendant [=rang] rounds » (quantité) ; DM [1d4° + CHA].
     richText:
       "Le sort crée une lame d’énergie lumineuse pendant [=rang] rounds. Dès le premier round et à chaque round suivant, l’ensorceleur peut lui ordonner d’attaquer une cible de son choix à portée (action gratuite, portée 20 m). La lame doit réussir un test d’attaque magique contre la DEF de l’adversaire. Elle inflige [1d4° + CHA] DM en cas de réussite. L’ensorceleur ne peut maintenir actif qu’un seul sort d’arme de mana à la fois.",
+    // PER-489 : la lame invoquée par LE SORT attaque et inflige des DM directs à chaque round
+    // (contrairement à Morsure de la forge/Arme élémentaire, ce n'est pas l'arme du personnage).
+    dealsDirectDamage: true,
     sourcePage: 96,
   },
   {
@@ -925,6 +941,8 @@ export const mageFeatures: Feature[] = [
     // (référence) ; difficulté [10 + INT] (INT du joueur).
     richText:
       "Le forgesort frappe le sol de son bâton et provoque une onde dévastatrice dans un rayon de 10 m autour de lui. Toutes les créatures dans la zone subissent automatiquement [3d4° + INT] DM et doivent réussir un test de @FOR difficulté [10 + INT] pour ne pas être renversées.",
+    // PER-489 : DM directs chiffrés (AOE automatique).
+    dealsDirectDamage: true,
     sourcePage: 98,
   },
   {
@@ -1124,6 +1142,10 @@ export const mageFeatures: Feature[] = [
       "Au prix d’une action de mouvement, le forgesort peut enflammer son bâton ou son marteau pendant [=INT] minutes et ajoute [2 + paliers] DM de feu sur les attaques au contact réalisées avec cette arme. Ce bonus augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de forgesort. L’arme s’éteint immédiatement s’il la lâche. En plus de ce sort, le forgesort ajoute son [rang + 2] aux tests d’orfèvrerie ou de forge.",
     // Bonus de compétence (PER-89) : domaines = orfèvrerie, forge.
     effects: [{ kind: 'test-bonus', domains: ['goldsmithing', 'smithing'] }],
+    // PER-489 : « DM de feu » explicite et fixe (pas un choix libre, contrairement à Arme
+    // élémentaire) → `classicalElement`. Pas de `dealsDirectDamage` : les DM viennent d'une
+    // attaque à l'ARME ultérieure, pas du sort lui-même (critère propriétaire du 2026-09-06).
+    classicalElement: 'fire',
     sourcePage: 99,
   },
   {
@@ -1139,6 +1161,8 @@ export const mageFeatures: Feature[] = [
     // par round. Les DM/malus subis par la CIBLE ne sont pas des stats du joueur.
     richText:
       "Le forgesort doit réussir un test opposé d’attaque magique (portée 20 m) pour faire chauffer un objet métallique porté par sa cible pendant [1d4 + INT] rounds. S’il s’agit d’une arme, elle inflige 1 DM par round à son porteur et un malus de ‑2 aux tests d’attaque. S’il s’agit d’une armure, elle inflige {1d4°} DM par round à son porteur (au tour du forgesort). La victime peut se débarrasser précipitamment de son armure au prix d’une action limitée (elle perd le bonus de DEF associé ; dans le cas d’un adversaire, le MJ devra évaluer ce montant).",
+    // PER-489 : DM directs chiffrés par round (chauffe l'équipement de la cible).
+    dealsDirectDamage: true,
     sourcePage: 99,
   },
   {
@@ -1464,6 +1488,8 @@ export const mageFeatures: Feature[] = [
     // rang 4, `paliers` est omis → l'encadré affiche le seul dé {1d4°}.
     richText:
       "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement [1d4° + paliers] DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien, jusqu’à un maximum égal à son [INT].",
+    // PER-489 : sort explicitement cité par le livre comme exemple de « DM directs » (p. 161).
+    dealsDirectDamage: true,
     sourcePage: 103,
   },
   {
@@ -1529,6 +1555,8 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM [5d4° + INT].
     richText:
       "Le magicien projette un rayon mortel dont la portée est de 20 m et qui annule la cohésion de la matière, ne laissant derrière lui qu’un amas de poussière. Un test d’attaque magique réussi contre la DEF de la cible inflige [5d4° + INT] DM. Si le magicien vise un objet porté par une créature, le test d’attaque subit un dé malus. Les objets magiques sont insensibles à ce sort et les objets normaux (jusqu’à 100 kg) sont réduits en poussière. Une créature réduite à 0 PV par ce sort est proprement désintégrée, ne laissant aucun cadavre derrière elle ! (Ses objets magiques sont épargnés).",
+    // PER-489 : DM directs chiffrés sur test d'attaque magique réussi.
+    dealsDirectDamage: true,
     sourcePage: 103,
   },
 
@@ -1547,6 +1575,9 @@ export const mageFeatures: Feature[] = [
     // en explication. Test d’@AGI (cibles) ; difficulté [10 + INT] (INT du joueur).
     richText:
       "Des flammes jaillissent des doigts tendus du magicien. Jusqu’à 3 cibles au contact subissent [1d4°|2@4 + INT] DM, les cibles peuvent faire un test d’@AGI difficulté [10 + INT] pour ne subir que la moitié des DM. Les DM passent à {2d4°} au rang 4.",
+    // PER-489 : « de feu » explicite dans le nom + DM directs chiffrés.
+    dealsDirectDamage: true,
+    classicalElement: 'fire',
     sourcePage: 103,
   },
   {
@@ -1579,6 +1610,9 @@ export const mageFeatures: Feature[] = [
     // DoT PUR (aucun malus de test) → catalogué `burning` (PER-288), même traitement que
     // bleeding/internal-hemorrhage : jamais chiffré, verbatim seul, suivi au Combat Tracker.
     situationalEffectIds: ['burning'],
+    // PER-489 : « de feu » explicite dans le nom + DM directs chiffrés (hit initial + DoT).
+    dealsDirectDamage: true,
+    classicalElement: 'fire',
     sourcePage: 104,
   },
   {
@@ -1594,6 +1628,9 @@ export const mageFeatures: Feature[] = [
     // difficulté [10 + INT] (INT du joueur).
     richText:
       "Le magicien choisit un point situé à moins de 30 m. Toutes les créatures (y compris le magicien et ses compagnons) se trouvant dans un rayon de 5 m autour de ce point subissent [4d4° + INT] DM et peuvent effectuer un test d’@AGI difficulté [10 + INT] pour ne subir que la moitié des DM.",
+    // PER-489 : « de feu » explicite dans le nom + DM directs chiffrés (AOE).
+    dealsDirectDamage: true,
+    classicalElement: 'fire',
     sourcePage: 104,
   },
   {
@@ -1608,6 +1645,10 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM [2d4° + INT].
     richText:
       "Le magicien projette des traits de foudre sur toutes les cibles de son choix dans un rayon de 10 m autour de lui. Il fait un seul test d’attaque magique et toutes les créatures ciblées dont il atteint la DEF subissent [2d4° + INT] DM d’électricité.",
+    // PER-489 : DM directs chiffrés. Pas de `classicalElement` : « électricité » n'est pas l'un
+    // des 4 mots (feu/terre/air/eau) — c'est l'autre taxonomie de types de DM (feu/froid/
+    // électricité/acide, cf. Maîtrise des éléments), sans lien mécanique avec les voies mystiques.
+    dealsDirectDamage: true,
     sourcePage: 104,
   },
 
@@ -1624,6 +1665,9 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM {1d4°} par round ; durée [=INT] rounds.
     richText:
       "Si le magicien réussit un test opposé d’attaque magique (avec une portée de 20 m), la créature ciblée est privée d’air. La victime étouffe progressivement et subit {1d4°} DM par round pendant [=INT] rounds. Les créatures qui ne respirent pas (morts‑vivants, créatures artificielles) sont immunisées à ce sort. En revanche, les réductions de dommages (voie du colosse, par exemple) ne s’appliquent pas.",
+    // PER-489 : « privée d'air » explicite + DM directs chiffrés par round.
+    dealsDirectDamage: true,
+    classicalElement: 'air',
     sourcePage: 104,
   },
   {
@@ -1688,6 +1732,8 @@ export const mageFeatures: Feature[] = [
     // égal à l’INT → quantité [=INT]. La durée (10 minutes) est fixe → littéral.
     richText:
       "Le magicien peut respirer sous l’eau pendant 10 minutes. Cette capacité peut être étendue à un compagnon par point d’[#INT].",
+    // PER-489 : « sous l'eau » explicite. Aucun DM → pas de `dealsDirectDamage`.
+    classicalElement: 'water',
     sourcePage: 105,
   },
   {
@@ -1995,6 +2041,8 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée [=INT] minutes ; DM de l’attaque [1d4° + INT].
     richText:
       "Le sorcier acquiert une beauté fascinante pour [=INT] minutes. Il gagne un dé bonus aux tests de CHA ainsi qu’une attaque de contact nécessitant un test d’attaque magique (contre DEF, action d’attaque), qui inflige [1d4° + INT] DM. Le sorcier récupère autant de PV (sans dépasser son maximum de PV) que la cible en a perdu.",
+    // PER-489 : DM directs chiffrés sur test d'attaque magique réussi.
+    dealsDirectDamage: true,
     sourcePage: 108,
   },
   {
@@ -2040,6 +2088,9 @@ export const mageFeatures: Feature[] = [
         disablesFeatures: ['demon-r2'],
       },
     ],
+    // PER-489 : attaques de griffes à DM directs chiffrés, définies PAR le sort lui-même
+    // (contrairement à un enchantement d'arme comme Morsure de la forge).
+    dealsDirectDamage: true,
     sourcePage: 108,
   },
   {
@@ -2134,6 +2185,8 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM [2d4° + INT].
     richText:
       "Ce sort nécessite la réussite d’un test opposé d’attaque magique (portée 30 m). La victime subit [2d4° + INT] DM et le sorcier récupère autant de PV (sans dépasser son maximum de PV).",
+    // PER-489 : DM directs chiffrés sur test d'attaque magique réussi.
+    dealsDirectDamage: true,
     sourcePage: 109,
   },
   {
@@ -2165,6 +2218,8 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM [5d4° + INT].
     richText:
       "Le sorcier fait mine d’arracher le cœur de sa victime, puis de broyer dans sa main (l’image du cœur de la victime apparaît dans la main du sorcier). Il doit faire un test opposé d’attaque magique contre une cible vivante (portée 20 m) et, en cas de réussite, il inflige [5d4° + INT] DM, la moitié en cas de test raté. Ce sort ne peut affecter une même cible qu’une seule fois par combat.",
+    // PER-489 : DM directs chiffrés sur test d'attaque magique réussi.
+    dealsDirectDamage: true,
     sourcePage: 109,
   },
 
@@ -2182,6 +2237,8 @@ export const mageFeatures: Feature[] = [
     // (difficulté 10 fixe).
     richText:
       "Le sorcier désigne une cible vivante à portée (10 m) et doit réussir un test opposé d’attaque magique. En cas de succès, la cible ressent une douleur intense à l’emplacement du cœur, elle subit [1d4° + INT] DM et, si elle rate un test de @CON difficulté 10, l’état ralenti durant 1 round.",
+    // PER-489 : DM directs chiffrés sur test d'attaque magique réussi.
+    dealsDirectDamage: true,
     sourcePage: 109,
   },
   {
@@ -2253,6 +2310,9 @@ export const mageFeatures: Feature[] = [
     // sont ceux de la CIBLE (difficulté 15, bonus d’aide +2/+10 fixes).
     richText:
       "Une fois par combat, si le sorcier réussit un test opposé d’attaque magique (portée 20 m), des mains squelettiques surgissent sous les pieds d’une cible de taille moyenne ou inférieure et l’enterrent vivante. Tant qu’elle est ensevelie, elle subit {2d4°} DM par round, ne peut agir ni être la cible d’attaques extérieures. À son tour, elle peut tenter de sortir de terre en réussissant un test de @FOR ou d’@AGI (au choix de la cible) difficulté 15 au prix d’une action limitée. Si elle tombe à 0 PV, elle reste enterrée et décède au tour suivant. Chaque personne qui creuse pour l’aider lui octroie un bonus de +2 sur son test (maximum +10).",
+    // PER-489 : « sortir de terre » explicite (mot littéral) + DM directs chiffrés par round.
+    dealsDirectDamage: true,
+    classicalElement: 'earth',
     sourcePage: 110,
   },
   {
@@ -2270,6 +2330,9 @@ export const mageFeatures: Feature[] = [
       "Une fois par jour, le sorcier peut invoquer d’innombrables squelettes qui émergent du sol pour attaquer ses ennemis pendant [=niveau] rounds. Tous les adversaires situés dans un rayon de 10 m autour du sorcier subissent automatiquement {2d4°} DM par round. Les squelettes se déplacent avec le sorcier, mais tous les déplacements dans cette zone (même ceux du sorcier) sont divisés par deux.",
     // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    // PER-489 : DM directs chiffrés (AOE automatique par round). Pas de `classicalElement` :
+    // « émergent du sol » n'est pas le mot littéral « terre » (critère strict du 2026-09-06).
+    dealsDirectDamage: true,
     sourcePage: 110,
   },
 
@@ -2290,6 +2353,8 @@ export const mageFeatures: Feature[] = [
       "Le sorcier doit réussir un test d’attaque magique (portée 10 m) contre une difficulté de 10 + @CON de la cible. Du sang s’écoule de la bouche, du nez, des oreilles et même des yeux de la victime, qui subit {1d4°} DM par round pendant [=INT] rounds.",
     // DoT dédié `sang-bleeding` (PER-504) : condition d'arrêt fixe à INT rounds, distincte de `bleeding`.
     situationalEffectIds: ['sang-bleeding'],
+    // PER-489 : DM directs chiffrés par round (DoT).
+    dealsDirectDamage: true,
     sourcePage: 110,
   },
   {
@@ -2410,6 +2475,8 @@ export const mageFeatures: Feature[] = [
     // (`cursed`), dont la durée EN NOMBRE DE TESTS (pas en rounds) est non réductible à Affaibli.
     richText:
       "En réussissant un test opposé d’attaque magique (portée 20 m), le sorcier étouffe une créature vivante. La victime subit un dé malus à tous ses tests et [1d4° + INT] DM par round tant que le sorcier maintient sa concentration par une action de mouvement et la dépense de 1 PM par round. Si la victime sort de la portée du sort, il prend fin.",
+    // PER-489 : DM directs chiffrés par round (concentration maintenue).
+    dealsDirectDamage: true,
     sourcePage: 111,
   },
   {

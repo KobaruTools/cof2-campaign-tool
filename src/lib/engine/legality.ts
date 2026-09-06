@@ -116,6 +116,27 @@ export const VISION_PATH_ID = 'prestige-vision';
 const VISION_ACCESS_PATH_IDS = ['magie-universelle', 'divination', 'illusions', 'sombre-magie'];
 
 /**
+ * PER-489 — Voie du mage de guerre (p. 161) : « connaître au moins trois sorts qui infligent
+ * des DM directs ». Compte les capacités `isSpell` + `dealsDirectDamage` possédées (cf. ce champ
+ * sur `Feature`, schema.ts, pour le critère retenu).
+ */
+export const WARMAGE_PATH_ID = 'prestige-mage-de-guerre';
+const WARMAGE_MIN_DIRECT_DAMAGE_SPELLS = 3;
+
+/**
+ * PER-489 — Dérogation mage sur les 4 voies élémentaires mystiques (p. 167-169) : « cette voie
+ * peut aussi être choisie par un mage qui maîtrise au moins N sorts de [élément] ». Seuil et
+ * élément par voie ; compte les capacités `isSpell` + `classicalElement` possédées (cf. ce champ
+ * sur `Feature`, schema.ts, pour le critère littéral retenu — PAS de lecture thématique).
+ */
+const ELEMENTAL_MAGE_DEROGATION: Record<string, { element: Feature['classicalElement']; minSpells: number }> = {
+  'prestige-elementaire-du-feu': { element: 'fire', minSpells: 2 },
+  'prestige-elementaire-de-la-terre': { element: 'earth', minSpells: 1 },
+  'prestige-elementaire-de-l-air': { element: 'air', minSpells: 1 },
+  'prestige-elementaire-de-l-eau': { element: 'water', minSpells: 1 },
+};
+
+/**
  * Catégorie de voie de prestige (p. 128, tableau récapitulatif) → famille de
  * profils requise. `'generic'` n'a pas d'entrée : ouverte à toutes les
  * familles. PER-488 : ce mapping n'était vérifié nulle part avant — un
@@ -508,6 +529,17 @@ export function canAcquireFeature(
       reasons.push("La voie de l'enchanteur nécessite au moins une voie de magie jusqu'au rang 4 (p. 157).");
     }
   }
+  if (path.id === WARMAGE_PATH_ID) {
+    const directDamageSpellCount = character.featureIds.filter((id) => {
+      const owned = ctx.featureById.get(id);
+      return owned?.isSpell && owned.dealsDirectDamage;
+    }).length;
+    if (directDamageSpellCount < WARMAGE_MIN_DIRECT_DAMAGE_SPELLS) {
+      reasons.push(
+        `La voie du mage de guerre nécessite de connaître au moins ${WARMAGE_MIN_DIRECT_DAMAGE_SPELLS} sorts qui infligent des DM directs (p. 161).`,
+      );
+    }
+  }
   if (path.id === VISION_PATH_ID && characterClass) {
     const hasVisionAccess = VISION_ACCESS_PATH_IDS.some(
       (pathId) =>
@@ -568,7 +600,17 @@ export function canAcquireFeature(
       const ownedFamilies = classFamiliesWithFeatures(character, ctx);
       if (characterClass) ownedFamilies.add(characterClass.familyId);
       const isMagieDesMotsForBarde = path.id === MAGIE_DES_MOTS_PATH_ID && character.classId === 'barde';
-      if (!ownedFamilies.has(requiredFamily) && !isMagieDesMotsForBarde) {
+      // PER-489 : dérogation mage sur les 4 voies élémentaires mystiques (p. 167-169) — un mage
+      // qui maîtrise assez de sorts de l'élément correspondant (`classicalElement` sur `Feature`).
+      const elementalDerogation = ELEMENTAL_MAGE_DEROGATION[path.id];
+      const isElementalMageDerogation =
+        elementalDerogation !== undefined &&
+        ownedFamilies.has('mages') &&
+        character.featureIds.filter((id) => {
+          const owned = ctx.featureById.get(id);
+          return owned?.isSpell && owned.classicalElement === elementalDerogation.element;
+        }).length >= elementalDerogation.minSpells;
+      if (!ownedFamilies.has(requiredFamily) && !isMagieDesMotsForBarde && !isElementalMageDerogation) {
         reasons.push(
           `« ${path.name} » est réservée aux profils de la famille des ${ctx.familyById.get(requiredFamily)?.name ?? requiredFamily} (p. 128).`,
         );
