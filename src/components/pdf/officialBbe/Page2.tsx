@@ -7,6 +7,7 @@ import { Text, View } from '@react-pdf/renderer';
 import type { CampaignEditorPdfData, PdfPathGroup } from '@/lib/character/pdfExport/buildCharacterPdfData';
 import type { BbeSlots } from '@/lib/character/pdfExport/mapPathsToBbeSlots';
 import { RankRowsAbsolute } from './RankRowsAbsolute';
+import { TitleBandValue } from './TitleBandValue';
 import { GOLD } from './styles';
 import { PAGE2 } from './layout';
 
@@ -37,12 +38,7 @@ function GridCell({
 }) {
   return (
     <>
-      <View style={{ position: 'absolute', left: x, top: bandY, width: w, height: rowStartY - bandY + 1, backgroundColor: GOLD, justifyContent: 'center', paddingHorizontal: 5 }}>
-        <Text style={{ color: '#fff', fontWeight: 700, fontSize: 8.5, textTransform: 'uppercase' }}>
-          {title}
-          {group ? ` : ${group.title}` : ''}
-        </Text>
-      </View>
+      <TitleBandValue x={x} y={bandY} w={w} h={rowStartY - bandY + 1} label={title} value={group?.title ?? ''} />
       <View style={{ position: 'absolute', left: x, top: rowStartY, width: w, height: rowH * 5, borderWidth: 1, borderColor: GOLD, borderTopWidth: 0 }} />
       <RankRowsAbsolute x={x} firstRowY={rowStartY} width={w} rowH={rowH} checkboxSize={checkboxSize} group={group} />
     </>

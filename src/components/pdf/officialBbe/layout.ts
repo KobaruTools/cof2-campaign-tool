@@ -12,21 +12,38 @@ export const PAGE1 = {
   header: {
     logoX: 51,
     logoY: 22,
-    nameCenterX: 340,
-    nameLabelY: 30,
+    // Bloc nom centré dans l'espace RESTANT à droite du logo (249.1..572.6pt mesuré), pas au
+    // centre de la page entière — d'où nameCenterX ≈ (249.1+572.6)/2, pas 306 (=612/2).
+    nameCenterX: 411,
+    nameWidth: 320,
+    // Ornement à 2 barres doubles + losange central (mesuré par tracé de pixels, PAS estimé) :
+    // la trame de référence encadre le nom entre 2 filets doubles, avec le libellé "NOM DU
+    // PERSONNAGE" en dessous — le nom du personnage se lit DANS l'espace entre les 2 barres.
+    ornamentX: 249,
+    ornamentW: 323.6,
+    barTopY: 30.7,
+    barTopGapY: 35.5,
+    barBottomY: 66.2,
+    barBottomGapY: 69.1,
     nameTextY: 42,
-    nameWidth: 300,
-    subtitleY: 62,
-    nivX: 537,
-    nivY: 30,
-    nivW: 33,
-    nivH: 38,
+    captionY: 78.5,
+    subtitleY: 90,
+    // NIV. : même patron que les lignes de caractéristiques (bande dorée + case blanche), PAS
+    // une case empilée label-au-dessus-de-la-valeur (v1, erronée) — mesuré à côté de JOUEUR,
+    // PAS dans la colonne stats à droite (où elle chevauchait la case DÉF, bug PER-202 corrigé
+    // au passage).
+    nivX: 169,
+    nivY: 105.1,
+    nivLabelW: 31.2,
+    nivValueW: 36.5,
+    nivH: 29.3,
   },
   caracteristiques: {
     x: 51,
     bandY: 151.6,
     w: 186.8,
     bandH: 20,
+    columnHeadersY: 178,
     firstRowY: 197,
     rowH: 37.8,
     labelW: 42,
@@ -66,6 +83,7 @@ export const PAGE1 = {
     x: 51,
     identityLabelsY: 462,
     identityRowH: 44,
+    columnHeadersY: 622,
     attaquesY: 637.2,
     rowH: 34.8,
     labelW: 84.6,

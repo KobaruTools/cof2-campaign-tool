@@ -9,6 +9,7 @@ import { Text, View } from '@react-pdf/renderer';
 import type { CampaignEditorPdfData, PdfPathGroup } from '@/lib/character/pdfExport/buildCharacterPdfData';
 import { RankRowsAbsolute } from './RankRowsAbsolute';
 import { DiamondPips } from './DiamondPips';
+import { TitleBandValue } from './TitleBandValue';
 import { GOLD, GRAY_BORDER, styles } from './styles';
 import { PAGE1 } from './layout';
 
@@ -50,6 +51,25 @@ function BoxValue({ x, y, w, h, value, big }: { x: number; y: number; w: number;
   );
 }
 
+/** Petit losange (contour), pour le repère central des barres d'ornement d'en-tête. */
+function InlineDiamond({ cx, cy, r = 3.5 }: { cx: number; cy: number; r?: number }) {
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        left: cx - r,
+        top: cy - r,
+        width: r * 2,
+        height: r * 2,
+        borderWidth: 0.9,
+        borderColor: GOLD,
+        transform: 'rotate(45deg)',
+      }}
+    />
+  );
+}
+
+
 export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peoplePath: PdfPathGroup | null }) {
   const { identity, abilities, derived, attacks, equipment } = data;
   const L = PAGE1;
@@ -62,21 +82,33 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
         <Text style={styles.logoLine1}>OUBLIÉES</Text>
         <Text style={styles.logoLine2}>FANTASY</Text>
       </Abs>
-      <Abs x={L.header.nameCenterX - L.header.nameWidth / 2} y={L.header.nameLabelY} w={L.header.nameWidth}>
+      {/* Ornement à 2 barres doubles + losange central, encadrant le nom (mesuré sur la trame
+          de référence par tracé de pixels — cf. layout.ts). */}
+      <Abs x={L.header.ornamentX} y={L.header.barTopY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 0.9, borderBottomColor: GOLD }} />
+      <Abs x={L.header.ornamentX} y={L.header.barTopGapY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 0.9, borderBottomColor: GOLD }} />
+      <InlineDiamond cx={L.header.ornamentX + L.header.ornamentW / 2} cy={(L.header.barTopY + L.header.barTopGapY) / 2} />
+      <Abs x={L.header.ornamentX} y={L.header.barBottomY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 0.9, borderBottomColor: GOLD }} />
+      <Abs x={L.header.ornamentX} y={L.header.barBottomGapY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 0.9, borderBottomColor: GOLD }} />
+      <InlineDiamond cx={L.header.ornamentX + L.header.ornamentW / 2} cy={(L.header.barBottomY + L.header.barBottomGapY) / 2} />
+      <Abs x={L.header.nameCenterX - L.header.nameWidth / 2} y={L.header.nameTextY} w={L.header.nameWidth}>
+        <Text style={{ fontSize: 14, fontWeight: 700, textAlign: 'center' }}>{identity.name}</Text>
+      </Abs>
+      <Abs x={L.header.nameCenterX - L.header.nameWidth / 2} y={L.header.captionY} w={L.header.nameWidth}>
         <Text style={{ fontSize: 7, fontWeight: 700, color: GOLD, textTransform: 'uppercase', textAlign: 'center' }}>
           Nom du personnage
         </Text>
-        <Text style={{ fontSize: 14, fontWeight: 700, textAlign: 'center', marginTop: 2 }}>{identity.name}</Text>
-        <Text style={{ fontSize: 7, fontWeight: 700, color: GOLD, textTransform: 'uppercase', textAlign: 'center', marginTop: 4 }}>
+      </Abs>
+      <Abs x={L.header.nameCenterX - L.header.nameWidth / 2} y={L.header.subtitleY} w={L.header.nameWidth}>
+        <Text style={{ fontSize: 6.5, fontWeight: 700, color: GOLD, textTransform: 'uppercase', textAlign: 'center' }}>
           {identity.ancestryName} — {identity.className}
         </Text>
       </Abs>
-      <Abs x={L.header.nivX} y={L.header.nivY} w={L.header.nivW} h={L.header.nivH} style={{ borderWidth: 1, borderColor: GOLD, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 6, fontWeight: 700, color: GOLD }}>NIV.</Text>
-        <Text style={{ fontSize: 12, fontWeight: 700 }}>{identity.level}</Text>
+      <Abs x={L.header.nivX} y={L.header.nivY} w={L.header.nivLabelW} h={L.header.nivH} style={{ backgroundColor: GOLD, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>NIV.</Text>
       </Abs>
+      <BoxValue x={L.header.nivX + L.header.nivLabelW} y={L.header.nivY} w={L.header.nivValueW} h={L.header.nivH} value={`${identity.level}`} />
 
-      <Abs x={51} y={95} w={150}>
+      <Abs x={51} y={95} w={110}>
         <Text style={{ fontSize: 7, fontWeight: 700, color: GOLD, textTransform: 'uppercase' }}>Joueur</Text>
         <Text style={{ fontSize: 9, marginTop: 2 }}>{identity.playerName ?? ''}</Text>
         <View style={{ borderBottomWidth: 0.75, borderBottomColor: GOLD, marginTop: identity.playerName ? 2 : 12 }} />
@@ -89,6 +121,12 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
 
       {/* Caractéristiques */}
       <Band x={L.caracteristiques.x} y={L.caracteristiques.bandY} w={L.caracteristiques.w} h={L.caracteristiques.bandH} label="Caractéristiques" />
+      <Abs x={L.caracteristiques.valueX} y={L.caracteristiques.columnHeadersY} w={L.caracteristiques.valueW}>
+        <Text style={{ fontSize: 6.5, fontWeight: 700, color: GOLD, textTransform: 'uppercase', textAlign: 'center' }}>Valeur</Text>
+      </Abs>
+      <Abs x={L.caracteristiques.notesX} y={L.caracteristiques.columnHeadersY} w={L.caracteristiques.notesW}>
+        <Text style={{ fontSize: 6.5, fontWeight: 700, color: GOLD, textTransform: 'uppercase', textAlign: 'center' }}>Notes</Text>
+      </Abs>
       {abilities.map((a, i) => {
         const rowY = L.caracteristiques.firstRowY + i * L.caracteristiques.rowH;
         return (
@@ -115,12 +153,13 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
       })}
 
       {/* Voie du peuple */}
-      <Band
+      <TitleBandValue
         x={L.voieDuPeuple.x}
         y={L.voieDuPeuple.y}
         w={L.voieDuPeuple.w}
         h={L.voieDuPeuple.bandH}
-        label={peoplePath ? `Voie du peuple : ${peoplePath.title}` : 'Voie du peuple'}
+        label="Voie du peuple"
+        value={peoplePath?.title ?? ''}
       />
       <Abs
         x={L.voieDuPeuple.x}
@@ -151,11 +190,17 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
         <DiamondPips count={derived.luckPoints} />
       </Abs>
       <Band x={L.stats.x} y={L.stats.chanceY + L.stats.chanceH - 16} w={L.stats.w} h={16} label={`Points de chance (${derived.luckPoints})`} />
+      <Abs x={L.stats.x} y={L.stats.chanceY + L.stats.chanceH + 3} w={L.stats.w}>
+        <Text style={{ fontSize: 6.5 }}>+10 à un test</Text>
+      </Abs>
 
       <Abs x={L.stats.x} y={L.stats.recupY} w={L.stats.w} h={L.stats.recupH - 16} style={{ borderWidth: 1, borderColor: GOLD, alignItems: 'center', justifyContent: 'center', paddingVertical: 3 }}>
         <DiamondPips count={derived.recoveryDiceCount} />
       </Abs>
       <Band x={L.stats.x} y={L.stats.recupY + L.stats.recupH - 16} w={L.stats.w} h={16} label={`${derived.recoveryDiceCount}${derived.recoveryDie} récup.`} />
+      <Abs x={L.stats.x} y={L.stats.recupY + L.stats.recupH + 3} w={L.stats.w}>
+        <Text style={{ fontSize: 6 }}>Restauration PV = (d+1/2 niv.) PV</Text>
+      </Abs>
 
       {derived.manaPoints !== null && (
         <>
@@ -173,6 +218,12 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
       ))}
 
       {/* Attaques (contact/distance/magique) */}
+      <Abs x={L.bottomLeft.x} y={L.bottomLeft.columnHeadersY} w={L.bottomLeft.labelW}>
+        <Text style={{ fontSize: 8.5, fontWeight: 700, color: GOLD, textTransform: 'uppercase' }}>Attaques</Text>
+      </Abs>
+      <Abs x={L.bottomLeft.totalX} y={L.bottomLeft.columnHeadersY} w={L.bottomLeft.totalW}>
+        <Text style={{ fontSize: 8.5, fontWeight: 700, color: GOLD, textTransform: 'uppercase' }}>Total</Text>
+      </Abs>
       {(
         [
           { label: 'Contact', total: attacks.melee.attack, sub: 'FOR' },

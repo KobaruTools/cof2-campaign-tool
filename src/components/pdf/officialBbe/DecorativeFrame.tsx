@@ -14,16 +14,24 @@ import { FRAME_MARGIN, PAGE_WIDTH, PAGE_HEIGHT, GOLD } from './styles';
 
 const W = PAGE_WIDTH;
 const H = PAGE_HEIGHT;
-const M = FRAME_MARGIN;
-/** Taille du chanfrein (coin coupé à 45°), mesurée sur la trame de référence. */
-const CHAMFER = 16;
+// `FRAME_MARGIN` (18) sert de base commune ; les 2 filets sont ensuite décalés par `inset`
+// (mesuré par tracé de pixels sur la trame de référence à 150dpi : filet extérieur à 22.6pt du
+// bord, intérieur à 27.8pt — écart ~5.3pt entre les deux, constant sur toute la longueur des
+// côtés droits, cf. plan PER-202 pour la méthode). Le chanfrein diffère volontairement entre
+// les deux filets (20 vs 9) : c'est cet écart, et non l'inset, qui crée le décroché en "marche
+// d'escalier" visible à chaque coin sur l'original (les 2 filets coïncident sur les côtés
+// droits mais divergent juste avant le coin).
+const OUTER_INSET = 4.6;
+const INNER_INSET = 9.9;
+const OUTER_CHAMFER = 20;
+const INNER_CHAMFER = 9;
 
 /** Rectangle (M..W-M, M..H-M) inset de `inset`, coins coupés à 45° sur `chamfer`. */
 function chamferedRectPath(inset: number, chamfer: number): string {
-  const x0 = M + inset;
-  const y0 = M + inset;
-  const x1 = W - M - inset;
-  const y1 = H - M - inset;
+  const x0 = FRAME_MARGIN + inset;
+  const y0 = FRAME_MARGIN + inset;
+  const x1 = W - FRAME_MARGIN - inset;
+  const y1 = H - FRAME_MARGIN - inset;
   return [
     `M ${x0 + chamfer} ${y0}`,
     `L ${x1 - chamfer} ${y0}`,
@@ -42,21 +50,24 @@ function diamond(cx: number, cy: number, r: number) {
   return `${cx},${cy - r} ${cx + r},${cy} ${cx},${cy + r} ${cx - r},${cy}`;
 }
 
+// Repères en losange sur les côtés verticaux : mesurés à 25.4% et 74.1% de la hauteur de page
+// (tracé de pixels sur la trame de référence), PAS à 32/68% (valeur estimée v1, imprécise).
+const SIDE_MARK_RATIOS = [0.254, 0.741];
 const SIDE_MARKS: [number, number][] = [
-  [M, H * 0.32],
-  [M, H * 0.68],
-  [W - M, H * 0.32],
-  [W - M, H * 0.68],
+  [FRAME_MARGIN + OUTER_INSET, H * SIDE_MARK_RATIOS[0]],
+  [FRAME_MARGIN + OUTER_INSET, H * SIDE_MARK_RATIOS[1]],
+  [W - FRAME_MARGIN - OUTER_INSET, H * SIDE_MARK_RATIOS[0]],
+  [W - FRAME_MARGIN - OUTER_INSET, H * SIDE_MARK_RATIOS[1]],
 ];
 
 export function DecorativeFrame({ children }: { children: React.ReactNode }) {
   return (
     <View style={{ width: W, height: H, position: 'relative' }}>
       <Svg style={{ position: 'absolute', top: 0, left: 0 }} width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-        <Path d={chamferedRectPath(0, CHAMFER)} stroke={GOLD} strokeWidth={1.3} fill="none" />
-        <Path d={chamferedRectPath(5, CHAMFER - 3)} stroke={GOLD} strokeWidth={0.6} fill="none" />
+        <Path d={chamferedRectPath(OUTER_INSET, OUTER_CHAMFER)} stroke={GOLD} strokeWidth={1.1} fill="none" />
+        <Path d={chamferedRectPath(INNER_INSET, INNER_CHAMFER)} stroke={GOLD} strokeWidth={1.1} fill="none" />
         {SIDE_MARKS.map(([cx, cy], i) => (
-          <Polygon key={`side-${i}`} points={diamond(cx, cy, 5)} stroke={GOLD} strokeWidth={0.9} fill="none" />
+          <Polygon key={`side-${i}`} points={diamond(cx, cy, 7)} stroke={GOLD} strokeWidth={1.1} fill="none" />
         ))}
       </Svg>
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>{children}</View>
