@@ -39,7 +39,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import DownloadIcon from '@mui/icons-material/Download';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -72,6 +74,7 @@ import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
 import { RichTextEditor } from '@/components/sheet/RichTextEditor';
+import { useToast } from '@/components/toast/ToastProvider';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { SCOPE_SHORT } from '@/lib/ui/damageReduction';
 import { SIDE_ACCENT, SIDE_LABELS, type CreatureSide } from '@/lib/ui/creature';
@@ -88,6 +91,8 @@ import {
   CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH,
   type CustomCreature,
 } from '@/lib/session/customCreature';
+import { isCreatureExportable } from '@/lib/session/creatureTransfer';
+import { copyCreatureExportToClipboard, downloadCreatureExport } from '@/lib/session/creatureTransferExport';
 import { CreatureCatalogAutocomplete } from './CreatureCatalogAutocomplete';
 
 /** Source de la créature à ajouter : catalogue du bestiaire, ou bloc saisi à la main. */
@@ -224,6 +229,8 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
   const list = useBestiaryStore((s) => s.list);
   const status = useBestiaryStore((s) => s.status);
   const loadList = useBestiaryStore((s) => s.loadList);
+  const paidSourceIds = useBestiaryStore((s) => s.paidSourceIds);
+  const { showToast } = useToast();
   // Mode édition : l'identité (source + créature) est figée, seul le contenu se retouche.
   const editingCustom = editing?.custom;
   // Source de la créature — le bestiaire par défaut (cas le plus courant) ; en édition, celle
@@ -232,6 +239,9 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
     editing ? (editingCustom ? 'custom' : 'bestiary') : 'bestiary',
   );
   const [selected, setSelected] = useState<string | null>(editing && !editingCustom ? editing.slug : null);
+  // Blob de la créature du bestiaire sélectionnée — sert UNIQUEMENT à l'export JSON en mode
+  // édition (`CreatureBlobView` charge et affiche l'aperçu indépendamment de cette lecture).
+  const selectedBlob = useBestiaryStore((s) => (selected ? s.blobs[selected] : undefined));
   // Visibilité joueurs (fenêtre projetée) de la créature à ajouter — ON par défaut.
   const [visible, setVisible] = useState(editing?.visible ?? true);
   // Camp de la créature à ajouter (PER-249) — ADVERSAIRE par défaut (cas le plus courant).
@@ -353,6 +363,32 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
   const trimmedName = name.trim();
   const canSubmit = custom ? Boolean(customDraft) && Boolean(trimmedName) : Boolean(selected);
 
+  // Export/copie JSON — MODE ÉDITION SEULEMENT (idée joueur, réponse à PER-505) : le bloc
+  // principal de l'écran de MJ (`GmScreenCreatureCard`) reste sans ces boutons, pour ne pas
+  // l'encombrer ; ils n'apparaissent qu'ici, quand le MJ retouche déjà l'instance. Toujours
+  // permis pour une créature manuelle (aucun contenu de livre) ; pour une créature du
+  // bestiaire, seulement si sa source n'est pas payante (Le Compagnon), sinon le JSON
+  // exporté ferait fuiter du contenu gaté.
+  const exportBlob = custom ? customPreview : selectedBlob;
+  const exportable =
+    isEditing &&
+    Boolean(exportBlob) &&
+    (custom || (selected ? isCreatureExportable(selected, list, paidSourceIds) : false));
+  const handleExport = () => {
+    if (!exportBlob) return;
+    downloadCreatureExport(exportBlob);
+    showToast(`« ${exportBlob.name} » exporté en JSON.`, 'success');
+  };
+  const handleCopyJson = async () => {
+    if (!exportBlob) return;
+    try {
+      await copyCreatureExportToClipboard(exportBlob);
+      showToast(`JSON de « ${exportBlob.name} » copié dans le presse-papier.`, 'success');
+    } catch {
+      showToast('Impossible de copier dans le presse-papier.', 'error');
+    }
+  };
+
   // Aucune remise à zéro à faire : le corps de la modale est démonté à la fermeture, la
   // prochaine ouverture repart d'un état neuf initialisé depuis les props.
   const handleClose = () => onClose();
@@ -385,7 +421,23 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
 
   return (
     <>
-      <DialogTitle>{isEditing ? 'Modifier la créature' : 'Ajouter une créature'}</DialogTitle>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ flexGrow: 1 }}>{isEditing ? 'Modifier la créature' : 'Ajouter une créature'}</Box>
+        {exportable && (
+          <>
+            <AppTooltip title="Exporter en JSON">
+              <IconButton size="small" onClick={handleExport} aria-label="Exporter cette créature en JSON">
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </AppTooltip>
+            <AppTooltip title="Copier le JSON">
+              <IconButton size="small" onClick={handleCopyJson} aria-label="Copier le JSON de cette créature">
+                <ContentPasteIcon fontSize="small" />
+              </IconButton>
+            </AppTooltip>
+          </>
+        )}
+      </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
           {/* Source (bestiaire / saisie manuelle) et camp (PER-249), côte à côte : deux

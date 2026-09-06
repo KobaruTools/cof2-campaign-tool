@@ -10,7 +10,9 @@
  * visibilité initiale par camp).
  */
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import DownloadIcon from '@mui/icons-material/Download';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
@@ -20,9 +22,12 @@ import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
+import { useToast } from '@/components/toast/ToastProvider';
 import type { Creature } from '@/data/schema';
 import { SIDE_ACCENT, SIDE_LABELS, type CreatureSide } from '@/lib/ui/creature';
 import { useBestiaryStore } from '@/stores/bestiary';
+import { isCreatureExportable } from '@/lib/session/creatureTransfer';
+import { copyCreatureExportToClipboard, downloadCreatureExport } from '@/lib/session/creatureTransferExport';
 import { isWideCreatureCard } from './GmScreenCreatureCard';
 
 export interface EncounterPresetEntryCardProps {
@@ -52,11 +57,32 @@ export function EncounterPresetEntryCard({
   onRemove,
 }: EncounterPresetEntryCardProps) {
   const accent = SIDE_ACCENT[side];
+  const { showToast } = useToast();
   const storeBlob = useBestiaryStore((s) => s.blobs[slug]);
   const blob = providedBlob ?? storeBlob;
   const baseId = !providedBlob && blob?.sharedAbilitiesNote ? blob.baseCreatureId : undefined;
   const baseBlob = useBestiaryStore((s) => (baseId ? s.blobs[baseId] : undefined));
   const wide = isWideCreatureCard(blob, baseBlob);
+  // Export/copie JSON (idée joueur, réponse à PER-505) : mêmes règles que
+  // `GmScreenCreatureCard` — toujours permis pour une créature manuelle, seulement si la
+  // source n'est pas payante pour une créature du bestiaire.
+  const bestiaryList = useBestiaryStore((s) => s.list);
+  const paidSourceIds = useBestiaryStore((s) => s.paidSourceIds);
+  const exportable = Boolean(providedBlob) || isCreatureExportable(slug, bestiaryList, paidSourceIds);
+  const handleExport = () => {
+    if (!blob) return;
+    downloadCreatureExport(blob);
+    showToast(`« ${blob.name} » exporté en JSON.`, 'success');
+  };
+  const handleCopyJson = async () => {
+    if (!blob) return;
+    try {
+      await copyCreatureExportToClipboard(blob);
+      showToast(`JSON de « ${blob.name} » copié dans le presse-papier.`, 'success');
+    } catch {
+      showToast('Impossible de copier dans le presse-papier.', 'error');
+    }
+  };
   return (
     <Paper
       sx={{
@@ -101,6 +127,20 @@ export function EncounterPresetEntryCard({
               <ContentCopyOutlinedIcon fontSize="small" />
             </IconButton>
           </AppTooltip>
+          {blob && exportable && (
+            <>
+              <AppTooltip title="Exporter en JSON">
+                <IconButton size="small" onClick={handleExport} aria-label={`Exporter ${label} en JSON`}>
+                  <DownloadIcon fontSize="small" />
+                </IconButton>
+              </AppTooltip>
+              <AppTooltip title="Copier le JSON">
+                <IconButton size="small" onClick={handleCopyJson} aria-label={`Copier le JSON de ${label}`}>
+                  <ContentPasteIcon fontSize="small" />
+                </IconButton>
+              </AppTooltip>
+            </>
+          )}
           <AppTooltip title="Retirer de la composition">
             <IconButton size="small" onClick={onRemove} aria-label={`Retirer ${label}`}>
               <DeleteOutlineIcon fontSize="small" />
