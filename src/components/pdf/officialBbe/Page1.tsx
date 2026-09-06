@@ -51,24 +51,6 @@ function BoxValue({ x, y, w, h, value, big }: { x: number; y: number; w: number;
   );
 }
 
-/** Petit losange (contour), pour le repère central des barres d'ornement d'en-tête. */
-function InlineDiamond({ cx, cy, r = 3.5 }: { cx: number; cy: number; r?: number }) {
-  return (
-    <View
-      style={{
-        position: 'absolute',
-        left: cx - r,
-        top: cy - r,
-        width: r * 2,
-        height: r * 2,
-        borderWidth: 0.9,
-        borderColor: GOLD,
-        transform: 'rotate(45deg)',
-      }}
-    />
-  );
-}
-
 
 export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peoplePath: PdfPathGroup | null }) {
   const { identity, abilities, derived, attacks, equipment } = data;
@@ -82,14 +64,11 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
         <Text style={styles.logoLine1}>OUBLIÉES</Text>
         <Text style={styles.logoLine2}>FANTASY</Text>
       </Abs>
-      {/* Ornement à 2 barres doubles + losange central, encadrant le nom (mesuré sur la trame
-          de référence par tracé de pixels — cf. layout.ts). */}
-      <Abs x={L.header.ornamentX} y={L.header.barTopY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 0.9, borderBottomColor: GOLD }} />
-      <Abs x={L.header.ornamentX} y={L.header.barTopGapY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 0.9, borderBottomColor: GOLD }} />
-      <InlineDiamond cx={L.header.ornamentX + L.header.ornamentW / 2} cy={(L.header.barTopY + L.header.barTopGapY) / 2} />
-      <Abs x={L.header.ornamentX} y={L.header.barBottomY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 0.9, borderBottomColor: GOLD }} />
-      <Abs x={L.header.ornamentX} y={L.header.barBottomGapY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 0.9, borderBottomColor: GOLD }} />
-      <InlineDiamond cx={L.header.ornamentX + L.header.ornamentW / 2} cy={(L.header.barBottomY + L.header.barBottomGapY) / 2} />
+      {/* Encadrement du nom : filets simples au-dessus/en dessous (la double-barre + losange
+          mesurée sur la trame de référence rendait mal à cette échelle — simplifié sur retour
+          visuel PER-202). */}
+      <Abs x={L.header.ornamentX} y={L.header.barTopGapY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 1, borderBottomColor: GOLD }} />
+      <Abs x={L.header.ornamentX} y={L.header.barBottomY} w={L.header.ornamentW} h={0.6} style={{ borderBottomWidth: 1, borderBottomColor: GOLD }} />
       <Abs x={L.header.nameCenterX - L.header.nameWidth / 2} y={L.header.nameTextY} w={L.header.nameWidth}>
         <Text style={{ fontSize: 14, fontWeight: 700, textAlign: 'center' }}>{identity.name}</Text>
       </Abs>
@@ -189,7 +168,7 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
       <Abs x={L.stats.x} y={L.stats.chanceY} w={L.stats.w} h={L.stats.chanceH - 16} style={{ borderWidth: 1, borderColor: GOLD, alignItems: 'center', justifyContent: 'center', paddingVertical: 3 }}>
         <DiamondPips count={derived.luckPoints} />
       </Abs>
-      <Band x={L.stats.x} y={L.stats.chanceY + L.stats.chanceH - 16} w={L.stats.w} h={16} label={`Points de chance (${derived.luckPoints})`} />
+      <Band x={L.stats.x} y={L.stats.chanceY + L.stats.chanceH - 16} w={L.stats.w} h={16} label="Points de chance" />
       <Abs x={L.stats.x} y={L.stats.chanceY + L.stats.chanceH + 3} w={L.stats.w}>
         <Text style={{ fontSize: 6.5 }}>+10 à un test</Text>
       </Abs>
@@ -197,7 +176,7 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
       <Abs x={L.stats.x} y={L.stats.recupY} w={L.stats.w} h={L.stats.recupH - 16} style={{ borderWidth: 1, borderColor: GOLD, alignItems: 'center', justifyContent: 'center', paddingVertical: 3 }}>
         <DiamondPips count={derived.recoveryDiceCount} />
       </Abs>
-      <Band x={L.stats.x} y={L.stats.recupY + L.stats.recupH - 16} w={L.stats.w} h={16} label={`${derived.recoveryDiceCount}${derived.recoveryDie} récup.`} />
+      <Band x={L.stats.x} y={L.stats.recupY + L.stats.recupH - 16} w={L.stats.w} h={16} label="Dés de récupération" />
       <Abs x={L.stats.x} y={L.stats.recupY + L.stats.recupH + 3} w={L.stats.w}>
         <Text style={{ fontSize: 6 }}>Restauration PV = (d+1/2 niv.) PV</Text>
       </Abs>
@@ -210,10 +189,21 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
       )}
 
       {/* Identité (Famille / Profil / Idéal héroïque / Travers) */}
-      {(['Famille', 'Profil', 'Idéal héroïque', 'Travers'] as const).map((label, i) => (
+      {(
+        [
+          { label: 'Famille', value: identity.familyName },
+          { label: 'Profil', value: identity.className },
+          { label: 'Idéal héroïque', value: null },
+          { label: 'Travers', value: null },
+        ] as const
+      ).map(({ label, value }, i) => (
         <Abs key={label} x={L.bottomLeft.x} y={L.bottomLeft.identityLabelsY + i * L.bottomLeft.identityRowH} w={186}>
           <Text style={{ fontSize: 7, fontWeight: 700, color: GOLD, textTransform: 'uppercase' }}>{label}</Text>
-          <View style={{ borderBottomWidth: 0.75, borderBottomColor: GOLD, marginTop: 14 }} />
+          {value ? (
+            <Text style={{ fontSize: 9, marginTop: 2 }}>{value}</Text>
+          ) : (
+            <View style={{ borderBottomWidth: 0.75, borderBottomColor: GOLD, marginTop: 14 }} />
+          )}
         </Abs>
       ))}
 
@@ -299,11 +289,7 @@ export function Page1({ data, peoplePath }: { data: CampaignEditorPdfData; peopl
         {equipment.length === 0 ? (
           <Text style={styles.placeholderText}>—</Text>
         ) : (
-          equipment.map((line, i) => (
-            <Text key={i} style={{ fontSize: 7, marginBottom: 1 }}>
-              • {line}
-            </Text>
-          ))
+          <Text style={{ fontSize: 7, lineHeight: 1.4 }}>{equipment.join(', ')}</Text>
         )}
       </Abs>
     </View>

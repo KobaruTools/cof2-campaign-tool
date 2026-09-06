@@ -67,7 +67,7 @@ export function DecorativeFrame({ children }: { children: React.ReactNode }) {
         <Path d={chamferedRectPath(OUTER_INSET, OUTER_CHAMFER)} stroke={GOLD} strokeWidth={1.1} fill="none" />
         <Path d={chamferedRectPath(INNER_INSET, INNER_CHAMFER)} stroke={GOLD} strokeWidth={1.1} fill="none" />
         {SIDE_MARKS.map(([cx, cy], i) => (
-          <Polygon key={`side-${i}`} points={diamond(cx, cy, 7)} stroke={GOLD} strokeWidth={1.1} fill="none" />
+          <Polygon key={`side-${i}`} points={diamond(cx, cy, 7)} fill={GOLD} />
         ))}
       </Svg>
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>{children}</View>

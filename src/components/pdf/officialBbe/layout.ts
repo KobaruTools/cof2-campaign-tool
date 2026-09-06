@@ -16,15 +16,13 @@ export const PAGE1 = {
     // centre de la page entière — d'où nameCenterX ≈ (249.1+572.6)/2, pas 306 (=612/2).
     nameCenterX: 411,
     nameWidth: 320,
-    // Ornement à 2 barres doubles + losange central (mesuré par tracé de pixels, PAS estimé) :
-    // la trame de référence encadre le nom entre 2 filets doubles, avec le libellé "NOM DU
-    // PERSONNAGE" en dessous — le nom du personnage se lit DANS l'espace entre les 2 barres.
+    // Encadrement du nom : la trame de référence a 2 filets DOUBLES + un losange central de
+    // part et d'autre du nom (mesuré par tracé de pixels) — simplifié en 2 filets SIMPLES au
+    // rendu (retour visuel PER-202 : la double-barre + losange rendait mal à cette échelle).
     ornamentX: 249,
     ornamentW: 323.6,
-    barTopY: 30.7,
     barTopGapY: 35.5,
     barBottomY: 66.2,
-    barBottomGapY: 69.1,
     nameTextY: 42,
     captionY: 78.5,
     subtitleY: 90,

@@ -123,6 +123,7 @@ import {
 import { useToast } from '@/components/toast/ToastProvider';
 import { downloadCampaignEditorPdf } from '@/lib/character/pdfExport/downloadCampaignEditorPdf';
 import { downloadOfficialBbePdf } from '@/lib/character/pdfExport/downloadOfficialBbePdf';
+import { resolveTransferContext } from '@/lib/character/transferExport';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
 import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
@@ -1896,7 +1897,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   setExportMenuAnchor(null);
                   void (async () => {
                     try {
-                      await downloadCampaignEditorPdf(character);
+                      const { player } = await resolveTransferContext(character);
+                      await downloadCampaignEditorPdf(character, player?.name ?? null);
                       showToast('PDF exporté.', 'success');
                     } catch {
                       showToast("Échec de l'export PDF.", 'error');
@@ -1911,7 +1913,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   setExportMenuAnchor(null);
                   void (async () => {
                     try {
-                      await downloadOfficialBbePdf(character);
+                      const { player } = await resolveTransferContext(character);
+                      await downloadOfficialBbePdf(character, player?.name ?? null);
                       showToast('PDF exporté.', 'success');
                     } catch {
                       showToast("Échec de l'export PDF.", 'error');

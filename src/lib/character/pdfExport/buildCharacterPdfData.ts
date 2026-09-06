@@ -14,7 +14,7 @@
  * façon pas de case sur une feuille de perso imprimée. Simplification delibérée v1,
  * documentée ticket par ticket si un besoin d'exhaustivité émerge.
  */
-import { ancestryById, classById, features } from '@/data';
+import { ancestryById, classById, families, features } from '@/data';
 import type { AbilityId, Path } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { deriveStats } from '@/lib/engine';
@@ -88,6 +88,8 @@ export interface CampaignEditorPdfData {
     level: number;
     ancestryName: string;
     className: string;
+    /** Famille de profil (aventuriers/combattants/mages/mystiques, p. 30) — connue dès que le profil est choisi. */
+    familyName: string | null;
     description: string | null;
   };
   abilities: PdfAbilityLine[];
@@ -168,6 +170,7 @@ export function buildCharacterPdfData(character: Character, playerName: string |
       level: character.level,
       ancestryName: ancestry?.name ?? character.ancestryId,
       className: characterClass?.name ?? character.classId,
+      familyName: characterClass ? (families.find((f) => f.id === characterClass.familyId)?.name ?? null) : null,
       description: character.identity.description?.trim() || null,
     },
     abilities: ABILITY_IDS.map((id) => ({ id, label: ABILITY_NAMES[id], value: character.abilities[id] })),
