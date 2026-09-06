@@ -1864,5 +1864,15 @@
         "tag": "other"
       }
     ]
+  },
+  {
+    "id": 98,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Ajout d'un sélecteur pour choisir sa campagne quand on a un personnage dans plusieurs campagnes.",
+        "tag": "campaign"
+      }
+    ]
   }
 ]
