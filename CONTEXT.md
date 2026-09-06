@@ -14,8 +14,12 @@ Le compte propriétaire d'une campagne (`campaigns.owner_id`). Un compte est MJ 
 _Avoid_: admin, maître
 
 **Joueur** :
-Identité légère persistante rattachée à une campagne, sans compte (accès par lien magique). Attribuée à un personnage via `player_id` (nullable).
-_Avoid_: utilisateur, membre
+Rattachement **local à une campagne** (`players`, `campaign_id` non nul) : le nom affiché au roster d'une campagne, attribué à un personnage via `player_id` (nullable). N'existe qu'à l'intérieur d'UNE campagne — invariant SQL (`characters_player_requires_campaign`).
+_Avoid_: utilisateur, membre, l'assimiler à l'Identité joueur (PER-498)
+
+**Identité joueur** (PER-498) :
+Ancre **cross-campagne** au-dessus du Joueur : une session (anonyme ou compte réel, compte non obligatoire) qui peut être liée à **plusieurs** Joueurs (donc plusieurs campagnes) via `player_auth_sessions` (clé composite `auth_user_id`/`player_id`, source d'autorité RLS — voir ADR 0003). Distincte du MJ (qui possède des campagnes) et du Joueur (qui est local à une campagne). Le système d'amis (PER-402) est déjà ancré sur ce niveau (`auth.users`), pas sur le Joueur.
+_Avoid_: confondre avec Joueur (une Identité joueur porte N Joueurs, un par campagne rejointe) ; l'`app_metadata` du JWT n'est plus une frontière d'autorisation, juste un indice de dernière campagne active.
 
 **Statut de personnage** (`Character.status`) :
 Position d'un personnage dans son cycle de vie. Trois valeurs fermées :

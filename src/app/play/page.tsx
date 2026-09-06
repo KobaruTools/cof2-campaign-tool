@@ -42,10 +42,15 @@ export default async function PlayPage() {
     redirect('/');
   }
 
-  // RLS joueur : `campaigns` ne renvoie que SA campagne (nom d'affichage + description).
+  // RLS joueur (PER-498) : `campaigns` ne renvoie plus « LA » campagne mais un
+  // ceiling de TOUTES les campagnes dont l'Identité est membre. Le claim JWT
+  // (posé au redeem, jamais réécrit tant que PER-499 n'existe pas) désigne la
+  // campagne effectivement affichée ici — filtre applicatif obligatoire, la RLS
+  // seule ne garantit plus « une ligne ».
   const { data: campaigns } = await supabase
     .from('campaigns')
     .select('id, name, description')
+    .eq('id', claimCampaignId)
     .limit(1);
   const campaign = campaigns?.[0];
 
