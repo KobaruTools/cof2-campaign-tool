@@ -1784,5 +1784,15 @@
         "tag": "other"
       }
     ]
+  },
+  {
+    "id": 90,
+    "date": "2026-09-06",
+    "items": [
+      {
+        "text": "Vous pouvez maintenant copier la fiche de votre personnage au format JSON dans le presse-papier.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
