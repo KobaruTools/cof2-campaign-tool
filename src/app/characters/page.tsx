@@ -23,6 +23,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -64,7 +65,7 @@ import type { Character } from '@/lib/character/types';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarizeInCampaign } from '@/lib/character/summary';
 import { useContentVersion } from '@/lib/content/useContentVersion';
-import { downloadCharacterExport } from '@/lib/character/transferExport';
+import { copyCharacterExportToClipboard, downloadCharacterExport } from '@/lib/character/transferExport';
 import { useAppSession } from '@/lib/supabase/useAppSession';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
@@ -154,6 +155,17 @@ export default function CharactersPage() {
     // Fichier auto-porteur (PER-182) : blob + contexte des FK (campagne/joueur).
     await downloadCharacterExport(character);
     notify(`« ${character.name || 'Sans nom'} » exporté en JSON.`);
+  };
+
+  const handleCopyJson = async (id: string) => {
+    const character = useCharactersStore.getState().getById(id);
+    if (!character) return;
+    try {
+      await copyCharacterExportToClipboard(character);
+      notify(`JSON de « ${character.name || 'Sans nom'} » copié dans le presse-papier.`);
+    } catch {
+      notify('Impossible de copier dans le presse-papier.', 'error');
+    }
   };
 
   const handleDuplicate = (id: string) => {
@@ -267,6 +279,12 @@ export default function CharactersPage() {
       label: 'Exporter en JSON',
       icon: <DownloadIcon fontSize="small" />,
       onClick: (r) => handleExport(r.id),
+    },
+    {
+      key: 'copy-json',
+      label: 'Copier le JSON',
+      icon: <ContentPasteIcon fontSize="small" />,
+      onClick: (r) => handleCopyJson(r.id),
     },
     {
       key: 'delete',

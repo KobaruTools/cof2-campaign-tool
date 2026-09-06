@@ -55,6 +55,19 @@ export async function resolveTransferContext(character: Character): Promise<Tran
 }
 
 /**
+ * Résout le contexte et enveloppe le personnage en JSON (texte) nommé, sans
+ * déclencher d'effet de bord — factorisé entre `buildCharacterExportBlob` (fichier),
+ * `downloadCharacterExport` et `copyCharacterExportToClipboard`.
+ */
+async function buildCharacterExportPayload(
+  character: Character,
+): Promise<{ json: string; filename: string }> {
+  const context = await resolveTransferContext(character);
+  const file = buildExportFile(character, context);
+  return { json: JSON.stringify(file, null, 2), filename: `${fileSlug(character.name)}.json` };
+}
+
+/**
  * Résout le contexte et enveloppe le personnage en `Blob` JSON nommé, sans
  * déclencher de téléchargement — réutilisé par `downloadCharacterExport` (accueil,
  * page campagne) et par la pièce jointe « personnage » du formulaire de retour
@@ -63,10 +76,9 @@ export async function resolveTransferContext(character: Character): Promise<Tran
 export async function buildCharacterExportBlob(
   character: Character,
 ): Promise<{ blob: Blob; filename: string }> {
-  const context = await resolveTransferContext(character);
-  const file = buildExportFile(character, context);
-  const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
-  return { blob, filename: `${fileSlug(character.name)}.json` };
+  const { json, filename } = await buildCharacterExportPayload(character);
+  const blob = new Blob([json], { type: 'application/json' });
+  return { blob, filename };
 }
 
 /** Résout le contexte, enveloppe le personnage et déclenche le téléchargement JSON. */
@@ -78,4 +90,27 @@ export async function downloadCharacterExport(character: Character): Promise<voi
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Résout le contexte, enveloppe le personnage et copie le JSON dans le presse-papier.
+ *
+ * `resolveTransferContext` peut déclencher un fetch réseau (joueur non caché, cf.
+ * `resolvePlayerRef`) : si on attendait ce fetch avant d'appeler `clipboard.writeText`,
+ * le navigateur peut avoir invalidé l'activation utilisateur du clic entre-temps et
+ * rejeter l'écriture (`NotAllowedError`, observé en vue campagne). On passe donc par
+ * `clipboard.write` + `ClipboardItem` avec une Promise<Blob> : l'écriture démarre de
+ * façon synchrone (dans la fenêtre d'activation du clic), le contenu se résout après.
+ */
+export async function copyCharacterExportToClipboard(character: Character): Promise<void> {
+  const blobPromise = buildCharacterExportPayload(character).then(
+    ({ json }) => new Blob([json], { type: 'text/plain' }),
+  );
+  if (typeof ClipboardItem !== 'undefined') {
+    await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blobPromise })]);
+    return;
+  }
+  // Repli (navigateur sans `ClipboardItem` async) : on attend malgré le risque
+  // d'activation expirée, faute de mieux.
+  await navigator.clipboard.writeText(await blobPromise.then((b) => b.text()));
 }

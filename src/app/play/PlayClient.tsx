@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { hrefFromIndex, useCharacterSlugIndex } from '@/lib/routing/slug';
 import AddIcon from '@mui/icons-material/Add';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DownloadIcon from '@mui/icons-material/Download';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import HistoryIcon from '@mui/icons-material/History';
@@ -50,7 +51,7 @@ import { OpenPlayTrackerWindowButton } from '@/components/campaign/OpenPlayTrack
 import { PlayerSessionBar } from '@/components/session/PlayerSessionBar';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarize } from '@/lib/character/summary';
-import { downloadCharacterExport } from '@/lib/character/transferExport';
+import { copyCharacterExportToClipboard, downloadCharacterExport } from '@/lib/character/transferExport';
 import { classColor } from '@/lib/ui/classColors';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
 import { useCharactersStore } from '@/stores/characters';
@@ -228,6 +229,17 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
     showToast(`« ${r.name} » exporté en JSON.`);
   };
 
+  const handleCopyJson = async (r: CharacterSummary) => {
+    const character = useCharactersStore.getState().getById(r.id);
+    if (!character) return;
+    try {
+      await copyCharacterExportToClipboard(character);
+      showToast(`JSON de « ${r.name} » copié dans le presse-papier.`);
+    } catch {
+      showToast('Impossible de copier dans le presse-papier.', 'error');
+    }
+  };
+
   const renderNameMarker = (r: CharacterSummary) => <CharacterStatusMarker status={r.status} />;
 
   const myActions: CharacterListAction[] = [
@@ -242,6 +254,12 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
       label: 'Exporter en JSON',
       icon: <DownloadIcon fontSize="small" />,
       onClick: (r) => void handleExport(r),
+    },
+    {
+      key: 'copy-json',
+      label: 'Copier le JSON',
+      icon: <ContentPasteIcon fontSize="small" />,
+      onClick: (r) => void handleCopyJson(r),
     },
   ];
 
