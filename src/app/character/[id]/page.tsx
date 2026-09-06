@@ -122,6 +122,7 @@ import {
 } from '@/lib/storage/characterPortrait';
 import { useToast } from '@/components/toast/ToastProvider';
 import { downloadCampaignEditorPdf } from '@/lib/character/pdfExport/downloadCampaignEditorPdf';
+import { downloadOfficialBbePdf } from '@/lib/character/pdfExport/downloadOfficialBbePdf';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
 import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
@@ -613,6 +614,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [ancestryChoicesDialogOpen, setAncestryChoicesDialogOpen] = useState(false);
   // Ancre du menu de statut (PER-183) ; null = fermé.
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
+  // Ancre du menu de choix de format d'export PDF (PER-202) ; null = fermé.
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
   // Statut d'archivage en attente de confirmation (mort/retiré) ; null = aucune. Le
   // passage en « actif » ne demande pas de confirmation (retour à l'état de jeu normal).
   const [pendingArchive, setPendingArchive] = useState<Exclude<CharacterStatus, 'active'> | null>(
@@ -807,16 +810,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 <IconButton
                   aria-label="Exporter en PDF"
                   size="small"
-                  onClick={() => {
-                    void (async () => {
-                      try {
-                        await downloadCampaignEditorPdf(character);
-                        showToast('PDF exporté.', 'success');
-                      } catch {
-                        showToast("Échec de l'export PDF.", 'error');
-                      }
-                    })();
-                  }}
+                  onClick={(e) => setExportMenuAnchor(e.currentTarget)}
                 >
                   <PictureAsPdfOutlinedIcon fontSize="small" />
                 </IconButton>
@@ -1887,6 +1881,46 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   {STATUS_LABEL[s]}
                 </MenuItem>
               ))}
+            </Menu>
+
+            {/* Menu de choix de format d'export PDF (PER-202) : Campaign Editor (PER-201,
+                texte intégral des voies) ou Fiche officielle BBE (reproduction vectorielle
+                de la trame papier, nom des rangs seulement). */}
+            <Menu
+              anchorEl={exportMenuAnchor}
+              open={exportMenuAnchor !== null}
+              onClose={() => setExportMenuAnchor(null)}
+            >
+              <MenuItem
+                onClick={() => {
+                  setExportMenuAnchor(null);
+                  void (async () => {
+                    try {
+                      await downloadCampaignEditorPdf(character);
+                      showToast('PDF exporté.', 'success');
+                    } catch {
+                      showToast("Échec de l'export PDF.", 'error');
+                    }
+                  })();
+                }}
+              >
+                Campaign Editor
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setExportMenuAnchor(null);
+                  void (async () => {
+                    try {
+                      await downloadOfficialBbePdf(character);
+                      showToast('PDF exporté.', 'success');
+                    } catch {
+                      showToast("Échec de l'export PDF.", 'error');
+                    }
+                  })();
+                }}
+              >
+                Fiche officielle (BBE)
+              </MenuItem>
             </Menu>
 
             {/* PER-185 : le choix « armes à feu » (Arquebusier ↔ Arbalétrier) est un

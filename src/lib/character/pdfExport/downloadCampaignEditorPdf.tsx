@@ -9,12 +9,14 @@
 import { pdf } from '@react-pdf/renderer';
 import { buildCharacterPdfData } from '@/lib/character/pdfExport/buildCharacterPdfData';
 import { CampaignEditorDocument } from '@/components/pdf/campaignEditor/CampaignEditorDocument';
+import { fontsReady } from '@/components/pdf/registerFonts';
 import { classColor } from '@/lib/ui/classColors';
 import type { Character } from '@/lib/character/types';
 
 export async function downloadCampaignEditorPdf(character: Character, playerName: string | null = null): Promise<void> {
   const data = buildCharacterPdfData(character, playerName);
   const accent = classColor(character.classId);
+  await fontsReady;
   const blob = await pdf(<CampaignEditorDocument data={data} accent={accent} />).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -47,6 +47,13 @@ describe('buildCharacterPdfData', () => {
     expect(data.equipment).toHaveLength(character.equipment.length);
   });
 
+  it('numérote les rangs d’une voie de prestige 4-8 (PAS 1-5) — PER-202, la grille BBE doit refléter le catalogue', () => {
+    const character = loadFixture('recette-per74-archimage');
+    const data = buildCharacterPdfData(character);
+    const archimage = data.paths.find((g) => g.slot === 'prestige');
+    expect(archimage?.rankLabels).toEqual([4, 5, 6, 7, 8]);
+  });
+
   it('nomme le fichier depuis le nom du personnage', () => {
     const character = loadFixture('recette-per104-allie-guerrier');
     const data = buildCharacterPdfData(character);

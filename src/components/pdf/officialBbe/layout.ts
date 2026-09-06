@@ -1,0 +1,120 @@
+/**
+ * Coordonnées ABSOLUES (points PDF, origine = coin haut-gauche de la page 612×792) mesurées
+ * directement sur `pdf-payants/feuille-pj.pdf` (PER-202) via détection de contours (OpenCV :
+ * masque des lignes horizontales/verticales → `cv2.findContours`, conversion px→pt au ratio
+ * 72/200 puisque la mesure a été faite sur un rendu à 200 dpi). PAS des valeurs esthétiques :
+ * chaque nombre correspond à une case réelle du PDF de référence (gitignoré, jamais servi).
+ * Cf. plan PER-202 pour la méthode et sa justification (reproduction fidèle sans embarquer
+ * l'asset source).
+ */
+
+export const PAGE1 = {
+  header: {
+    logoX: 51,
+    logoY: 22,
+    nameCenterX: 340,
+    nameLabelY: 30,
+    nameTextY: 42,
+    nameWidth: 300,
+    subtitleY: 62,
+    nivX: 537,
+    nivY: 30,
+    nivW: 33,
+    nivH: 38,
+  },
+  caracteristiques: {
+    x: 51,
+    bandY: 151.6,
+    w: 186.8,
+    bandH: 20,
+    firstRowY: 197,
+    rowH: 37.8,
+    labelW: 42,
+    valueX: 93,
+    valueW: 38,
+    notesX: 138,
+    notesW: 98,
+  },
+  voieDuPeuple: {
+    x: 250.6,
+    y: 104.4,
+    w: 205.6,
+    bandH: 25.9,
+    firstRowY: 130.3,
+    rowH: 64.8,
+    checkboxSize: 14,
+  },
+  stats: {
+    x: 466.2,
+    w: 105.8,
+    initX: 466.2,
+    initW: 45.7,
+    defX: 526.3,
+    defW: 46.1,
+    initDefY: 105.1,
+    initDefH: 49.7,
+    vigueurY: 162.7,
+    vigueurH: 58.7,
+    chanceY: 258,
+    chanceH: 46.6,
+    recupY: 344,
+    recupH: 47.6,
+    manaY: 412.6,
+    manaH: 49.7,
+  },
+  bottomLeft: {
+    x: 51,
+    identityLabelsY: 462,
+    identityRowH: 44,
+    attaquesY: 637.2,
+    rowH: 34.8,
+    labelW: 84.6,
+    totalX: 136,
+    totalW: 33,
+    nivX: 169,
+    nivW: 33,
+    abilX: 204,
+    abilW: 32,
+  },
+  armes: {
+    x: 250.6,
+    bandY: 480,
+    bandH: 20,
+    firstNameY: 493.6,
+    nameH: 28.8,
+    attackX: 451.4,
+    attackW: 71.3,
+    dmX: 527,
+    dmW: 44.6,
+    placeholderH: 24.8,
+    rowSpacing: 66.2,
+  },
+  equipement: {
+    x: 250.2,
+    bandY: 692.3,
+    bandH: 20,
+    boxY: 714,
+    boxH: 55,
+    w: 321.5,
+  },
+} as const;
+
+export const PAGE2 = {
+  description: { x: 37, y: 30, w: 538, bandH: 16, boxY: 47, boxH: 60 },
+  grid: {
+    x: 36.4,
+    col1X: 38.2,
+    col1W: 177.8,
+    col2X: 218.2,
+    col2W: 177.1,
+    col3X: 396.4,
+    col3W: 177.8,
+    bandH: 16,
+    rowH: 58.7,
+    group1BandY: 118,
+    group1FirstRowY: 138.6,
+    group2BandY: 435,
+    group2FirstRowY: 456.1,
+    checkboxSize: 13,
+  },
+} as const;

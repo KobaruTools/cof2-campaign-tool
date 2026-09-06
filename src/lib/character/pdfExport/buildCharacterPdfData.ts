@@ -14,8 +14,8 @@
  * façon pas de case sur une feuille de perso imprimée. Simplification delibérée v1,
  * documentée ticket par ticket si un besoin d'exhaustivité émerge.
  */
-import { ancestryById, classById } from '@/data';
-import type { AbilityId } from '@/data/schema';
+import { ancestryById, classById, features } from '@/data';
+import type { AbilityId, Path } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { deriveStats } from '@/lib/engine';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
@@ -44,9 +44,40 @@ export interface PdfPathRank {
   runs: PdfTextRun[];
 }
 
+/**
+ * Emplacement de la voie sur la trame BBE (PER-202) : peuple (page 1, colonne unique),
+ * profil (page 2, cases « Voie 1 » à « Voie 5 ») ou prestige (page 2, case dédiée). Dérivé
+ * de `Path['type']` (`ancestry`/`mage` → `'people'`, `class` → `'class'`, `prestige` →
+ * `'prestige'`) — même logique de regroupement que `PATH_TYPE_ORDER` dans `pathGrouping.ts`.
+ * Champ additif, ignoré par le format Campaign Editor.
+ */
+export type PdfPathSlot = 'people' | 'class' | 'prestige';
+
 export interface PdfPathGroup {
   title: string;
+  slot: PdfPathSlot;
   ranks: PdfPathRank[];
+  /**
+   * Les 5 numéros de rang RÉELS de la voie, tels que définis au catalogue (PAS forcément
+   * 1-5 : les voies de prestige numérotent leurs rangs 4 à 8 — p. 128, « accessible à
+   * partir du niveau 5 » — et au moins une exception les numérote 3 à 7). Dérivé de
+   * TOUTES les capacités du catalogue portant ce `pathId` (pas seulement celles acquises
+   * par le personnage), pour que la grille BBE affiche les bonnes étiquettes de rang même
+   * si le personnage n'a pas encore acquis les premiers rangs de la voie.
+   */
+  rankLabels: number[];
+}
+
+function pathSlot(type: Path['type'] | undefined): PdfPathSlot {
+  if (type === 'prestige') return 'prestige';
+  if (type === 'ancestry' || type === 'mage') return 'people';
+  return 'class';
+}
+
+/** Les numéros de rang du catalogue pour une voie donnée, triés croissants (cf. `PdfPathGroup.rankLabels`). */
+function catalogRankLabels(pathId: string): number[] {
+  const ranks = new Set(features.filter((f) => f.pathId === pathId).map((f) => f.rank));
+  return [...ranks].sort((a, b) => a - b);
 }
 
 export interface CampaignEditorPdfData {
@@ -116,6 +147,8 @@ export function buildCharacterPdfData(character: Character, playerName: string |
   const groups = groupFeaturesByPath(character.featureIds);
   const paths: PdfPathGroup[] = groups.map((group) => ({
     title: pathGroupTitle(group),
+    slot: pathSlot(group.path?.type),
+    rankLabels: group.path ? catalogRankLabels(group.pathId) : [1, 2, 3, 4, 5],
     ranks: group.features.map((feature) => ({
       rank: feature.rank,
       name: feature.name,

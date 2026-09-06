@@ -3,17 +3,8 @@
  * n'accepte qu'un sous-ensemble de CSS (flexbox, pas de grid) ; regroupée ici pour que
  * les sections restent de simples arrangements de `View`/`Text`.
  */
-import { Font, StyleSheet } from '@react-pdf/renderer';
-
-// Police embarquée (le rendu par défaut de `@react-pdf/renderer` n'a que Helvetica/Times/Courier,
-// sans accents français fiables) — même famille que le thème de l'app (`src/theme.ts`).
-Font.register({
-  family: 'Roboto',
-  fonts: [
-    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/roboto@latest/latin-400-normal.ttf' },
-    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/roboto@latest/latin-700-normal.ttf', fontWeight: 700 },
-  ],
-});
+import { StyleSheet } from '@react-pdf/renderer';
+import '@/components/pdf/registerFonts';
 
 /** Couleur d'accent par défaut quand le profil du personnage n'en fournit pas une (`classColor`). */
 export const DEFAULT_ACCENT = '#90a4ae';
