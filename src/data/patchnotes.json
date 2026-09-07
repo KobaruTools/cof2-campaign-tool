@@ -1958,5 +1958,15 @@
         "tag": "account"
       }
     ]
+  },
+  {
+    "id": 107,
+    "date": "2026-09-07",
+    "items": [
+      {
+        "text": "Le suivi des retours affiche maintenant leur statut et vos commentaires, avec possibilité de répondre directement depuis Linear.",
+        "tag": "other"
+      }
+    ]
   }
 ]
