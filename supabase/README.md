@@ -312,6 +312,25 @@ Provisionnement (en plus du gating PER-242/243 et de la migration 0011) :
   modèle réel post-0043) ; `tests/rls_isolation.sql` corrigé séparément
   (claims de test sans `is_anonymous:false`, stale depuis 0003/PER-194).
 
+## Rôle admin via table (PER-508)
+
+- `migrations/0047_app_admins.sql` — table `app_admins (user_id)`, RLS activée
+  SANS aucune policy (accès `service_role` seul, même pattern que
+  `player_auth_sessions`, 0002) + fonction `is_admin()` (`security definer`,
+  même raison que `is_member_of_campaign`/`owns_player` : la RLS fermée de
+  `app_admins` rendrait un `security invoker` toujours `false`). Cohérence
+  avec `docs/adr/0003-player-membership-rls-via-table-not-jwt-claims.md` : un
+  rôle admin retiré doit cesser d'agir immédiatement, pas seulement à
+  l'expiration du jeton.
+- `tests/is_admin.sql` — vérifie qu'un compte posé dans `app_admins` est
+  reconnu admin, qu'un compte réel absent de la table ne l'est pas, et qu'un
+  anonyme sans claims ne l'est pas non plus (transaction `ROLLBACK`).
+- Aucune UI dans ce ticket : la pose d'un admin se fait à la main
+  (`insert into public.app_admins (user_id) values ('<AUTH_USER_UUID>')`,
+  `service_role`) — même geste manuel que `redeem_allowlist` (PER-243).
+  `is_admin()` sera réutilisé par PER-512 (vue admin listant tous les
+  tickets de retour).
+
 ## Authentification CLI PAR DOSSIER (pas globale)
 
 `supabase login` stocke un token **global** à la machine : sur un poste qui gère
