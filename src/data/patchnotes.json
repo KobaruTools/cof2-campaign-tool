@@ -1948,5 +1948,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 106,
+    "date": "2026-09-07",
+    "items": [
+      {
+        "text": "Le rôle administrateur du site est maintenant géré via une liste dédiée, ce qui rend son attribution plus fiable.",
+        "tag": "account"
+      }
+    ]
   }
 ]
