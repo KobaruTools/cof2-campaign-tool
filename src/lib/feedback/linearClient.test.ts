@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { attachFileToIssue, createLinearIssue } from './linearClient';
+import {
+  attachFileToIssue,
+  createLinearIssue,
+  getFeedbackIssueStatus,
+  postFeedbackComment,
+} from './linearClient';
 
 const originalFetch = globalThis.fetch;
 const originalEnv = process.env.LINEAR_API_KEY;
@@ -176,5 +181,141 @@ describe('attachFileToIssue', () => {
         content: new ArrayBuffer(0),
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe('getFeedbackIssueStatus', () => {
+  it.each([
+    ['triage', 'sent'],
+    ['backlog', 'sent'],
+    ['unstarted', 'sent'],
+    ['started', 'in-progress'],
+    ['completed', 'resolved'],
+    ['canceled', 'resolved'],
+  ] as const)('mappe le statut Linear %s vers %s', async (stateType, expectedStatus) => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          issue: {
+            state: { type: stateType },
+            comments: { nodes: [] },
+          },
+        },
+      }),
+    }) as unknown as typeof fetch;
+
+    const result = await getFeedbackIssueStatus('issue-1');
+
+    expect(result.status).toBe(expectedStatus);
+  });
+
+  it('distingue les commentaires postés via l’app (externalUser) de ceux d’un vrai compte Linear, triés par date', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          issue: {
+            state: { type: 'started' },
+            comments: {
+              nodes: [
+                {
+                  body: 'Réponse du dev',
+                  createdAt: '2026-09-07T10:00:00.000Z',
+                  user: { name: 'Pierre' },
+                  externalUser: null,
+                },
+                {
+                  body: 'Question du joueur',
+                  createdAt: '2026-09-06T10:00:00.000Z',
+                  user: null,
+                  externalUser: { name: 'Joueur — via l’app' },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await getFeedbackIssueStatus('issue-1');
+
+    expect(result.comments).toEqual([
+      {
+        body: 'Question du joueur',
+        createdAt: '2026-09-06T10:00:00.000Z',
+        authorName: 'Joueur — via l’app',
+        isFromApp: true,
+      },
+      {
+        body: 'Réponse du dev',
+        createdAt: '2026-09-07T10:00:00.000Z',
+        authorName: 'Pierre',
+        isFromApp: false,
+      },
+    ]);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.linear.app/graphql');
+    expect(JSON.parse(init.body).variables).toEqual({ issueId: 'issue-1' });
+  });
+
+  it('lève une erreur si le ticket est introuvable', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { issue: null } }),
+    }) as unknown as typeof fetch;
+
+    await expect(getFeedbackIssueStatus('issue-1')).rejects.toThrow();
+  });
+});
+
+describe('postFeedbackComment', () => {
+  it('poste un commentaire développeur sans createAsUser', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { commentCreate: { success: true } } }),
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await postFeedbackComment('issue-1', 'Merci pour le retour', 'developer');
+
+    const [, init] = fetchMock.mock.calls[0];
+    const variables = JSON.parse(init.body).variables;
+    expect(variables.input).toEqual({ issueId: 'issue-1', body: 'Merci pour le retour' });
+  });
+
+  it('poste un commentaire joueur avec createAsUser pour ne pas le confondre avec le compte du développeur', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { commentCreate: { success: true } } }),
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await postFeedbackComment('issue-1', 'Toujours pareil chez moi', 'player');
+
+    const [, init] = fetchMock.mock.calls[0];
+    const variables = JSON.parse(init.body).variables;
+    expect(variables.input).toEqual({
+      issueId: 'issue-1',
+      body: 'Toujours pareil chez moi',
+      createAsUser: 'Joueur — via l’app',
+    });
+  });
+
+  it('lève une erreur si Linear répond success:false', async () => {
+    process.env.LINEAR_API_KEY = 'test-key';
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { commentCreate: { success: false } } }),
+    }) as unknown as typeof fetch;
+
+    await expect(postFeedbackComment('issue-1', 'x', 'developer')).rejects.toThrow();
   });
 });

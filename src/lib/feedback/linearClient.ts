@@ -44,9 +44,62 @@ const ATTACHMENT_CREATE_MUTATION = `
   }
 `;
 
+const ISSUE_STATUS_QUERY = `
+  query FeedbackIssueStatus($issueId: String!) {
+    issue(id: $issueId) {
+      state { type }
+      comments {
+        nodes {
+          body
+          createdAt
+          user { name }
+          externalUser { name }
+        }
+      }
+    }
+  }
+`;
+
+const COMMENT_CREATE_MUTATION = `
+  mutation FeedbackCommentCreate($input: CommentCreateInput!) {
+    commentCreate(input: $input) {
+      success
+    }
+  }
+`;
+
 export interface CreatedLinearIssue {
   id: string;
   url: string;
+}
+
+/**
+ * Statut affiché au soumetteur, dérivé du `type` du statut Linear (PER-509).
+ * Volontairement à 3 valeurs seulement — pas de distinction plus fine, ni de
+ * libellé ambigu type "en attente de ta réponse".
+ */
+export type FeedbackDisplayStatus = 'sent' | 'in-progress' | 'resolved';
+
+const STATE_TYPE_TO_DISPLAY_STATUS: Record<string, FeedbackDisplayStatus> = {
+  triage: 'sent',
+  backlog: 'sent',
+  unstarted: 'sent',
+  started: 'in-progress',
+  completed: 'resolved',
+  canceled: 'resolved',
+};
+
+export interface FeedbackComment {
+  body: string;
+  createdAt: string;
+  authorName: string;
+  /** Posté via `createAsUser` (réponse joueur depuis l'app), pas depuis un vrai compte Linear. */
+  isFromApp: boolean;
+}
+
+export interface FeedbackIssueStatus {
+  status: FeedbackDisplayStatus;
+  comments: FeedbackComment[];
 }
 
 /** Fichier à joindre à un ticket (screenshot ou export JSON de personnage), PER-464. */
@@ -172,5 +225,75 @@ export async function attachFileToIssue(issueId: string, file: FeedbackFile): Pr
 
   if (!attachBody.data?.attachmentCreate?.success) {
     throw new Error('Échec du rattachement du fichier au ticket Linear');
+  }
+}
+
+/**
+ * Lit le statut affiché + les commentaires d'un ticket Linear (PER-509),
+ * pour la page « Mes retours » (PER-511) et la vue admin (PER-512).
+ */
+export async function getFeedbackIssueStatus(issueId: string): Promise<FeedbackIssueStatus> {
+  const apiKey = requireApiKey();
+
+  const body = await callLinearGraphQL<{
+    data?: {
+      issue?: {
+        state: { type: string };
+        comments: {
+          nodes: {
+            body: string;
+            createdAt: string;
+            user: { name: string } | null;
+            externalUser: { name: string } | null;
+          }[];
+        };
+      } | null;
+    };
+  }>(apiKey, ISSUE_STATUS_QUERY, { issueId });
+
+  const issue = body.data?.issue;
+  if (!issue) {
+    throw new Error('Ticket Linear introuvable');
+  }
+
+  return {
+    status: STATE_TYPE_TO_DISPLAY_STATUS[issue.state.type] ?? 'sent',
+    comments: issue.comments.nodes
+      .map((node) => ({
+        body: node.body,
+        createdAt: node.createdAt,
+        authorName: node.externalUser?.name ?? node.user?.name ?? 'Inconnu',
+        isFromApp: node.externalUser != null,
+      }))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+  };
+}
+
+/**
+ * Attribution d'un commentaire posté sur un ticket de retour (PER-509) :
+ * `player` passe par `createAsUser` pour ne pas le confondre avec un
+ * commentaire écrit par le développeur depuis son propre compte Linear.
+ */
+export type FeedbackCommentAuthor = 'developer' | 'player';
+
+/** Poste un commentaire sur un ticket Linear existant (PER-509). */
+export async function postFeedbackComment(
+  issueId: string,
+  body: string,
+  author: FeedbackCommentAuthor,
+): Promise<void> {
+  const apiKey = requireApiKey();
+
+  const input: Record<string, unknown> = { issueId, body };
+  if (author === 'player') {
+    input.createAsUser = 'Joueur — via l’app';
+  }
+
+  const responseBody = await callLinearGraphQL<{
+    data?: { commentCreate?: { success: boolean } };
+  }>(apiKey, COMMENT_CREATE_MUTATION, { input });
+
+  if (!responseBody.data?.commentCreate?.success) {
+    throw new Error("Échec de l'envoi du commentaire Linear");
   }
 }
