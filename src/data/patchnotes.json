@@ -2028,5 +2028,15 @@
         "tag": "bestiary"
       }
     ]
+  },
+  {
+    "id": 114,
+    "date": "2026-09-17",
+    "items": [
+      {
+        "text": "Correction d'un bug d'affichage : la fiche de personnage se mettait parfois à jour trop tard quand la portée d'une attaque changeait.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
