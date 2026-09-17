@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { decideRouteAccess } from '@/lib/auth/routeAccess';
+import { hasOwnedCampaigns } from '@/lib/auth/ownedCampaigns';
 import { roleOfUser } from '@/lib/auth/sessionRole';
 import type { Database } from './types';
 
@@ -53,7 +54,18 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const decision = decideRouteAccess(pathname, roleOfUser(user));
+  const role = roleOfUser(user);
+  let decision = decideRouteAccess(pathname, role);
+  // Requête supplémentaire évitée sur le chemin chaud : uniquement si un joueur
+  // se voit refuser une route, on vérifie s'il possède par ailleurs des
+  // campagnes (PER-538) avant de le rediriger — un propriétaire qui a rejoint
+  // une autre campagne comme joueur ne doit pas perdre son UI propriétaire.
+  if (!decision.allow && role === 'player' && user) {
+    const ownsCampaigns = await hasOwnedCampaigns(supabase, user.id);
+    if (ownsCampaigns) {
+      decision = decideRouteAccess(pathname, role, true);
+    }
+  }
   if (decision.allow) {
     return response;
   }

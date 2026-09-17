@@ -8,6 +8,9 @@
  *  - **joueur** (invité par le lien de son MJ, PER-191) : rappel « Session joueur »,
  *    raccourci vers son espace, et « Créer un compte » — le joueur n'avait jusqu'ici
  *    aucun moyen de sortir de sa session invitée pour se créer un vrai compte.
+ *  - **joueur qui possède AUSSI des campagnes ailleurs** (`ownsCampaigns`, PER-538) :
+ *    les deux sections ci-dessus COEXISTENT (raccourci joueur + réglages/déconnexion),
+ *    sans « Créer un compte » — il en a déjà un.
  *  - **visiteur sans session** / **projection** : rien (la vitrine porte son propre
  *    bouton « Se connecter », et une TV n'a pas de compte).
  *
@@ -73,15 +76,20 @@ export function AccountMenu({
   if (effectiveRole === 'anonymous' || effectiveRole === 'projection') return null;
 
   const isPlayer = effectiveRole === 'player';
+  // Compte réel qui possède PAR AILLEURS des campagnes (PER-538) : les deux
+  // sections du menu coexistent, aucune ne remplace l'autre.
+  const ownsCampaigns = isPlayer && session.ownsCampaigns;
+  const showOwnerSection = !isPlayer || ownsCampaigns;
   const close = () => setAnchorEl(null);
+  const tooltipLabel = isPlayer && !ownsCampaigns ? 'Session joueur' : 'Compte';
 
   return (
     <>
-      <AppTooltip title={isPlayer ? 'Session joueur' : 'Compte'}>
+      <AppTooltip title={tooltipLabel}>
         <IconButton
           color="inherit"
           onClick={(e) => setAnchorEl(e.currentTarget)}
-          aria-label={isPlayer ? 'Session joueur' : 'Compte'}
+          aria-label={tooltipLabel}
           data-glossary-shot="AccountMenu"
           sx={(theme) => ({
             // Voile blanc de survol en fondu doux (aligné sur les boutons nav de l'en-tête).
@@ -100,31 +108,38 @@ export function AccountMenu({
           color="text.secondary"
           sx={{ px: 2, py: 0.5, display: 'block' }}
         >
-          {isPlayer ? 'Session joueur (invitation du MJ)' : session.displayName ?? 'Compte'}
+          {ownsCampaigns
+            ? 'Session joueur (invitation du MJ) + compte propriétaire'
+            : isPlayer
+              ? 'Session joueur (invitation du MJ)'
+              : session.displayName ?? 'Compte'}
         </Typography>
         <Divider />
 
-        {isPlayer ? (
-          <>
-            <MenuItem component={Link} href="/play" onClick={close}>
-              <ListItemIcon>
-                <QuestIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Ma campagne</ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                close();
-                setSignUpOpen(true);
-              }}
-            >
-              <ListItemIcon>
-                <PersonAddIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Créer un compte</ListItemText>
-            </MenuItem>
-          </>
-        ) : (
+        {isPlayer && (
+          <MenuItem component={Link} href="/play" onClick={close}>
+            <ListItemIcon>
+              <QuestIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Ma campagne</ListItemText>
+          </MenuItem>
+        )}
+        {/* « Créer un compte » n'a de sens que pour un joueur SANS compte réel —
+            un joueur qui possède aussi des campagnes en a déjà un. */}
+        {isPlayer && !ownsCampaigns && (
+          <MenuItem
+            onClick={() => {
+              close();
+              setSignUpOpen(true);
+            }}
+          >
+            <ListItemIcon>
+              <PersonAddIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Créer un compte</ListItemText>
+          </MenuItem>
+        )}
+        {showOwnerSection && (
           <>
             <MenuItem component={Link} href="/account" onClick={close}>
               <ListItemIcon>

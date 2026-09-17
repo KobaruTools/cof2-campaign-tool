@@ -98,6 +98,14 @@ const CHARACTER_PATH_PREFIXES = ['/characters', '/character', '/create'] as cons
  */
 const PLAYER_ONLY_PATH_PREFIXES = ['/play'] as const;
 
+/**
+ * Préfixes de l'**UI propriétaire** — extraits de leur usage dans le `case 'owner'`
+ * ci-dessous pour être réutilisés par le `case 'player'` (PER-538) : un compte réel
+ * qui possède par ailleurs des campagnes garde cette UI même sous claim `player_id`
+ * (cf. `ownsCampaigns` ci-dessous).
+ */
+const OWNER_ONLY_PATH_PREFIXES = ['/campaigns', '/campaign', '/account'] as const;
+
 /** Décision de gating pour un couple (chemin, rôle). */
 export type RouteAccess =
   | { allow: true }
@@ -134,10 +142,20 @@ function isOpenPath(pathname: string): boolean {
 /**
  * Décide si `role` peut atteindre `pathname`, et sinon où le renvoyer.
  *
+ * `ownsCampaigns` (PER-538, défaut `false`) : le compte porte le claim
+ * `player_id` (donc `role === 'player'`) MAIS possède par ailleurs des
+ * campagnes (`campaigns.owner_id`, résolu par `hasOwnedCampaigns`) — il garde
+ * alors l'UI propriétaire EN PLUS de son espace joueur, au lieu que l'un
+ * masque l'autre. Sans effet sur les autres rôles.
+ *
  * Contrôle **optimiste** (le proxy lit la session côté cookie), conforme à la doc
  * Next 16 : la sécurité porteuse reste la RLS Supabase côté données.
  */
-export function decideRouteAccess(pathname: string, role: SessionRole): RouteAccess {
+export function decideRouteAccess(
+  pathname: string,
+  role: SessionRole,
+  ownsCampaigns = false,
+): RouteAccess {
   switch (role) {
     case 'anonymous':
       // Vitrine, pages publiques, atelier de personnage (local d'abord) et contenu de
@@ -160,7 +178,8 @@ export function decideRouteAccess(pathname: string, role: SessionRole): RouteAcc
       return isOpenPath(pathname) ||
         matchesPrefix(pathname, CHARACTER_PATH_PREFIXES) ||
         matchesPrefix(pathname, CONTENT_PATH_PREFIXES) ||
-        matchesPrefix(pathname, PLAYER_ONLY_PATH_PREFIXES)
+        matchesPrefix(pathname, PLAYER_ONLY_PATH_PREFIXES) ||
+        (ownsCampaigns && matchesPrefix(pathname, OWNER_ONLY_PATH_PREFIXES))
         ? ALLOW
         : { allow: false, redirectTo: '/play', withNext: false };
 

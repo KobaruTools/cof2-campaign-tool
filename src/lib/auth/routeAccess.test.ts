@@ -118,6 +118,22 @@ describe('decideRouteAccess — session joueur (lien du MJ)', () => {
   });
 });
 
+describe('decideRouteAccess — joueur qui possède aussi des campagnes (PER-538)', () => {
+  it('retrouve son UI propriétaire quand `ownsCampaigns` est vrai', () => {
+    for (const path of ['/campaigns', '/campaign/c1', '/campaign/c1/gm-screen', '/account']) {
+      expect(decideRouteAccess(path, 'player', true)).toEqual({ allow: true });
+    }
+  });
+
+  it('garde aussi son espace joueur (les deux coexistent)', () => {
+    expect(decideRouteAccess('/play', 'player', true)).toEqual({ allow: true });
+  });
+
+  it('`ownsCampaigns` par défaut (omis) se comporte comme `false`', () => {
+    expect(redirectOf('/campaigns', 'player')).toBe('/play');
+  });
+});
+
 describe('decideRouteAccess — session de projection', () => {
   it('reste confinée à sa vue — vitrine, contenu et atelier inclus', () => {
     expect(allows('/project', 'projection')).toBe(true);

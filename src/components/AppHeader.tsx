@@ -55,6 +55,8 @@ import { useHeaderContentStore } from '@/stores/headerContent';
  *     `/characters`) + menu de session joueur ;
  *   • propriétaire : contenu + « Mes personnages », « Campagnes », [Écran de MJ],
  *     menu compte ;
+ *   • joueur qui possède AUSSI des campagnes ailleurs (PER-538) : « Ma campagne » +
+ *     « Campagnes »/[Écran de MJ] EN MÊME TEMPS — ni l'un ni l'autre n'écrase le sien ;
  *   • projection : rien — le composant se cache lui-même (`return null`) puisqu'il est
  *     désormais toujours monté par le layout.
  * Le périmètre réel est porté par le proxy (`decideRouteAccess`) : ici on ne fait que
@@ -89,8 +91,10 @@ export function AppHeaderShell() {
   // Atelier de personnage : ouvert à tous, visiteur sans compte compris (l'app est
   // locale d'abord). Masqué au joueur invité, dont la liste de fiches vit dans `/play`.
   const showCharacterLink = !isProjection && !isPlayer;
-  // Campagnes et écran de MJ : propriétaire seulement.
-  const showOwnerLinks = !isAnonymous && !isProjection && !isPlayer;
+  // Campagnes et écran de MJ : propriétaire — ou joueur qui possède PAR
+  // AILLEURS des campagnes (PER-538) : les deux jeux de liens coexistent
+  // alors, aucun ne masque l'autre.
+  const showOwnerLinks = !isAnonymous && !isProjection && (!isPlayer || session.ownsCampaigns);
   // Le sous-header n'apparaît que s'il y a quelque chose à y montrer : rien sur
   // l'accueil (pas de fil, pas d'action), présent partout ailleurs. Le sous-titre de
   // la fiche y est monté en permanence (pour pouvoir s'animer), donc sa seule présence

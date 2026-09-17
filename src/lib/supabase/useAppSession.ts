@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { roleOfUser, type SessionRole } from '@/lib/auth/sessionRole';
 import { displayNameOf } from '@/lib/auth/displayName';
+import { hasOwnedCampaigns } from '@/lib/auth/ownedCampaigns';
 import { createBrowserSupabaseClient } from './client';
 
 const IS_CONFIGURED = Boolean(
@@ -24,6 +25,13 @@ export interface AppSession {
   resolved: boolean;
   /** Nom d'affichage du propriétaire, `null` pour tout autre rôle. */
   displayName: string | null;
+  /**
+   * `true` quand un compte porteur du claim `player_id` (`role === 'player'`)
+   * possède PAR AILLEURS des campagnes (PER-538) — il garde alors l'UI
+   * propriétaire en plus de son espace joueur. Toujours `false` pour les
+   * autres rôles (jamais vérifié, pour ne pas ajouter de requête inutile).
+   */
+  ownsCampaigns: boolean;
 }
 
 /**
@@ -42,20 +50,26 @@ export function useAppSession(): AppSession {
     role: 'owner',
     resolved: !IS_CONFIGURED,
     displayName: null,
+    ownsCampaigns: false,
   });
 
   useEffect(() => {
     if (!IS_CONFIGURED) return;
     let cancelled = false;
     const supabase = createBrowserSupabaseClient();
-    void supabase.auth.getSession().then(({ data: { session: authSession } }) => {
-      if (cancelled) return;
+    void supabase.auth.getSession().then(async ({ data: { session: authSession } }) => {
       const user = authSession?.user ?? null;
       const role = roleOfUser(user);
+      // Requête supplémentaire seulement pour un joueur — jamais pour
+      // owner/anonymous/projection (cas dominants).
+      const ownsCampaigns =
+        role === 'player' && user ? await hasOwnedCampaigns(supabase, user.id) : false;
+      if (cancelled) return;
       setSession({
         role,
         resolved: true,
         displayName: user && role === 'owner' ? displayNameOf(user) : null,
+        ownsCampaigns,
       });
     });
     return () => {
