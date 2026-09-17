@@ -32,6 +32,15 @@ export interface AppSession {
    * autres rôles (jamais vérifié, pour ne pas ajouter de requête inutile).
    */
   ownsCampaigns: boolean;
+  /**
+   * `auth.uid()` de la session courante, `null` tant qu'elle n'est pas résolue
+   * (ou en mode 100 % local). Sert à comparer à `Campaign.ownerId` (cf.
+   * `useResolvedCampaign`) : la RLS `campaigns_player_read` (migration 0043)
+   * élargit désormais la lecture aux campagnes dont l'utilisateur n'est que
+   * membre, donc une simple résolution non-null ne suffit plus à prouver la
+   * propriété.
+   */
+  userId: string | null;
 }
 
 /**
@@ -51,6 +60,7 @@ export function useAppSession(): AppSession {
     resolved: !IS_CONFIGURED,
     displayName: null,
     ownsCampaigns: false,
+    userId: null,
   });
 
   useEffect(() => {
@@ -70,6 +80,7 @@ export function useAppSession(): AppSession {
         resolved: true,
         displayName: user && role === 'owner' ? displayNameOf(user) : null,
         ownsCampaigns,
+        userId: user?.id ?? null,
       });
     });
     return () => {

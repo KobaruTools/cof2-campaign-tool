@@ -8,8 +8,8 @@
  * de naviguer (vraies ancres `Link`, pas de navigation manuelle).
  *
  * Ne porte AUCUNE logique de rôle : reçoit les mêmes booléens déjà calculés par
- * `AppHeader` (`showContentLinks`, `showCharacterLink`, `showOwnerLinks`, `isPlayer`),
- * pour rester la seule source de vérité sur qui voit quoi.
+ * `AppHeader` (`showContentLinks`, `showCharacterLink`, `showOwnerLinks`,
+ * `showPlayerCampaignLink`), pour rester la seule source de vérité sur qui voit quoi.
  */
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
@@ -36,7 +36,7 @@ export interface AppHeaderNavDrawerProps {
   showContentLinks: boolean;
   showCharacterLink: boolean;
   showOwnerLinks: boolean;
-  isPlayer: boolean;
+  showPlayerCampaignLink: boolean;
   gmScreenCampaignId?: string;
 }
 
@@ -46,7 +46,7 @@ export function AppHeaderNavDrawer({
   showContentLinks,
   showCharacterLink,
   showOwnerLinks,
-  isPlayer,
+  showPlayerCampaignLink,
   gmScreenCampaignId,
 }: AppHeaderNavDrawerProps) {
   return (
@@ -83,7 +83,7 @@ export function AppHeaderNavDrawer({
         </Stack>
 
         <List sx={{ width: '100%', py: 0 }}>
-        {isPlayer && (
+        {showPlayerCampaignLink && (
           <ListItemButton component={Link} href="/play" onClick={onClose}>
             <ListItemIcon>
               <QuestIcon />

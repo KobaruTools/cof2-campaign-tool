@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { normalizeSearchText } from '@/lib/ui/searchText';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
+import { useAppSession } from '@/lib/supabase/useAppSession';
 import type { Character } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
 
@@ -163,7 +164,18 @@ export function useResolvedCharacter(idParam: string): {
   return { character, id: character?.id ?? idParam, href: `/character/${slug ?? idParam}` };
 }
 
-/** Symétrique de `useResolvedCharacter`, pour une page `/campaign/[cid]`. */
+/**
+ * Symétrique de `useResolvedCharacter`, pour une page `/campaign/[cid]`.
+ *
+ * Garde-fou MJ : depuis la migration 0043 (PER-498), la RLS `campaigns_player_read`
+ * laisse aussi résoudre une campagne dont l'appelant n'est que MEMBRE (joueur invité
+ * ailleurs) — `campaigns` n'est donc plus réservé aux campagnes possédées. Toutes les
+ * pages `/campaign/[cid]/*` sont pourtant des vues MJ ; sans ce garde-fou, un compte
+ * qui possède des campagnes PAR AILLEURS et rejoint aussi une campagne comme joueur
+ * atterrit sur la vue MJ complète d'une campagne qui n'est pas la sienne (roster,
+ * réglages, suppression…) dès qu'il en connaît l'URL. On renvoie vers `/play` dès que
+ * la campagne résolue n'appartient pas à l'utilisateur courant.
+ */
 export function useResolvedCampaign(cidParam: string): {
   campaign: Campaign | undefined;
   cid: string;
@@ -177,5 +189,12 @@ export function useResolvedCampaign(cidParam: string): {
   );
   const slug = campaign ? index.get(campaign.id) : undefined;
   useCanonicalRedirect(cidParam, slug, '/campaign');
+
+  const router = useRouter();
+  const { userId } = useAppSession();
+  useEffect(() => {
+    if (campaign && userId && campaign.ownerId !== userId) router.replace('/play');
+  }, [campaign, userId, router]);
+
   return { campaign, cid: campaign?.id ?? cidParam, href: `/campaign/${slug ?? cidParam}` };
 }

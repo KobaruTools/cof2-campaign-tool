@@ -55,8 +55,11 @@ import { useHeaderContentStore } from '@/stores/headerContent';
  *     `/characters`) + menu de session joueur ;
  *   • propriétaire : contenu + « Mes personnages », « Campagnes », [Écran de MJ],
  *     menu compte ;
- *   • joueur qui possède AUSSI des campagnes ailleurs (PER-538) : « Ma campagne » +
- *     « Campagnes »/[Écran de MJ] EN MÊME TEMPS — ni l'un ni l'autre n'écrase le sien ;
+ *   • joueur qui possède AUSSI des campagnes ailleurs (PER-538) : « Mes personnages »
+ *     (ses fiches locales à lui, pas seulement celles de la campagne jouée) +
+ *     « Campagnes »/[Écran de MJ] — PAS « Ma campagne », devenu redondant : sa
+ *     campagne jouée apparaît désormais dans la liste « Campagnes » (badge
+ *     « Joueur », lien vers `/play`, cf. `/campaigns/page.tsx`) ;
  *   • projection : rien — le composant se cache lui-même (`return null`) puisqu'il est
  *     désormais toujours monté par le layout.
  * Le périmètre réel est porté par le proxy (`decideRouteAccess`) : ici on ne fait que
@@ -89,12 +92,21 @@ export function AppHeaderShell() {
   // Contenu de règles (DRS libre) : ouvert à tous, visiteur sans compte compris.
   const showContentLinks = !isProjection;
   // Atelier de personnage : ouvert à tous, visiteur sans compte compris (l'app est
-  // locale d'abord). Masqué au joueur invité, dont la liste de fiches vit dans `/play`.
-  const showCharacterLink = !isProjection && !isPlayer;
+  // locale d'abord). Masqué au joueur invité SANS compte propriétaire, dont la liste
+  // de fiches vit dans `/play` — mais PAS au joueur qui possède aussi des campagnes
+  // ailleurs (PER-538) : ses fiches locales à lui n'ont rien à voir avec le roster de
+  // la campagne jouée, et vivaient dans `/characters` avant même qu'il rejoigne une
+  // campagne comme joueur.
+  const showCharacterLink = !isProjection && (!isPlayer || session.ownsCampaigns);
   // Campagnes et écran de MJ : propriétaire — ou joueur qui possède PAR
   // AILLEURS des campagnes (PER-538) : les deux jeux de liens coexistent
   // alors, aucun ne masque l'autre.
   const showOwnerLinks = !isAnonymous && !isProjection && (!isPlayer || session.ownsCampaigns);
+  // « Ma campagne » : uniquement pour le joueur SANS campagne possédée par ailleurs —
+  // son seul chemin vers `/play`. Redondant pour le joueur qui possède aussi des
+  // campagnes : sa campagne jouée est désormais listée (badge « Joueur ») dans
+  // « Campagnes », qui devient son point d'entrée unique.
+  const showPlayerCampaignLink = isPlayer && !session.ownsCampaigns;
   // Le sous-header n'apparaît que s'il y a quelque chose à y montrer : rien sur
   // l'accueil (pas de fil, pas d'action), présent partout ailleurs. Le sous-titre de
   // la fiche y est monté en permanence (pour pouvoir s'animer), donc sa seule présence
@@ -124,7 +136,8 @@ export function AppHeaderShell() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   // Rien à montrer dans la nav en projection : pas de bouton burger creux.
-  const hasNavContent = showContentLinks || showCharacterLink || showOwnerLinks || isPlayer;
+  const hasNavContent =
+    showContentLinks || showCharacterLink || showOwnerLinks || showPlayerCampaignLink;
 
   // Les 3 vues de projection du tracker (spectateur `/project`, joueur `/play/initiative`,
   // fenêtre owner `/campaign/<cid>/gm-screen/tracker`) : dépouillées, pas d'en-tête. Auparavant
@@ -195,7 +208,7 @@ export function AppHeaderShell() {
             <>
               {/* Le joueur n'a qu'UNE campagne (celle de son invitation) : on l'y mène
                   directement, au lieu d'une liste qui lui serait fermée. */}
-              {isPlayer && (
+              {showPlayerCampaignLink && (
                 <HeaderNavButton
                   href="/play"
                   icon={<QuestIcon />}
@@ -267,7 +280,7 @@ export function AppHeaderShell() {
         showContentLinks={showContentLinks}
         showCharacterLink={showCharacterLink}
         showOwnerLinks={showOwnerLinks}
-        isPlayer={isPlayer}
+        showPlayerCampaignLink={showPlayerCampaignLink}
         gmScreenCampaignId={gmScreenCampaignId}
       />
 

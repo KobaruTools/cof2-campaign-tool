@@ -9,8 +9,8 @@
  *    raccourci vers son espace, et « Créer un compte » — le joueur n'avait jusqu'ici
  *    aucun moyen de sortir de sa session invitée pour se créer un vrai compte.
  *  - **joueur qui possède AUSSI des campagnes ailleurs** (`ownsCampaigns`, PER-538) :
- *    les deux sections ci-dessus COEXISTENT (raccourci joueur + réglages/déconnexion),
- *    sans « Créer un compte » — il en a déjà un.
+ *    réglages/déconnexion, sans « Créer un compte » (il en a déjà un) ni raccourci
+ *    « Ma campagne » — redondant, sa campagne jouée est listée dans « Campagnes ».
  *  - **visiteur sans session** / **projection** : rien (la vitrine porte son propre
  *    bouton « Se connecter », et une TV n'a pas de compte).
  *
@@ -116,7 +116,9 @@ export function AccountMenu({
         </Typography>
         <Divider />
 
-        {isPlayer && (
+        {/* Redondant pour le joueur qui possède aussi des campagnes (PER-538) : sa
+            campagne jouée apparaît désormais dans « Campagnes » (badge « Joueur »). */}
+        {isPlayer && !ownsCampaigns && (
           <MenuItem component={Link} href="/play" onClick={close}>
             <ListItemIcon>
               <QuestIcon fontSize="small" />
