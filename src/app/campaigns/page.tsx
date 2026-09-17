@@ -13,16 +13,24 @@
  * Les campagnes vivent dans Supabase : ce composant s'appuie sur le store
  * `campaigns` (cache d'une source cloud) et affiche les états de chargement,
  * d'erreur et « cloud non configuré ».
+ *
+ * Depuis PER-538/498, un compte peut être MJ de certaines campagnes ET membre
+ * (joueur) d'une autre — le store ramène désormais les deux (RLS
+ * `campaigns_player_read`). La liste distingue donc « Vos campagnes » (MJ, avec
+ * réglages/suppression) de « Campagnes où vous jouez » (badge, lecture seule).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { hrefFromIndex, useCampaignSlugIndex } from '@/lib/routing/slug';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -41,6 +49,9 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignListSkeleton } from '@/components/campaign/CampaignListSkeleton';
 import { HomeBackground } from '@/components/HomeBackground';
 import type { Campaign } from '@/lib/campaign';
+import { storageKeys } from '@/lib/storage/keys';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useCampaignDraftStore } from '@/stores/campaignDraft';
 import { useCharactersStore } from '@/stores/characters';
@@ -65,6 +76,24 @@ export default function CampaignsPage() {
   const [toDelete, setToDelete] = useState<Campaign | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [busy, setBusy] = useState(false);
+  // Id du compte courant (PER-538/498) : distingue, dans la liste ci-dessous, les
+  // campagnes possédées (MJ) de celles où on n'est que membre (joueur) —
+  // `fetchCampaigns` ramène désormais les deux (RLS `campaigns_player_read`).
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createBrowserSupabaseClient();
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled) setUserId(session?.user.id ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  // Sections repliables (MJ / joueur) — ouvertes par défaut, état persisté en local
+  // comme les autres sections repliables de l'app (archivés, réglages…).
+  const [ownedOpen, setOwnedOpen] = usePersistedBoolean(storageKeys.campaigns.ownedOpen, true);
+  const [memberOpen, setMemberOpen] = usePersistedBoolean(storageKeys.campaigns.memberOpen, true);
   const { showToast } = useToast();
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
     showToast(message, severity);
@@ -100,6 +129,137 @@ export default function CampaignsPage() {
   const draftCampaign = draft ? campaigns.find((c) => c.id === draft.campaignId) : undefined;
 
   const sorted = [...campaigns].sort((a, b) => a.name.localeCompare(b.name));
+  // MJ = propriétaire (`owner_id`) ; sinon simple membre (joueur) d'une campagne
+  // possédée par quelqu'un d'autre. Tant que `userId` n'est pas résolu, on traite
+  // tout comme possédé (hypothèse dominante, cf. `useAppSession`) pour ne pas
+  // faire disparaître les icônes réglages/suppression le temps d'un aller-retour.
+  const ownedCampaigns = sorted.filter((c) => userId == null || c.ownerId === userId);
+  const memberCampaigns = sorted.filter((c) => userId != null && c.ownerId !== userId);
+
+  // En-tête de section repliable (MJ/joueur) — même patron que la section « Archivés »
+  // de la vue campagne (`/campaign/[cid]`) : icône de rôle + libellé cliquable, chevron
+  // qui pivote, jamais démonté (juste replié) pour ne pas perdre le scroll.
+  const renderSectionHeader = (
+    icon: ReactNode,
+    label: string,
+    open: boolean,
+    setOpen: (value: boolean) => void,
+  ) => (
+    <Box
+      role="button"
+      tabIndex={0}
+      onClick={() => setOpen(!open)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setOpen(!open);
+        }
+      }}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        cursor: 'pointer',
+        userSelect: 'none',
+      }}
+    >
+      <ExpandMoreIcon
+        fontSize="small"
+        sx={{ transition: 'transform 0.2s', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+      />
+      {icon}
+      <Typography variant="overline" color="text.secondary">
+        {label}
+      </Typography>
+    </Box>
+  );
+
+  // `isOwner` bascule les actions MJ (réglages, suppression) contre un badge « Joueur » :
+  // sur une campagne dont on n'est que membre, on n'a ni les droits d'écriture RLS, ni la
+  // légitimité MJ pour les proposer.
+  const renderCampaignCard = (campaign: Campaign, isOwner: boolean) => {
+    const count = characterCount(campaign.id);
+    return (
+      <Paper
+        key={campaign.id}
+        variant="outlined"
+        sx={{
+          p: 2,
+          bgcolor: 'rgba(30, 30, 34, 0.62)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          borderColor: 'rgba(255, 255, 255, 0.10)',
+          // Fondu doux du fond au survol (inspiré des rangs de voie de la fiche et
+          // des listes de personnages) : le délai (.2s) porté par l'état de BASE ne
+          // joue qu'à la SORTIE — le fond met un court instant à revenir. À l'ENTRÉE,
+          // la transition de `:hover` (sans délai) prend le relais, donc le fondu
+          // démarre immédiatement.
+          transition: 'background-color .15s ease .2s',
+          '&:hover': {
+            bgcolor: 'rgba(44, 44, 50, 0.72)',
+            transition: 'background-color .15s ease',
+          },
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+        >
+          <Box
+            component={Link}
+            href={isOwner ? hrefFromIndex('/campaign', campaignSlugIndex, campaign.id) : '/play'}
+            sx={{
+              minWidth: 0,
+              cursor: 'pointer',
+              flexGrow: 1,
+              color: 'inherit',
+              textDecoration: 'none',
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+              {campaign.name}
+            </Typography>
+            {campaign.description && (
+              <Typography variant="body2" component="div" color="text.secondary" sx={{ mt: 0.25, whiteSpace: 'pre-line' }}>
+                <GlossaryRichText>{campaign.description}</GlossaryRichText>
+              </Typography>
+            )}
+            <Stack
+              direction="row"
+              spacing={0.5}
+              sx={{ alignItems: 'center', color: 'text.secondary', mt: 0.75 }}
+            >
+              <PersonIcon fontSize="small" />
+              <Typography variant="body2">
+                {count} personnage{count > 1 ? 's' : ''}
+              </Typography>
+            </Stack>
+          </Box>
+          {isOwner && (
+            <Stack direction="row" sx={{ flexShrink: 0 }}>
+              <AppTooltip title="Réglages">
+                <IconButton component={Link} href={`${hrefFromIndex('/campaign', campaignSlugIndex, campaign.id)}/settings`}>
+                  <SettingsIcon fontSize="small" />
+                </IconButton>
+              </AppTooltip>
+              <AppTooltip title="Supprimer">
+                <IconButton
+                  color="error"
+                  onClick={() => {
+                    setToDelete(campaign);
+                    setDeleteConfirm('');
+                  }}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </AppTooltip>
+            </Stack>
+          )}
+        </Stack>
+      </Paper>
+    );
+  };
 
   return (
     <>
@@ -221,88 +381,36 @@ export default function CampaignsPage() {
             </Typography>
           </Paper>
         ) : (
-          <Stack spacing={1.5}>
-            {sorted.map((campaign) => {
-              const count = characterCount(campaign.id);
-              return (
-                <Paper
-                  key={campaign.id}
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    bgcolor: 'rgba(30, 30, 34, 0.62)',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                    // Fondu doux du fond au survol (inspiré des rangs de voie de la fiche et
-                    // des listes de personnages) : le délai (.2s) porté par l'état de BASE ne
-                    // joue qu'à la SORTIE — le fond met un court instant à revenir. À l'ENTRÉE,
-                    // la transition de `:hover` (sans délai) prend le relais, donc le fondu
-                    // démarre immédiatement.
-                    transition: 'background-color .15s ease .2s',
-                    '&:hover': {
-                      bgcolor: 'rgba(44, 44, 50, 0.72)',
-                      transition: 'background-color .15s ease',
-                    },
-                  }}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
-                  >
-                    <Box
-                      component={Link}
-                      href={hrefFromIndex('/campaign', campaignSlugIndex, campaign.id)}
-                      sx={{
-                        minWidth: 0,
-                        cursor: 'pointer',
-                        flexGrow: 1,
-                        color: 'inherit',
-                        textDecoration: 'none',
-                      }}
-                    >
-                      <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                        {campaign.name}
-                      </Typography>
-                      {campaign.description && (
-                        <Typography variant="body2" component="div" color="text.secondary" sx={{ mt: 0.25, whiteSpace: 'pre-line' }}>
-                          <GlossaryRichText>{campaign.description}</GlossaryRichText>
-                        </Typography>
-                      )}
-                      <Stack
-                        direction="row"
-                        spacing={0.5}
-                        sx={{ alignItems: 'center', color: 'text.secondary', mt: 0.75 }}
-                      >
-                        <PersonIcon fontSize="small" />
-                        <Typography variant="body2">
-                          {count} personnage{count > 1 ? 's' : ''}
-                        </Typography>
-                      </Stack>
-                    </Box>
-                    <Stack direction="row" sx={{ flexShrink: 0 }}>
-                      <AppTooltip title="Réglages">
-                        <IconButton component={Link} href={`${hrefFromIndex('/campaign', campaignSlugIndex, campaign.id)}/settings`}>
-                          <SettingsIcon fontSize="small" />
-                        </IconButton>
-                      </AppTooltip>
-                      <AppTooltip title="Supprimer">
-                        <IconButton
-                          color="error"
-                          onClick={() => {
-                            setToDelete(campaign);
-                            setDeleteConfirm('');
-                          }}
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </AppTooltip>
-                    </Stack>
+          <Stack spacing={2}>
+            <Stack spacing={1.5}>
+              {memberCampaigns.length > 0 &&
+                renderSectionHeader(
+                  <SupervisorAccountIcon fontSize="small" />,
+                  'Vos campagnes (MJ)',
+                  ownedOpen,
+                  setOwnedOpen,
+                )}
+              <Collapse in={memberCampaigns.length === 0 || ownedOpen} unmountOnExit>
+                <Stack spacing={1.5}>
+                  {ownedCampaigns.map((campaign) => renderCampaignCard(campaign, true))}
+                </Stack>
+              </Collapse>
+            </Stack>
+            {memberCampaigns.length > 0 && (
+              <Stack spacing={1.5}>
+                {renderSectionHeader(
+                  <PersonIcon fontSize="small" />,
+                  'Campagnes où vous jouez',
+                  memberOpen,
+                  setMemberOpen,
+                )}
+                <Collapse in={memberOpen} unmountOnExit>
+                  <Stack spacing={1.5}>
+                    {memberCampaigns.map((campaign) => renderCampaignCard(campaign, false))}
                   </Stack>
-                </Paper>
-              );
-            })}
+                </Collapse>
+              </Stack>
+            )}
           </Stack>
         )}
       </Container>

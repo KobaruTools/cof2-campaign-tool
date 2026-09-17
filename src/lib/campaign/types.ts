@@ -319,6 +319,13 @@ export interface PlayerNpc {
  */
 export interface Campaign {
   id: string;
+  /**
+   * Propriétaire de la campagne (FK `campaigns.owner_id`, RLS). Depuis PER-498/538,
+   * `fetchCampaigns` peut aussi ramener des campagnes dont l'utilisateur courant
+   * n'est que MEMBRE (joueur) — ce champ sert à distinguer les deux côté UI
+   * (`/campaigns`, cf. `useAppSession`/`hasOwnedCampaigns`).
+   */
+  ownerId: string;
   name: string;
   /** Notes libres du MJ sur la campagne (colonne nullable). */
   description: string | null;

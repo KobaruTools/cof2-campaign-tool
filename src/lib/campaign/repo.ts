@@ -184,6 +184,7 @@ export function parseEncounterPresetCategories(raw: Json): EncounterPresetCatego
 export function rowToCampaign(row: CampaignRow): Campaign {
   return {
     id: row.id,
+    ownerId: row.owner_id,
     name: row.name,
     description: row.description,
     rules: parseRules(row.rules),
@@ -197,7 +198,13 @@ export function rowToCampaign(row: CampaignRow): Campaign {
   };
 }
 
-/** Toutes les campagnes possédées par l'utilisateur courant (RLS), triées par nom. */
+/**
+ * Campagnes visibles par l'utilisateur courant, triées par nom : celles qu'il
+ * possède (`owner_id`) **et**, depuis la migration 0043 (PER-498/538), celles
+ * où il n'est que membre (joueur) via `player_auth_sessions` — la policy
+ * `campaigns_player_read` élargit le ceiling RLS. `Campaign.ownerId` permet à
+ * l'appelant de trier les deux (cf. `/campaigns`).
+ */
 export async function fetchCampaigns(): Promise<Campaign[]> {
   const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase

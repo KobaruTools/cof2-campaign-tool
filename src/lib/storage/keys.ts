@@ -91,6 +91,10 @@ export const storageKeys = {
     lastSeenId: key('patchnotes', 'last-seen-id'),
     prefs: key('patchnotes', 'prefs'),
   },
+  campaigns: {
+    ownedOpen: key('campaigns', 'owned-open'),
+    memberOpen: key('campaigns', 'member-open'),
+  },
   campaign: {
     archivedOpen: key('campaign', 'archived-open'),
     settingsPlayersOpen: key('campaign', 'settings-players-open'),

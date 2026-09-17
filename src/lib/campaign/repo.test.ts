@@ -90,6 +90,7 @@ describe('rowToCampaign', () => {
   it('mappe les colonnes vers l’entité Campaign', () => {
     expect(rowToCampaign(row())).toEqual({
       id: 'c1',
+      ownerId: 'u1',
       name: 'La Tour Écarlate',
       description: null,
       rules: { firearmsAllowed: true, hitDieOnLevelUp: false, encumbranceEnabled: false },

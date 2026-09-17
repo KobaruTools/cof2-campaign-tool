@@ -6,6 +6,7 @@ import { firearmsEffective, isFirearmChoiceOption, isFirearmItem, isFirearmItemI
 function makeCampaign(firearmsAllowed: boolean): Campaign {
   return {
     id: 'camp',
+    ownerId: 'owner',
     name: 'Campagne',
     description: null,
     rules: { firearmsAllowed, hitDieOnLevelUp: false, encumbranceEnabled: false },
