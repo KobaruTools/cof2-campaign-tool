@@ -1998,5 +1998,15 @@
         "tag": "campaign"
       }
     ]
+  },
+  {
+    "id": 111,
+    "date": "2026-09-17",
+    "items": [
+      {
+        "text": "Un joueur qui possède à la fois un compte propriétaire et un compte joueur ne peut plus se retrouver sur l'écran meneur de jeu d'une autre partie que la sienne.",
+        "tag": "account"
+      }
+    ]
   }
 ]
