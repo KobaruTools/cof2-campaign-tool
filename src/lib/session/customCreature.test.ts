@@ -68,6 +68,27 @@ describe('normalizeCustomCreature', () => {
     expect(custom?.attacks).toHaveLength(CUSTOM_LIST_MAX_LENGTH);
   });
 
+  it('conserve le nombre d’attaques et l’effet accolé (PER-516)', () => {
+    const custom = normalizeCustomCreature({
+      ...BASE,
+      attacks: [{ name: 'Morsure et griffes', attackCount: 2.9, damage: '1d12+8', rider: '+ étreinte' }],
+    });
+    expect(custom?.attacks?.[0]).toEqual({
+      name: 'Morsure et griffes',
+      attackCount: 2,
+      damage: '1d12+8',
+      rider: '+ étreinte',
+    });
+  });
+
+  it('omet le nombre d’attaques quand il n’est pas numérique', () => {
+    const custom = normalizeCustomCreature({
+      ...BASE,
+      attacks: [{ name: 'Morsure', attackCount: 'deux' }],
+    });
+    expect(custom?.attacks?.[0]).toEqual({ name: 'Morsure' });
+  });
+
   it('écarte les capacités entièrement vides et tronque les textes trop longs', () => {
     const custom = normalizeCustomCreature({
       ...BASE,
@@ -197,11 +218,10 @@ describe('customCreatureFromBestiary', () => {
       initiative: 8,
       hitPoints: 15,
       defense: 13,
-      agility: 3,
       abilities: { AGI: 3, CON: 1, FOR: 1, PER: 1, CHA: -1, INT: -4, VOL: 0 },
       nc: '½',
       description: 'Un loup famélique.',
-      attacks: [{ name: 'Morsure', bonus: '+3', damage: '1d6+1' }],
+      attacks: [{ name: 'Morsure', bonus: '+3', damage: '1d6+1', rider: '+ renversement' }],
       specialAbilities: [{ name: 'Odorat', text: 'Détecte au flair.' }],
     });
   });

@@ -43,12 +43,19 @@ export const CUSTOM_SPECIAL_ABILITIES_MAX_LENGTH = 30;
 export interface CustomCreatureAttack {
   /** Mode d'attaque (ex. « Épée longue », « Morsure »). */
   name: string;
+  /**
+   * Nombre d'attaques quand ce mode en cumule plusieurs (PER-516, ex. « Morsure et griffes
+   * (2 attaques) »), même champ que `CreatureAttack.attackCount` du bestiaire. Absent = 1.
+   */
+  attackCount?: number;
   /** Bonus à l'attaque, verbatim (ex. « +7 ») — parsé pour les pastilles ajustables du tracker. */
   bonus?: string;
   /** Dégâts, verbatim (ex. « 1d8+3 »). */
   damage?: string;
   /** Portée, verbatim (ex. « 20 m ») — sa PRÉSENCE marque l'attaque comme étant à distance. */
   range?: string;
+  /** Effet additionnel accolé aux DM, verbatim (ex. « + poison ») — même champ que le bestiaire. */
+  rider?: string;
 }
 
 /** Capacité spéciale saisie à la main (titre + texte libre). */
@@ -131,10 +138,19 @@ function normalizeAttacks(raw: unknown): CustomCreatureAttack[] | undefined {
     const entry = item as Partial<CustomCreatureAttack>;
     const name = cleanText(entry.name, CUSTOM_FIELD_MAX_LENGTH);
     if (!name) continue;
+    const attackCount = cleanNumber(entry.attackCount);
     const bonus = cleanText(entry.bonus, CUSTOM_FIELD_MAX_LENGTH);
     const damage = cleanText(entry.damage, CUSTOM_FIELD_MAX_LENGTH);
     const range = cleanText(entry.range, CUSTOM_FIELD_MAX_LENGTH);
-    out.push({ name, ...(bonus ? { bonus } : {}), ...(damage ? { damage } : {}), ...(range ? { range } : {}) });
+    const rider = cleanText(entry.rider, CUSTOM_FIELD_MAX_LENGTH);
+    out.push({
+      name,
+      ...(attackCount !== undefined ? { attackCount } : {}),
+      ...(bonus ? { bonus } : {}),
+      ...(damage ? { damage } : {}),
+      ...(range ? { range } : {}),
+      ...(rider ? { rider } : {}),
+    });
     if (out.length === CUSTOM_LIST_MAX_LENGTH) break;
   }
   return out.length > 0 ? out : undefined;
@@ -290,20 +306,23 @@ export function customCreatureBlob(
  * p. 301) : un tel bloc ne serait de toute façon pas jouable au tracker.
  *
  * Les 7 caractéristiques et les dés bonus (PER-455/PER-513) sont repris tels quels
- * (mêmes types des deux côtés). Simplifications encore assumées (perte de fidélité
- * acceptée par le choix de réutiliser `CustomCreature` plutôt qu'un second type de
- * bloc) : `attackCount`/`rider` des attaques et `richText` des capacités ne sont pas
- * repris (`CustomCreatureAttack`/`CustomCreatureAbility` ne les portent pas) ; la RD
- * du bestiaire (`DamageReduction`, scalante/multi-entrées/immunité/division) n'a pas
- * d'équivalent fidèle dans la RD plate simple de `CustomCreature` et n'est donc pas
- * copiée.
+ * (mêmes types des deux côtés), de même que `attackCount`/`rider` des attaques (PER-516,
+ * corrigeant la perte du nombre d'attaques d'un mode cumulé — ex. dragon des forêts,
+ * « Morsure et griffes (2 attaques) »). Simplification encore assumée (perte de fidélité
+ * acceptée par le choix de réutiliser `CustomCreature` plutôt qu'un second type de bloc) :
+ * `richText` des capacités n'est pas repris (`CustomCreatureAbility` ne le porte pas) ; la
+ * RD du bestiaire (`DamageReduction`, scalante/multi-entrées/immunité/division) n'a pas
+ * d'équivalent fidèle dans la RD plate simple de `CustomCreature` et n'est donc pas copiée.
  */
 export function customCreatureFromBestiary(creature: Creature): CustomCreature | undefined {
   return normalizeCustomCreature({
     initiative: creature.initiative,
     hitPoints: creature.hitPoints,
     defense: creature.defense,
-    agility: creature.abilities?.AGI,
+    // PAS de `agility` séparée ici (PER-516) : `abilities.AGI` ci-dessous porte déjà la même
+    // valeur depuis la fusion PER-455/PER-513 — la dupliquer ne ferait que gonfler l'export JSON
+    // d'un champ redondant. `agility` reste lu en repli côté départage d'initiative pour les
+    // instances antérieures qui n'ont que ce champ (cf. `useGmScreenCombat.ts`).
     abilities: creature.abilities,
     bonusDieAbilities: creature.bonusDieAbilities,
     nc: creatureNcLabel(creature) ?? undefined,

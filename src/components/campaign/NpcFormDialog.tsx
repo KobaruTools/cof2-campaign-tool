@@ -101,9 +101,12 @@ type StatsSource = 'bestiary' | 'manual';
 /** Ligne d'attaque en cours de saisie (champs libres, tous verbatim) — cf. `AddCreatureDialog`. */
 interface AttackDraft {
   name: string;
+  /** Nombre d'attaques (PER-516), tenu en texte comme les autres champs numériques du dialogue. */
+  attackCount: string;
   bonus: string;
   damage: string;
   range: string;
+  rider: string;
 }
 
 /** Ligne de capacité spéciale en cours de saisie. */
@@ -112,7 +115,7 @@ interface AbilityDraft {
   text: string;
 }
 
-const EMPTY_ATTACK: AttackDraft = { name: '', bonus: '', damage: '', range: '' };
+const EMPTY_ATTACK: AttackDraft = { name: '', attackCount: '', bonus: '', damage: '', range: '', rider: '' };
 const EMPTY_ABILITY: AbilityDraft = { name: '', text: '' };
 
 /**
@@ -241,9 +244,11 @@ export function NpcFormDialog({
   const [statsAttacks, setStatsAttacks] = useState<AttackDraft[]>(() =>
     (npc?.stats?.attacks ?? []).map((a) => ({
       name: a.name,
+      attackCount: numberField(a.attackCount),
       bonus: a.bonus ?? '',
       damage: a.damage ?? '',
       range: a.range ?? '',
+      rider: a.rider ?? '',
     })),
   );
   const [statsAbilities, setStatsAbilities] = useState<AbilityDraft[]>(() =>
@@ -304,12 +309,18 @@ export function NpcFormDialog({
         initiative: parseIntegerField(statsInitiative),
         hitPoints: parseIntegerField(statsHitPoints),
         defense: parseIntegerField(statsDefense),
-        // Départage d'initiative : reflète directement la carac AGI saisie ci-dessous, plus de
-        // champ séparé (cf. commentaire sur `statsAbilityScores`).
-        agility: parseIntegerField(statsAbilityScores.AGI),
+        // PAS de `agility` séparée (PER-516) : `abilities.AGI` ci-dessous porte déjà la carac
+        // AGI saisie dans la grille, la dupliquer ne ferait que gonfler l'export JSON du PNJ.
         nc: statsNc,
         description: statsDescription,
-        attacks: statsAttacks,
+        attacks: statsAttacks.map((a) => ({
+          name: a.name,
+          attackCount: parseIntegerField(a.attackCount),
+          bonus: a.bonus,
+          damage: a.damage,
+          range: a.range,
+          rider: a.rider,
+        })),
         specialAbilities: statsAbilities,
         abilities: Object.fromEntries(
           ABILITY_IDS.map((id) => [id, parseIntegerField(statsAbilityScores[id])]),
@@ -358,9 +369,11 @@ export function NpcFormDialog({
       setStatsAttacks(
         (bestiaryDraft.attacks ?? []).map((a) => ({
           name: a.name,
+          attackCount: numberField(a.attackCount),
           bonus: a.bonus ?? '',
           damage: a.damage ?? '',
           range: a.range ?? '',
+          rider: a.rider ?? '',
         })),
       );
       setStatsAbilities((bestiaryDraft.specialAbilities ?? []).map((a) => ({ name: a.name, text: a.text })));
@@ -932,6 +945,19 @@ export function NpcFormDialog({
                           />
                           <TextField
                             size="small"
+                            type="number"
+                            label="Nb attaques"
+                            placeholder="2"
+                            value={attack.attackCount}
+                            onChange={(e) =>
+                              setStatsAttacks((prev) =>
+                                prev.map((a, i) => (i === index ? { ...a, attackCount: e.target.value } : a)),
+                              )
+                            }
+                            sx={{ flex: '0 1 90px', minWidth: 80 }}
+                          />
+                          <TextField
+                            size="small"
                             label="Bonus"
                             placeholder="+7"
                             value={attack.bonus}
@@ -967,6 +993,19 @@ export function NpcFormDialog({
                               )
                             }
                             sx={{ flex: '1 1 110px', minWidth: 90 }}
+                            slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                          />
+                          <TextField
+                            size="small"
+                            label="Effet"
+                            placeholder="+ poison"
+                            value={attack.rider}
+                            onChange={(e) =>
+                              setStatsAttacks((prev) =>
+                                prev.map((a, i) => (i === index ? { ...a, rider: e.target.value } : a)),
+                              )
+                            }
+                            sx={{ flex: '1 1 120px', minWidth: 100 }}
                             slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
                           />
                           <AppTooltip title="Retirer cette attaque">

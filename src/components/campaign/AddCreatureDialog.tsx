@@ -101,9 +101,12 @@ type CreatureSource = 'bestiary' | 'custom';
 /** Ligne d'attaque en cours de saisie (champs libres, tous verbatim). */
 interface AttackDraft {
   name: string;
+  /** Nombre d'attaques (PER-516), tenu en texte comme les autres champs numériques du dialogue. */
+  attackCount: string;
   bonus: string;
   damage: string;
   range: string;
+  rider: string;
 }
 
 /** Ligne de capacité spéciale en cours de saisie. */
@@ -112,7 +115,7 @@ interface AbilityDraft {
   text: string;
 }
 
-const EMPTY_ATTACK: AttackDraft = { name: '', bonus: '', damage: '', range: '' };
+const EMPTY_ATTACK: AttackDraft = { name: '', attackCount: '', bonus: '', damage: '', range: '', rider: '' };
 const EMPTY_ABILITY: AbilityDraft = { name: '', text: '' };
 
 /**
@@ -260,9 +263,11 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
   const [attacks, setAttacks] = useState<AttackDraft[]>(() =>
     (editingCustom?.attacks ?? []).map((a) => ({
       name: a.name,
+      attackCount: numberField(a.attackCount),
       bonus: a.bonus ?? '',
       damage: a.damage ?? '',
       range: a.range ?? '',
+      rider: a.rider ?? '',
     })),
   );
   const [abilities, setAbilities] = useState<AbilityDraft[]>(() =>
@@ -322,12 +327,18 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
         initiative: parseIntegerField(initiative),
         hitPoints: parseIntegerField(hitPoints),
         defense: parseIntegerField(defense),
-        // Départage d'initiative : reflète directement la carac AGI saisie ci-dessous, plus de
-        // champ séparé (cf. commentaire sur `abilityScores`).
-        agility: parseIntegerField(abilityScores.AGI),
+        // PAS de `agility` séparée (PER-516) : `abilities.AGI` ci-dessous porte déjà la carac
+        // AGI saisie dans la grille, la dupliquer ne ferait que gonfler l'export JSON.
         nc,
         description,
-        attacks,
+        attacks: attacks.map((a) => ({
+          name: a.name,
+          attackCount: parseIntegerField(a.attackCount),
+          bonus: a.bonus,
+          damage: a.damage,
+          range: a.range,
+          rider: a.rider,
+        })),
         specialAbilities: abilities,
         abilities: Object.fromEntries(
           ABILITY_IDS.map((id) => [id, parseIntegerField(abilityScores[id])]),
@@ -784,6 +795,19 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
                     />
                     <TextField
                       size="small"
+                      type="number"
+                      label="Nb attaques"
+                      placeholder="2"
+                      value={attack.attackCount}
+                      onChange={(e) =>
+                        setAttacks((prev) =>
+                          prev.map((a, i) => (i === index ? { ...a, attackCount: e.target.value } : a)),
+                        )
+                      }
+                      sx={{ flex: '0 1 90px', minWidth: 80 }}
+                    />
+                    <TextField
+                      size="small"
                       label="Bonus"
                       placeholder="+7"
                       value={attack.bonus}
@@ -819,6 +843,19 @@ function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: Ad
                         )
                       }
                       sx={{ flex: '1 1 110px', minWidth: 90 }}
+                      slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
+                    />
+                    <TextField
+                      size="small"
+                      label="Effet"
+                      placeholder="+ poison"
+                      value={attack.rider}
+                      onChange={(e) =>
+                        setAttacks((prev) =>
+                          prev.map((a, i) => (i === index ? { ...a, rider: e.target.value } : a)),
+                        )
+                      }
+                      sx={{ flex: '1 1 120px', minWidth: 100 }}
                       slotProps={{ htmlInput: { maxLength: CUSTOM_FIELD_MAX_LENGTH } }}
                     />
                     <AppTooltip title="Retirer cette attaque">

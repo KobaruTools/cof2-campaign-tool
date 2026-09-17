@@ -859,8 +859,10 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             initiative,
             initiativeDelta,
             // AGI du bloc du bestiaire (absente pour les variantes qui renvoient à leur base) ;
-            // pour une créature manuelle, l'AGI facultative saisie par le MJ.
-            agility: inst.custom ? inst.custom.agility : blob.abilities?.AGI,
+            // pour une créature manuelle, l'AGI facultative saisie par le MJ — `agility` n'est
+            // plus écrit séparément depuis PER-516 (redondant avec `abilities.AGI`), le repli
+            // couvre les instances plus anciennes qui n'ont que ce champ legacy.
+            agility: inst.custom ? (inst.custom.agility ?? inst.custom.abilities?.AGI) : blob.abilities?.AGI,
             maxHp,
             combatStats,
             // États EFFECTIFS (posés + déduits) — servent les badges des deux écrans (PER-282).
