@@ -86,13 +86,27 @@ export function mergeCharacters(
  * uniquement. Depuis la migration 0043, la RLS roster (`characters_player_read_roster`)
  * renvoie un ceiling de TOUTES les campagnes dont l'identité est membre (plus une
  * seule) — sans ce filtre, `/play` mélangerait les fiches non attribuées de
- * plusieurs campagnes dans une seule vue. Le MJ (RLS `owner_id`) continue d'appeler
- * sans filtre : sa portée n'est pas la campagne mais ses propres fiches.
+ * plusieurs campagnes dans une seule vue.
+ *
+ * Sans `campaignId`, l'appelant est côté MJ (vue « Mes personnages », fiche,
+ * écran MJ) : on filtre alors explicitement par `owner_id`. Un même compte peut
+ * porter à la fois le rôle MJ (`owner_id = auth.uid()`) et un claim joueur
+ * (`app_metadata.player_id`/`campaign_id`, PER-538) pour une AUTRE campagne — la
+ * RLS combine les deux politiques en OR, et sans ce filtre la vue MJ hériterait
+ * aussi de tout le roster de la campagne rejointe comme joueur (PER-539).
  */
 export async function fetchCharacters(campaignId?: string): Promise<LoadedCharacter[]> {
   const supabase = createBrowserSupabaseClient();
   let query = supabase.from('characters').select('*');
-  if (campaignId) query = query.eq('campaign_id', campaignId);
+  if (campaignId) {
+    query = query.eq('campaign_id', campaignId);
+  } else {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    query = query.eq('owner_id', user.id);
+  }
   const { data, error } = await query;
   if (error) throw error;
   const loaded: LoadedCharacter[] = [];
