@@ -2008,5 +2008,15 @@
         "tag": "account"
       }
     ]
+  },
+  {
+    "id": 112,
+    "date": "2026-09-17",
+    "items": [
+      {
+        "text": "Corrige un bug qui faisait disparaître la liste des personnages de la campagne en cours de partie.",
+        "tag": "campaign"
+      }
+    ]
   }
 ]
