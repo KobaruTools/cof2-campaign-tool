@@ -1968,5 +1968,15 @@
         "tag": "other"
       }
     ]
+  },
+  {
+    "id": 108,
+    "date": "2026-09-17",
+    "items": [
+      {
+        "text": "Un même compte peut désormais être à la fois propriétaire d'une campagne et joueur dans une autre, sans être déconnecté.",
+        "tag": "account"
+      }
+    ]
   }
 ]
