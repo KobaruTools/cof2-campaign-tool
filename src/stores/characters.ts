@@ -89,6 +89,16 @@ interface CharactersState {
    */
   cloudBackedIds: string[];
   status: CharactersStatus;
+  /**
+   * Portée du dernier `load()` réussi : `null` = MJ (sans `campaignId`, filtré
+   * `owner_id`), une chaîne = joueur scopé à cette campagne. Non persisté (comme
+   * `status`). Sert à distinguer un `status: 'ready'` légitimement réutilisable
+   * d'un `'ready'` obtenu pour une AUTRE portée (PER-540) : sans ce contrôle, un
+   * compte qui navigue MJ→joueur (ou entre deux campagnes joueur) dans le même
+   * onglet hérite silencieusement de la liste de la portée précédente, `load()`
+   * court-circuitant son cache sans jamais relire la bonne portée.
+   */
+  loadedScope: string | null | undefined;
   error: string | null;
   /**
    * Id du dernier personnage dont le flush a été **rejeté** par le verrou optimiste
@@ -100,9 +110,14 @@ interface CharactersState {
 
   /**
    * Charge les persos cloud et les fusionne au staging local, au montage.
-   * **Idempotent et mis en cache** : si déjà chargé (`ready`) ou en cours
-   * (`loading`), ne refait AUCUN appel réseau — le store vit pour toute la session
-   * SPA et les mutations le maintiennent à jour. `{ force: true }` pour recharger.
+   * **Idempotent et mis en cache PAR PORTÉE** (`loadedScope`) : si déjà chargé
+   * (`ready`) ou en cours (`loading`) POUR LA MÊME portée (même `campaignId`, ou
+   * son absence), ne refait AUCUN appel réseau — le store vit pour toute la
+   * session SPA et les mutations le maintiennent à jour. Un `campaignId`
+   * différent du dernier chargement force un refetch même sans `{ force: true }`
+   * (PER-540) : sinon un compte qui navigue MJ↔joueur (ou entre deux campagnes
+   * joueur) dans le même onglet resterait figé sur la liste de la portée
+   * précédente. `{ force: true }` recharge en plus dans la MÊME portée.
    * (Après un rechargement de page, `status` repart à `idle` — `partialize` ne
    * persiste que le staging `characters` et le marqueur `cloudBackedIds`, pas
    * l'état de synchro — donc le fetch cloud initial a toujours lieu.)
@@ -300,6 +315,7 @@ export const useCharactersStore = create<CharactersState>()(
         cloudVersions: {},
         cloudBackedIds: [],
         status: 'idle',
+        loadedScope: undefined,
         error: null,
         conflictId: null,
         hasHydrated: false,
@@ -320,9 +336,16 @@ export const useCharactersStore = create<CharactersState>()(
             set({ status: 'unconfigured' });
             return;
           }
-          // Cache : pas de refetch si déjà chargé/en cours, sauf force explicite.
-          const { status } = get();
-          if (!opts?.force && (status === 'ready' || status === 'loading')) return;
+          // Cache : pas de refetch si déjà chargé/en cours POUR LA MÊME PORTÉE, sauf
+          // force explicite. Un changement de portée (MJ ↔ joueur, ou d'une campagne
+          // joueur à une autre dans le même onglet) invalide le cache même si un
+          // chargement précédent a réussi (PER-540) : sinon la liste de la portée
+          // précédente reste affichée, silencieusement, à la place de la bonne.
+          const scope = opts?.campaignId ?? null;
+          const { status, loadedScope } = get();
+          if (!opts?.force && scope === loadedScope && (status === 'ready' || status === 'loading')) {
+            return;
+          }
           set({ status: 'loading', error: null });
           try {
             const loaded = await fetchCharacters(opts?.campaignId);
@@ -339,6 +362,7 @@ export const useCharactersStore = create<CharactersState>()(
               // exactement les ids réellement présents en base.
               cloudBackedIds: cloudIds,
               status: 'ready',
+              loadedScope: scope,
               error: null,
             }));
           } catch (e) {
