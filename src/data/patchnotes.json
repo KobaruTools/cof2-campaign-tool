@@ -1988,5 +1988,15 @@
         "tag": "gm-screen"
       }
     ]
+  },
+  {
+    "id": 110,
+    "date": "2026-09-17",
+    "items": [
+      {
+        "text": "Le MJ et les joueurs voient désormais des écrans de campagne mieux adaptés à leur rôle, avec des sections qui se replient pour plus de clarté.",
+        "tag": "campaign"
+      }
+    ]
   }
 ]
