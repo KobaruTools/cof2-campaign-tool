@@ -2018,5 +2018,15 @@
         "tag": "campaign"
       }
     ]
+  },
+  {
+    "id": 113,
+    "date": "2026-09-17",
+    "items": [
+      {
+        "text": "Le nombre d'attaques et l'effet des attaques cumulées sont maintenant correctement affichés dans le bestiaire, sans doublon d'agilité.",
+        "tag": "bestiary"
+      }
+    ]
   }
 ]
