@@ -107,7 +107,7 @@ async function reconcileOnReconnect(
   if (!sessionActive) return; // session finie → chemin verrou (le poll fermera le canal)
   const characters = useCharactersStore.getState();
   await characters.resyncGameState(campaignId);
-  await characters.load({ force: true });
+  await characters.load({ force: true, campaignId });
   // Le MJ est l'auteur unique du combat : sa vue locale fait foi, il la re-diffuse. Idem pour une
   // proposition de repos de groupe en cours (PER-312), qui ne vit qu'en mémoire chez lui.
   if (kind === 'gm') {
@@ -347,7 +347,7 @@ export function useSessionChannel(
             // par instantané (PER-269) : re-pousser nos édits hors ligne puis relire l'autoritatif.
             if (!didInitialLoad) {
               didInitialLoad = true;
-              void useCharactersStore.getState().load({ force: true });
+              void useCharactersStore.getState().load({ force: true, campaignId });
             } else {
               void reconcileOnReconnect(campaignId, kind);
             }
