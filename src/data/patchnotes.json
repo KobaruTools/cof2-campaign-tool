@@ -1978,5 +1978,15 @@
         "tag": "account"
       }
     ]
+  },
+  {
+    "id": 109,
+    "date": "2026-09-17",
+    "items": [
+      {
+        "text": "Correction d'un bug de sécurité : un joueur ne pouvait plus voir apparaître les personnages d'un autre joueur dans l'écran du meneur de jeu.",
+        "tag": "gm-screen"
+      }
+    ]
   }
 ]
