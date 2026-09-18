@@ -2058,5 +2058,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 117,
+    "date": "2026-09-18",
+    "items": [
+      {
+        "text": "Une rumeur déjà donnée peut désormais être remise dans la pioche pour être tirée à nouveau.",
+        "tag": "campaign"
+      }
+    ]
   }
 ]
