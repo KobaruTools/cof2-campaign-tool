@@ -73,3 +73,12 @@ export function drawRumor(rumors: TavernRumor[], pick: PickIndex): RumorDraw | n
 export function resetRumors(rumors: TavernRumor[]): TavernRumor[] {
   return rumors.map((r) => (r.served ? { ...r, served: false } : r));
 }
+
+/**
+ * Remet UNE rumeur précise dans la pioche (repasse `served` à `false`), sans
+ * toucher aux autres — pendant PER-519 : le MJ change d'avis après un tirage
+ * (rumeur inadaptée à la scène) sans vouloir réinitialiser toute la réserve.
+ */
+export function unserveRumor(rumors: TavernRumor[], id: string): TavernRumor[] {
+  return rumors.map((r) => (r.id === id ? { ...r, served: false } : r));
+}

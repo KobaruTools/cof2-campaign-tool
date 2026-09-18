@@ -23,6 +23,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/Edit';
+import ReplayIcon from '@mui/icons-material/Replay';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -42,6 +43,7 @@ import {
   isReserveEmpty,
   remainingCount,
   resetRumors,
+  unserveRumor,
 } from '@/lib/campaign/rumors';
 import { useCampaignsStore } from '@/stores/campaigns';
 
@@ -108,6 +110,11 @@ export function TavernRumorsPanel({ campaign }: { campaign: Campaign }) {
     const next: TavernRumor[] = [...rumors, { id: newRumorId(), text, served: false }];
     const ok = await persist(next);
     if (ok) setNewText('');
+  };
+
+  const handleUnserve = async (id: string) => {
+    const ok = await persist(unserveRumor(rumors, id));
+    if (ok) showToast('Rumeur remise dans la pioche.', 'success');
   };
 
   const handleRemove = async (id: string) => {
@@ -252,9 +259,22 @@ export function TavernRumorsPanel({ campaign }: { campaign: Campaign }) {
                     <GlossaryRichText>{r.text}</GlossaryRichText>
                   </Typography>
                   {r.served && (
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      servie
-                    </Typography>
+                    <>
+                      <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                        servie
+                      </Typography>
+                      <Tooltip title="Remettre dans la pioche">
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleUnserve(r.id)}
+                            disabled={busy}
+                          >
+                            <ReplayIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </>
                   )}
                   <Tooltip title="Modifier">
                     <span>

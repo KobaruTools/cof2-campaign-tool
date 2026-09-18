@@ -7,6 +7,7 @@ import {
   remainingCount,
   remainingRumors,
   resetRumors,
+  unserveRumor,
 } from './rumors';
 
 /** Fabrique une rumeur, `served` par défaut à `false`. */
@@ -105,6 +106,27 @@ describe('resetRumors', () => {
   it('ne mute pas l’entrée', () => {
     const list = [rumor('a', true)];
     resetRumors(list);
+    expect(list[0].served).toBe(true);
+  });
+});
+
+describe('unserveRumor', () => {
+  it('remet UNE seule rumeur non-servie, sans toucher aux autres', () => {
+    const list = [rumor('a', true), rumor('b', true), rumor('c')];
+    const result = unserveRumor(list, 'b');
+    expect(result.find((r) => r.id === 'a')!.served).toBe(true);
+    expect(result.find((r) => r.id === 'b')!.served).toBe(false);
+    expect(result.find((r) => r.id === 'c')!.served).toBe(false);
+  });
+
+  it('ne fait rien si l’id ne correspond à aucune rumeur', () => {
+    const list = [rumor('a', true)];
+    expect(unserveRumor(list, 'inconnu')).toEqual(list);
+  });
+
+  it('ne mute pas l’entrée', () => {
+    const list = [rumor('a', true)];
+    unserveRumor(list, 'a');
     expect(list[0].served).toBe(true);
   });
 });
