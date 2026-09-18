@@ -22,6 +22,7 @@ import { hrefFromIndex, useCharacterSlugIndex } from '@/lib/routing/slug';
 import AddIcon from '@mui/icons-material/Add';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import GroupsIcon from '@mui/icons-material/Groups';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
@@ -81,13 +82,14 @@ export default function CharactersPage() {
   useHeaderContent({ breadcrumbs: [{ label: 'Mes personnages' }] });
   // Rôle de session : la page est ouverte SANS compte (l'app est locale d'abord), on
   // avertit alors le visiteur que ses fiches ne vivent que dans ce navigateur.
-  const { role, resolved } = useAppSession();
+  const { role, resolved, userId } = useAppSession();
   const isAnonymous = resolved && role === 'anonymous';
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const characters = useCharactersStore((s) => s.characters);
   const characterSlugIndex = useCharacterSlugIndex();
   const cloudVersions = useCharactersStore((s) => s.cloudVersions);
+  const ownerIds = useCharactersStore((s) => s.ownerIds);
   const loadCharacters = useCharactersStore((s) => s.load);
   const duplicate = useCharactersStore((s) => s.duplicate);
   const remove = useCharactersStore((s) => s.remove);
@@ -140,6 +142,12 @@ export default function CharactersPage() {
   // chargé (ou non configuré / en erreur), on ne présume pas : pas de marqueur ni
   // d'action de téléversement.
   const isLocalOnly = (id: string) => status === 'ready' && !(id in cloudVersions);
+
+  // Possédée administrativement (PER-540) : un id absent de `ownerIds` est purement
+  // local (jamais chargé du cloud) donc forcément mienne ; sinon, comparer au vrai
+  // `owner_id`. Distingue une fiche qu'on POSSÈDE d'une fiche qu'on incarne
+  // seulement (montée par un AUTRE compte, ex. le MJ) — cf. `fetchCharacters`.
+  const isMine = (id: string) => !(id in ownerIds) || ownerIds[id] === userId;
 
   const pickSort = (key: SortKey) => setSort(pickSortReducer(key));
   const toggleDir = () => setSort((p) => ({ key: p.key, dir: p.dir === 'asc' ? 'desc' : 'asc' }));
@@ -251,6 +259,11 @@ export default function CharactersPage() {
           <CloudOffIcon fontSize="small" sx={{ color: 'warning.main', flexShrink: 0 }} />
         </AppTooltip>
       )}
+      {!isMine(r.id) && (
+        <AppTooltip title="Vous l’incarnez, mais la fiche est gérée par votre MJ — actions limitées">
+          <GroupsIcon fontSize="small" sx={{ color: 'text.disabled', flexShrink: 0 }} />
+        </AppTooltip>
+      )}
     </>
   );
 
@@ -272,6 +285,7 @@ export default function CharactersPage() {
       key: 'duplicate',
       label: 'Dupliquer',
       icon: <ContentCopyIcon fontSize="small" />,
+      show: (r) => isMine(r.id),
       onClick: (r) => handleDuplicate(r.id),
     },
     {
@@ -291,6 +305,7 @@ export default function CharactersPage() {
       label: 'Supprimer',
       icon: <DeleteOutlineIcon fontSize="small" color="error" />,
       danger: true,
+      show: (r) => isMine(r.id),
       onClick: (r) => setToDelete({ id: r.id, name: r.name }),
     },
   ];

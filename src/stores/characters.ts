@@ -88,6 +88,15 @@ interface CharactersState {
    * local supprimé depuis une autre session, qui ressusciterait sinon à la fusion.
    */
   cloudBackedIds: string[];
+  /**
+   * `owner_id` cloud, par id (PER-540). Non persisté (comme `cloudVersions`) : un
+   * id absent de cette map est soit purement local (jamais chargé), soit hors du
+   * dernier `load()`. Sert UNIQUEMENT à distinguer, dans « Mes personnages », une
+   * fiche réellement possédée d'une fiche qu'on incarne sans la posséder (voir
+   * `fetchCharacters`) — jamais une frontière de sécurité (la RLS/le serveur
+   * tranchent déjà ça).
+   */
+  ownerIds: Record<string, string>;
   status: CharactersStatus;
   /**
    * Portée du dernier `load()` réussi : `null` = MJ (sans `campaignId`, filtré
@@ -314,6 +323,7 @@ export const useCharactersStore = create<CharactersState>()(
         characters: [],
         cloudVersions: {},
         cloudBackedIds: [],
+        ownerIds: {},
         status: 'idle',
         loadedScope: undefined,
         error: null,
@@ -351,13 +361,18 @@ export const useCharactersStore = create<CharactersState>()(
             const loaded = await fetchCharacters(opts?.campaignId);
             const cloud = loaded.map((l) => l.character);
             const cloudVersions: Record<string, number> = {};
-            for (const l of loaded) cloudVersions[l.character.id] = l.version;
+            const ownerIds: Record<string, string> = {};
+            for (const l of loaded) {
+              cloudVersions[l.character.id] = l.version;
+              ownerIds[l.character.id] = l.ownerId;
+            }
             const cloudIds = cloud.map((c) => c.id);
             set((s) => ({
               // Purge des fantômes (PER-205) : on passe le marqueur cloud-backed
               // rehydraté pour écarter les persos supprimés depuis une autre session.
               characters: mergeCharacters(cloud, s.characters, new Set(s.cloudBackedIds)),
               cloudVersions,
+              ownerIds,
               // Le cloud fraîchement lu fait foi : le marqueur reflète désormais
               // exactement les ids réellement présents en base.
               cloudBackedIds: cloudIds,

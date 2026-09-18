@@ -21,6 +21,7 @@
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { Database, Json } from '@/lib/supabase/types';
 import { migrateCharacter } from '@/lib/engine';
+import type { SessionAppMetadata } from '@/lib/auth/sessionRole';
 import type { Character, CharacterStatus, EquipmentLine } from './types';
 
 type CharacterRow = Database['public']['Tables']['characters']['Row'];
@@ -29,6 +30,13 @@ type CharacterRow = Database['public']['Tables']['characters']['Row'];
 export interface LoadedCharacter {
   character: Character;
   version: number;
+  /**
+   * `owner_id` BRUT de la ligne (PER-540) — PAS surchargé sur `Character` (qui ne
+   * porte que campaignId/playerId/status). Sert à distinguer, dans « Mes
+   * personnages », une fiche réellement possédée d'une fiche qu'on incarne sans
+   * la posséder administrativement (montée par un AUTRE compte, cf. `fetchCharacters`).
+   */
+  ownerId: string;
 }
 
 /**
@@ -47,6 +55,7 @@ export function rowToCharacter(row: CharacterRow): LoadedCharacter {
       status: row.status as CharacterStatus,
     },
     version: row.version,
+    ownerId: row.owner_id,
   };
 }
 
@@ -88,12 +97,17 @@ export function mergeCharacters(
  * seule) — sans ce filtre, `/play` mélangerait les fiches non attribuées de
  * plusieurs campagnes dans une seule vue.
  *
- * Sans `campaignId`, l'appelant est côté MJ (vue « Mes personnages », fiche,
- * écran MJ) : on filtre alors explicitement par `owner_id`. Un même compte peut
- * porter à la fois le rôle MJ (`owner_id = auth.uid()`) et un claim joueur
- * (`app_metadata.player_id`/`campaign_id`, PER-538) pour une AUTRE campagne — la
- * RLS combine les deux politiques en OR, et sans ce filtre la vue MJ hériterait
- * aussi de tout le roster de la campagne rejointe comme joueur (PER-539).
+ * Sans `campaignId`, l'appelant est côté « Mes personnages » (page dédiée, fiche,
+ * écran MJ) : on filtre alors explicitement par `owner_id`, ÉLARGI (PER-540) au
+ * personnage que le compte incarne comme joueur ailleurs (`app_metadata.player_id`,
+ * PER-538), pour qu'un compte qui joue une fiche montée par SON MJ (donc `owner_id`
+ * ≠ lui) la retrouve quand même dans SA liste personnelle. Un même compte peut
+ * porter à la fois le rôle MJ (`owner_id = auth.uid()`) et un claim joueur pour une
+ * AUTRE campagne — la RLS combine owner_all et le roster COMPLET de cette campagne
+ * en OR ; sans filtre explicite ici, la vue « Mes personnages » hériterait donc de
+ * tout ce roster (les fiches des AUTRES joueurs, PER-539), pas seulement la sienne.
+ * `player_id` (pas `player_auth_sessions`, verrouillée par RLS sans policy côté
+ * client) est la même source que `characters_player_update_own` (migration 0002).
  */
 export async function fetchCharacters(campaignId?: string): Promise<LoadedCharacter[]> {
   const supabase = createBrowserSupabaseClient();
@@ -105,7 +119,11 @@ export async function fetchCharacters(campaignId?: string): Promise<LoadedCharac
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return [];
-    query = query.eq('owner_id', user.id);
+    const metadata = (user.app_metadata ?? {}) as SessionAppMetadata;
+    const playerId = isUuid(metadata.player_id) ? metadata.player_id : null;
+    query = playerId
+      ? query.or(`owner_id.eq.${user.id},player_id.eq.${playerId}`)
+      : query.eq('owner_id', user.id);
   }
   const { data, error } = await query;
   if (error) throw error;
