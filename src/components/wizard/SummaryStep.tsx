@@ -13,6 +13,7 @@ import { checkCompliance } from '@/lib/engine';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { finalAbilities, level1FeatureIds, materializeDraft } from '@/lib/character/wizard';
 import { classDisplayName } from '@/lib/character/classDisplay';
+import { ancestryDisplayName } from '@/lib/character/ancestryDisplay';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { activeFeatureIdsForMods, defenseAbility, effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
 import { hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
@@ -160,7 +161,7 @@ export function SummaryStep({
           sx={{ alignItems: 'center', color: 'text.secondary' }}
         >
           <Typography variant="body2" component="span">
-            {ancestry.name} ·
+            {ancestryDisplayName(ancestry, draft.identity.sex)} ·
           </Typography>
           <ClassIcon classId={characterClass.id} size={18} />
           <Typography
@@ -168,7 +169,7 @@ export function SummaryStep({
             component="span"
             sx={{ color: classColor(characterClass.id), fontWeight: 600 }}
           >
-            {classDisplayName(characterClass, firearmsAllowed)}
+            {classDisplayName(characterClass, firearmsAllowed, draft.identity.sex)}
           </Typography>
           <Typography variant="body2" component="span">
             · niveau 1

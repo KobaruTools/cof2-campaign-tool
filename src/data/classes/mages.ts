@@ -19,6 +19,7 @@ export const mageClasses: CharacterClass[] = [
   {
     id: 'ensorceleur',
     name: 'Ensorceleur',
+    nameFeminine: 'Ensorceleuse',
     familyId: 'mages',
     description:
       "L’ensorceleur tire son pouvoir d’un talent inné pour la magie. Il pratique une magie subtile à base de tromperie et de contrôle, et possède peu de sorts de destruction massive. Dans les Terres d’Osgild : contrairement aux magiciens, les ensorceleurs peuvent provenir de n’importe quelle zone géographique, car le don surgit au hasard. Selon les sociétés, le don peut être considéré comme une bénédiction (chez les elfes par exemple) autant que comme une malédiction (protectorat de Fer). La magie innée est souvent considérée comme la magie du pauvre, car elle ne nécessite aucune éducation pour se développer, toutefois elle traverse toutes les couches de la société. À part quelques cas avérés de pacte avec une entité puissante, l’origine du don reste relativement mystérieuse. Les gnomes, eux‑mêmes très sujets à l’apparition du don, ont toutefois avancé des théories farfelues en rapport avec les Pierres du Ciel, de puissantes sources de magie disséminées sur les Terres d’Osgild. Mais l’existence de telles pierres reste à prouver.",
@@ -64,6 +65,7 @@ export const mageClasses: CharacterClass[] = [
   {
     id: 'magicien',
     name: 'Magicien',
+    nameFeminine: 'Magicienne',
     familyId: 'mages',
     description:
       "Le magicien est un érudit qui a fait de longues études sur les fondements théoriques de la magie avant d’être capable de lancer ses premiers sorts. Toutefois, ce n’est pas qu’un rat de bibliothèque, il fait aussi appel à la magie pour se débarrasser de ses ennemis et pour aider ses compagnons. Son bien le plus précieux est son grimoire où il a inscrit tous ses sorts. Dans les Terres d’Osgild : la pratique de la magie profane nécessite une formation complexe généralement enseignée dans une académie. Celle de la principauté d’Arly, située à Ferrance, est dirigée par l’archimage Kerlaft de Rollis, éminence grise du prince Thomar. Ce sont plus souvent les jeunes gens issus de familles fortunées qui peuvent se permettre de telles études. Les jeunes magiciens issus de milieux moins aisés sont généralement repérés par de puissants mages qui les prennent sous leur aile comme apprenti et serviteur en échange de bribes de savoir plus ou moins importantes. En la matière, les maîtres sont tous très différents, certains sont des tyrans, d’autres se montrent plus prévenants mais, en règle générale, tous sont assez peu enclins à partager sans restriction le pouvoir que leur offre leur statut de maître… À part les humains, les elfes forment de puissants magiciens, et les gnomes ont la persévérance et le goût pour la recherche théorique nécessaires à ce profil. En revanche, rencontrer un nain, un halfelin ou un demi‑orc magicien est un événement exceptionnel.",
@@ -92,6 +94,7 @@ export const mageClasses: CharacterClass[] = [
   {
     id: 'sorcier',
     name: 'Sorcier',
+    nameFeminine: 'Sorcière',
     familyId: 'mages',
     description:
       "Le sorcier est un lanceur de sorts qui s’intéresse aux forces obscures et au pouvoir de la mort. Parfois nommés nécromanciens ou démonistes, les sorciers sont généralement considérés comme maléfiques et sont peu appréciés. Toutefois, cela dépend des cultures : après tout, est‑il plus maléfique de vider un ennemi de son sang que de le découper à coup de hache ou de le carboniser à coup de Explosion de feu ? C’est une des questions que soulève le sorcier ! Interprétez‑le de façon subtile afin d’en faire un personnage plutôt sombre ou désespéré, mais pas nécessairement « mauvais ». Dans les Terres d’Osgild : tout comme la magie profane des magiciens, la magie noire nécessite des études poussées. Cette connaissance peut être tirée d’antiques grimoires, mais souvent elle est obtenue par le biais d’un pacte avec un maître maléfique (prince démon, entité indicible, mort‑vivant très ancien, etc.) et dans ce cas, peu importe l’origine sociale du postulant. Pour celui qui n’a pas les moyens de s’offrir de coûteuses études de magie, la tentation est grande de faire appel à un sombre mentor et le ressentiment éventuel contre les riches et les puissants peut être un moteur redoutable. Enfin, il existe des êtres qui n’ont pas choisi la magie noire, mais qui sont nés avec un don pour celle‑ci. Cela est généralement le fruit d’un événement tragique qui a corrompu un parent, voire l’enfant lui‑même. Dans la plupart des nations humaines, les sombres mages sont tout juste tolérés, tant qu’ils ne troublent pas l’ordre public en ramenant les morts à la vie. Ce que la loi interdit à peu près partout. De leur côté, les elfes et les nains abhorrent la magie noire, si les humains ont oublié, les Premiers‑Nés ont encore le souvenir des ravages de la terrible magie du Roi‑Sorcier de Tor‑Angul et du destin funeste de la forêt Sombre. Héritier de cette période, le Kathang (au sud du mur de Kelt) est réputé pour sa magie noire et cette influence s’étend à travers les jungles de Luir‑An‑Doral jusque dans le duché de Périk.",
@@ -1578,6 +1581,28 @@ export const mageFeatures: Feature[] = [
     // PER-489 : « de feu » explicite dans le nom + DM directs chiffrés.
     dealsDirectDamage: true,
     classicalElement: 'fire',
+    // PER-517 : note p. 104 (voie de la magie destructrice) — « le joueur peut décider de
+    // substituer un élément à un autre lors de l'acquisition d'un sort (…), ce choix est
+    // définitif ». Les 4 types sont ceux de Maîtrise des éléments (p. 104 aussi), PAS les 4
+    // éléments classiques de `classicalElement` (feu/terre/air/eau, PER-489) — taxonomie
+    // différente, sans effet sur les dérogations élémentaires mystiques. `nameFromChosenOption`
+    // fait porter le nom affiché par l'option retenue (repli sur le nom du livre tant qu'aucun
+    // choix n'est fait) ; « Mains électriques » est l'exemple nommé par le livre pour ce sort
+    // (« des flammes jaillissent des doigts tendus »), les 2 autres noms sont une proposition
+    // validée par le propriétaire (2026-09-07), pas un texte du livre.
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Type de dégâts du sort (choix définitif à l’acquisition, p. 104)',
+        nameFromChosenOption: true,
+        options: [
+          { id: 'fire', label: 'Arc de feu' },
+          { id: 'cold', label: 'Cône de givre' },
+          { id: 'lightning', label: 'Mains électriques' },
+          { id: 'acid', label: 'Projection d’acide' },
+        ],
+      },
+    ],
     sourcePage: 103,
   },
   {
@@ -1613,6 +1638,21 @@ export const mageFeatures: Feature[] = [
     // PER-489 : « de feu » explicite dans le nom + DM directs chiffrés (hit initial + DoT).
     dealsDirectDamage: true,
     classicalElement: 'fire',
+    // PER-517 : substitution d'élément définitive à l'acquisition (note p. 104, cf.
+    // magie-destructrice-r1) — noms proposés, validés par le propriétaire (2026-09-07).
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Type de dégâts du sort (choix définitif à l’acquisition, p. 104)',
+        nameFromChosenOption: true,
+        options: [
+          { id: 'fire', label: 'Flèche de feu' },
+          { id: 'cold', label: 'Flèche de glace' },
+          { id: 'lightning', label: 'Flèche foudroyante' },
+          { id: 'acid', label: 'Flèche d’acide' },
+        ],
+      },
+    ],
     sourcePage: 104,
   },
   {
@@ -1631,6 +1671,22 @@ export const mageFeatures: Feature[] = [
     // PER-489 : « de feu » explicite dans le nom + DM directs chiffrés (AOE).
     dealsDirectDamage: true,
     classicalElement: 'fire',
+    // PER-517 : substitution d'élément définitive à l'acquisition (note p. 104, cf.
+    // magie-destructrice-r1). « Explosion acide » est l'exemple nommé par le livre pour CE
+    // sort ; les 2 autres noms sont une proposition validée par le propriétaire (2026-09-07).
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Type de dégâts du sort (choix définitif à l’acquisition, p. 104)',
+        nameFromChosenOption: true,
+        options: [
+          { id: 'fire', label: 'Explosion de feu' },
+          { id: 'cold', label: 'Explosion de givre' },
+          { id: 'lightning', label: 'Explosion électrique' },
+          { id: 'acid', label: 'Explosion acide' },
+        ],
+      },
+    ],
     sourcePage: 104,
   },
   {
@@ -1649,6 +1705,24 @@ export const mageFeatures: Feature[] = [
     // des 4 mots (feu/terre/air/eau) — c'est l'autre taxonomie de types de DM (feu/froid/
     // électricité/acide, cf. Maîtrise des éléments), sans lien mécanique avec les voies mystiques.
     dealsDirectDamage: true,
+    // PER-517 : substitution d'élément définitive à l'acquisition (note p. 104, cf.
+    // magie-destructrice-r1). Foudre est le type PAR DÉFAUT ici (contrairement aux 3 autres
+    // sorts de la voie, qui partent du feu). « Tempête de glace » est l'exemple nommé par le
+    // livre pour CE sort ; les 2 autres noms sont une proposition validée par le propriétaire
+    // (2026-09-07).
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Type de dégâts du sort (choix définitif à l’acquisition, p. 104)',
+        nameFromChosenOption: true,
+        options: [
+          { id: 'lightning', label: 'Appel de la foudre' },
+          { id: 'fire', label: 'Vortex de flamme' },
+          { id: 'cold', label: 'Tempête de glace' },
+          { id: 'acid', label: 'Pluie d’acide' },
+        ],
+      },
+    ],
     sourcePage: 104,
   },
 

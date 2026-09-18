@@ -2,9 +2,9 @@
  * Helpers d'affichage d'un personnage dans les listes (résout les ids de
  * règles en libellés lisibles).
  */
-import { ancestryById } from '@/data';
 import type { Campaign } from '@/lib/campaign/types';
 import type { Character, CharacterStatus } from './types';
+import { characterAncestryName } from './ancestryDisplay';
 import { characterClassName } from './classDisplay';
 import { firearmsEffective } from './firearms';
 import { normalizeSearchText } from '@/lib/ui/searchText';
@@ -37,7 +37,7 @@ function buildSummary(character: Character, firearmsAllowed: boolean): Character
   return {
     id: character.id,
     name: character.name || 'Sans nom',
-    ancestry: ancestryById.get(character.ancestryId)?.name ?? dash,
+    ancestry: characterAncestryName(character, dash),
     classId: character.classId,
     characterClass: characterClassName(character, dash, firearmsAllowed),
     firearmsAllowed,

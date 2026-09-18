@@ -52,6 +52,7 @@ export const ancestries: Ancestry[] = [
   {
     id: 'demi-orc',
     name: 'Demi-orc',
+    nameFeminine: 'Demi-orque',
     description:
       'Le demi-orc est de grande taille. Il possède une force physique hors du commun, et est généralement méprisé par les autres peuples, en particulier par les nains et les elfes.\n\n' +
       'Interpréter un demi-orc\n\n' +
@@ -85,6 +86,7 @@ export const ancestries: Ancestry[] = [
   {
     id: 'elfe-haut',
     name: 'Elfe haut',
+    nameFeminine: 'Elfe haute',
     description:
       'L’elfe haut est un être féérique qui vit extrêmement longtemps et dont le niveau de civilisation et de culture se révèle généralement supérieur à celui des autres peuples. Proche de la nature, il maîtrise aussi bien les arts de la magie que ceux de la guerre.\n\n' +
       'Interpréter un elfe haut\n\n' +
@@ -116,6 +118,7 @@ export const ancestries: Ancestry[] = [
   {
     id: 'elfe-sylvain',
     name: 'Elfe sylvain',
+    nameFeminine: 'Elfe sylvaine',
     description:
       'L’elfe sylvain est issu d’une culture différente de celle des elfes hauts. Légèrement plus petits, ils vivent au plus profond des forêts, s’abritant dans les arbres et vivant simplement de la chasse et de la cueillette. Moins arrogants que leurs cousins hauts elfes, ils sont cependant beaucoup plus méfiants. Ils maîtrisent particulièrement l’art du camouflage et l’utilisation de l’arc.\n\n' +
       'Interpréter un elfe sylvain\n\n' +
@@ -179,6 +182,7 @@ export const ancestries: Ancestry[] = [
   {
     id: 'halfelin',
     name: 'Halfelin',
+    nameFeminine: 'Halfeline',
     description:
       'Les halfelins représentent le plus petit des peuples jouables. Toujours bons vivants, souvent vifs, curieux, et parfois farceurs, les halfelins sont des incompris que les autres peuples considèrent souvent comme turbulents, pénibles, si ce n’est comme des voleurs.\n\n' +
       'Interpréter un halfelin\n\n' +
@@ -212,6 +216,7 @@ export const ancestries: Ancestry[] = [
   {
     id: 'humain',
     name: 'Humain',
+    nameFeminine: 'Humaine',
     description:
       'L’humain se distingue par sa capacité d’adaptation et son instinct qui le pousse à coloniser tous les territoires qui l’entourent. Le peuple humain est le plus représenté et le plus répandu dans les zones dites civilisées.\n\n' +
       'Interpréter un humain\n\n' +
@@ -247,6 +252,7 @@ export const ancestries: Ancestry[] = [
   {
     id: 'nain',
     name: 'Nain',
+    nameFeminine: 'Naine',
     description:
       'Le nain est petit mais robuste. Célèbre pour sa barbe, il aime les profondeurs de la terre, dont il extrait des métaux et des pierres précieuses. Isolé, il est généralement ouvert et chaleureux, mais la société naine peut paraître sévère, car le travail et l’entraînement militaire y sont des obligations.\n\n' +
       'Interpréter un nain\n\n' +

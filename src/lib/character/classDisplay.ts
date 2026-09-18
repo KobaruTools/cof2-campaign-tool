@@ -1,30 +1,46 @@
 /**
- * Nom d'affichage d'un profil selon l'autorisation des armes à feu.
+ * Nom d'affichage d'un profil selon l'autorisation des armes à feu et le genre
+ * du personnage.
  *
  * L'arquebusier privé de poudre (armes à feu interdites dans l'univers, p. 62)
  * combat à l'arbalète et prend le nom d'« Arbalétrier » (`nameWithoutFirearms`).
  * Le nom du profil doit donc suivre le réglage `Character.firearmsAllowed`
  * partout où il est présenté comme LIBELLÉ (liste, wizard, en-tête de fiche) — la
  * prose verbatim des capacités, elle, n'est pas altérée.
+ *
+ * Féminisation (PER-518) : un personnage dont `Identity.sex === 'female'` voit le
+ * nom féminin du profil (`nameFeminine`/`nameWithoutFirearmsFeminine`) quand le
+ * profil en déclare un — sinon repli sur le nom épicène. `sex` absent/`male` →
+ * nom masculin, comportement inchangé.
  */
 import type { CharacterClass } from '@/data/schema';
 import { classById } from '@/data';
-import type { Character } from './types';
+import type { Character, Sex } from './types';
 
 /**
- * Libellé du profil `cls` compte tenu de l'autorisation des armes à feu. On ne
- * bascule sur le nom alternatif que si les armes à feu sont EXPLICITEMENT
- * interdites (`false`) et que le profil déclare un `nameWithoutFirearms` ;
- * `true`/absence de valeur → nom standard.
+ * Libellé du profil `cls` compte tenu de l'autorisation des armes à feu et du
+ * genre `sex`. On ne bascule sur le nom alternatif « sans poudre » que si les
+ * armes à feu sont EXPLICITEMENT interdites (`false`) et que le profil déclare
+ * un `nameWithoutFirearms` ; `true`/absence de valeur → nom standard. Le genre
+ * ne joue qu'ENSUITE, sur le nom déjà résolu par la règle « armes à feu ».
  */
-export function classDisplayName(cls: CharacterClass, firearmsAllowed: boolean): string {
-  return firearmsAllowed === false && cls.nameWithoutFirearms ? cls.nameWithoutFirearms : cls.name;
+export function classDisplayName(
+  cls: CharacterClass,
+  firearmsAllowed: boolean,
+  sex?: Sex,
+): string {
+  const withoutFirearms = firearmsAllowed === false && cls.nameWithoutFirearms;
+  const masculine = withoutFirearms ? cls.nameWithoutFirearms! : cls.name;
+  if (sex !== 'female') return masculine;
+  const feminine = withoutFirearms ? cls.nameWithoutFirearmsFeminine : cls.nameFeminine;
+  return feminine ?? masculine;
 }
 
 /**
  * Libellé du profil d'un personnage (résout l'id + applique l'autorisation des
- * armes à feu). `firearmsAllowed` = valeur EFFECTIVE (règle campagne ∧ choix
- * perso, PER-185) ; défaut = snapshot du personnage (sans campagne).
+ * armes à feu + le genre du personnage). `firearmsAllowed` = valeur EFFECTIVE
+ * (règle campagne ∧ choix perso, PER-185) ; défaut = snapshot du personnage
+ * (sans campagne).
  */
 export function characterClassName(
   character: Character,
@@ -32,7 +48,7 @@ export function characterClassName(
   firearmsAllowed: boolean = character.firearmsAllowed,
 ): string {
   const cls = classById.get(character.classId);
-  return cls ? classDisplayName(cls, firearmsAllowed) : fallback;
+  return cls ? classDisplayName(cls, firearmsAllowed, character.identity.sex) : fallback;
 }
 
 /**

@@ -77,6 +77,7 @@ import { PlayerBadgeTooltip } from '@/components/campaign/PlayerBadgeTooltip';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
+import { ancestryDisplayName } from '@/lib/character/ancestryDisplay';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
@@ -478,9 +479,10 @@ function GmSheetDrawerContent({
             </Typography>
             <CharacterIdentityLine
               dense
-              ancestryName={ancestry?.name}
+              ancestryName={ancestry && ancestryDisplayName(ancestry, character.identity.sex)}
               characterClass={characterClass}
               firearmsAllowed={firearmsAllowed}
+              sex={character.identity.sex}
               priestVocation={character.priestVocation}
               level={character.level}
               sx={{ flexWrap: 'wrap' }}

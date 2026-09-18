@@ -76,7 +76,7 @@ import type { Theme } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ToolbarActionButton } from '@/components/campaign/ToolbarActionButton';
 import { useToast } from '@/components/toast/ToastProvider';
-import { ancestryById } from '@/data';
+import { npcAncestryName } from '@/lib/character/ancestryDisplay';
 import {
   addNpc,
   addNpcCategory,
@@ -259,7 +259,7 @@ function NpcCard({
         </Box>
         {(npc.role || npc.ancestryId) && (
           <Typography variant="body2" color="text.secondary" noWrap sx={{ pl: 3.5 }}>
-            {[npc.role, npc.ancestryId ? ancestryById.get(npc.ancestryId)?.name : null]
+            {[npc.role, npcAncestryName(npc.ancestryId, npc.sex)]
               .filter(Boolean)
               .join(' · ')}
           </Typography>

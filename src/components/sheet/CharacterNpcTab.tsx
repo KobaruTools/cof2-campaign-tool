@@ -24,7 +24,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { ancestryById } from '@/data';
+import { npcAncestryName } from '@/lib/character/ancestryDisplay';
 import { filterPlayerNpcsByQuery, sortPlayerNpcsByDisposition, sortPlayerNpcsByName } from '@/lib/campaign/npc';
 import { NPC_DISPOSITION_ACCENT, NPC_DISPOSITION_LABELS, NPC_STATUS_LABELS, type PlayerNpc } from '@/lib/campaign/types';
 import { useCroppedImageSrc } from '@/lib/image/useCroppedImageSrc';
@@ -92,7 +92,7 @@ function PlayerNpcCard({ npc }: { npc: PlayerNpc }) {
         </Stack>
         {(npc.role || npc.ancestryId || npc.location) && (
           <Typography variant="body2" color="text.secondary">
-            {[npc.role, npc.ancestryId ? ancestryById.get(npc.ancestryId)?.name : null, npc.location]
+            {[npc.role, npcAncestryName(npc.ancestryId, npc.sex), npc.location]
               .filter(Boolean)
               .join(' · ')}
           </Typography>

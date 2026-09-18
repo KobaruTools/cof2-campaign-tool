@@ -32,6 +32,7 @@ export const adventurerClasses: CharacterClass[] = [
   {
     id: 'arquebusier',
     name: 'Arquebusier',
+    nameFeminine: 'Arquebusière',
     familyId: 'adventurers',
     description:
       "L'arquebusier est un dur à cuire, un mercenaire qui vient généralement d'un pays lointain et maîtrise un style de combat exotique : les armes à feu et les explosifs.\n\nDans les Terres d'Osgild. L'arquebusier est un personnage atypique dans les Terres d'Osgild. Il est toutefois plus commun dans les régions de l'est, où les armes à poudre ont d'abord été importées par le Protectorat de fer, tête de pont d'un vaste empire expansionniste qui a traversé l'océan. Mais cette nation est en guerre larvée permanente avec tous ses voisins et elle garde jalousement le secret des armes à poudre. Plus au sud, les nains de Kaer Glimmerstern maîtrisent à présent eux aussi la poudre et depuis peu ils s'en sont ouverts à leurs alliés, le royaume de Cobis et le duché de Périk. Guilde et Port-Libre, les deux grandes cités commerçantes se sont saisies de l'occasion et font désormais le commerce des armes à poudre, à prix d'or… Un PJ arquebusier devra donc avoir séjourné dans l'un de ces lieux.",
@@ -46,6 +47,7 @@ export const adventurerClasses: CharacterClass[] = [
     // Si les armes à feu sont interdites dans l'univers, l'arquebusier devient
     // « Arbalétrier » et combat à l'arbalète (p. 62).
     nameWithoutFirearms: 'Arbalétrier',
+    nameWithoutFirearmsFeminine: 'Arbalétrière',
     weaponNotes: "Fabrique sa propre poudre, sans risque d'explosion accidentelle.",
     startingEquipment: [
       // « Pétoire OU arbalète de poing » (p. 62) : un seul CHOIX à la création (PER-234), sur le
@@ -104,6 +106,7 @@ export const adventurerClasses: CharacterClass[] = [
   {
     id: 'rodeur',
     name: 'Rôdeur',
+    nameFeminine: 'Rôdeuse',
     familyId: 'adventurers',
     description:
       "Le rôdeur est à l'aise dans les forêts ténébreuses, où il traque les animaux dangereux et les créatures monstrueuses ou, au contraire, se fait l'ami des bêtes et le protecteur des lieux sauvages.\n\nDans les Terres d'Osgild : on trouve des rôdeurs dans tous les lieux naturels sauvages ou dans les villes et les villages à proximité où ils peuvent servir de guide aux marchands ou aux explorateurs. Dans la principauté d'Arly, le bois de Myrviel, le bois Dormant ou celui d'Astréis sont de bons points de départ tout comme les monts Vierges.",
@@ -132,6 +135,7 @@ export const adventurerClasses: CharacterClass[] = [
   {
     id: 'voleur',
     name: 'Voleur',
+    nameFeminine: 'Voleuse',
     familyId: 'adventurers',
     description:
       "Le voleur crochète les portes, détecte les pièges et préfère piller les cadavres des ennemis que se salir les mains pendant le combat. Toutefois, s'il doit combattre, il possède un répertoire impressionnant de coups tordus qui font de lui un redoutable adversaire.\n\nDans les Terres d'Osgild : les voleurs sont très courants partout, ils sont toutefois plus fréquents là où les concentrations de richesses et la misère sont plus importantes, c'est-à-dire dans les grandes villes. Dans la principauté d'Arly, Benastir, Valastir ou Ferrance font l'affaire. Si les aventures débutent loin d'une agglomération, il vous faut alors déterminer pourquoi le jeune délinquant a quitté la cité. Peut-être sa vie était-elle en danger : pour avoir volé la mauvaise personne, parce qu'une puissante organisation du crime a des comptes à régler avec lui ? Il existe en effet des guildes de voleurs très organisées dans certaines cités et il ne fait pas bon empiéter sur leurs plates-bandes. Une épine de plus dans le pied du voleur indépendant qui doit déjà échapper aux forces de l'ordre. C'est pourquoi les tire-laines et autres monte-en-l'air épris de liberté choisissent en général la vie d'aventurier, elle leur permet de changer fréquemment de terrain de chasse sans laisser le temps aux guildes locales de s'intéresser de trop près à leurs activités.",

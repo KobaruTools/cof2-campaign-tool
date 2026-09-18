@@ -7,6 +7,7 @@
  * et pur pour être testé et partagé par le wizard et la fiche (`IdentityForm`).
  */
 import type { Ancestry } from '@/data/schema';
+import { ancestryDisplayName } from './ancestryDisplay';
 import type { Identity } from './types';
 import {
   formatHeightRangeCm,
@@ -45,7 +46,7 @@ export function identityWarnings(identity: Identity, ancestry?: Ancestry): strin
   const physical = ancestry?.physical;
   if (!physical) return [];
   const warnings: string[] = [];
-  const name = ancestry.name;
+  const name = ancestryDisplayName(ancestry, identity.sex);
 
   // Âge : au-delà de l'espérance de vie du peuple (borne haute uniquement).
   const lifeMax = firstInt(physical.lifeExpectancy);

@@ -193,6 +193,14 @@ export interface AncestryNames {
 export interface Ancestry {
   id: string;
   name: string;
+  /**
+   * Nom d'affichage FÉMININ du peuple (PER-518), pour un personnage dont
+   * `Identity.sex === 'female'` — ex. « Naine », « Elfe haute ». Absent = le nom
+   * est épicène (identique au masculin, ex. « Demi-elfe », « Gnome »). Résolu par
+   * `ancestryDisplayName` (cf. `src/lib/character/ancestryDisplay.ts`), en miroir
+   * de `CharacterClass.nameFeminine`.
+   */
+  nameFeminine?: string;
   /** Description / interprétation (verbatim ou condensé fidèle). */
   description: string;
   physical: PhysicalProfile;
@@ -260,6 +268,14 @@ export interface EquipmentReskin {
 export interface CharacterClass {
   id: string;
   name: string;
+  /**
+   * Nom d'affichage FÉMININ du profil (PER-518), pour un personnage dont
+   * `Identity.sex === 'female'` — ex. « Guerrière », « Chevaleresse ». Absent = le
+   * nom est épicène (identique au masculin, ex. « Barbare », « Barde », ou aucune
+   * forme satisfaisante — ex. « Forgesort »). Résolu par `classDisplayName` (cf.
+   * `src/lib/character/classDisplay.ts`).
+   */
+  nameFeminine?: string;
   familyId: FamilyId;
   description: string;
   /** Texte verbatim « Armes & armures maîtrisées » — ex. p. 62. */
@@ -309,6 +325,12 @@ export interface CharacterClass {
    * le profil garde `name` quelle que soit l'autorisation des armes à feu.
    */
   nameWithoutFirearms?: string;
+  /**
+   * Variante FÉMININE de `nameWithoutFirearms` (PER-518) — ex. « Arbalétrière ».
+   * Absent alors que `nameWithoutFirearms` est défini → repli sur `nameFeminine`
+   * (comme `nameWithoutFirearms` absent replie sur `name`).
+   */
+  nameWithoutFirearmsFeminine?: string;
   /** Nuances verbatim non structurables (choix du joueur, exceptions…). */
   weaponNotes?: string;
   /**

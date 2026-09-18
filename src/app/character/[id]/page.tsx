@@ -106,6 +106,7 @@ import { ActiveStatusPanel } from '@/components/sheet/ActiveStatusPanel';
 import type { SessionIdentity } from '@/lib/session/useSessionChannel';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
+import { ancestryDisplayName } from '@/lib/character/ancestryDisplay';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PortraitVariantMenu } from '@/components/PortraitVariantMenu';
 import {
@@ -779,9 +780,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           subtitle: (
             <CharacterIdentityLine
               dense
-              ancestryName={headerAncestry?.name}
+              ancestryName={headerAncestry && ancestryDisplayName(headerAncestry, character.identity.sex)}
               characterClass={headerCharacterClass}
               firearmsAllowed={firearmsEffective(character, headerCurrentCampaign)}
+              sex={character.identity.sex}
               priestVocation={character.priestVocation}
               level={character.level}
             />
@@ -1764,9 +1766,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 révèle la même ligne en sous-titre du header et le bouton « Haut de page ». */}
             <CharacterIdentityLine
               ref={identityLineRef}
-              ancestryName={ancestry?.name}
+              ancestryName={ancestry && ancestryDisplayName(ancestry, character.identity.sex)}
               characterClass={characterClass}
               firearmsAllowed={firearmsAllowed}
+              sex={character.identity.sex}
               priestVocation={character.priestVocation}
               level={character.level}
               sx={{ flexWrap: 'wrap', position: 'relative', zIndex: 1 }}

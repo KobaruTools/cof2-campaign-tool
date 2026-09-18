@@ -113,6 +113,7 @@ export const fighterClasses: CharacterClass[] = [
   {
     id: 'chevalier',
     name: 'Chevalier',
+    nameFeminine: 'Chevaleresse',
     familyId: 'fighters',
     description:
       'Le chevalier est un noble guerrier errant, monté sur un puissant destrier et protégé par une armure lourde. Il parcourt la campagne en quête de torts à redresser et d’occasions de mettre son courage à l’épreuve.\n' +
@@ -140,6 +141,7 @@ export const fighterClasses: CharacterClass[] = [
   {
     id: 'guerrier',
     name: 'Guerrier',
+    nameFeminine: 'Guerrière',
     familyId: 'fighters',
     description:
       'Le guerrier est un combattant émérite qui ne craint pas le danger et qui affronte ses ennemis l’arme à la main. De tous les profils de combattant, il est le plus spécialisé et le plus complet dans l’art du combat au corps à corps.\n' +

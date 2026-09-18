@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { CharacterClass } from '@/data/schema';
-import type { PriestVocation } from '@/lib/character/types';
+import type { PriestVocation, Sex } from '@/lib/character/types';
 import { classDisplayName } from '@/lib/character/classDisplay';
 import { classColor } from '@/lib/ui/classColors';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -18,6 +18,8 @@ interface CharacterIdentityLineProps {
   characterClass?: CharacterClass;
   /** Règle « armes à feu » effective — pilote l'affichage arquebusier ⇄ arbalétrier. */
   firearmsAllowed: boolean;
+  /** Genre du personnage (PER-518) — pilote la féminisation du nom du profil. */
+  sex?: Sex;
   /** Vocation du prêtre spécialiste (badge d'identité) — absente pour les autres profils. */
   priestVocation?: PriestVocation | null;
   /** Niveau du personnage. */
@@ -46,6 +48,7 @@ export function CharacterIdentityLine({
   ancestryName,
   characterClass,
   firearmsAllowed,
+  sex,
   priestVocation,
   level,
   dense = false,
@@ -73,7 +76,7 @@ export function CharacterIdentityLine({
           fontWeight: 600,
         }}
       >
-        {characterClass ? classDisplayName(characterClass, firearmsAllowed) : 'Profil à définir'}
+        {characterClass ? classDisplayName(characterClass, firearmsAllowed, sex) : 'Profil à définir'}
       </Typography>
       {/* Vocation du prêtre spécialiste (PER-218) : trait d'identité, visible d'un coup d'œil. */}
       <PriestVocationBadge vocation={priestVocation} />
