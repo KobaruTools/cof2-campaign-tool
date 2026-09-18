@@ -2048,5 +2048,15 @@
         "tag": "character-sheet"
       }
     ]
+  },
+  {
+    "id": 116,
+    "date": "2026-09-18",
+    "items": [
+      {
+        "text": "Les noms de peuples et de profils s'accordent maintenant au féminin.",
+        "tag": "character-sheet"
+      }
+    ]
   }
 ]
